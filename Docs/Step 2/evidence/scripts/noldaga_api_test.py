@@ -29,6 +29,8 @@ BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 # 확인 주기(10분)가 있어도 24시간을 넘기지 않도록 23시간이 지나면 지운다.
 RESTRICTED_PREFIXES = ("tmap_", "kakao-transit_", "kakao-walk_")
 RETENTION = dt.timedelta(hours=23)
+# 카카오 장소 검색(로컬 API)은 운영정책상 결과 저장이 안 되므로 응답 파일을 만들지 않고 건수만 호출 요약에 남긴다.
+COUNT_ONLY_PREFIXES = ("kakao_",)
 PURGE_INTERVAL_SECONDS = 600
 SUMMARY_LOCK = threading.Lock()
 SKIP_WALK = {"row", "item", "path", "FCST_PPLTN", "realtimeArrivalList", "documents"}
@@ -460,14 +462,28 @@ def is_restricted(filename):
     return filename.split("_", 1)[-1].startswith(RESTRICTED_PREFIXES)
 
 
+def is_count_only(filename):
+    return filename.split("_", 1)[-1].startswith(COUNT_ONLY_PREFIXES)
+
+
 def purge_restricted():
-    """보관 기간이 지난 경로 원본을 지우고, 호출 요약에는 지운 시각만 남긴다."""
+    """보관 기간이 지난 경로 원본과, 남아 있으면 안 되는 카카오 장소 검색 응답을 지운다.
+
+    호출 요약에는 지운 시각만 남긴다.
+    """
     if not OUT_DIR.exists():
         return []
     now = dt.datetime.now()
     removed = []
     for path in OUT_DIR.glob("*.json"):
-        if path.name == SUMMARY or not is_restricted(path.name):
+        if path.name == SUMMARY:
+            continue
+        if is_count_only(path.name):
+            # 예전 버전이 저장한 카카오 장소 검색 응답은 기간과 상관없이 바로 지운다.
+            path.unlink(missing_ok=True)
+            removed.append(path.name)
+            continue
+        if not is_restricted(path.name):
             continue
         saved_at = dt.datetime.fromtimestamp(path.stat().st_mtime)
         if now - saved_at >= RETENTION:
@@ -566,7 +582,13 @@ def run_one(item, key, now, overwrite, previous):
         (OUT_DIR / failed_name).unlink(missing_ok=True)
         row["replaces"] = failed_name
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if is_count_only(filename):
+        # 응답 본문은 저장하지 않는다. 건수(meta.total_count)와 판정만 호출 요약에 남는다.
+        path.unlink(missing_ok=True)
+        row["saved"] = False
+        row["note"] = " · ".join(x for x in (row["note"], "카카오 저장 불가: 응답은 저장하지 않고 건수만 기록") if x)
+    else:
+        path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if is_restricted(filename):
         delete_at = dt.datetime.now() + RETENTION
         row["note"] = " · ".join(x for x in (row["note"], f"원본은 {delete_at:%m-%d %H:%M}에 자동 삭제(필드는 그 전에 정리표로)") if x)
