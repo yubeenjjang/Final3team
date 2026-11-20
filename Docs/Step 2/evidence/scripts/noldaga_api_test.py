@@ -29,6 +29,8 @@ BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 # 확인 주기(10분)가 있어도 24시간을 넘기지 않도록 23시간이 지나면 지운다.
 RESTRICTED_PREFIXES = ("tmap_", "kakao-transit_", "kakao-walk_")
 RETENTION = dt.timedelta(hours=23)
+# 카카오 장소 검색(로컬 API)은 운영정책상 결과 저장이 안 되므로 응답 파일을 만들지 않고 건수만 호출 요약에 남긴다.
+COUNT_ONLY_PREFIXES = ("kakao_",)
 PURGE_INTERVAL_SECONDS = 600
 SUMMARY_LOCK = threading.Lock()
 SKIP_WALK = {"row", "item", "path", "FCST_PPLTN", "realtimeArrivalList", "documents"}
@@ -220,7 +222,10 @@ def build_calls(now):
     stop_seomyeon = "tago-정류소_서면"
     route_note = "카카오 경로 응답은 저장 제한: 시험 확인용으로만 보관"
     tmap_note = "무료 하루 10건: 같은 날 다시 부르지 않음"
+    recheck_note = "service=0 원인 확인용 1건. 경로·구간·lane별 노선과 service 값을 호출 요약에 남김"
     return [
+        # 5순위: 11/19 광화문→서울역 두 번째 경로만 service=0이던 원인 확인. 같은 좌표, 같은 평일 17:00 기준.
+        call(5, "TMAP service 재확인", "광화문→서울역 오늘 17:00 (구간별 기록)", "tmap_광화문-서울역-1700-구간", "tmap", tmap(GWANGHWAMUN, SEOUL_STATION, f"{today}1700"), note=recheck_note, once=True),
         call(1, "TMAP 길찾기(1차)", "① 광화문→서울역 지금", "tmap_광화문-서울역", "tmap", tmap(GWANGHWAMUN, SEOUL_STATION), note=tmap_note, once=True),
         call(1, "TMAP 길찾기(1차)", "② 부산역→서면역 지금", "tmap_부산역-서면역", "tmap", tmap(BUSAN_STATION, SEOMYEON), note=tmap_note, once=True),
         call(1, "TMAP 길찾기(1차)", "③ 광화문→서울역 22:00", "tmap_광화문-서울역-2200", "tmap", tmap(GWANGHWAMUN, SEOUL_STATION, f"{today}2200"), note=tmap_note, once=True),
@@ -360,6 +365,50 @@ def inspect(obj, http_status):
     return success, code, message, count
 
 
+def tmap_legs(obj):
+    """TMAP 경로 응답에서 경로·구간·lane별 이동수단, 노선 이름, service(1 운행중/0 운행종료)만 뽑는다.
+
+    좌표·정류장·경로 선은 담지 않는다. 원본이 23시간 뒤 지워져도 service 판단 근거는 호출 요약에 남는다.
+    """
+    try:
+        itineraries = obj["metaData"]["plan"]["itineraries"]
+    except (KeyError, TypeError):
+        return None
+    routes = []
+    for number, itinerary in enumerate(itineraries if isinstance(itineraries, list) else [], 1):
+        legs = []
+        for leg in itinerary.get("legs") or []:
+            mode = leg.get("mode")
+            if mode == "WALK":
+                continue
+            lanes = leg.get("Lane") or leg.get("lane") or []
+            legs.append({
+                "mode": mode,
+                "route": leg.get("route"),
+                "service": leg.get("service"),
+                "lanes": [{"route": lane.get("route"), "service": lane.get("service")}
+                          for lane in (lanes if isinstance(lanes, list) else [])],
+            })
+        services = [leg["service"] for leg in legs if leg["service"] is not None]
+        routes.append({"route": number, "totalTime": itinerary.get("totalTime"),
+                       "minService": min(services) if services else None, "legs": legs})
+    return routes
+
+
+def legs_text(routes):
+    """화면 표시용 한 줄 요약: 경로1: SUBWAY 수도권1호선(0) [lane: 1호선 급행(0), 1호선(1)]"""
+    parts = []
+    for item in routes:
+        legs = []
+        for leg in item["legs"]:
+            text = f"{leg['mode']} {leg['route']}({leg['service']})"
+            if leg["lanes"]:
+                text += " [lane: " + ", ".join(f"{lane['route']}({lane['service']})" for lane in leg["lanes"]) + "]"
+            legs.append(text)
+        parts.append(f"경로{item['route']}: " + " → ".join(legs))
+    return " / ".join(parts)
+
+
 def nearby_stops(path):
     try:
         obj = json.loads(path.read_text(encoding="utf-8"))
@@ -413,14 +462,28 @@ def is_restricted(filename):
     return filename.split("_", 1)[-1].startswith(RESTRICTED_PREFIXES)
 
 
+def is_count_only(filename):
+    return filename.split("_", 1)[-1].startswith(COUNT_ONLY_PREFIXES)
+
+
 def purge_restricted():
-    """보관 기간이 지난 경로 원본을 지우고, 호출 요약에는 지운 시각만 남긴다."""
+    """보관 기간이 지난 경로 원본과, 남아 있으면 안 되는 카카오 장소 검색 응답을 지운다.
+
+    호출 요약에는 지운 시각만 남긴다.
+    """
     if not OUT_DIR.exists():
         return []
     now = dt.datetime.now()
     removed = []
     for path in OUT_DIR.glob("*.json"):
-        if path.name == SUMMARY or not is_restricted(path.name):
+        if path.name == SUMMARY:
+            continue
+        if is_count_only(path.name):
+            # 예전 버전이 저장한 카카오 장소 검색 응답은 기간과 상관없이 바로 지운다.
+            path.unlink(missing_ok=True)
+            removed.append(path.name)
+            continue
+        if not is_restricted(path.name):
             continue
         saved_at = dt.datetime.fromtimestamp(path.stat().st_mtime)
         if now - saved_at >= RETENTION:
@@ -519,12 +582,24 @@ def run_one(item, key, now, overwrite, previous):
         (OUT_DIR / failed_name).unlink(missing_ok=True)
         row["replaces"] = failed_name
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if is_count_only(filename):
+        # 응답 본문은 저장하지 않는다. 건수(meta.total_count)와 판정만 호출 요약에 남는다.
+        path.unlink(missing_ok=True)
+        row["saved"] = False
+        row["note"] = " · ".join(x for x in (row["note"], "카카오 저장 불가: 응답은 저장하지 않고 건수만 기록") if x)
+    else:
+        path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if is_restricted(filename):
         delete_at = dt.datetime.now() + RETENTION
         row["note"] = " · ".join(x for x in (row["note"], f"원본은 {delete_at:%m-%d %H:%M}에 자동 삭제(필드는 그 전에 정리표로)") if x)
     if request_body is not None:
         row["body"] = request_body
+    if item["slug"].startswith("tmap_") and success:
+        # 원본 삭제 뒤에도 service 판단이 가능하도록 노선 이름과 service 값만 요약에 남긴다.
+        routes = tmap_legs(obj)
+        if routes:
+            row["legs"] = routes
+            row["note"] = " · ".join(x for x in (row["note"], legs_text(routes)) if x)
     return {**row, "url": masked_url, "calledAt": dt.datetime.now().isoformat(timespec="seconds"),
             "http": status, "code": code, "message": message, "count": count, "verdict": verdict, "state": state}
 
@@ -583,7 +658,7 @@ button{border:0;border-radius:7px;padding:10px 16px;font:inherit;font-weight:600
 <label>서울 실시간 지하철 키<small>2순위</small><input id="subway" class="key" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore></label>
 <label>UTIC 인증키<small>경찰청 교통 돌발, IP 등록 필요</small><input id="utic" class="key" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore></label>
 <label>카카오 REST API 키<small>길찾기 2차(1순위), 장소 검색(3순위)</small><input id="kakao" class="key" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore></label>
-</div><div class="opts"><label><input type="checkbox" class="rank" value="1" checked> 1순위</label><label><input type="checkbox" class="rank" value="2"> 2순위</label><label><input type="checkbox" class="rank" value="3"> 3순위</label><label><input type="checkbox" class="rank" value="4"> 조사 항목</label><label><input type="checkbox" id="show"> 키 보기</label><label><input type="checkbox" id="overwrite"> 저장된 파일도 다시 호출(TMAP 제외)</label><button id="run">테스트 실행</button><button id="open" class="alt" type="button">결과 폴더 열기</button></div></section>
+</div><div class="opts"><label><input type="checkbox" class="rank" value="1" checked> 1순위</label><label><input type="checkbox" class="rank" value="2"> 2순위</label><label><input type="checkbox" class="rank" value="3"> 3순위</label><label><input type="checkbox" class="rank" value="4"> 조사 항목</label><label><input type="checkbox" class="rank" value="5"> TMAP service 재확인(1건)</label><label><input type="checkbox" id="show"> 키 보기</label><label><input type="checkbox" id="overwrite"> 저장된 파일도 다시 호출(TMAP 제외)</label><button id="run">테스트 실행</button><button id="open" class="alt" type="button">결과 폴더 열기</button></div></section>
 <section id="checkBox" hidden><strong>입력된 키 확인</strong><p style="margin:4px 0 8px">앞뒤 4자리와 길이를 발급 사이트의 키와 비교하세요. 이 정보는 파일에 저장되지 않습니다.</p><div id="checks"></div></section>
 <section><strong id="status">아직 실행하지 않았습니다.</strong><div class="wrap"><table id="table" hidden><thead><tr><th>API</th><th>호출</th><th>판정</th><th>코드</th><th>건수</th><th>저장 파일</th></tr></thead><tbody id="rows"></tbody></table></div></section></main>
 <script>
