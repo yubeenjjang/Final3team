@@ -1,0 +1,135 @@
+{
+  "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL SERVICE."
+  },
+  "body": {
+    "items": {
+      "item": [
+        {
+          "mngNo": "11-011101",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 동일로 1449",
+          "lctnLotnoAddr": "서울특별시 노원구 상계동 609",
+          "taxExclsScplcCnt": "3",
+          "dtlPstn": "도봉면허시험장 앞",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-011602P",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 석계로 98-2",
+          "lctnLotnoAddr": "서울특별시 노원구 월계동 85",
+          "taxExclsScplcCnt": "0",
+          "dtlPstn": "광운대역 2,3번 출구 앞",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-031103",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 한글비석로 242",
+          "lctnLotnoAddr": "서울특별시 노원구 중계동 364-19",
+          "taxExclsScplcCnt": "0",
+          "dtlPstn": "삼부프라자 앞(유경데파트 좌측)",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-051104",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 노원로 564",
+          "lctnLotnoAddr": "서울특별시 노원구 상계동 666",
+          "taxExclsScplcCnt": "0",
+          "dtlPstn": "상계주공10단지 상가 앞",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-061105",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 동일로 1456",
+          "lctnLotnoAddr": "서울특별시 노원구 상계동 692",
+          "taxExclsScplcCnt": "5",
+          "dtlPstn": "상계주공708동 앞(도봉면허시험장 건너)",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-061106",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 섬밭로 232",
+          "lctnLotnoAddr": "서울특별시 노원구 하계동 270",
+          "taxExclsScplcCnt": "0",
+          "dtlPstn": "하계우성현대아파트 112동 앞(하계역 5번 출구 앞)",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-061107",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 노해로 492",
+          "lctnLotnoAddr": "서울특별시 노원구 상계동 724-2",
+          "taxExclsScplcCnt": "0",
+          "dtlPstn": "프린스빌딩 앞",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-061208",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 마들로 59",
+          "lctnLotnoAddr": "서울특별시 노원구 월계동 17",
+          "taxExclsScplcCnt": "0",
+          "dtlPstn": "월계미성아파트 15동 옆",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "11-061909P",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 상계로 309-1",
+          "lctnLotnoAddr": "",
+          "taxExclsScplcCnt": "3",
+          "dtlPstn": "당고개역 1번출구",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        },
+        {
+          "mngNo": "1",
+          "ctpvNm": "서울특별시",
+          "sggNm": "노원구",
+          "lctnRoadNmAddr": "서울특별시 노원구 석계로 9",
+          "lctnLotnoAddr": "서울특별시 노원구 월계동 47-37",
+          "taxExclsScplcCnt": "2",
+          "dtlPstn": "월계동 석계역 앞 광장입구",
+          "dataCrtrYmd": "2026-04-13",
+          "insttCode": "3100000",
+          "insttNm": "서울특별시 노원구"
+        }
+      ]
+    },
+    "numOfRows": 10,
+    "pageNo": 1,
+    "totalCount": 268
+  }
+}

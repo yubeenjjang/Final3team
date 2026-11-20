@@ -1,0 +1,107 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseYmd": "20261119",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "82.82"
+          },
+          {
+            "baseYmd": "20261120",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "81.85"
+          },
+          {
+            "baseYmd": "20261121",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "99.23"
+          },
+          {
+            "baseYmd": "20261122",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "99.31"
+          },
+          {
+            "baseYmd": "20261123",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "80.13"
+          },
+          {
+            "baseYmd": "20261124",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "80.69"
+          },
+          {
+            "baseYmd": "20261125",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "86.93"
+          },
+          {
+            "baseYmd": "20261126",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "83.69"
+          },
+          {
+            "baseYmd": "20261127",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "83.36"
+          },
+          {
+            "baseYmd": "20261128",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11110",
+            "signguNm": "종로구",
+            "tAtsNm": "가회민화박물관",
+            "cnctrRate": "99.72"
+          }
+        ]
+      },
+      "numOfRows": 10,
+      "pageNo": 1,
+      "totalCount": 3390
+    }
+  }
+}

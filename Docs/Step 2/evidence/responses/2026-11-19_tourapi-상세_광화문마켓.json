@@ -1,0 +1,41 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "contentid": "3035607",
+            "contenttypeid": "15",
+            "sponsor1": "서울관광재단",
+            "sponsor1tel": "02-3788-8168",
+            "sponsor2": "",
+            "sponsor2tel": "",
+            "eventenddate": "20270110",
+            "playtime": "[일요일~목요일]- 17:30~22:00[금요일~토요일]- 17:30~22:30",
+            "eventplace": "광화문광장 및 세종로공원 일대",
+            "eventhomepage": "",
+            "agelimit": "",
+            "bookingplace": "",
+            "placeinfo": "",
+            "subevent": "",
+            "program": "- 주요 프로그램 : 크리스마스 시즌 소품 판매\n- 부대 행사 및 프로그램 : 먹거리 부스 / 글로벌 협업 부스 / 체험 프로그램 / 몰입형 포토존 운영 등",
+            "eventstartdate": "20261211",
+            "usetimefestival": "무료",
+            "discountinfofestival": "",
+            "spendtimefestival": "",
+            "festivalgrade": "",
+            "progresstype": "선택안함",
+            "festivaltype": ""
+          }
+        ]
+      },
+      "numOfRows": 1,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}

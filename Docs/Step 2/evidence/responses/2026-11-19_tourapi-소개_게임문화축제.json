@@ -1,0 +1,47 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "contentid": "3360113",
+            "contenttypeid": "15",
+            "title": "게임문화축제",
+            "createdtime": "20240905164646",
+            "modifiedtime": "20261026145330",
+            "tel": "02-546-7378",
+            "telname": "문화체육관광부",
+            "homepage": "https://kgcf.kr/",
+            "firstimage": "https://tong.visitkorea.or.kr/cms/resource/26/4135926_image2_1.png",
+            "firstimage2": "https://tong.visitkorea.or.kr/cms/resource/26/4135926_image3_1.png",
+            "cpyrhtDivCd": "Type3",
+            "areacode": "",
+            "sigungucode": "",
+            "lDongRegnCd": "26",
+            "lDongSignguCd": "350",
+            "lclsSystm1": "EV",
+            "lclsSystm2": "EV01",
+            "lclsSystm3": "EV010600",
+            "cat1": "",
+            "cat2": "",
+            "cat3": "",
+            "addr1": "부산광역시 해운대구 APEC로 30 (우동)",
+            "addr2": "1층",
+            "zipcode": "48060",
+            "mapx": "129.1350266435",
+            "mapy": "35.1657825587",
+            "mlevel": "6",
+            "overview": "'2026 게임문화축제'는 게임의 문화적 가치를 확산하고, 남녀노소 누구나 즐겁게 몰입할 수 있는 다채로운 체험과 향유의 기회를 제공하는 대한민국 대표 게임 페스티벌이다. 올해 축제는 세계인의 마음을 사로잡은 K-컬쳐 대표 게임IP전시부터, 웅장한 국악 선율로 재탄생하는 감동적인 게임OST 라이브 공연까지 다채로운 볼거리와 즐길 거리를 선보인다. 또한, 온 가족이 함께 소통하며 추억쌓는 게임 체험존과 손에 땀을 쥐게하는 박진감 넘치는 e스포츠 대회, 누구나 참여할 수 있는 다양한 이벤트 프로그램이 현장을 가득 채운다. 단순한 플레이를 넘어 예술과 문화, 세대 간 소통으로 이어지는 특별한 경험! 즐거움 그 이상의 감동이 있는 '2026 게임문화축제'에서 느껴볼 수 있다."
+          }
+        ]
+      },
+      "numOfRows": 1,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}

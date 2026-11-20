@@ -1,0 +1,47 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "contentid": "3035607",
+            "contenttypeid": "15",
+            "title": "광화문 마켓",
+            "createdtime": "20231109170053",
+            "modifiedtime": "20261112161205",
+            "tel": "02-3788-8168",
+            "telname": "서울관광재단",
+            "homepage": "공식 홈페이지 https://www.stolantern.com/\n공식 인스타그램 https://www.instagram.com/gwanghwamunmarket/",
+            "firstimage": "https://tong.visitkorea.or.kr/cms/resource/78/4153378_image2_1.png",
+            "firstimage2": "https://tong.visitkorea.or.kr/cms/resource/78/4153378_image3_1.png",
+            "cpyrhtDivCd": "Type3",
+            "areacode": "",
+            "sigungucode": "",
+            "lDongRegnCd": "11",
+            "lDongSignguCd": "110",
+            "lclsSystm1": "EV",
+            "lclsSystm2": "EV03",
+            "lclsSystm3": "EV030400",
+            "cat1": "",
+            "cat2": "",
+            "cat3": "",
+            "addr1": "서울특별시 종로구 세종대로 지하172 (세종로)",
+            "addr2": "",
+            "zipcode": "03154",
+            "mapx": "126.9767679222",
+            "mapy": "37.5716249337",
+            "mlevel": "6",
+            "overview": "서울의 겨울밤을 밝히는 「광화문 마켓」이 올해도 광화문광장을 찾아온다. 5회차를 맞이한 올해는 「시간이 멈춘 산타마을」을 주제로, 바쁜 일상 속 잠시 머물러 크리스마스의 설렘을 만끽할 수 있는 특별한 겨울 풍경을 선보인다. 대형 트리와 마켓 빌리지를 중심으로 크리스마스 시즌 소품과 따뜻한 먹거리를 한자리에서 만나볼 수 있으며, 오감을 자극하는 몰입형 포토존과 다채로운 체험 프로그램도 곳곳에 마련 될 예정이다. 크리스마스의 설렘이 머무는 곳, 올 겨울 광화문 마켓에서 특별한 겨울밤을 만날 수 있다."
+          }
+        ]
+      },
+      "numOfRows": 1,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}
