@@ -1,0 +1,135 @@
+{
+  "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL SERVICE."
+  },
+  "body": {
+    "items": {
+      "item": [
+        {
+          "mngNo": "8",
+          "ctpvNm": "부산광역시",
+          "sggNm": "연제구",
+          "lctnRoadNmAddr": "부산광역시 연제구 종합운동장로 7",
+          "lctnLotnoAddr": "부산광역시 연제구 거제동 1208",
+          "taxExclsScplcCnt": "7",
+          "dtlPstn": "홈플러스 아시아드점 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "9",
+          "ctpvNm": "부산광역시",
+          "sggNm": "기장군",
+          "lctnRoadNmAddr": "부산광역시 기장군 철마면 반송로 1101",
+          "lctnLotnoAddr": "부산광역시 기장군 철마면 안평리 543-23",
+          "taxExclsScplcCnt": "5",
+          "dtlPstn": "도시철도 4호선 안평역 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "10",
+          "ctpvNm": "부산광역시",
+          "sggNm": "북구",
+          "lctnRoadNmAddr": "부산광역시 북구 낙동대로 1698",
+          "lctnLotnoAddr": "부산광역시 북구 구포동 1060-30",
+          "taxExclsScplcCnt": "5",
+          "dtlPstn": "도시철도 3호선 구포역 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "11",
+          "ctpvNm": "부산광역시",
+          "sggNm": "남구",
+          "lctnRoadNmAddr": "부산광역시 남구 전포대로 26",
+          "lctnLotnoAddr": "부산광역시 남구 문현동 383-1",
+          "taxExclsScplcCnt": "3",
+          "dtlPstn": "문현 삼성힐타워 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "12",
+          "ctpvNm": "부산광역시",
+          "sggNm": "기장군",
+          "lctnRoadNmAddr": "부산광역시 기장군 정관읍 정관7로 34",
+          "lctnLotnoAddr": "부산광역시 기장군 정관읍 매학리 717-8",
+          "taxExclsScplcCnt": "5",
+          "dtlPstn": "다이소 부산정관신도지점 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "13",
+          "ctpvNm": "부산광역시",
+          "sggNm": "영도구",
+          "lctnRoadNmAddr": "부산광역시 영도구 영선대로 98",
+          "lctnLotnoAddr": "부산광역시 영도구 영선동2가 175",
+          "taxExclsScplcCnt": "3",
+          "dtlPstn": "동부산아이존빌 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "14",
+          "ctpvNm": "부산광역시",
+          "sggNm": "해운대구",
+          "lctnRoadNmAddr": "부산광역시 해운대구 해운대로 100",
+          "lctnLotnoAddr": "부산광역시 해운대구 재송동 909-2",
+          "taxExclsScplcCnt": "3",
+          "dtlPstn": "동해남부선 재송역 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "15",
+          "ctpvNm": "부산광역시",
+          "sggNm": "해운대구",
+          "lctnRoadNmAddr": "부산광역시 해운대구 해운대로 584",
+          "lctnLotnoAddr": "부산광역시 해운대구 우동 641-4",
+          "taxExclsScplcCnt": "4",
+          "dtlPstn": "해운대 부민병원 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "16",
+          "ctpvNm": "부산광역시",
+          "sggNm": "남구",
+          "lctnRoadNmAddr": "부산광역시 남구 수영로 26",
+          "lctnLotnoAddr": "부산광역시 남구 문현동 363-1",
+          "taxExclsScplcCnt": "6",
+          "dtlPstn": "문현 대림시티프라자 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        },
+        {
+          "mngNo": "17",
+          "ctpvNm": "부산광역시",
+          "sggNm": "연제구",
+          "lctnRoadNmAddr": "부산광역시 연제구 중앙대로 1001",
+          "lctnLotnoAddr": "부산광역시 연제구 연산동 1000",
+          "taxExclsScplcCnt": "5",
+          "dtlPstn": "시청 시민광장 앞",
+          "dataCrtrYmd": "2026-09-15",
+          "insttCode": "6260000",
+          "insttNm": "부산광역시"
+        }
+      ]
+    },
+    "numOfRows": 10,
+    "pageNo": 1,
+    "totalCount": 87
+  }
+}

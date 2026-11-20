@@ -1,0 +1,55 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "citycode": 21,
+            "gpslati": 35.11428,
+            "gpslong": 129.0409,
+            "nodeid": "BSB300550000",
+            "nodenm": "부산역(종점)"
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.114545544662,
+            "gpslong": 129.040291956548,
+            "nodeid": "BSB215060202",
+            "nodenm": "부산역",
+            "nodeno": 70001
+          },
+          {
+            "citycode": 38070,
+            "gpslati": 35.11563,
+            "gpslong": 129.0401,
+            "nodeid": "GHB5492",
+            "nodenm": "부산역",
+            "nodeno": 6492
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.115495308951,
+            "gpslong": 129.039948235565,
+            "nodeid": "BSB518030000",
+            "nodenm": "부산역"
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.115562499319,
+            "gpslong": 129.039971845779,
+            "nodeid": "BSB509950000",
+            "nodenm": "부산역",
+            "nodeno": "03720"
+          }
+        ]
+      },
+      "numOfRows": 5,
+      "pageNo": 1,
+      "totalCount": 21
+    }
+  }
+}

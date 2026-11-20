@@ -1,0 +1,41 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "contentid": "3360113",
+            "contenttypeid": "15",
+            "sponsor1": "문화체육관광부",
+            "sponsor1tel": "02-546-7378",
+            "sponsor2": "한국콘텐츠진흥원",
+            "sponsor2tel": "",
+            "eventenddate": "20261122",
+            "playtime": "10:00~18:00",
+            "eventplace": "부산 벡스코(BEXCO) 제2전시장 / T1 베이스캠프 해운대점",
+            "eventhomepage": "",
+            "agelimit": "",
+            "bookingplace": "",
+            "placeinfo": "",
+            "subevent": "",
+            "program": "1. 주요 프로그램\n- 게임 IP 전시 체험관 (국내외 인기 게임의 세계관을 반영한 몰입형 체험존에서 게임 콘텐츠 전시 및 체험)\n2. 부대 프로그램\n- 게임 OST 공연(11/19, 주요 게임사의 OST를 국악과 대중음악으로 재해석한 라이브 공연), 이스포츠대회(11/21, 발로란트 아마추어 본선 대회)\n3. 이벤트 프로그램\n- 스탬프 투어 리워드, 만족도 조사 리워드 등 미션 게임을 통한 기념품 배포(프로그램 완료한 분들 대상으로 제공 등), 게릴라 이벤트(실루엣 퀴즈, 3초 퀴즈, OX퀴즈 등), 타임 이벤트(K-GAME 퀴즈, 럭키드로우), 이스포츠 뷰잉 파티(발로란트 아마추어 대회 중계), IP 스페셜 이벤트(게스트 토크, 팬 퀴즈 등)",
+            "eventstartdate": "20261119",
+            "usetimefestival": "무료",
+            "discountinfofestival": "",
+            "spendtimefestival": "",
+            "festivalgrade": "",
+            "progresstype": "선택안함",
+            "festivaltype": ""
+          }
+        ]
+      },
+      "numOfRows": 1,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}
