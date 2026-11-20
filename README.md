@@ -15,4 +15,4 @@
 | `backend/` | FastAPI, Function Calling, LangGraph |
 | `infra/` | Docker, PostgreSQL/pgvector, Redis, AWS 설정 |
 
-현재는 팀 공통 디렉터리만 준비했습니다. 각 서비스의 실행 설정과 `compose.yaml`은 구현할 때 추가하고 여기에 실행 방법을 기록합니다.
+현재는 기능별 초기 디렉터리와 Python 파일의 용도 주석을 준비했습니다. 구현 코드와 실행 설정은 각 기능을 개발할 때 추가합니다. 담당 경로와 브랜치 규칙은 [협업 규칙 및 디렉터리](Docs/GitHub_협업_규칙_및_디렉터리.md)를 참고하세요.
