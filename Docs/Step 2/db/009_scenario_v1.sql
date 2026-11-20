@@ -20,7 +20,9 @@ CREATE FUNCTION app_applicant_profile(p_application TEXT) RETURNS TABLE (display
        JOIN companion_posts p ON p.post_id = a.post_id
        JOIN profiles pr ON pr.user_id = a.applicant_id
        JOIN users u ON u.user_id = a.applicant_id
-      WHERE a.application_id = p_application AND p.author_id = app_current_user() AND u.status = 'active' $$;
+       JOIN users ua ON ua.user_id = p.author_id AND ua.status = 'active'   -- 탈퇴한 작성자의 남은 토큰으로는 못 봄
+      WHERE a.application_id = p_application AND p.author_id = app_current_user() AND u.status = 'active'
+        AND a.status IN ('pending','approved') $$;   -- 취소·거절된 신청자의 나이·성별은 안 보임. 탈퇴자는 0행 → 화면 '알 수 없음'
 REVOKE ALL ON FUNCTION app_applicant_profile(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app_applicant_profile(TEXT) TO noldaga_app;
 -- 닉네임 정확히 일치 검색(A43): 2자 이상, 대소문자 무시, 활성 계정만, 나이·성별은 돌려주지 않음
@@ -28,7 +30,10 @@ CREATE FUNCTION app_find_user_by_nickname(p_nickname TEXT) RETURNS TABLE (user_i
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS
   $$ SELECT pr.user_id, pr.display_name FROM profiles pr JOIN users u ON u.user_id = pr.user_id
       WHERE char_length(p_nickname) >= 2 AND lower(pr.display_name) = lower(p_nickname) AND u.status = 'active'
-        AND pr.user_id <> app_current_user() $$;
+        AND pr.user_id <> app_current_user()
+        AND NOT EXISTS (SELECT 1 FROM user_blocks b   -- 차단 관계면 양쪽 모두 안 보임(A43). user_blocks RLS는 차단한 사람만 보여서 API가 거를 수 없음
+                         WHERE (b.blocker = app_current_user() AND b.blocked = pr.user_id)
+                            OR (b.blocker = pr.user_id AND b.blocked = app_current_user())) $$;
 REVOKE ALL ON FUNCTION app_find_user_by_nickname(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app_find_user_by_nickname(TEXT) TO noldaga_app;
 
@@ -43,10 +48,13 @@ ALTER TABLE route_requests
 UPDATE route_requests SET destination_place_hash = user_place_hash WHERE direction = 'return';
 UPDATE route_requests SET origin_type = 'user', destination_type = 'festival', origin_place_hash = user_place_hash WHERE direction = 'visit';
 ALTER TABLE route_requests DROP COLUMN user_place_hash;
+-- 출발·도착을 둘 다 사용자가 고르면 축제 좌표가 없어도 됨(좌표 없는 축제도 연결 가능)
+ALTER TABLE route_requests ALTER COLUMN festival_lat DROP NOT NULL, ALTER COLUMN festival_lng DROP NOT NULL;
 ALTER TABLE route_requests
   ADD CONSTRAINT route_requests_endpoints_check CHECK (NOT (origin_type = 'festival' AND destination_type = 'festival')),
   ADD CONSTRAINT route_requests_origin_hash_check CHECK (origin_type = 'user' OR origin_place_hash IS NULL),
-  ADD CONSTRAINT route_requests_destination_hash_check CHECK (destination_type = 'user' OR destination_place_hash IS NULL);
+  ADD CONSTRAINT route_requests_destination_hash_check CHECK (destination_type = 'user' OR destination_place_hash IS NULL),
+  ADD CONSTRAINT route_requests_festival_point_check CHECK ((origin_type = 'user' AND destination_type = 'user') OR (festival_lat IS NOT NULL AND festival_lng IS NOT NULL));
 COMMENT ON COLUMN route_requests.origin_place_hash IS 'HMAC-SHA256(서버 비밀키, 정규화 장소). 30일 뒤 행 삭제, 사건 연결 행은 이 칸만 NULL';
 COMMENT ON COLUMN route_requests.destination_place_hash IS 'HMAC-SHA256(서버 비밀키, 정규화 장소). 30일 뒤 행 삭제, 사건 연결 행은 이 칸만 NULL';
 

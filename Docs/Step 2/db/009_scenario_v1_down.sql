@@ -8,7 +8,10 @@ DELETE FROM reports WHERE target_type = 'chat_room';
 ALTER TABLE reports DROP CONSTRAINT reports_target_type_check;
 ALTER TABLE reports ADD CONSTRAINT reports_target_type_check CHECK (target_type IN ('companion_post','chat_message','user'));
 ALTER TABLE route_requests ADD COLUMN user_place_hash TEXT;
-UPDATE route_requests SET user_place_hash = CASE WHEN direction = 'visit' THEN origin_place_hash ELSE destination_place_hash END;
+-- 출발·도착이 둘 다 사용자 장소인 행은 한 칸으로 되돌릴 수 없어 사용자 쪽 대표 칸(귀가=도착, 가는 길=출발)만 남김
+UPDATE route_requests SET user_place_hash = COALESCE(CASE WHEN direction = 'visit' THEN origin_place_hash ELSE destination_place_hash END, origin_place_hash, destination_place_hash);
+ALTER TABLE route_requests DROP CONSTRAINT IF EXISTS route_requests_festival_point_check;
+ALTER TABLE route_requests ALTER COLUMN festival_lat SET NOT NULL, ALTER COLUMN festival_lng SET NOT NULL;
 ALTER TABLE route_requests DROP CONSTRAINT IF EXISTS route_requests_endpoints_check,
   DROP CONSTRAINT IF EXISTS route_requests_origin_hash_check, DROP CONSTRAINT IF EXISTS route_requests_destination_hash_check;
 ALTER TABLE route_requests DROP COLUMN origin_type, DROP COLUMN destination_type, DROP COLUMN origin_place_hash, DROP COLUMN destination_place_hash;
