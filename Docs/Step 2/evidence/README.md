@@ -12,6 +12,7 @@
 | `responses/합성예시_*.json` | TMAP·카카오 경로 응답의 **합성 예시** 7개(아래 참고) |
 | `responses/_호출요약.json` | 호출마다 시각, 요청 주소(키는 `{KEY}`), HTTP 상태, 응답 코드, 건수 |
 | `usage/TMAP_*.csv` | SK open API 콘솔에서 내려받은 TMAP 대중교통 사용량(요청·에러 목록). 11/19 요청 7건, 완료 4건 |
+| `usage/API_공식한도_20261120.md` | 11/20 각 콘솔(SK open API·카카오·서울 열린데이터광장·공공데이터포털 19건)에서 직접 확인한 **공식 한도 목록**. 정리표 "공식 한도" 칸의 근거 |
 | `scripts/noldaga_api_test.py` | 호출에 쓴 테스트 도구(Python 3 표준 라이브러리만 사용) |
 | `scripts/API테스트_실행.command` | macOS에서 더블클릭으로 도구 실행 |
 
