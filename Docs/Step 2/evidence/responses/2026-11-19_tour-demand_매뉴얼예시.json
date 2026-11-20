@@ -1,0 +1,27 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseYm": "202509",
+            "areaCd": "11",
+            "areaNm": "서울특별시",
+            "signguCd": "11530",
+            "signguNm": "구로구",
+            "tarSjrnDsIxCd": "2101",
+            "tarSjrnDsIxNm": "타권역 방문자 비중",
+            "tarSjrnDsIxVal": "79.08"
+          }
+        ]
+      },
+      "numOfRows": 1,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "citycode": 21,
+            "gpslati": 35.157281050303,
+            "gpslong": 129.059459807595,
+            "nodeid": "BSB164680201",
+            "nodenm": "서면역"
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.158722523902,
+            "gpslong": 129.060153513308,
+            "nodeid": "BSB508040000",
+            "nodenm": "서면역12번출구"
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.157652928082,
+            "gpslong": 129.06091659177,
+            "nodeid": "BSB516660000",
+            "nodenm": "서면부속상가"
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.157654959269,
+            "gpslong": 129.06102112599,
+            "nodeid": "BSB164450101",
+            "nodenm": "서면부속상가",
+            "nodeno": "05277"
+          },
+          {
+            "citycode": 21,
+            "gpslati": 35.157077779665,
+            "gpslong": 129.057902836401,
+            "nodeid": "BSB164650301",
+            "nodenm": "롯데호텔백화점.서면역",
+            "nodeno": "05237"
+          }
+        ]
+      },
+      "numOfRows": 5,
+      "pageNo": 1,
+      "totalCount": 55
+    }
+  }
+}
