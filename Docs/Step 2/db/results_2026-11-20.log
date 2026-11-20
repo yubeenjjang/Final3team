@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-20 15:39:50 KST
+# 놀다가 DB 시험 결과 — 2026-11-20 17:20:45 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -23,6 +23,9 @@ extensions: vector 0.8.7, pg_trgm 1.6
 되돌린 뒤 companion_posts.hidden_at 있음? false
 008까지 적용 뒤 테이블 48, RLS 켜진 테이블 48
 008 뒤 외래키 80
+## 2-7. 009 마이그레이션(기능 상세 시나리오) 적용 → 되돌리기 → 다시 적용
+되돌린 뒤 route_requests.origin_type 있음? false
+009까지 적용 뒤 테이블 48, RLS 켜진 테이블 48
 ## 3. 시험 SQL (tests_v0.3.2.sql)
 PASS T1 사용자 A가 favorites 조회 → 본인 것만 — 1 행
 PASS T2 사용자 A가 B 이름으로 관심 저장 — 거부됨: new row violates row-level security policy for table "favorites"
@@ -34,7 +37,7 @@ PASS T7 사건 ID INC-003 형식 — 거부됨: new row for relation "incident_l
 PASS T8 캐시로 제공했는데 validity_check 없음 — 거부됨: new row for relation "route_results" violates check constraint "route_results_check"
 PASS T9 select 결정에 stop_condition 없음 — 거부됨: new row for relation "recovery_plans" violates check constraint "recovery_plans_check2"
 PASS T10 created_at 없는 테이블 → 0개 — 0 행
-PASS T11 외래키 수 → 기본 43 + 002의 2 + 004의 3 + 005의 10 + 006의 2 + 007의 19 + 008의 1 = 80 — 80 행
+PASS T11 외래키 수 → 기본 43 + 002의 2 + 004의 3 + 005의 10 + 006의 2 + 007의 19 + 008의 1 = 80 (009는 외래키 없음) — 80 행
 PASS T12 API 역할이 users(비밀번호 해시) 조회 — 거부됨: permission denied for table users
 PASS T13 서비스 역할이 사건 기록(RLS 우회) — 1 행 바뀜
 PASS T14a 복구 시도 결과 채우기(pending일 때 1회) — 1 행 바뀜
@@ -60,7 +63,7 @@ PASS T22 [금지 패턴 확인] LOCAL 없는 SET은 다음 요청에 남음 → 
 PASS T23a 사용자 A가 B의 표시 이름 수정 → 0행 — 0 행 바뀜
 PASS T23b 사용자 A가 B의 관심 삭제 → 0행 — 0 행 바뀜
 PASS T23c 사용자 A가 자기 표시 이름 수정 → 1행 — 1 행 바뀜
-PASS T23d B의 표시 이름은 그대로 — 값 "B"
+PASS T23d B의 표시 이름은 그대로 — 값 "BB"
 PASS T24a 같은 request_id로 작업 두 번 등록 — 거부됨: duplicate key value violates unique constraint "assistant_runs_request_id_key"
 PASS T24b 워커 1이 작업 선점(queued → running) — 1 행 바뀜
 PASS T24c 워커 2가 같은 작업 선점 → 0행(중복 실행 방지) — 0 행 바뀜
@@ -96,8 +99,8 @@ PASS T30e 근거 부족 후보(insufficient) — 1 행 바뀜
 PASS T30f 공개 API 역할은 검증된 태그만 봄 — 1 행
 PASS T30g 공개 API 역할이 태그를 직접 추가 — 거부됨: permission denied for table festival_tags
 PASS T31 일간 지표 음수 — 거부됨: new row for relation "festival_engagement_daily" violates check constraint "festival_engagement_daily_detail_views_check"
-PASS T32a 친구 코드 형식 — 거부됨: new row for relation "profiles" violates check constraint "profiles_friend_code_check"
-PASS T32b 같은 친구 코드 두 번 — 거부됨: duplicate key value violates unique constraint "profiles_friend_code_key"
+PASS T32a 닉네임 1글자(2~12자만, 009) — 거부됨: new row for relation "profiles" violates check constraint "profiles_nickname_length"
+PASS T32b 대소문자만 다른 같은 닉네임(겹치지 않게, 009) — 거부됨: duplicate key value violates unique constraint "uq_profiles_nickname"
 PASS T32c 자기 자신에게 친구 신청 — 거부됨: new row for relation "friend_requests" violates check constraint "friend_requests_check"
 PASS T32d 반대 방향으로 대기 중 신청 또 만들기 — 거부됨: duplicate key value violates unique constraint "uq_friend_requests_pending"
 PASS T32e 응답 시각 없이 수락 — 거부됨: new row for relation "friend_requests" violates check constraint "friend_requests_check1"
@@ -143,7 +146,7 @@ PASS T40d 신고자는 자기 신고만 봄 — 1 행
 PASS T41a 종료 3일 지난 동행방 메시지 정리 — 3 행 바뀜
 PASS T41b 지우지 않았는데 내용 비움 — 거부됨: new row for relation "chat_messages" violates check constraint "chat_messages_check1"
 PASS T41c 종료 시각 없이 읽기 전용 — 거부됨: new row for relation "chat_rooms" violates check constraint "chat_rooms_check2"
-PASS T42a 본인 닉네임 검색 허용 바꾸기(A78) — 1 행 바뀜
+PASS T42a 본인 닉네임 바꾸기(A78, 겹치지 않으면 허용) — 1 행 바뀜
 PASS T42b 게시 뒤 숨긴 축제는 공개 목록에서 빠짐 — 0 행
 PASS T42c 채팅 권한 함수 검색 경로에 pg_temp가 맨 뒤 — 3 행
 PASS T42d 숨김 처리자 없이 동행 글 숨김 — 거부됨: new row for relation "companion_posts" violates check constraint "companion_posts_check2"
@@ -155,28 +158,39 @@ PASS T42i 실패한 부하 시험인데 실패 원인 없음 — 거부됨: new 
 PASS T42j 남의 프로필 행은 직접 안 보임 — 0 행
 PASS T42k 남의 표시 이름은 공개 함수로만 봄 — 값 "A2"
 PASS T42l 탈퇴(이메일·해시 덮어쓰기) 뒤 표시 이름은 NULL(A80) — 값 "NULL"
+PASS T43a 성별 값은 male·female만 — 거부됨: new row for relation "profiles" violates check constraint "profiles_gender_check"
+PASS T43b 모집 글 작성자는 신청자 나이·성별을 봄(S07) — 값 "1998/female"
+PASS T43c 작성자가 아니면 신청자 정보 0행 — 0 행
+PASS T43d 닉네임 정확히 일치(대소문자 무시) → 1명 — 1 행
+PASS T43e 닉네임 일부만 → 0명(정확히 일치만) — 0 행
+PASS T43f 검색 결과에 나이·성별 칸 없음 — 0 행
+PASS T43g 출발·도착 둘 다 축제 장소 — 거부됨: new row for relation "route_requests" violates check constraint "route_requests_endpoints_check"
+PASS T43h 귀갓길 출발을 사용자가 고른 곳으로(S06) — 1 행 바뀜
+PASS T43i 축제 장소인데 장소 해시가 있음 — 거부됨: new row for relation "route_requests" violates check constraint "route_requests_origin_hash_check"
+PASS T43j 채팅방 신고(S07) — 1 행 바뀜
 ALL SQL TESTS PASSED
+PASS T43k 앱 사용법 문서에 앱 버전 없음 — 거부됨: new row for relation "rag_documents" violates check constraint "rag_documents_app_guide_check"
 ## 4. T25 백업에 TMAP 경로 내용이 들어가지 않는지 (04 문서 7-0 ④)
 전체 백업에서 표식 1건 (1 이상이어야 시험이 의미 있음) / route_results 데이터 제외 백업에서 0건
 PASS T25 — 제외 백업에 TMAP 경로 내용 없음
 PASS T20b TMAP 경로 내용을 purged_at과 함께 지움 — 1 행 바뀜
-AFTER-BACKUP TESTS PASSED
 PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
+AFTER-BACKUP TESTS PASSED
 ## 5. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
 Buffers: shared hit=296
-->  Seq Scan on festivals (actual time=0.074..1.215 rows=26 loops=1)
+->  Seq Scan on festivals (actual time=0.131..1.335 rows=26 loops=1)
 Rows Removed by Filter: 19976
 Buffers: shared hit=296
 Buffers: shared hit=95
-Planning Time: 0.151 ms
-Execution Time: 1.232 ms
+Planning Time: 0.142 ms
+Execution Time: 1.353 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
 Buffers: shared hit=35
-->  Bitmap Heap Scan on festivals (actual time=0.044..0.059 rows=26 loops=1)
+->  Bitmap Heap Scan on festivals (actual time=0.058..0.085 rows=26 loops=1)
 Buffers: shared hit=35
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.040..0.040 rows=26 loops=1)
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.049..0.049 rows=26 loops=1)
 Buffers: shared hit=9
-Planning Time: 0.052 ms
-Execution Time: 0.072 ms
+Planning Time: 0.100 ms
+Execution Time: 0.100 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)

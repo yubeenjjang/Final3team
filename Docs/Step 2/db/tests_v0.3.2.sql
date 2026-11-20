@@ -51,9 +51,9 @@ INSERT INTO users (user_id, email, password_hash) VALUES
   ('bbbbbbbb-0000-0000-0000-000000000002', 'b@test.local', 'x'),
   ('cccccccc-0000-0000-0000-000000000003', 'o@test.local', 'x');
 INSERT INTO profiles (user_id, role, display_name) VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000001', 'user', 'A'),
-  ('bbbbbbbb-0000-0000-0000-000000000002', 'user', 'B'),
-  ('cccccccc-0000-0000-0000-000000000003', 'operator', 'O');
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'user', 'AA'),
+  ('bbbbbbbb-0000-0000-0000-000000000002', 'user', 'BB'),
+  ('cccccccc-0000-0000-0000-000000000003', 'operator', 'OO');
 INSERT INTO data_sources (source_id, name, scope, is_realtime) VALUES ('tourapi', 'TourAPI', 'national', false);
 INSERT INTO festivals (festival_id, title, region_code, latitude, longitude, published_at) VALUES
   ('fst_000001', '게시된 축제', 'SEOUL', 37.5759, 126.9768, now()),
@@ -64,7 +64,7 @@ INSERT INTO favorites (user_id, festival_id) VALUES
 INSERT INTO incident_logs (incident_id, failure_domain, detected_at, detection_rule, injected_test, before_metrics)
   VALUES ('inc_000001', 'internal_route', now(), 'p95_ms > 3000 for 30s', true, '{}');
 INSERT INTO incident_events (incident_id, from_status, to_status, actor) VALUES ('inc_000001', NULL, 'open', 'detector');
-INSERT INTO route_requests (route_request_id, request_id, festival_id, festival_lat, festival_lng, user_place_hash,
+INSERT INTO route_requests (route_request_id, request_id, festival_id, festival_lat, festival_lng, destination_place_hash,
   travel_mode, route_key, status, is_mock)
   VALUES ('rr_000001', 'req-uuid-000001', 'fst_000001', 37.5759, 126.9768, 'h1', 'transit', 'k1', 'ready', true),
          ('rr_000002', 'req-uuid-000002', 'fst_000001', 37.5759, 126.9768, 'h2', 'transit', 'k2', 'ready', false),
@@ -94,7 +94,7 @@ SELECT t.expect_count('T10 created_at 없는 테이블 → 0개',
   $q$SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public' AND c.relkind = 'r'
        AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'created_at')$q$, 0);
-SELECT t.expect_count('T11 외래키 수 → 기본 43 + 002의 2 + 004의 3 + 005의 10 + 006의 2 + 007의 19 + 008의 1 = 80',
+SELECT t.expect_count('T11 외래키 수 → 기본 43 + 002의 2 + 004의 3 + 005의 10 + 006의 2 + 007의 19 + 008의 1 = 80 (009는 외래키 없음)',
   $q$SELECT 1 FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = 'public' AND c.contype = 'f'$q$, 80);
 
 BEGIN; SET LOCAL ROLE noldaga_app;
@@ -161,7 +161,7 @@ SELECT t.expect_affected('T23a 사용자 A가 B의 표시 이름 수정 → 0행
 SELECT t.expect_affected('T23b 사용자 A가 B의 관심 삭제 → 0행', $q$DELETE FROM favorites WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 0);
 SELECT t.expect_affected('T23c 사용자 A가 자기 표시 이름 수정 → 1행', $q$UPDATE profiles SET display_name = 'A2' WHERE user_id = 'aaaaaaaa-0000-0000-0000-000000000001'$q$, 1);
 COMMIT;
-SELECT t.expect_value('T23d B의 표시 이름은 그대로', $q$SELECT display_name FROM profiles WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'B');
+SELECT t.expect_value('T23d B의 표시 이름은 그대로', $q$SELECT display_name FROM profiles WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'BB');
 
 -- ===== 새 시험: 챗봇 작업 assistant_runs (002) =====
 INSERT INTO assistant_runs (run_id, request_id, conversation_id, user_id, message)
@@ -201,7 +201,7 @@ SELECT t.expect_count('T27e 공개 API 역할은 연결된 것만 봄', 'SELECT 
 SELECT t.expect_error('T27f 공개 API 역할이 크롤링 결과 추가', $q$INSERT INTO festival_trends (source_id, crawled_at, raw_title, source_rank, match_status) VALUES ('trend_test', now(), 'z', 1, 'unmatched')$q$, 'permission denied');
 COMMIT;
 SELECT t.expect_count('T28a 목적지 원문 라벨 칸이 DB에 없음(Redis 24시간만)', $q$SELECT 1 FROM information_schema.columns WHERE table_name = 'route_requests' AND column_name = 'user_place_label'$q$, 0);
-SELECT t.expect_affected('T28b 사건 연결 행의 장소 해시만 지우기', $q$UPDATE route_requests SET user_place_hash = NULL WHERE route_request_id = 'rr_000001'$q$, 1);
+SELECT t.expect_affected('T28b 사건 연결 행의 장소 해시만 지우기', $q$UPDATE route_requests SET destination_place_hash = NULL WHERE route_request_id = 'rr_000001'$q$, 1);
 
 -- ===== 새 시험: 맞춤 추천 (005) =====
 SELECT t.expect_error('T29a 모르는 취향 값', $q$INSERT INTO user_festival_preferences (user_id, scenarios) VALUES ('aaaaaaaa-0000-0000-0000-000000000001', '{camping}')$q$, 'user_festival_preferences_scenarios_check');
@@ -225,9 +225,8 @@ COMMIT;
 SELECT t.expect_error('T31 일간 지표 음수', $q$INSERT INTO festival_engagement_daily (festival_id, day, detail_views) VALUES ('fst_000001', current_date, -1)$q$, 'festival_engagement_daily_detail_views_check');
 
 -- ===== 새 시험: 친구 (005) =====
-UPDATE profiles SET friend_code = 'AAAA1111' WHERE user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
-SELECT t.expect_error('T32a 친구 코드 형식', $q$UPDATE profiles SET friend_code = 'abc' WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'profiles_friend_code_check');
-SELECT t.expect_error('T32b 같은 친구 코드 두 번', $q$UPDATE profiles SET friend_code = 'AAAA1111' WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'profiles_friend_code_key');
+SELECT t.expect_error('T32a 닉네임 1글자(2~12자만, 009)', $q$UPDATE profiles SET display_name = 'Z' WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'profiles_nickname_length');
+SELECT t.expect_error('T32b 대소문자만 다른 같은 닉네임(겹치지 않게, 009)', $q$UPDATE profiles SET display_name = 'a2' WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'uq_profiles_nickname');
 INSERT INTO friend_requests (request_id, from_user, to_user) VALUES ('frq_000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000002');
 SELECT t.expect_error('T32c 자기 자신에게 친구 신청', $q$INSERT INTO friend_requests (request_id, from_user, to_user) VALUES ('frq_000002','aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001')$q$, 'friend_requests_check');
 SELECT t.expect_error('T32d 반대 방향으로 대기 중 신청 또 만들기', $q$INSERT INTO friend_requests (request_id, from_user, to_user) VALUES ('frq_000003','bbbbbbbb-0000-0000-0000-000000000002','aaaaaaaa-0000-0000-0000-000000000001')$q$, 'uq_friend_requests_pending');
@@ -330,7 +329,7 @@ SELECT t.expect_error('T41c 종료 시각 없이 읽기 전용', $q$UPDATE chat_
 
 -- ===== 008 교차 검토 반영 (T42) =====
 BEGIN; SET LOCAL ROLE noldaga_app; SET LOCAL app.user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
-SELECT t.expect_affected('T42a 본인 닉네임 검색 허용 바꾸기(A78)', $q$UPDATE profiles SET nickname_searchable = true$q$, 1);
+SELECT t.expect_affected('T42a 본인 닉네임 바꾸기(A78, 겹치지 않으면 허용)', $q$UPDATE profiles SET display_name = 'A2'$q$, 1);
 COMMIT;
 UPDATE festivals SET review_status = 'hidden' WHERE festival_id = 'fst_000001';
 BEGIN; SET LOCAL ROLE noldaga_app; SET LOCAL app.user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -356,9 +355,29 @@ SELECT t.expect_value('T42k 남의 표시 이름은 공개 함수로만 봄', $q
 COMMIT;
 BEGIN;
 UPDATE users SET email = 'deleted+' || user_id || '@invalid', password_hash = '!', status = 'deleted' WHERE user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
-UPDATE profiles SET display_name = NULL, friend_code = NULL, nickname_searchable = false WHERE user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+UPDATE profiles SET display_name = NULL, birth_year = NULL, gender = NULL WHERE user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
 SELECT t.expect_value('T42l 탈퇴(이메일·해시 덮어쓰기) 뒤 표시 이름은 NULL(A80)', $q$SELECT app_public_display_name('aaaaaaaa-0000-0000-0000-000000000001')$q$, NULL);
 ROLLBACK;
+
+-- ===== 009 기능 상세 시나리오 반영 (T43) =====
+UPDATE profiles SET birth_year = 1998, gender = 'female' WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002';
+SELECT t.expect_error('T43a 성별 값은 male·female만', $q$UPDATE profiles SET gender = 'x' WHERE user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$q$, 'profiles_gender_check');
+BEGIN; SET LOCAL ROLE noldaga_app; SET LOCAL app.user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+SELECT t.expect_value('T43b 모집 글 작성자는 신청자 나이·성별을 봄(S07)', $q$SELECT birth_year || '/' || gender FROM app_applicant_profile('cap_000001')$q$, '1998/female');
+COMMIT;
+BEGIN; SET LOCAL ROLE noldaga_app; SET LOCAL app.user_id = 'cccccccc-0000-0000-0000-000000000003';
+SELECT t.expect_count('T43c 작성자가 아니면 신청자 정보 0행', $q$SELECT * FROM app_applicant_profile('cap_000001')$q$, 0);
+COMMIT;
+BEGIN; SET LOCAL ROLE noldaga_app; SET LOCAL app.user_id = 'bbbbbbbb-0000-0000-0000-000000000002';
+SELECT t.expect_count('T43d 닉네임 정확히 일치(대소문자 무시) → 1명', $q$SELECT * FROM app_find_user_by_nickname('a2')$q$, 1);
+SELECT t.expect_count('T43e 닉네임 일부만 → 0명(정확히 일치만)', $q$SELECT * FROM app_find_user_by_nickname('A')$q$, 0);
+SELECT t.expect_count('T43f 검색 결과에 나이·성별 칸 없음', $q$SELECT 1 FROM information_schema.routines r JOIN information_schema.parameters p ON p.specific_name = r.specific_name WHERE r.routine_name = 'app_find_user_by_nickname' AND p.parameter_name IN ('birth_year','gender')$q$, 0);
+COMMIT;
+SELECT t.expect_error('T43g 출발·도착 둘 다 축제 장소', $q$INSERT INTO route_requests (route_request_id, request_id, festival_id, festival_lat, festival_lng, origin_type, destination_type, travel_mode, route_key, status, is_mock) VALUES ('rr_000090','req-uuid-000090','fst_000001',37.5759,126.9768,'festival','festival','transit','k90','queued',true)$q$, 'route_requests_endpoints_check');
+SELECT t.expect_affected('T43h 귀갓길 출발을 사용자가 고른 곳으로(S06)', $q$INSERT INTO route_requests (route_request_id, request_id, festival_id, festival_lat, festival_lng, origin_type, origin_place_hash, destination_type, destination_place_hash, travel_mode, route_key, status, is_mock) VALUES ('rr_000091','req-uuid-000091','fst_000001',37.5759,126.9768,'user','ho','user','hd','transit','k91','queued',true)$q$, 1);
+SELECT t.expect_error('T43i 축제 장소인데 장소 해시가 있음', $q$INSERT INTO route_requests (route_request_id, request_id, festival_id, festival_lat, festival_lng, origin_type, origin_place_hash, travel_mode, route_key, status, is_mock) VALUES ('rr_000092','req-uuid-000092','fst_000001',37.5759,126.9768,'festival','ho','transit','k92','queued',true)$q$, 'route_requests_origin_hash_check');
+SELECT t.expect_affected('T43j 채팅방 신고(S07)', $q$INSERT INTO reports (report_id, reporter_id, target_type, target_id, reason) VALUES ('rpt_000009','bbbbbbbb-0000-0000-0000-000000000002','chat_room','crm_000001','abuse')$q$, 1);
+SELECT t.expect_error('T43k 앱 사용법 문서에 앱 버전 없음', $q$INSERT INTO rag_documents (document_id, title, category, source_url, collected_at, checksum, authored_by) VALUES ('00000000-0000-0000-0000-0000000000a1','친구 신청 방법','app_guide','app://guide/friends',now(),'c1','llm_draft')$q$, 'rag_documents_app_guide_check');
 
 -- ===== TMAP 24시간 정리 (T20b) — 백업 시험(T25)이 표식을 찾을 수 있게 맨 끝에 둠 =====
 -- (run_tests.sh가 T25를 먼저 돌린 뒤 이 정리를 확인함)

@@ -63,6 +63,12 @@ echo "## 2-6. 008 마이그레이션(교차 검토 반영) 적용 → 되돌리�
 "${PSQL[@]}" -q < 008_review_fixes.sql
 "${PSQL[@]}" -tAc "SELECT '008까지 적용 뒤 테이블 ' || count(*) || ', RLS 켜진 테이블 ' || count(*) FILTER (WHERE rowsecurity) FROM pg_tables WHERE schemaname='public'"
 "${PSQL[@]}" -tAc "SELECT '008 뒤 외래키 ' || count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public' AND contype='f'"
+echo "## 2-7. 009 마이그레이션(기능 상세 시나리오) 적용 → 되돌리기 → 다시 적용"
+"${PSQL[@]}" -q < 009_scenario_v1.sql
+"${PSQL[@]}" -q < 009_scenario_v1_down.sql
+"${PSQL[@]}" -tAc "SELECT '되돌린 뒤 route_requests.origin_type 있음? ' || EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='route_requests' AND column_name='origin_type')"
+"${PSQL[@]}" -q < 009_scenario_v1.sql
+"${PSQL[@]}" -tAc "SELECT '009까지 적용 뒤 테이블 ' || count(*) || ', RLS 켜진 테이블 ' || count(*) FILTER (WHERE rowsecurity) FROM pg_tables WHERE schemaname='public'"
 
 echo "## 3. 시험 SQL (tests_v0.3.2.sql)"
 "${PSQL[@]}" < tests_v0.3.2.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /ALL SQL TESTS PASSED/p'
