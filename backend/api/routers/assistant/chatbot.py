@@ -10,7 +10,7 @@ RunId = Annotated[str, Path(pattern=RUN_ID_PATTERN)]
 RunToken = Annotated[str | None, Header(alias="X-Run-Access-Token")]
 
 
-@router.post("/assistant/runs", status_code=202)
+@router.post("/assistant/query", status_code=202)
 async def submit_run(request: Request, run: AssistantRequest) -> dict[str, object]:
     return create_run(run, await request.json())
 

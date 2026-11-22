@@ -15,6 +15,7 @@ from api.errors import (
     handle_unexpected_error,
     handle_validation_error,
 )
+import api.routers.accounts.favorites as favorites, api.routers.festivals.info as info
 from api.routers import health
 from api.routers.accounts import auth
 from api.routers.assistant import chatbot
@@ -74,3 +75,4 @@ async def add_response_headers(
 
 for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
+for module in (info, favorites): app.include_router(module.router, prefix="/api/v1")
