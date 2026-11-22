@@ -30,6 +30,44 @@ uv run --with-requirements api/requirements.txt pytest tests/api -q
 
 `GET /api/v1/festivals/{festival_id}`는 축제 상세와 이미지 저작권 정보를 반환합니다. ID 형식이 잘못되면 422, 해당 축제가 없으면 404를 반환합니다.
 
+## A04 귀갓길 접수
+
+`POST /api/v1/routes/return`은 `request_id`, `festival_id`, `destination`을 받습니다. `origin`을 생략하면 축제 장소에서 출발합니다. 사용자 장소는 `query` 또는 `lat`과 `lng`로 지정합니다. 접수 응답은 202이며 `status_url`과 `route_access_token`을 반환합니다. `sync_ready`는 200으로 경로와 조회 토큰을 반환합니다. 같은 `request_id`와 본문으로 다시 접수하면 최초 응답을 재사용하며, 본문을 바꾸면 409를 반환합니다.
+
+```sh
+curl -sS -X POST 'http://localhost:8000/api/v1/routes/return' \
+  -H 'Content-Type: application/json' \
+  -d '{"request_id":"return-demo-001","festival_id":"fst_000001","destination":{"query":"서울역"}}'
+```
+
+## A05 귀갓길 조회
+
+`GET /api/v1/routes/return/{route_request_id}`에 접수 응답에서 받은 `X-Route-Access-Token`을 보냅니다. 기본 시나리오에서는 첫 조회가 `processing`, 두 번째부터 `ready`입니다. 처리 실패 상태도 200으로 조회됩니다.
+
+아래 두 자리표시자를 접수 응답의 `route_request_id`와 `route_access_token`으로 바꾸고 두 번 호출합니다.
+
+```sh
+curl -sS 'http://localhost:8000/api/v1/routes/return/<route_request_id>' \
+  -H 'X-Route-Access-Token: <route_access_token>'
+```
+
+## A25 가는 길 접수·조회
+
+`POST /api/v1/routes/visit`은 `request_id`, `festival_id`, `origin`을 받습니다. `destination`을 생략하면 축제 장소가 도착지입니다. `X-Route-Access-Token`을 보내 `GET /api/v1/routes/visit/{route_request_id}`로 조회합니다. 완료된 경로의 `direction`은 `visit`입니다.
+
+## X-Mock-Scenario
+
+A04와 A25 접수 요청에 아래 헤더 값을 지정할 수 있습니다.
+
+| 값 | 접수 응답 | 조회 상태 |
+| --- | --- | --- |
+| `async_ready` (기본) | 202 `queued` | `processing` → `ready` |
+| `sync_ready` | 200 `ready` | `ready` |
+| `async_unavailable` | 202 `queued` | `processing` → `unavailable` (`ROUTE_UPSTREAM_ERROR`) |
+| `async_timeout` | 202 `queued` | `processing` → `timed_out` (`ROUTE_TIMEOUT`) |
+| `overloaded` | 503 `ROUTE_OVERLOADED` | 해당 없음 |
+| 기타 | 422 `VALIDATION_ERROR` | 해당 없음 |
+
 ## 가상 축제 6건
 
 | ID | 이름 | 지역 | 장소 | 위도, 경도 | 시작일 ~ 종료일 | 상태 | 이미지 |
