@@ -19,17 +19,17 @@
 - `api/MOCK_API.md`(실행·시험 명령, A01~A03, 가상 축제 표까지)
 
 **체크리스트**
-- [ ] R1 앱·라우터 등록·CORS·`reset_store()`
-- [ ] R2 공통 오류(422·404 변환 포함)
-- [ ] R3 `X-Request-ID`
-- [ ] R4 `is_mock`·`X-Mock` 헤더
-- [ ] R5 외부 호출 없음 시험
-- [ ] R6 가상 축제 6건
-- [ ] R7 A02 필터·정렬·페이지
-- [ ] R8 A03 상세·이미지 규칙
-- [ ] R9 A01
-- [ ] 시험 전부 통과: `uv run --with-requirements api/requirements.txt pytest tests/api -q`
-- [ ] commit `feat(api): mock server step1 — common errors, request id, festivals A01-A03`
+- [x] R1 앱·라우터 등록·CORS·`reset_store()`
+- [x] R2 공통 오류(422·404 변환 포함)
+- [x] R3 `X-Request-ID`
+- [x] R4 `is_mock`·`X-Mock` 헤더
+- [x] R5 외부 호출 없음 시험
+- [x] R6 가상 축제 6건
+- [x] R7 A02 필터·정렬·페이지
+- [x] R8 A03 상세·이미지 규칙
+- [x] R9 A01
+- [x] 시험 전부 통과: `uv run --with-requirements api/requirements.txt pytest tests/api -q`
+- [x] commit `feat(api): mock server step1 — common errors, request id, festivals A01-A03`
 
 ## 2단계 — 귀갓길·가는 길
 **만들 파일**
