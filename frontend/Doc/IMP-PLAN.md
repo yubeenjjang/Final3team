@@ -35,8 +35,8 @@
 
 ## 3단계 — 귀가
 **만들 파일:** `src/app/routes/return/page.tsx`, `src/features/routes/return/`, 관련 시험
-- [ ] F8 입력·접수·조회 반복·결과/실패·지도 경로선·시나리오 도구
-- [ ] 공통 확인 명령 통과
+- [x] F8 입력·접수·조회 반복·결과/실패·지도 경로선·시나리오 도구
+- [x] 공통 확인 명령 통과
 
 ## 4단계 — 홈·계정
 **만들 파일:** `src/app/page.tsx`(임시를 홈으로), `src/app/auth/login/page.tsx`, `src/app/auth/signup/page.tsx`, `src/features/assistant/chatbot/`, `src/features/accounts/auth/`, `src/features/accounts/favorites/`, 관련 시험
@@ -54,5 +54,6 @@
 - [ ] commit, push(사용자 지시 때), 팀 안내 문구
 
 ## 메모
+- 3단계 검토 메모(6단계에서 처리): 시간 초과 등 실패 카드에서 제목과 본문이 같은 문구로 두 번 보임 · 결과 지도에 출발/도착 이름표(시안의 '출발'·'도착' 말풍선) 없음 · Codex 샌드박스에서는 Turbopack 포트 제한으로 `npm run build`가 실패하지만 Claude 환경에서는 통과(11/22).
 - 시안이 이미지 한 장뿐이라 색은 근사값(`DESIGN.md`). 이수언 님이 값을 주면 토큰만 바꾼다.
 - 테마·아래 탭이 화면마다 다른 것은 `DESIGN.md` 2절의 기본안으로 구현.
