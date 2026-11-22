@@ -40,9 +40,9 @@
 
 ## 4단계 — 홈·계정
 **만들 파일:** `src/app/page.tsx`(임시를 홈으로), `src/app/auth/login/page.tsx`, `src/app/auth/signup/page.tsx`, `src/features/assistant/chatbot/`, `src/features/accounts/auth/`, `src/features/accounts/favorites/`, 관련 시험
-- [ ] F9 홈·AI 질문창 → 귀가 연결
-- [ ] F10 로그인·회원가입·토큰 갱신·로그아웃
-- [ ] 공통 확인 명령 통과
+- [x] F9 홈·AI 질문창 → 귀가 연결
+- [x] F10 로그인·회원가입·토큰 갱신·로그아웃
+- [x] 공통 확인 명령 통과
 
 ## 5단계 — 흐름 시험
 **만들 파일:** `playwright.config.*`, `e2e/*.spec.ts`
