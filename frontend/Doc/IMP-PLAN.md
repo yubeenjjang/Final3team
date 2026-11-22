@@ -28,6 +28,7 @@
 
 ## 2단계 — 축제
 **만들 파일:** `src/app/festivals/page.tsx`, `src/app/festivals/[festivalId]/page.tsx`, `src/features/festivals/explore/`, `detail/`, `live-info/`, 관련 시험
+- 추가 허용: `next.config.ts`에 개발 도구 표시 위치만 바꾸기(`devIndicators: { position: 'top-right' }` 등 — 아래 탭의 홈 버튼을 가림, 1단계 확인 때 발견)
 - [ ] F6 목록·필터·D-day
 - [ ] F7 상세·현장 정보·하트·지도·배너
 - [ ] 공통 확인 명령 통과
