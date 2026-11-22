@@ -17,14 +17,14 @@
 
 ## 1단계 — 뼈대
 **만들 파일:** `frontend/` 아래 Next.js 기본 파일(`package.json`·`package-lock.json`·`tsconfig.json`·`next.config.*`·`postcss.config.*`·`tailwind` 설정·`eslint` 설정·`vitest.config.*`), `src/app/layout.tsx`·`page.tsx`(임시)·`globals.css`·`companions/page.tsx`·`map/page.tsx`, `src/components/`(아래 탭·헤더·모의 표시·KakaoMap·준비 중), `src/lib/api/`(client·schema.d.ts·auth 토큰 저장), `src/lib/kakao.ts`, 단위 시험 `src/**/*.test.ts(x)`, `.env.local.example`, `.gitignore`, `README.md`(실행 절 추가만)
-- [ ] F1 프로젝트·스크립트
-- [ ] F2 토큰(색 직접 쓰기 금지 시험 포함)
-- [ ] F3 틀·탭
-- [ ] F4 API 연결·타입 생성
-- [ ] F5 모의 표시
-- [ ] F11 카카오 지도 + 대체 화면
-- [ ] F13 환경·문서
-- [ ] 공통 확인 명령 통과
+- [x] F1 프로젝트·스크립트
+- [x] F2 토큰(색 직접 쓰기 금지 시험 포함)
+- [x] F3 틀·탭
+- [x] F4 API 연결·타입 생성
+- [x] F5 모의 표시
+- [x] F11 카카오 지도 + 대체 화면
+- [x] F13 환경·문서
+- [x] 공통 확인 명령 통과
 
 ## 2단계 — 축제
 **만들 파일:** `src/app/festivals/page.tsx`, `src/app/festivals/[festivalId]/page.tsx`, `src/features/festivals/explore/`, `detail/`, `live-info/`, 관련 시험
