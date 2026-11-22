@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUp, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { storeRouteAccess } from "@/features/routes/return/api";
 import { askAssistant, type AssistantAnswer } from "./api";
 
 type ChatState =
@@ -32,6 +33,7 @@ export function AssistantPrompt({ festivalId }: { festivalId?: string }) {
     try {
       const answer = await askAssistant(message, festivalId, controller.signal);
       if (!controller.signal.aborted) {
+        if (answer.route) storeRouteAccess(answer.route);
         setState({ status: "succeeded", answer });
       }
     } catch (error) {
@@ -100,7 +102,7 @@ export function AssistantPrompt({ festivalId }: { festivalId?: string }) {
           <p role="status" className="whitespace-pre-wrap">{state.answer.text}</p>
           {state.answer.route && (
             <Link
-              href={`/routes/return?${new URLSearchParams({ ...state.answer.route })}`}
+              href={`/routes/return?${new URLSearchParams({ id: state.answer.route.id })}`}
               prefetch={false}
               className={`inline-flex items-center gap-1 rounded-chip px-3 py-1.5 text-xs font-bold ${
                 isHome ? "bg-neon text-ink" : "bg-accent text-surface"

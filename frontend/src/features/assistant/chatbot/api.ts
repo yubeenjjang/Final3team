@@ -52,7 +52,7 @@ export async function askAssistant(
     context: festivalId ? { festival_id: festivalId } : undefined,
   };
   const { run_id, run_access_token } = await apiPost<AssistantSubmission>(
-    "/assistant/query", request, { signal },
+    "/assistant/query", request, { signal, timeoutMs: 10_000 },
   );
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -60,6 +60,7 @@ export async function askAssistant(
     const run = await apiGet<AssistantRun>(`/assistant/runs/${encodeURIComponent(run_id)}`, {
       headers: { "X-Run-Access-Token": run_access_token },
       signal,
+      timeoutMs: 10_000,
       skipAuthRefresh: true,
     });
     const status = run.run_status ?? run.status;

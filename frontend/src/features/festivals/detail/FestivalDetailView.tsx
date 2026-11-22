@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
   Bus,
@@ -24,8 +24,7 @@ import {
 import { KakaoMap } from "@/components/KakaoMap";
 import {
   getAccessToken,
-  getAuthUser,
-  getAuthUserServerSnapshot,
+  getAuthSessionVersion,
   subscribeAuth,
 } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
@@ -35,7 +34,7 @@ import { LiveInfoSection } from "../live-info/LiveInfoSection";
 import {
   deleteFavorite,
   getFestivalDetail,
-  listMyFavorites,
+  findFavorites,
   saveFavorite,
   type FestivalDetail,
 } from "./api";
@@ -63,15 +62,15 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const authUser = useSyncExternalStore(
-    subscribeAuth,
-    getAuthUser,
-    getAuthUserServerSnapshot,
-  );
-  const [favoriteSaved, setFavoriteSaved] = useState(false);
+  const session = useSyncExternalStore(subscribeAuth, getAuthSessionVersion, () => 0);
+  const signedIn = useSyncExternalStore(subscribeAuth, () => Boolean(getAccessToken()), () => false);
+  const [favorite, setFavorite] = useState<{ session: number; festivalId: string; saved: boolean | null } | null>(null);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
-  const isFavorite = Boolean(authUser) && favoriteSaved;
+  const lookupRequest = useRef<AbortController | null>(null);
+  const currentFavorite = favorite?.session === session && favorite.festivalId === festivalId ? favorite : null;
+  const favoriteLocked = signedIn && (!currentFavorite || favoriteBusy);
+  const isFavorite = signedIn && currentFavorite?.saved === true;
 
   const [nearbyMessage, setNearbyMessage] = useState<string | null>(null);
   const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
@@ -119,63 +118,56 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   }, [festivalId, reloadTick]);
 
   useEffect(() => {
-    if (!authUser && !getAccessToken()) {
-      return;
-    }
+    if (!signedIn) return;
     const controller = new AbortController();
-    let active = true;
+    lookupRequest.current = controller;
 
-    listMyFavorites(controller.signal)
-      .then((res) => {
-        if (!active) {
-          return;
-        }
-        const matched = res.items.some(
-          (item) => item.festival_id === festivalId,
-        );
-        setFavoriteSaved(matched);
-      })
-      .catch(() => {
-        // Ignore initial favorite lookup errors so detail screen remains usable.
-      });
+    function apply(saved: boolean | null) {
+      if (!controller.signal.aborted && session === getAuthSessionVersion()) {
+        setFavorite({ session, festivalId, saved });
+      }
+    }
 
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [festivalId, authUser]);
+    findFavorites([festivalId], controller.signal)
+      .then((matches) => apply(matches.has(festivalId)))
+      .catch(() => apply(null));
+
+    return () => controller.abort();
+  }, [festivalId, session, signedIn]);
 
   const handleToggleFavorite = useCallback(async () => {
-    if (favoriteBusy) {
-      return;
-    }
     if (!getAccessToken()) {
       router.push(
         `/auth/login?next=${encodeURIComponent(`/festivals/${festivalId}`)}`,
       );
       return;
     }
+    if (!currentFavorite || favoriteLocked || session !== getAuthSessionVersion()) return;
 
+    lookupRequest.current?.abort();
     setFavoriteBusy(true);
     setFavoriteError(null);
     try {
-      if (isFavorite) {
-        await deleteFavorite(festivalId);
-        setFavoriteSaved(false);
-      } else {
-        await saveFavorite(festivalId);
-        setFavoriteSaved(true);
+      if (isFavorite) await deleteFavorite(festivalId);
+      else await saveFavorite(festivalId);
+
+      if (session === getAuthSessionVersion()) {
+        setFavorite((current) =>
+          current === currentFavorite ? { ...current, saved: !isFavorite } : current,
+        );
       }
     } catch (error) {
-      setFavoriteError(
-        error instanceof ApiError
-          ? error.message
-          : "찜 상태를 변경하지 못했어요",
-      );
+      if (session === getAuthSessionVersion()) {
+        setFavoriteError(
+          error instanceof ApiError
+            ? error.message
+            : "찜 상태를 변경하지 못했어요",
+        );
+      }
     } finally {
       setFavoriteBusy(false);
     }
-  }, [favoriteBusy, festivalId, isFavorite, router]);
+  }, [currentFavorite, favoriteLocked, festivalId, isFavorite, router, session]);
 
   if (loading) {
     return (
@@ -290,7 +282,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
           <button
             type="button"
             onClick={() => void handleToggleFavorite()}
-            disabled={favoriteBusy}
+            disabled={favoriteLocked}
             aria-label={isFavorite ? "찜 해제" : "찜하기"}
             aria-pressed={isFavorite}
             className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-chip bg-surface/90 text-ink shadow-sm backdrop-blur-sm transition-transform hover:scale-105 disabled:opacity-60"

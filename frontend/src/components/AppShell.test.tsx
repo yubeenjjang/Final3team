@@ -74,7 +74,7 @@ describe("F3 AppShell & F5 MockBadge", () => {
     expect(screen.getByText("준비 중이에요")).toBeInTheDocument();
   });
 
-  it("F3 shows login link when logged out and nickname initial when logged in", () => {
+  it.each(["놀", "👩🏽‍💻", "𠮷"])("F3 shows login when logged out and preserves %s as the nickname initial", (initial) => {
     render(
       <AppShell>
         <div>본문</div>
@@ -90,12 +90,12 @@ describe("F3 AppShell & F5 MockBadge", () => {
       setAuthSession({
         accessToken: "token-a",
         refreshToken: "token-r",
-        user: { userId: "usr_1", displayName: "놀다가유저" },
+        user: { userId: "usr_1", displayName: `${initial}다가유저` },
       });
     });
 
     const accountLink = screen.getByRole("link", { name: /내 계정/ });
-    expect(accountLink).toHaveTextContent("놀");
+    expect(accountLink.textContent).toBe(initial);
   });
 
   it("F5 displays mock badge once mock response is observed", () => {

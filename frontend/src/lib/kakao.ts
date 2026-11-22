@@ -78,64 +78,69 @@ export function loadKakaoMaps(
     return Promise.reject(new Error("KAKAO_BROWSER_ONLY"));
   }
 
-  if (window.kakao?.maps?.Map) {
-    return Promise.resolve(window.kakao.maps);
-  }
+  if (kakaoMapsPromise) return kakaoMapsPromise;
+  if (window.kakao?.maps?.Map) return Promise.resolve(window.kakao.maps);
 
-  if (kakaoMapsPromise) {
-    return kakaoMapsPromise;
-  }
+  const existingScript = document.querySelector<HTMLScriptElement>(
+    `script[${KAKAO_SDK_ATTR}="true"]`,
+  );
+  const script = existingScript ?? document.createElement("script");
 
   kakaoMapsPromise = new Promise<KakaoMapsNamespace>((resolve, reject) => {
-    const finishLoad = () => {
-      const maps = window.kakao?.maps;
-      if (!maps || typeof maps.load !== "function") {
-        kakaoMapsPromise = null;
-        reject(new Error("KAKAO_SDK_INVALID"));
-        return;
-      }
-      maps.load(() => {
-        if (window.kakao?.maps) {
-          resolve(window.kakao.maps);
-        } else {
-          kakaoMapsPromise = null;
-          reject(new Error("KAKAO_SDK_INVALID"));
-        }
-      });
-    };
+    let settled = false;
+    const timeout = setTimeout(() => fail("KAKAO_SDK_TIMEOUT"), 10_000);
 
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      `script[${KAKAO_SDK_ATTR}="true"]`,
-    );
-
-    if (existingScript) {
-      if (window.kakao?.maps) {
-        finishLoad();
-        return;
-      }
-      existingScript.addEventListener("load", finishLoad, { once: true });
-      existingScript.addEventListener(
-        "error",
-        () => {
-          kakaoMapsPromise = null;
-          reject(new Error("KAKAO_SDK_LOAD_FAILED"));
-        },
-        { once: true },
-      );
-      return;
+    function cleanup() {
+      settled = true;
+      clearTimeout(timeout);
+      script.onload = null;
+      script.onerror = null;
     }
 
-    const script = document.createElement("script");
-    script.src = buildKakaoSdkUrl(key);
-    script.async = true;
-    script.setAttribute(KAKAO_SDK_ATTR, "true");
-    script.onload = finishLoad;
-    script.onerror = () => {
+    function fail(code: string) {
+      if (settled) return;
+      cleanup();
       script.remove();
-      kakaoMapsPromise = null;
-      reject(new Error("KAKAO_SDK_LOAD_FAILED"));
-    };
-    document.head.appendChild(script);
+      delete window.kakao;
+      reject(new Error(code));
+    }
+
+    function finishLoad() {
+      const maps = window.kakao?.maps;
+      if (!maps || typeof maps.load !== "function") {
+        fail("KAKAO_SDK_INVALID");
+        return;
+      }
+
+      try {
+        maps.load(() => {
+          if (settled) return;
+          const loaded = window.kakao?.maps;
+          if (!loaded?.Map) {
+            fail("KAKAO_SDK_INVALID");
+            return;
+          }
+          cleanup();
+          resolve(loaded);
+        });
+      } catch {
+        fail("KAKAO_SDK_INVALID");
+      }
+    }
+
+    script.onload = finishLoad;
+    script.onerror = () => fail("KAKAO_SDK_LOAD_FAILED");
+    if (!existingScript) {
+      script.src = buildKakaoSdkUrl(key);
+      script.async = true;
+      script.setAttribute(KAKAO_SDK_ATTR, "true");
+      document.head.appendChild(script);
+    } else if (window.kakao?.maps) {
+      finishLoad();
+    }
+  }).catch((error: unknown) => {
+    kakaoMapsPromise = null;
+    throw error;
   });
 
   return kakaoMapsPromise;

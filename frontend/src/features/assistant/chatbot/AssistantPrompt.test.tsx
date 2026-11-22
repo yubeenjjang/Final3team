@@ -26,6 +26,8 @@ async function advance(ms: number) {
 
 describe("F9 assistant flow", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/");
+    window.sessionStorage.clear();
     vi.useFakeTimers();
     fetchApi.mockReset();
     vi.stubGlobal("fetch", fetchApi);
@@ -61,6 +63,8 @@ describe("F9 assistant flow", () => {
     const href = screen.getByRole("link", { name: "귀가 경로 보기" }).getAttribute("href")!;
     const url = new URL(href, "http://localhost");
     expect(url.pathname).toBe("/routes/return");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ id: route.route_request_id });
+    window.history.replaceState(null, "", href);
 
     cleanup();
     reply({
@@ -79,6 +83,23 @@ describe("F9 assistant flow", () => {
     expect(String(routeUrl)).toMatch(/\/routes\/return\/rr_test01$/);
     expect(new Headers(routeRequest?.headers).get("X-Route-Access-Token")).toBe(route.route_access_token);
     expect(screen.getByRole("button", { name: /12분/ })).toBeInTheDocument();
+  });
+
+  it.each(["submission", "lookup"])("F9 aborts a stalled %s after ten seconds and offers retry", async (step) => {
+    const lookup = step === "lookup";
+    if (lookup) reply(run, 202);
+    fetchApi.mockImplementationOnce(() => new Promise(() => {}));
+    render(<AssistantPrompt />);
+    submit("축제 찾아줘");
+    if (lookup) await advance(1000);
+
+    const signal = fetchApi.mock.lastCall?.[1]?.signal;
+    await advance(9999);
+    expect(screen.getByRole("status")).toHaveTextContent("생각 중…");
+    await advance(1);
+    expect(signal?.aborted).toBe(true);
+    expect(screen.getByRole("alert")).toHaveTextContent("서버 응답 시간이 초과됐어요.");
+    expect(screen.getByRole("button", { name: "다시 묻기" })).toBeEnabled();
   });
 
   it("preserves festival context and retries a failed answer with a new request ID", async () => {

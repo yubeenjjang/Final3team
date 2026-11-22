@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -31,6 +32,50 @@ describe("F6 festival explore", () => {
     expect(dday("2026-11-10", "2026-11-15", "2026-11-22")).toBe("종료");
     expect(dday(null, null, "2026-11-22")).toBe("");
     expect(dday(undefined, "2026-11-30", "2026-11-22")).toBe("");
+  });
+
+  it("F6 and F7 switch D-day at Seoul midnight with a UTC clock", () => {
+    vi.useFakeTimers();
+    try {
+      const day = "2026-11-22";
+      vi.setSystemTime(new Date("2026-11-21T14:59:59Z"));
+      expect(dday(day, day)).toBe("D-1");
+      vi.setSystemTime(new Date("2026-11-21T15:00:00Z"));
+      expect(dday(day, day)).toBe("진행 중");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(["filter change", "unmount"])("F6 cancels load more on %s and ignores its late response", async (action) => {
+    const item = {
+      festival_id: "fst_000001",
+      name: "기존 축제",
+      region_code: "SEOUL",
+      event_status: "ongoing",
+    };
+    const oldPage = Promise.withResolvers<Response>();
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ items: [item], total: 2, page: 1 }))
+      .mockReturnValueOnce(oldPage.promise)
+      .mockResolvedValueOnce(Response.json({ items: [{ ...item, name: "새 필터 축제" }], total: 1, page: 1 }));
+    globalThis.fetch = fetchMock;
+    const { unmount } = render(<FestivalExploreView />);
+    await screen.findByText("기존 축제");
+    fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
+
+    if (action === "unmount") unmount();
+    else {
+      fireEvent.change(screen.getByLabelText("지역 선택"), { target: { value: "SEOUL" } });
+      await screen.findByText("새 필터 축제");
+    }
+    expect(fetchMock.mock.calls[1][1]?.signal?.aborted).toBe(true);
+
+    await act(async () => {
+      oldPage.resolve(Response.json({ items: [{ ...item, festival_id: "old", name: "늦게 도착한 축제" }], total: 10, page: 2 }));
+    });
+    expect(screen.queryByText("늦게 도착한 축제")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 
   it("F6 maps region codes to Korean labels", () => {

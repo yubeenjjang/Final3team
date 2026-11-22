@@ -1,8 +1,7 @@
 import type { components } from "@/lib/api/schema";
 
 type SignupRequest = components["schemas"]["SignupRequest"];
-const emailLocal = /^[A-Za-z0-9!#$%&'*+/=?^`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^`{|}~-]+)*$/;
-const emailLabel = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
+const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const seoulYear = new Intl.DateTimeFormat("en", { timeZone: "Asia/Seoul", year: "numeric" });
 
 export const MIN_BIRTH_YEAR = 1900;
@@ -12,10 +11,7 @@ export function currentBirthYear(now = new Date()): number {
 }
 
 export function isValidEmail(email: string): boolean {
-  const [local, domain, extra] = email.split("@");
-  const labels = domain?.split(".") ?? [];
-  return email.length <= 254 && local.length <= 64 && emailLocal.test(local) &&
-    extra === undefined && labels.length >= 2 && labels.every((label) => emailLabel.test(label));
+  return email.length <= 254 && emailPattern.test(email);
 }
 
 export function validateSignup(

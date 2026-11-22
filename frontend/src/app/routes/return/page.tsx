@@ -5,17 +5,15 @@ interface ReturnRoutePageProps {
 }
 
 export default async function ReturnRoutePage({ searchParams }: ReturnRoutePageProps) {
-  const { festivalId, id, token } = await searchParams;
+  const { festivalId, id } = await searchParams;
   const initialFestivalId = typeof festivalId === "string" ? festivalId : undefined;
-  const route = typeof id === "string" && id && typeof token === "string" && token
-    ? { id, token }
-    : undefined;
+  const routeId = typeof id === "string" && id ? id : undefined;
 
   return (
     <ReturnRouteView
-      key={JSON.stringify([initialFestivalId, route?.id, route?.token])}
+      key={JSON.stringify([initialFestivalId, routeId])}
       festivalId={initialFestivalId}
-      directRoute={route}
+      routeId={routeId}
     />
   );
 }

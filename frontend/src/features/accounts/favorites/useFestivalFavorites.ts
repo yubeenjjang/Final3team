@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { apiGet } from "@/lib/api/client";
-import { deleteFavorite, saveFavorite, type FavoritesPage } from "@/features/festivals/detail/api";
+import { getAuthSessionVersion } from "@/lib/api/auth";
+import { deleteFavorite, findFavorites, saveFavorite } from "@/features/festivals/detail/api";
 
 export function useFestivalFavorites(festivalIds: readonly string[]) {
-  const [savedIds, setSavedIds] = useState<Set<string> | null>(null);
+  const session = getAuthSessionVersion();
+  const [lookup, setLookup] = useState<{
+    ids: readonly string[];
+    session: number;
+    matches: Set<string>;
+  } | null>(null);
+  const savedIds = lookup?.ids === festivalIds && lookup.session === session ? lookup.matches : null;
   const [error, setError] = useState("");
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const pending = useRef(new Set<string>());
@@ -13,38 +19,20 @@ export function useFestivalFavorites(festivalIds: readonly string[]) {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function load() {
-      const matches = new Set<string>();
-      for (let page = 1; ; page += 1) {
-        const result = await apiGet<FavoritesPage>("/me/favorites", {
-          query: { page, page_size: 100 },
-          signal: controller.signal,
-        });
-        for (const item of result.items) {
-          if (festivalIds.includes(item.festival_id)) {
-            matches.add(item.festival_id);
-          }
-        }
-        if (matches.size === festivalIds.length || result.items.length === 0 ||
-          result.page * result.page_size >= result.total) {
-          break;
-        }
+    findFavorites(festivalIds, controller.signal).then((matches) => {
+      if (!controller.signal.aborted && session === getAuthSessionVersion()) {
+        setLookup({ ids: festivalIds, session, matches });
       }
-      if (!controller.signal.aborted) {
-        setSavedIds(matches);
-      }
-    }
-
-    void load().catch(() => {
-      if (!controller.signal.aborted) {
+    }).catch(() => {
+      if (!controller.signal.aborted && session === getAuthSessionVersion()) {
         setError("찜 목록을 불러오지 못했어요.");
       }
     });
     return () => controller.abort();
-  }, [festivalIds]);
+  }, [festivalIds, session]);
 
   async function toggle(id: string) {
-    if (!savedIds || pending.current.has(id)) {
+    if (!savedIds || session !== getAuthSessionVersion() || pending.current.has(id)) {
       return;
     }
     pending.current.add(id);
@@ -58,17 +46,18 @@ export function useFestivalFavorites(festivalIds: readonly string[]) {
       } else {
         await saveFavorite(id);
       }
-      setSavedIds((current) => {
-        const updated = new Set(current);
-        if (saved) {
-          updated.delete(id);
-        } else {
-          updated.add(id);
-        }
-        return updated;
+      if (session !== getAuthSessionVersion()) return;
+      setLookup((current) => {
+        if (current?.ids !== festivalIds || current.session !== session) return current;
+        const matches = new Set(current.matches);
+        if (saved) matches.delete(id);
+        else matches.add(id);
+        return { ...current, matches };
       });
     } catch {
-      setError("찜 상태를 바꾸지 못했어요. 다시 시도해 주세요.");
+      if (session === getAuthSessionVersion()) {
+        setError("찜 상태를 바꾸지 못했어요. 다시 시도해 주세요.");
+      }
     } finally {
       pending.current.delete(id);
       setBusyIds(new Set(pending.current));

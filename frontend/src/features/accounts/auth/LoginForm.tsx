@@ -7,10 +7,11 @@ import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { getAuthUser, getAuthUserServerSnapshot, subscribeAuth } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { authLink, login, logout, safeNextPath } from "./api";
-import { AuthInput, PasswordInput, primaryButton } from "./AuthFields";
+import { AuthInput, PasswordInput, primaryButton, useFormReady } from "./AuthFields";
 
 export function LoginForm({ email, next }: { email?: string; next?: string }) {
   const router = useRouter();
+  const formReady = useFormReady();
   const user = useSyncExternalStore(subscribeAuth, getAuthUser, getAuthUserServerSnapshot);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -77,7 +78,7 @@ export function LoginForm({ email, next }: { email?: string; next?: string }) {
       <h1 className="mb-5 text-center text-[clamp(17px,5.4vw,25px)] font-black leading-tight tracking-tight">
         로그인하고<br />나만의 <span className="text-brand">축제</span>를 시작하세요!
       </h1>
-      <form onSubmit={submit} className="space-y-2.5">
+      <form method="post" onSubmit={submit} className="space-y-2.5">
         <AuthInput
           icon={Mail}
           name="email"
@@ -96,7 +97,7 @@ export function LoginForm({ email, next }: { email?: string; next?: string }) {
           required
         />
         {error && <p role="alert" className="text-sm font-semibold text-brand">{error}</p>}
-        <button type="submit" disabled={busy} className={`${primaryButton} !mt-4 !rounded-chip`}>
+        <button type="submit" disabled={!formReady || busy} className={`${primaryButton} !mt-4 !rounded-chip`}>
           {busy ? "로그인 중…" : "로그인"}
         </button>
       </form>

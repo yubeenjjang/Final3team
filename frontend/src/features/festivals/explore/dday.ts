@@ -1,3 +1,5 @@
+import { getSeoulDate } from "../live-info/liveInfoUtils";
+
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -32,7 +34,7 @@ function resolveTodayUtc(today?: string | Date): number | null {
   if (Number.isNaN(now.getTime())) {
     return null;
   }
-  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return parseUtcDate(getSeoulDate(now));
 }
 
 /**

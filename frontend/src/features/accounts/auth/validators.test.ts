@@ -26,6 +26,10 @@ describe("F10 signup validation", () => {
     expect(validateSignup({ ...valid, birth_year }, valid.password, 2026)).toBeNull();
   });
 
+  it("accepts the server-compatible sample_user@example.com address", () => {
+    expect(validateSignup({ ...valid, email: "sample_user@example.com" }, valid.password, 2026)).toBeNull();
+  });
+
   it("uses the Korean calendar year across New Year", () => {
     expect(currentBirthYear(new Date("2025-12-31T15:01:00Z"))).toBe(2026);
   });

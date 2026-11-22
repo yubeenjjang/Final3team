@@ -19,6 +19,37 @@ export interface RouteAccess {
   token: string;
 }
 
+export function storeRouteAccess({ id, token }: RouteAccess): void {
+  window.sessionStorage.setItem(`noldaga.return-route.${id}`, token);
+}
+
+export function readRouteAccess(id?: string): RouteAccess | undefined {
+  const url = new URL(window.location.href);
+  const legacyToken = url.searchParams.get("token");
+  if (legacyToken !== null) {
+    url.searchParams.delete("token");
+    window.history.replaceState(null, "", url);
+  }
+
+  if (!id) return undefined;
+  if (legacyToken) {
+    const access = { id, token: legacyToken };
+    try {
+      storeRouteAccess(access);
+    } catch {
+      // Legacy links still work when tab storage is unavailable.
+    }
+    return access;
+  }
+
+  try {
+    const token = window.sessionStorage.getItem(`noldaga.return-route.${id}`);
+    return token ? { id, token } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export type RoutePoint = [lat: number, lng: number];
 
 export interface RouteLeg {
@@ -81,6 +112,7 @@ export function submitReturnRoute(
   return apiPost<RouteSubmission>("/routes/return", body, {
     headers: scenario ? { "X-Mock-Scenario": scenario } : undefined,
     signal,
+    timeoutMs: 10_000,
   });
 }
 
@@ -88,6 +120,7 @@ export function getReturnRoute(access: RouteAccess, signal: AbortSignal): Promis
   return apiGet<RouteStatus>(`/routes/return/${encodeURIComponent(access.id)}`, {
     headers: { "X-Route-Access-Token": access.token },
     signal,
+    timeoutMs: 10_000,
     skipAuthRefresh: true,
   });
 }

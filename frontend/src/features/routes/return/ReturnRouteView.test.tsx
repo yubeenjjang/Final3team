@@ -4,7 +4,7 @@ import { resetMockDataDetected } from "@/lib/api/client";
 import { MockBadge } from "@/components/MockBadge";
 import { KakaoMap } from "@/components/KakaoMap";
 import { ReturnRouteView } from "./ReturnRouteView";
-import type { ReadyRoute, ReturnRouteRequest } from "./api";
+import { storeRouteAccess, type ReadyRoute, type ReturnRouteRequest } from "./api";
 
 vi.mock("@/components/KakaoMap", () => ({ KakaoMap: vi.fn(() => null) }));
 
@@ -63,6 +63,8 @@ function submittedRequest(callIndex: number) {
 
 describe("F8 return route flow", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/");
+    window.sessionStorage.clear();
     vi.useFakeTimers();
     vi.stubGlobal("fetch", fetchApi);
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "http://localhost:8000/api/v1");
@@ -197,6 +199,53 @@ describe("F8 return route flow", () => {
     expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
   });
 
+  it("F8 repeats the same direct lookup after five pending responses", async () => {
+    storeRouteAccess(ACCESS);
+    for (let index = 0; index < 5; index += 1) reply({ ...QUEUED, route_status: "processing" });
+    render(<ReturnRouteView routeId={ACCESS.id} />);
+    await flush(8000);
+    expect(screen.queryByLabelText("도착지")).not.toBeInTheDocument();
+    reply(ROUTE);
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    await flush();
+    expect(fetchApi.mock.calls).toHaveLength(6);
+    expect(fetchApi.mock.lastCall?.[0]).toBe(fetchApi.mock.calls[0][0]);
+    expect(fetchApi.mock.lastCall?.[1]?.method).toBe("GET");
+    expect(screen.getByRole("button", { name: /38분/ })).toBeInTheDocument();
+  });
+
+  it.each(["timed_out", "unavailable"])("F8 opens the form when a direct route ends as %s and shows the error once", async (status) => {
+    storeRouteAccess(ACCESS);
+    reply({ route_status: status, error: { message: NOTICE }, notices: [NOTICE, "다른 안내"] });
+    render(<ReturnRouteView routeId={ACCESS.id} />);
+    await flush();
+    expect(screen.getAllByText(NOTICE)).toHaveLength(1);
+    expect(screen.getByText("다른 안내")).toBeInTheDocument();
+    expect(screen.queryByLabelText("도착지")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "새 경로 찾기" }));
+    expect(screen.getByLabelText("도착지")).toBeInTheDocument();
+    expect(fetchApi).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["submission", "lookup"])("F8 aborts a stalled %s after ten seconds and offers retry", async (step) => {
+    if (step === "lookup") {
+      storeRouteAccess(ACCESS);
+      fetchApi.mockImplementationOnce(() => new Promise(() => {}));
+      render(<ReturnRouteView routeId={ACCESS.id} />);
+      await flush();
+    } else {
+      await openWithFestival();
+      fetchApi.mockImplementationOnce(() => new Promise(() => {}));
+      findRoute();
+    }
+
+    const signal = fetchApi.mock.lastCall?.[1]?.signal;
+    await flush(10_000);
+    expect(signal?.aborted).toBe(true);
+    expect(screen.getByRole("alert")).toHaveTextContent("서버 응답 시간이 초과됐어요.");
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeEnabled();
+  });
+
   it("opens an assistant route link with an immediate GET and updates the selected path", async () => {
     const first = ROUTE.route_candidates[0];
     const second = {
@@ -206,10 +255,12 @@ describe("F8 return route flow", () => {
       legs: [{ mode: "bus", duration_min: 40, path: [[37.5759, 126.9768], [37.57, 126.98]] }],
     } satisfies (typeof ROUTE)["route_candidates"][number];
     reply({ ...ROUTE, route_candidates: [first, second] });
-    render(<ReturnRouteView directRoute={ACCESS} />);
+    window.history.replaceState(null, "", `/routes/return?${new URLSearchParams(ACCESS)}`);
+    render(<ReturnRouteView routeId={ACCESS.id} />);
     await flush();
 
     expect(fetchApi).toHaveBeenCalledTimes(1);
+    expect(window.location.search).toBe(`?id=${ACCESS.id}`);
     const [url, options] = fetchApi.mock.calls[0];
     expect(url).toBe(`http://localhost:8000/api/v1/routes/return/${ACCESS.id}`);
     expect(options?.method).toBe("GET");
@@ -223,7 +274,7 @@ describe("F8 return route flow", () => {
   it("stops lookups when leaving the page", async () => {
     const { unmount } = await openWithFestival();
     reply(QUEUED, 202);
-    reply({ ...QUEUED, route_status: "processing" });
+    fetchApi.mockImplementationOnce(() => new Promise(() => {}));
     findRoute();
     await flush(2000);
     const signal = fetchApi.mock.calls[2][1]?.signal;

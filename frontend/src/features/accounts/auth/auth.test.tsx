@@ -1,3 +1,4 @@
+import { renderToString } from "react-dom/server";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
@@ -150,6 +151,88 @@ describe("F10 auth and favorites flow", () => {
     "falls back to home for an unsafe redirect %s",
     (next) => expect(safeNextPath(next)).toBe("/"),
   );
+
+  it("F10 server renders POST forms with disabled submit buttons until hydration", async () => {
+    const forms = [
+      await LoginPage({ searchParams: Promise.resolve({}) }),
+      await SignupPage({ searchParams: Promise.resolve({}) }),
+    ];
+    for (const form of forms) {
+      const html = document.createElement("div");
+      html.innerHTML = renderToString(form);
+      expect(html.querySelector("form")).toHaveAttribute("method", "post");
+      expect(html.querySelector("button[type=submit]")).toBeDisabled();
+    }
+  });
+
+  it.each([200, 401])("F10 ignores a previous session refresh returning HTTP %i", async (status) => {
+    setAuthSession({ accessToken: "previous-access", refreshToken: "previous-refresh" });
+    const refresh = Promise.withResolvers<Response>();
+    fetchApi
+      .mockResolvedValueOnce(apiError(401, "UNAUTHORIZED"))
+      .mockReturnValueOnce(refresh.promise);
+    const previous = apiGet("/me/favorites");
+    const rejected = expect(previous).rejects.toMatchObject({ status: 401 });
+    await waitFor(() => expect(fetchApi).toHaveBeenCalledTimes(2));
+    const user = { userId: "current", displayName: "현재 사용자" };
+    setAuthSession({ accessToken: "current-access", refreshToken: "current-refresh", user });
+    refresh.resolve(Response.json(tokens, { status }));
+    await rejected;
+    expect(getAccessToken()).toBe("current-access");
+    expect(getRefreshToken()).toBe("current-refresh");
+    expect(getAuthUser()).toEqual(user);
+    expect(fetchApi).toHaveBeenCalledTimes(2);
+  });
+
+  it("F10 shares refresh in flight and reuses the new token for a later 401", async () => {
+    setAuthSession({ accessToken: "expired-access", refreshToken: "old-refresh" });
+    const early = Promise.withResolvers<Response>();
+    const concurrent = Promise.withResolvers<Response>();
+    const late = Promise.withResolvers<Response>();
+    const refresh = Promise.withResolvers<Response>();
+    fetchApi
+      .mockReturnValueOnce(early.promise)
+      .mockReturnValueOnce(concurrent.promise)
+      .mockReturnValueOnce(late.promise)
+      .mockReturnValueOnce(refresh.promise)
+      .mockImplementation(() => Promise.resolve(Response.json({ items: [] })));
+    const requests = [apiGet("/one"), apiGet("/two"), apiGet("/three")];
+
+    early.resolve(apiError(401, "UNAUTHORIZED"));
+    await waitFor(() => expect(fetchApi).toHaveBeenCalledTimes(4));
+    concurrent.resolve(apiError(401, "UNAUTHORIZED"));
+    refresh.resolve(Response.json(tokens));
+    await Promise.all(requests.slice(0, 2));
+    late.resolve(apiError(401, "UNAUTHORIZED"));
+    await requests[2];
+
+    expect(fetchApi).toHaveBeenCalledTimes(7);
+    expect(fetchApi.mock.calls.filter(([url]) => String(url).endsWith("/auth/refresh"))).toHaveLength(1);
+    for (const [, init] of fetchApi.mock.calls.slice(4)) {
+      expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${tokens.access_token}`);
+    }
+  });
+
+  it("F10 clears the session immediately and shares pending rotation to revoke the right token", async () => {
+    setAuthSession({ accessToken: "expired-access", refreshToken: "old-refresh" });
+    const refresh = Promise.withResolvers<Response>();
+    fetchApi
+      .mockResolvedValueOnce(apiError(401, "UNAUTHORIZED"))
+      .mockReturnValueOnce(refresh.promise)
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const rejected = expect(apiGet("/me/favorites")).rejects.toMatchObject({ status: 401 });
+    await waitFor(() => expect(fetchApi).toHaveBeenCalledTimes(2));
+    const signingOut = logout();
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
+    refresh.resolve(Response.json(tokens));
+    await signingOut;
+    await rejected;
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
+    expect(fetchApi).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(String(fetchApi.mock.lastCall?.[1]?.body))).toEqual({ refresh_token: tokens.refresh_token });
+  });
 
   it("rotates the session on 401 and retries the protected request once", async () => {
     setAuthSession({

@@ -96,6 +96,7 @@ test("F9 홈 AI 답변에서 귀가 경로 카드로 이동한다", async ({ pag
   await capture(page, "f9-02-assistant-answer");
 
   await routeLink.click();
+  await expect(page).toHaveURL(/\/routes\/return\?id=[^&]+$/);
   await expect(routeResults(page).getByRole("button", { name: /38분/ })).toBeVisible();
   await capture(page, "f9-03-assistant-route");
 });

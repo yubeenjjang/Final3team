@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import tailwindConfig from "../../../../tailwind.config";
 import { LiveInfoSection } from "./LiveInfoSection";
 import {
   formatDateTimeShort,
@@ -26,6 +27,24 @@ describe("F7 live info", () => {
     expect(getPrecipitationLabel("snow")).toBe("눈");
     expect(getCrowdColorClass("yellow")).toContain("bg-crowd-yellow");
     expect(getCrowdColorClass("red")).toContain("bg-crowd-red");
+  });
+
+  it("F7 crowd badges and stale warning meet the 4.5:1 text contrast threshold", () => {
+    const colors = tailwindConfig.theme?.extend?.colors as Record<string, string>;
+    function luminance(hex: string) {
+      const [red, green, blue] = hex.slice(1).match(/../g)!.map((channel) => {
+        const unit = Number.parseInt(channel, 16) / 255;
+        return unit <= 0.04045 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+      });
+      return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+    }
+
+    for (const color of ["green", "yellow", "orange", "red"] as const) {
+      const [background, text] = getCrowdColorClass(color).split(" ");
+      const ratio = (luminance(colors[background.slice(3)]) + 0.05) / (luminance(colors[text.slice(5)]) + 0.05);
+      expect(ratio).toBeGreaterThanOrEqual(4.5);
+    }
+    expect((luminance(colors.surface) + 0.05) / (luminance(colors.ink) + 0.05)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("F7 formats ISO timestamps in Asia/Seoul timezone", () => {
@@ -185,7 +204,7 @@ describe("F7 live info", () => {
       expect(
         screen.getByText("이 지역은 아직 지원하지 않아요"),
       ).toBeInTheDocument();
-      expect(screen.getByText("정보가 오래됐어요")).toBeInTheDocument();
+      expect(screen.getByText("정보가 오래됐어요")).toHaveClass("text-ink");
       expect(screen.getByText("12°C")).toBeInTheDocument();
       expect(screen.getByText("비 (3.5mm)")).toBeInTheDocument();
       expect(

@@ -152,7 +152,7 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
           ) : crowdState.data?.areas && crowdState.data.areas.length > 0 ? (
             <div className="space-y-2">
               {crowdState.data.status === "stale" ? (
-                <p className="text-[11px] font-semibold text-crowd-orange">
+                <p className="text-[11px] font-semibold text-ink">
                   정보가 오래됐어요
                 </p>
               ) : null}
@@ -209,7 +209,7 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
           ) : (
             <div className="space-y-1">
               {weatherState.data.status === "stale" ? (
-                <p className="text-[11px] font-semibold text-crowd-orange">
+                <p className="text-[11px] font-semibold text-ink">
                   정보가 오래됐어요
                 </p>
               ) : null}
@@ -263,7 +263,7 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
         ) : (
           <div className="space-y-2.5">
             {noticesState.data.status === "stale" ? (
-              <p className="text-[11px] font-semibold text-crowd-orange">
+              <p className="text-[11px] font-semibold text-ink">
                 정보가 오래됐어요
               </p>
             ) : null}

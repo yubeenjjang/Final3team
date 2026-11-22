@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { RotateCcw, Search, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
@@ -27,6 +27,8 @@ export function FestivalExploreView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+
+  const moreRequest = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,26 +77,41 @@ export function FestivalExploreView() {
     return () => {
       active = false;
       controller.abort();
+      moreRequest.current?.abort();
+      moreRequest.current = null;
     };
   }, [region, status, appliedQuery, reloadTick]);
+
+  const cancelLoadMore = useCallback(() => {
+    moreRequest.current?.abort();
+    moreRequest.current = null;
+    setLoadingMore(false);
+  }, []);
 
   const handleSearchSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      setAppliedQuery(searchInput.trim());
+      const nextQuery = searchInput.trim();
+      if (nextQuery !== appliedQuery) {
+        cancelLoadMore();
+        setAppliedQuery(nextQuery);
+      }
     },
-    [searchInput],
+    [appliedQuery, cancelLoadMore, searchInput],
   );
 
   const handleClearSearch = useCallback(() => {
     setSearchInput("");
+    if (appliedQuery) cancelLoadMore();
     setAppliedQuery("");
-  }, []);
+  }, [appliedQuery, cancelLoadMore]);
 
   const handleLoadMore = useCallback(async () => {
-    if (loadingMore) {
+    if (moreRequest.current) {
       return;
     }
+    const controller = new AbortController();
+    moreRequest.current = controller;
     const nextPage = page + 1;
     setLoadingMore(true);
     setErrorMessage(null);
@@ -105,20 +122,25 @@ export function FestivalExploreView() {
         status: status || undefined,
         page: nextPage,
         page_size: PAGE_SIZE,
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       setItems((prev) => [...prev, ...res.items]);
       setTotal(res.total);
       setPage(res.page);
     } catch (error) {
+      if (controller.signal.aborted) return;
       setErrorMessage(
         error instanceof ApiError
           ? error.message
           : "추가 축제를 불러오지 못했어요",
       );
     } finally {
-      setLoadingMore(false);
+      if (moreRequest.current === controller) {
+        moreRequest.current = null;
+        setLoadingMore(false);
+      }
     }
-  }, [loadingMore, page, region, appliedQuery, status]);
+  }, [page, region, appliedQuery, status]);
 
   const hasMore = items.length < total;
 
@@ -178,7 +200,13 @@ export function FestivalExploreView() {
             id="festival-region-select"
             aria-label="지역 선택"
             value={region}
-            onChange={(event) => setRegion(event.target.value as RegionFilter)}
+            onChange={(event) => {
+              const nextRegion = event.target.value as RegionFilter;
+              if (nextRegion !== region) {
+                cancelLoadMore();
+                setRegion(nextRegion);
+              }
+            }}
             className="h-9 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink focus:border-accent focus:outline-none"
           >
             {REGION_OPTIONS.map((option) => (
@@ -200,7 +228,12 @@ export function FestivalExploreView() {
                   key={option.label}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => setStatus(option.value)}
+                  onClick={() => {
+                    if (option.value !== status) {
+                      cancelLoadMore();
+                      setStatus(option.value);
+                    }
+                  }}
                   className={
                     active
                       ? "shrink-0 rounded-chip bg-brand px-3 py-1.5 text-xs font-bold text-surface"

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadKakaoMaps, resetKakaoLoaderForTest } from "@/lib/kakao";
 import { KakaoMap } from "./KakaoMap";
 
@@ -17,6 +17,7 @@ describe("F11 KakaoMap", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     if (originalKakaoKey === undefined) {
       delete process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
     } else {
@@ -32,6 +33,37 @@ describe("F11 KakaoMap", () => {
     expect(
       screen.getByText("지도를 불러올 수 없어요(지도 키 확인)"),
     ).toBeInTheDocument();
+  });
+
+  it("F11 removes an invalid SDK script and allows the next load to succeed", async () => {
+    const first = loadKakaoMaps("test-placeholder-key");
+    const script = document.querySelector<HTMLScriptElement>("script[data-kakao-maps-sdk]")!;
+    script.dispatchEvent(new Event("load"));
+    await expect(first).rejects.toThrow("KAKAO_SDK_INVALID");
+    expect(script).not.toBeInTheDocument();
+
+    const retry = loadKakaoMaps("test-placeholder-key");
+    const loaded = { Map: vi.fn(), load: (ready: () => void) => ready() } as unknown as NonNullable<NonNullable<Window["kakao"]>["maps"]>;
+    window.kakao = { maps: loaded };
+    const newScript = document.querySelector<HTMLScriptElement>("script[data-kakao-maps-sdk]")!;
+    expect(newScript).not.toBe(script);
+    newScript.dispatchEvent(new Event("load"));
+    await expect(retry).resolves.toBe(loaded);
+  });
+
+  it("F11 times out an SDK that never calls maps.load back and shows the fallback", async () => {
+    vi.useFakeTimers();
+    process.env.NEXT_PUBLIC_KAKAO_JS_KEY = "test-placeholder-key";
+    render(<KakaoMap center={{ lat: 37.5759, lng: 126.9768 }} />);
+    const script = document.querySelector<HTMLScriptElement>("script[data-kakao-maps-sdk]")!;
+    const load = vi.fn();
+    window.kakao = { maps: { load } as unknown as NonNullable<NonNullable<Window["kakao"]>["maps"]> };
+    script.dispatchEvent(new Event("load"));
+    expect(load).toHaveBeenCalledOnce();
+
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    expect(screen.getByText("지도를 불러올 수 없어요(지도 키 확인)")).toBeInTheDocument();
+    expect(script).not.toBeInTheDocument();
   });
 
   it("F11 loads Kakao SDK script only once and shows fallback on script error", async () => {

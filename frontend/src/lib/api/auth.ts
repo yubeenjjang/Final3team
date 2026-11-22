@@ -17,6 +17,7 @@ const AUTH_USER_KEY = "noldaga.auth_user";
 let memoryAccessToken: string | null = null;
 let memoryUser: AuthUser | null = null;
 let hydrated = false;
+let sessionVersion = 0;
 
 const listeners = new Set<() => void>();
 
@@ -94,7 +95,12 @@ export function getAuthUserServerSnapshot(): AuthUser | null {
   return null;
 }
 
+export function getAuthSessionVersion(): number {
+  return sessionVersion;
+}
+
 export function setAuthSession(session: AuthSessionInput): void {
+  sessionVersion += 1;
   hydrated = true;
   memoryAccessToken = session.accessToken;
   if (session.user !== undefined) {
@@ -134,6 +140,7 @@ export function updateAccessTokens(tokens: {
 }
 
 export function clearAuthSession(): void {
+  sessionVersion += 1;
   hydrated = true;
   memoryAccessToken = null;
   memoryUser = null;
@@ -156,6 +163,7 @@ export function subscribeAuth(listener: () => void): () => void {
 }
 
 export function resetAuthStateForTest(): void {
+  sessionVersion += 1;
   memoryAccessToken = null;
   memoryUser = null;
   hydrated = false;

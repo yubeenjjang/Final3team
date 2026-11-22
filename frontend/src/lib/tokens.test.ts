@@ -42,6 +42,13 @@ describe("F2 design tokens", () => {
     expect(violations).toEqual([]);
   });
 
+  it("F2 body CSS and Tailwind use the registered Pretendard Variable font", () => {
+    const css = fs.readFileSync(path.resolve(__dirname, "../app/globals.css"), "utf8");
+    expect(css).toMatch(/font-family:\s*"Pretendard Variable",/);
+    const fonts = tailwindConfig.theme?.extend?.fontFamily as Record<string, string[]>;
+    expect(fonts.sans[0]).toBe("Pretendard Variable");
+  });
+
   it("F2 registers required color and radius tokens in tailwind config", () => {
     const colors = tailwindConfig.theme?.extend?.colors as Record<string, string>;
     const borderRadius = tailwindConfig.theme?.extend?.borderRadius as Record<

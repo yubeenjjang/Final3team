@@ -16,10 +16,10 @@ const PRECIPITATION_LABELS: Record<PrecipitationType, string> = {
 };
 
 const CROWD_COLOR_CLASSES: Record<CrowdColor, string> = {
-  green: "bg-crowd-green text-surface",
+  green: "bg-crowd-green text-ink",
   yellow: "bg-crowd-yellow text-ink",
-  orange: "bg-crowd-orange text-surface",
-  red: "bg-crowd-red text-surface",
+  orange: "bg-crowd-orange text-ink",
+  red: "bg-crowd-red text-ink",
 };
 
 const NOTICE_TYPE_LABELS: Record<NoticeType, string> = {
@@ -41,7 +41,7 @@ export function getPrecipitationLabel(type: PrecipitationType): string {
  * Map API crowd color token to Tailwind design token classes.
  */
 export function getCrowdColorClass(color: CrowdColor): string {
-  return CROWD_COLOR_CLASSES[color] ?? "bg-muted text-surface";
+  return CROWD_COLOR_CLASSES[color] ?? "bg-surface-soft text-ink";
 }
 
 /**
@@ -51,8 +51,24 @@ export function getNoticeTypeLabel(type: NoticeType): string {
   return NOTICE_TYPE_LABELS[type] ?? "안내";
 }
 
+const SEOUL_TIME_ZONE = "Asia/Seoul";
+
+const SEOUL_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: SEOUL_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function getSeoulDate(date = new Date()): string {
+  const parts = SEOUL_DATE_FORMATTER.formatToParts(date);
+  return ["year", "month", "day"]
+    .map((type) => parts.find((part) => part.type === type)?.value)
+    .join("-");
+}
+
 const KST_SHORT_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Seoul",
+  timeZone: SEOUL_TIME_ZONE,
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",

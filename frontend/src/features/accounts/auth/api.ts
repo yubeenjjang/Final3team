@@ -1,10 +1,9 @@
-import { clearAuthSession, getRefreshToken, setAuthSession } from "@/lib/api/auth";
-import { ApiError, apiPost } from "@/lib/api/client";
+import { setAuthSession } from "@/lib/api/auth";
+import { apiPost } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
 export type SignupRequest = components["schemas"]["SignupRequest"];
 type LoginRequest = components["schemas"]["LoginRequest"];
-type RefreshRequest = components["schemas"]["RefreshRequest"];
 
 interface TokenResponse {
   access_token: string;
@@ -31,31 +30,7 @@ export async function login(data: LoginRequest): Promise<void> {
   });
 }
 
-export async function logout(): Promise<void> {
-  const token = getRefreshToken();
-  try {
-    if (!token) {
-      return;
-    }
-    const body: RefreshRequest = { refresh_token: token };
-    // The server rotates refresh tokens. A logout retry must send the rotated token in its body.
-    try {
-      await apiPost("/auth/logout", body, { skipAuthRefresh: true });
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.status !== 401) {
-        throw error;
-      }
-      const currentToken = getRefreshToken() ?? token;
-      const refreshed = await apiPost<TokenResponse>("/auth/refresh", { refresh_token: currentToken }, guestRequest);
-      await apiPost("/auth/logout", { refresh_token: refreshed.refresh_token }, {
-        headers: { Authorization: `Bearer ${refreshed.access_token}` },
-        skipAuthRefresh: true,
-      });
-    }
-  } finally {
-    clearAuthSession();
-  }
-}
+export { logoutAuthSession as logout } from "@/lib/api/client";
 
 export function safeNextPath(next?: string): string {
   if (!next?.startsWith("/") || next.startsWith("//") || /[\\\s]/.test(next)) {

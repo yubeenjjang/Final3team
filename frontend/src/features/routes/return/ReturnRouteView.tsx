@@ -5,7 +5,7 @@ import { Building2, BusFront, FerrisWheel, Heart, House, LoaderCircle, MapPinned
 import { KakaoMap } from "@/components/KakaoMap";
 import { ApiError } from "@/lib/api/client";
 import { getFestivalDetail } from "@/features/festivals/detail/api";
-import { MOCK_SCENARIOS, submitReturnRoute, type MockScenario, type ReadyRoute, type RouteAccess } from "./api";
+import { MOCK_SCENARIOS, readRouteAccess, submitReturnRoute, type MockScenario, type ReadyRoute, type RouteAccess } from "./api";
 import type { SelectedFestival } from "./FestivalPicker";
 import { pollRoute } from "./pollRoute";
 import { RETURN_FORM_ID, ReturnRouteForm, type RouteInputs } from "./ReturnRouteForm";
@@ -13,13 +13,13 @@ import { ReturnRouteResults, RouteNotices } from "./ReturnRouteResults";
 
 type ViewState =
   | { kind: "input" }
-  | { kind: "pending"; fromLink: boolean }
+  | { kind: "pending" }
   | { kind: "ready"; route: ReadyRoute; fromLink: boolean }
-  | { kind: "failed"; message: string; notices?: string[]; retry: boolean };
+  | { kind: "failed"; message: string; notices?: string[]; retry?: "submit" | "input" | RouteAccess };
 
-function outcome(result: Awaited<ReturnType<typeof pollRoute>>, fromLink: boolean): ViewState {
+function outcome(result: Awaited<ReturnType<typeof pollRoute>>, fromLink: boolean, access: RouteAccess): ViewState {
   if (result.type === "unconfirmed") {
-    return { kind: "failed", message: "지금은 확인할 수 없어요", notices: result.notices, retry: true };
+    return { kind: "failed", message: "지금은 확인할 수 없어요", notices: result.notices, retry: access };
   }
 
   const { response } = result;
@@ -30,20 +30,28 @@ function outcome(result: Awaited<ReturnType<typeof pollRoute>>, fromLink: boolea
     kind: "failed",
     message: ("error" in response && response.error?.message) || message,
     notices: response.notices,
-    retry: true,
+    retry: fromLink ? "input" : "submit",
   };
 }
 
-function requestError(error: unknown): ViewState {
+function requestError(error: unknown, retry: "submit" | RouteAccess): ViewState {
   if (error instanceof ApiError) {
     const overloaded = error.status === 503 && error.code === "ROUTE_OVERLOADED";
     return {
       kind: "failed",
       message: overloaded ? "요청이 많아요. 잠시 뒤 다시 시도해 주세요" : error.message,
-      retry: overloaded || error.retryable,
+      retry: overloaded || error.retryable ? retry : undefined,
     };
   }
-  return { kind: "failed", message: "경로를 불러오지 못했어요.", retry: true };
+  return { kind: "failed", message: "경로를 불러오지 못했어요.", retry };
+}
+
+async function lookupRoute(access: RouteAccess, signal: AbortSignal, fromLink: boolean, delay?: number): Promise<ViewState> {
+  try {
+    return outcome(await pollRoute(access, signal, delay), fromLink, access);
+  } catch (error) {
+    return requestError(error, access);
+  }
 }
 
 function createRouteRequestId() {
@@ -105,20 +113,19 @@ function FestivalMapPreview({ festival }: { festival: SelectedFestival | null })
   );
 }
 
-export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: string; directRoute?: RouteAccess }) {
+export function ReturnRouteView({ festivalId, routeId }: { festivalId?: string; routeId?: string }) {
   const [festival, setFestival] = useState<SelectedFestival | null>(null);
   const [festivalLoading, setFestivalLoading] = useState(Boolean(festivalId));
   const [festivalError, setFestivalError] = useState<string | null>(null);
   const [inputs, setInputs] = useState<RouteInputs>({ originType: "festival", originText: "", destination: "", preference: "fastest" });
   const [scenario, setScenario] = useState<MockScenario>("");
-  const [state, setState] = useState<ViewState>(directRoute ? { kind: "pending", fromLink: true } : { kind: "input" });
+  const [state, setState] = useState<ViewState>(routeId ? { kind: "pending" } : { kind: "input" });
   const activeRequest = useRef<AbortController | null>(null);
   const festivalRequest = useRef<AbortController | null>(null);
 
   const showMockTools = process.env.NEXT_PUBLIC_SHOW_MOCK_TOOLS === "1";
   const pending = state.kind === "pending";
-  const routeId = directRoute?.id;
-  const routeToken = directRoute?.token;
+  const [lookingUp, setLookingUp] = useState(Boolean(routeId));
 
   useEffect(() => {
     if (!festivalId) return;
@@ -139,19 +146,39 @@ export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: stri
     return () => controller.abort();
   }, [festivalId]);
 
-  useEffect(() => {
-    if (routeId && routeToken) {
-      const controller = new AbortController();
-      activeRequest.current = controller;
-      const { signal } = controller;
+  const routeAccess = useRef<RouteAccess | undefined>(undefined);
 
-      pollRoute({ id: routeId, token: routeToken }, signal, 0)
-        .then((result) => { if (!signal.aborted) setState(outcome(result, true)); })
-        .catch((error: unknown) => { if (!signal.aborted) setState(requestError(error)); });
+  useEffect(() => {
+    const previous = routeAccess.current;
+    const access = readRouteAccess(routeId) ?? (previous?.id === routeId ? previous : undefined);
+    routeAccess.current = access;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+
+    if (routeId) {
+      const result = access
+        ? lookupRoute(access, controller.signal, true, 0)
+        : Promise.resolve<ViewState>({ kind: "failed", message: "경로를 불러오지 못했어요.", retry: "input" });
+      void result.then((next) => { if (!controller.signal.aborted) setState(next); });
     }
 
     return () => activeRequest.current?.abort();
-  }, [routeId, routeToken]);
+  }, [routeId]);
+
+  async function retryLookup(access: RouteAccess) {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    const { signal } = controller;
+    setState({ kind: "pending" });
+    const next = await lookupRoute(access, signal, lookingUp, 0);
+    if (!signal.aborted) setState(next);
+  }
+
+  function showInput() {
+    setLookingUp(false);
+    setState({ kind: "input" });
+  }
 
   async function findRoute(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -162,7 +189,7 @@ export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: stri
     const originIsPlace = inputs.originType === "place";
     if (!festival || !destination || (originIsPlace && !origin)) {
       const message = !festival ? "축제를 검색해 선택해 주세요." : "출발지와 도착지를 확인해 주세요.";
-      setState({ kind: "failed", message, retry: false });
+      setState({ kind: "failed", message });
       return;
     }
 
@@ -170,7 +197,7 @@ export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: stri
     const controller = new AbortController();
     activeRequest.current = controller;
     const { signal } = controller;
-    setState({ kind: "pending", fromLink: false });
+    setState({ kind: "pending" });
 
     try {
       const submitted = await submitReturnRoute({
@@ -189,10 +216,11 @@ export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: stri
         return;
       }
 
-      const result = await pollRoute({ id: submitted.route_request_id, token: submitted.route_access_token }, signal, submitted.retry_after_s);
-      if (!signal.aborted) setState(outcome(result, false));
+      const access = { id: submitted.route_request_id, token: submitted.route_access_token };
+      const next = await lookupRoute(access, signal, false, submitted.retry_after_s);
+      if (!signal.aborted) setState(next);
     } catch (error) {
-      if (!signal.aborted) setState(requestError(error));
+      if (!signal.aborted) setState(requestError(error, "submit"));
     }
   }
 
@@ -200,10 +228,10 @@ export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: stri
     <div className="pb-4">
       <ReturnRouteHero ready={state.kind === "ready"} />
       {state.kind === "ready" ? (
-        <ReturnRouteResults key={state.route.route_request_id} route={state.route} fromLink={state.fromLink} onEdit={() => setState({ kind: "input" })} />
+        <ReturnRouteResults key={state.route.route_request_id} route={state.route} fromLink={state.fromLink} onEdit={showInput} />
       ) : (
         <div className="space-y-3 px-4">
-          {!(pending && state.fromLink) ? (
+          {!lookingUp ? (
             <ReturnRouteForm
               inputs={inputs}
               onInputChange={(patch) => setInputs((previous) => ({ ...previous, ...patch }))}
@@ -229,15 +257,24 @@ export function ReturnRouteView({ festivalId, directRoute }: { festivalId?: stri
           {state.kind === "failed" ? (
             <div className="space-y-2 rounded-card border border-brand/35 bg-surface-soft px-4 py-3">
               <p role="alert" className="text-sm font-bold">{state.message}</p>
-              <RouteNotices notices={state.notices} />
+              <RouteNotices notices={state.notices?.filter((notice) => notice.trim() !== state.message.trim())} />
               {state.retry ? (
-                <button form={RETURN_FORM_ID} type="submit" disabled={festivalLoading} className="rounded-chip bg-brand px-3 py-1.5 text-xs font-bold text-surface disabled:opacity-60">
-                  다시 시도
+                <button
+                  form={state.retry === "submit" ? RETURN_FORM_ID : undefined}
+                  type={state.retry === "submit" ? "submit" : "button"}
+                  disabled={state.retry === "submit" && festivalLoading}
+                  onClick={() => {
+                    if (state.retry === "input") showInput();
+                    else if (typeof state.retry === "object") void retryLookup(state.retry);
+                  }}
+                  className="rounded-chip bg-brand px-3 py-1.5 text-xs font-bold text-surface disabled:opacity-60"
+                >
+                  {state.retry === "input" ? "새 경로 찾기" : "다시 시도"}
                 </button>
               ) : null}
             </div>
           ) : null}
-          {!(pending && state.fromLink) ? <FestivalMapPreview festival={festival} /> : null}
+          {!lookingUp ? <FestivalMapPreview festival={festival} /> : null}
         </div>
       )}
 

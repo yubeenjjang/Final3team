@@ -13,6 +13,8 @@ export interface HeaderProps {
   isDark?: boolean;
 }
 
+const nicknameSegmenter = new Intl.Segmenter("ko", { granularity: "grapheme" });
+
 export function Header({ isDark = false }: HeaderProps) {
   const user = useSyncExternalStore(
     subscribeAuth,
@@ -20,7 +22,7 @@ export function Header({ isDark = false }: HeaderProps) {
     getAuthUserServerSnapshot,
   );
 
-  const initial = user?.displayName.trim().charAt(0) ?? "";
+  const initial = nicknameSegmenter.segment(user?.displayName.trim() ?? "")[Symbol.iterator]().next().value?.segment;
 
   return (
     <header

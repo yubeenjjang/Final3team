@@ -1,6 +1,7 @@
 import {
   clearAuthSession,
   getAccessToken,
+  getAuthSessionVersion,
   getRefreshToken,
   updateAccessTokens,
 } from "./auth";
@@ -40,6 +41,7 @@ export interface ApiRequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  timeoutMs?: number;
   skipAuth?: boolean;
   skipAuthRefresh?: boolean;
 }
@@ -194,68 +196,127 @@ function toApiError(
   });
 }
 
-let activeRefreshPromise: Promise<boolean> | null = null;
+interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
 
-async function tryRefreshTokens(): Promise<boolean> {
+let activeRefresh: { session: number; promise: Promise<AuthTokens | null> } | undefined;
+
+async function requestTokenRefresh(refreshToken: string): Promise<AuthTokens> {
+  const data = await apiPost<{ access_token?: string; refresh_token?: string }>(
+    "/auth/refresh",
+    { refresh_token: refreshToken },
+    { skipAuth: true },
+  );
+  if (typeof data.access_token !== "string" || !data.access_token) {
+    throw new Error("AUTH_REFRESH_INVALID");
+  }
+  return {
+    accessToken: data.access_token,
+    refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : refreshToken,
+  };
+}
+
+async function refreshAccessForRequest(
+  session: number,
+  usedToken: string | null,
+): Promise<boolean> {
+  if (session !== getAuthSessionVersion()) return false;
+
+  const currentToken = getAccessToken();
+  if (currentToken !== usedToken) return Boolean(currentToken);
+  if (activeRefresh?.session === session) return Boolean(await activeRefresh.promise);
+
   const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    return false;
+  if (!refreshToken) return false;
+
+  const promise = requestTokenRefresh(refreshToken).then((tokens) => {
+    if (session === getAuthSessionVersion()) updateAccessTokens(tokens);
+    return tokens;
+  }).catch(() => {
+    if (session === getAuthSessionVersion()) clearAuthSession();
+    return null;
+  }).finally(() => {
+    if (activeRefresh?.session === session) activeRefresh = undefined;
+  });
+
+  activeRefresh = { session, promise };
+  return Boolean(await promise);
+}
+
+export async function logoutAuthSession(): Promise<void> {
+  const session = getAuthSessionVersion();
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+  const pendingRefresh = activeRefresh?.session === session ? activeRefresh.promise : undefined;
+  clearAuthSession();
+  if (!refreshToken) return;
+
+  function revoke(tokens: { accessToken: string | null; refreshToken: string }) {
+    return apiPost("/auth/logout", { refresh_token: tokens.refreshToken }, {
+      skipAuth: true,
+      headers: tokens.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : undefined,
+    });
   }
 
-  if (activeRefreshPromise) {
-    return activeRefreshPromise;
+  // Revoke the rotated credentials if a protected request was already refreshing them.
+  if (pendingRefresh) {
+    const tokens = await pendingRefresh;
+    if (!tokens) throw new Error("AUTH_REFRESH_FAILED");
+    await revoke(tokens);
+    return;
   }
 
-  activeRefreshPromise = (async () => {
-    try {
-      const response = await fetch(buildUrl("/auth/refresh"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Request-ID": createRequestId(),
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        clearAuthSession();
-        return false;
-      }
-
-      const data = (await response.json()) as Record<string, unknown>;
-      if (data.is_mock === true) {
-        markMockDataDetected();
-      }
-
-      const newAccess =
-        typeof data.access_token === "string" ? data.access_token : null;
-      const newRefresh =
-        typeof data.refresh_token === "string" ? data.refresh_token : undefined;
-
-      if (!newAccess) {
-        clearAuthSession();
-        return false;
-      }
-
-      updateAccessTokens({
-        accessToken: newAccess,
-        refreshToken: newRefresh,
-      });
-      return true;
-    } catch {
-      clearAuthSession();
-      return false;
-    } finally {
-      activeRefreshPromise = null;
-    }
-  })();
-
-  return activeRefreshPromise;
+  try {
+    await revoke({ accessToken, refreshToken });
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401) throw error;
+    await revoke(await requestTokenRefresh(refreshToken));
+  }
 }
 
 export async function apiFetch<T>(
   path: string,
   options: ApiRequestOptions = {},
+): Promise<T> {
+  const { timeoutMs, signal } = options;
+  if (timeoutMs === undefined) return sendRequest<T>(path, options);
+
+  signal?.throwIfAborted();
+  const requestId = createRequestId();
+  const controller = new AbortController();
+  const cancel = () => controller.abort(signal?.reason);
+  signal?.addEventListener("abort", cancel, { once: true });
+
+  const timeout = setTimeout(() => {
+    controller.abort(new ApiError({
+      status: 0,
+      code: "REQUEST_TIMEOUT",
+      message: "서버 응답 시간이 초과됐어요.",
+      requestId,
+      retryable: true,
+    }));
+  }, timeoutMs);
+  const canceled = new Promise<never>((_, reject) => {
+    controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true });
+  });
+
+  try {
+    return await Promise.race([
+      sendRequest<T>(path, { ...options, signal: controller.signal }, requestId),
+      canceled,
+    ]);
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", cancel);
+  }
+}
+
+async function sendRequest<T>(
+  path: string,
+  options: ApiRequestOptions,
+  requestId = createRequestId(),
 ): Promise<T> {
   const {
     method = "GET",
@@ -267,7 +328,6 @@ export async function apiFetch<T>(
     skipAuthRefresh = false,
   } = options;
 
-  const requestId = createRequestId();
   const headers = new Headers(customHeaders);
   headers.set("X-Request-ID", requestId);
 
@@ -275,12 +335,11 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  if (!skipAuth && !headers.has("Authorization")) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-  }
+  signal?.throwIfAborted();
+  const session = getAuthSessionVersion();
+  const useSessionToken = !skipAuth && !headers.has("Authorization");
+  const usedToken = useSessionToken ? getAccessToken() : null;
+  if (usedToken) headers.set("Authorization", `Bearer ${usedToken}`);
 
   const url = buildUrl(path, query);
   let response: Response;
@@ -308,19 +367,21 @@ export async function apiFetch<T>(
     });
   }
 
+  signal?.throwIfAborted();
+
   const isAuthEndpoint =
     path.startsWith("/auth/refresh") || path.startsWith("/auth/login");
 
   if (
     response.status === 401 &&
-    !skipAuth &&
+    useSessionToken &&
     !skipAuthRefresh &&
-    !isAuthEndpoint &&
-    getRefreshToken()
+    !isAuthEndpoint
   ) {
-    const refreshed = await tryRefreshTokens();
-    if (refreshed) {
-      return apiFetch<T>(path, {
+    const refreshed = await refreshAccessForRequest(session, usedToken);
+    signal?.throwIfAborted();
+    if (refreshed && session === getAuthSessionVersion()) {
+      return sendRequest<T>(path, {
         ...options,
         skipAuthRefresh: true,
       });

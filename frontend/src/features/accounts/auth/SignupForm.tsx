@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/client";
 import { authLink, signup } from "./api";
-import { AuthInput, fieldClass, PasswordInput, primaryButton } from "./AuthFields";
+import { AuthInput, fieldClass, PasswordInput, primaryButton, useFormReady } from "./AuthFields";
 import { MIN_BIRTH_YEAR, validateSignup } from "./validators";
 
 function FieldTitle({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
@@ -17,6 +17,7 @@ function FieldTitle({ children, htmlFor }: { children: ReactNode; htmlFor?: stri
 
 export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear: number }) {
   const router = useRouter();
+  const formReady = useFormReady();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -63,7 +64,7 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
   }
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3.5">
+    <form method="post" onSubmit={submit} noValidate className="space-y-3.5">
       <div>
         <FieldTitle htmlFor="signup-email">이메일</FieldTitle>
         <AuthInput icon={Mail} id="signup-email" name="email" type="email" autoComplete="email" placeholder="이메일 주소를 입력해 주세요" required />
@@ -110,7 +111,7 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
         </div>
       </div>
       {error && <p role="alert" className="text-sm font-semibold text-brand">{error}</p>}
-      <button type="submit" className={`${primaryButton} !mt-5`} disabled={busy}>
+      <button type="submit" className={`${primaryButton} !mt-5`} disabled={!formReady || busy}>
         {busy ? "가입 중…" : "회원가입"}
       </button>
     </form>

@@ -29,13 +29,13 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          "Pretendard",
+          "Pretendard Variable",
           "-apple-system",
           "BlinkMacSystemFont",
           "system-ui",
           "sans-serif",
         ],
-        display: ["var(--font-outfit)", "Outfit", "Pretendard", "sans-serif"],
+        display: ["var(--font-outfit)", "Outfit", "Pretendard Variable", "sans-serif"],
       },
       borderRadius: {
         card: "18px",

@@ -37,16 +37,25 @@ export function getFestivalDetail(
   });
 }
 
-/**
- * Fetch user's favorite festivals (A12 list).
- */
-export function listMyFavorites(
-  signal?: AbortSignal,
-): Promise<FavoritesPage> {
-  return apiGet<FavoritesPage>("/me/favorites", {
-    query: { page: 1, page_size: 100 },
-    signal,
-  });
+export async function findFavorites(
+  festivalIds: readonly string[],
+  signal: AbortSignal,
+): Promise<Set<string>> {
+  const targets = new Set(festivalIds);
+  const matches = new Set<string>();
+  for (let page = 1; matches.size < targets.size; page += 1) {
+    signal.throwIfAborted();
+    const result = await apiGet<FavoritesPage>("/me/favorites", {
+      query: { page, page_size: 100 },
+      signal,
+    });
+    signal.throwIfAborted();
+    for (const item of result.items) {
+      if (targets.has(item.festival_id)) matches.add(item.festival_id);
+    }
+    if (result.items.length === 0 || result.page * result.page_size >= result.total) break;
+  }
+  return matches;
 }
 
 /**
