@@ -136,12 +136,12 @@ class VisitRouteRequest:  origin: Endpoint;                     destination: End
 
 ## 3. 챗봇 작업·인증 (3단계)
 
-### R14. A06 `POST /api/v1/assistant/runs`
+### R14. A06 `POST /api/v1/assistant/query` (결과 조회는 `GET /api/v1/assistant/runs/{run_id}`)
 - 본문: `request_id`(8~64자), `message`(1~500자), `conversation_id`(선택, `^cv_[0-9A-Za-z]{6,26}$`), `context{festival_id?, route_request_id?}`(형식만 검사), `reference_date`(선택, `YYYY-MM-DD`).
 - `conversation_id`를 보냈는데 저장소에 없으면 **403 `FORBIDDEN`**(남의 대화로 취급). 없으면 새로 `cv_`+16자를 만든다.
 - 멱등은 R11-4와 같음(같은 본문 → 같은 `run_id`, 다른 본문 → 409).
 - **202** `{run_id:"run_"+16자, conversation_id, run_status:"queued", status_url:"/api/v1/assistant/runs/<id>", events_url:"…/events", run_access_token:"rat_"+24자, retry_after_s:1, is_mock:true}`
-- **확인:** 202·모든 칸 있음 · `message:""` 422 · 없는 `conversation_id` 403 · 같은 `request_id`·같은 본문 → 같은 `run_id` · 다른 본문 409.
+- **확인:** `POST /api/v1/assistant/query` 202·모든 칸 있음 · 옛 주소 `POST /api/v1/assistant/runs`는 405 또는 404 · `message:""` 422 · 없는 `conversation_id` 403 · 같은 `request_id`·같은 본문 → 같은 `run_id` · 다른 본문 409.
 
 ### R15. A06-1 `GET /api/v1/assistant/runs/{run_id}`
 - 헤더 `X-Run-Access-Token` 필수: 없으면 401 `UNAUTHORIZED`, 다른 작업 토큰 403 `FORBIDDEN`, 없는 ID 404 `RUN_NOT_FOUND`. 항상 200.
@@ -167,8 +167,51 @@ class VisitRouteRequest:  origin: Endpoint;                     destination: End
 - 비밀번호는 메모리에도 원문으로 두지 않고 `hashlib.pbkdf2_hmac('sha256', …)` + 임의 salt로 둔다. 로그·응답에 비밀번호·토큰 원문을 찍지 않는다.
 - **확인:** 가입 201 · 같은 이메일(대문자 섞어) 409 `EMAIL_ALREADY_EXISTS` · 닉네임 `Abc`/`abc` 409 `NICKNAME_TAKEN` · 닉네임 1자 422 · `birth_year:2100` 422 · 비밀번호 숫자만 422 · 로그인 200 · 틀린 비밀번호 401 · refresh → 새 토큰 · 옛 refresh 다시 → 401 `REFRESH_REUSED` 그리고 새 토큰도 401 · logout 204 · 같은 access로 다시 logout 401.
 
+## 5. 축제 주변 정보·관심 축제 (5단계)
+
+### R18. 외부 데이터 조회 공통 (A07·A09·A10, API 설계문서 6-2-0)
+- 경로 `festival_id` 형식 422 → 축제 없음 **404 `FESTIVAL_NOT_FOUND`** → 축제 좌표가 없으면(`fst_000006`) **200 + `status:"unavailable"` + `error{code:"FESTIVAL_LOCATION_UNKNOWN", message, retryable:false}`** → 그 지역에 공급원이 없으면 **200 + `status:"unsupported"`**.
+- 응답 공통 칸: `festival_id, status(ok·stale·unavailable·unsupported·unverified), coverage{scope, region_code, supported}, source, observed_at, notices[], is_mock` + API별 `items`/`data`/`areas`.
+- 외부 공급원 오류는 HTTP 오류가 아니라 **200 + `status:"unavailable"` + `error{code:"SOURCE_RESULT_ERROR", retryable:true}`**.
+- 시나리오 헤더 `X-Mock-Scenario`: 없으면 `ok`, `stale`(값은 주되 `status:"stale"`, `notices`에 "정보가 오래됐어요"), `source_error`(위 공급원 오류). 그 밖의 값 422. (A07·A09·A10 모두 같음, 좌표 없음·지역 미지원이 시나리오보다 먼저)
+- **확인:** `fst_999999` 404 · `fst_000006` 200 `unavailable`·`error.code=="FESTIVAL_LOCATION_UNKNOWN"` · `source_error` 200 `unavailable`·`SOURCE_RESULT_ERROR` · `stale` 200 `status=="stale"` · 알 수 없는 시나리오 422.
+
+### R19. A07 공지·통제 `GET /api/v1/festivals/{festival_id}/notices`
+- 쿼리 `type`(선택: `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure`, 그 밖 422), `active_only`(bool, 기본 true).
+- 가상 공지(`api/mocks/notices.py`), 모두 승인된 것. `fst_000001`만 3건:
+  - `ntc_000001` `traffic_control` "세종대로 일부 차로 통제" 효력 2026-11-20T18:00+09:00 ~ 2026-12-31T23:00+09:00, `source:"seoul_topis"`, `control_version:"ctl-0001"`
+  - `ntc_000002` `operation` "점등 시간 18:00~23:00 안내" 효력 2026-11-20T00:00+09:00 ~ 2026-12-31T23:59+09:00, `source:"operator"`, `control_version:null`
+  - `ntc_000003` `bus_detour` "지난 우회 운행 안내(종료)" 효력 2026-11-01 ~ 2026-11-10(끝남), `source:"operator"`
+  - 다른 축제는 0건 → `status:"ok"`, `items:[]`, `notices:["확인할 수 있는 공지 자료가 없어요"]`
+- "지금"은 **2026-11-22T12:00:00+09:00로 고정**(`api/mocks/clock.py`의 `MOCK_NOW`)해서 시험이 날짜에 따라 바뀌지 않게 한다.
+- `items[]`: `notice_id, type, title, content, effective_from, effective_to, source, source_url, published_at, control_version`. 정렬 `effective_from` 내림차순.
+- 공지는 서울 TOPIS(서울만)+운영자 등록(전국) → `coverage.scope:"national"`, 좌표 없어도 됨(공지는 좌표 불필요 — `fst_000006`도 200 `ok` 0건).
+- **확인:** `fst_000001` 기본 2건(끝난 `ntc_000003` 제외) · `active_only=false` 3건 · `type=traffic_control` 1건 · `fst_000003` 0건+안내 · `fst_000006` 200 `ok` · `type=parade` 422.
+
+### R20. A09 날씨 `GET /api/v1/festivals/{festival_id}/weather`
+- `data`: `{observed_at:"2026-11-22T11:00:00+09:00", temperature_c, precipitation_mm, precipitation_type, grid{nx, ny}, forecast:{status:"unverified"}}`.
+- 가상 값: SEOUL → grid 60,127, 4.5℃, 0.0mm, `none` / BUSAN → 97,74, 9.0℃, 0.0mm, `none` / GANGWON → 84,123, -3.0℃, 0.5mm, `snow`. `source:"kma"`, `coverage.scope:"national"`.
+- `precipitation_type` 허용값: `none`·`rain`·`rain_snow`·`snow`·`drizzle`·`drizzle_snow`·`snow_flurry`.
+- **확인:** `fst_000001` grid 60,127 · `fst_000003` grid 97,74 · `fst_000005` `snow` · `forecast.status=="unverified"` · `fst_000006` `unavailable`.
+
+### R21. A10 혼잡 구역 `GET /api/v1/festivals/{festival_id}/crowd` (서울만)
+- 서울 밖 → `status:"unsupported"`, `coverage{scope:"seoul_only", region_code, supported:false}`, `areas:[]`, `notices:["이 지역은 아직 지원하지 않아요"]`.
+- 서울인데 검증된 구역 연결이 없으면(`fst_000002`) → `unsupported`, `coverage.supported:true`, `notices:["이 축제는 검증된 혼잡 구역 연결이 없어요"]`. **근처 아무 구역이나 붙이지 않는다.**
+- `fst_000001` → `ok`, `areas` 1개: `{area_code:"POI009", area_name:"광화문·덕수궁", relation_type:"contains", congest_level:"보통", congest_color:"yellow", congest_message:"사람이 몰려 있을 수 있지만 크게 붐비지는 않아요.(모의)", population_min:48000, population_max:50000, observed_at:"2026-11-22T11:55:00+09:00", forecast:[3개 {time, congest_level, population_min, population_max}]}`. `source:"seoul_citydata"`.
+- 색 규칙: `여유`→`green`, `보통`→`yellow`, `약간 붐빔`→`orange`, `붐빔`→`red`. 성별·연령 비율 칸은 응답에 넣지 않는다.
+- 좌표 없음 검사가 지역 검사보다 먼저(`fst_000006` → `unavailable`).
+- **확인:** `fst_000001` `ok`·`congest_color=="yellow"`·`forecast` 3개 · `fst_000002` `unsupported`·`supported is True` · `fst_000003` `unsupported`·`supported is False` · 응답 어디에도 `MALE`·`rate` 글자가 든 키 없음.
+
+### R22. A11~A13 관심 축제 (로그인 필요, 3단계 가짜 인증 재사용)
+- 헤더 `Authorization: Bearer <A33 access_token>` 필수. 없음·모름·로그아웃한 토큰 → **401 `UNAUTHORIZED`**. 사용자는 **토큰으로만** 정한다(경로·본문으로 받지 않음).
+- A12 `PUT /api/v1/me/favorites/{festival_id}`: 처음 저장 **201** `{festival_id, saved_at, is_mock}`, 이미 있으면 **200** 같은 본문(같은 `saved_at`). 축제 없음 404 `FESTIVAL_NOT_FOUND`, 형식 422.
+- A13 `DELETE /api/v1/me/favorites/{festival_id}`: **204**(없던 것을 지워도 204). 형식 422.
+- A11 `GET /api/v1/me/favorites`: `page`·`page_size`(1~100, 기본 20), `sort`(`-saved_at` 기본·`start_date`). 200 `{items[{festival_id, name, region_code, start_date, end_date, event_status, thumbnail_url, saved_at}], total, page, page_size, is_mock}`.
+- 저장 시각은 같은 초에 여러 개를 저장해도 순서가 정해지게 순번을 같이 둔다.
+- **확인:** 토큰 없이 A11 401 · A12 처음 201 다시 200(같은 `saved_at`) · A11 total 1 · 사용자 B는 A의 관심을 못 봄(total 0) · A13 204 두 번 다 204 · A13 뒤 A11 total 0 · `fst_999999` A12 404 · 로그아웃한 토큰 401.
+
 ## 4. 문서
 
 ### R17. `backend/api/MOCK_API.md`
-- 실행·시험 명령, 주소 목록(A01·A02·A03·A04·A05·A25·A06·A06-1·A32~A35), `X-Mock-Scenario` 값 표, 가상 축제 6건 표, "모든 값은 가상이며 `is_mock:true`" 안내, 화면·에이전트 팀이 쓰는 예시 `curl` 3개(축제 목록, 귀갓길 접수→조회, 챗봇 접수→조회).
+- 실행·시험 명령, 주소 목록(A01·A02·A03·A04·A05·A25·A06(`POST /assistant/query`)·A06-1·A07·A09·A10·A11~A13·A32~A35), `X-Mock-Scenario` 값 표, 가상 축제 6건 표, "모든 값은 가상이며 `is_mock:true`" 안내, 화면·에이전트 팀이 쓰는 예시 `curl` 3개(축제 목록, 귀갓길 접수→조회, 챗봇 접수→조회).
 - **확인:** 파일이 있고 위 항목 제목이 모두 있음(시험 `test_R17_mock_doc`가 제목 문자열 확인).

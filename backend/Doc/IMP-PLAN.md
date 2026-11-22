@@ -7,6 +7,7 @@
 | 1 | Codex ① · gpt-6.2-sol · reasoning medium | R1~R9, R17(1단계 부분) | 없음 |
 | 2 | Codex ② · gpt-6.2-sol · reasoning high | R10~R13 | 1단계 시험 통과 |
 | 3 | Codex ③ · gpt-6.2-sol · reasoning medium | R14~R16, R17 완성 | 2단계 시험 통과 (3단계 R15가 2단계 귀갓길 서비스를 씀) |
+| 5 | Codex ⑤ · gpt-6.2-sol · reasoning medium | R14 주소 수정, R17~R22 | 4단계 끝(11/22 추가) |
 | 4 | Claude(검토 통괄) + agy · Gemini 4 Hydrogen High(읽기 전용 검토) | 전체 | 3단계 시험 통과 |
 
 ## 1단계 — 공통 뼈대 + 축제
@@ -63,7 +64,28 @@
 - [x] 전체 시험 통과
 - [ ] commit `feat(api): mock server step3 — assistant runs A06 and mock auth A32-A35`
 
-## 4단계 — 검토·인계 (Claude)
+## 5단계 — 챗봇 주소 수정 + 축제 주변 정보·관심 축제
+| 담당 | Codex ⑤ · gpt-6.2-sol · reasoning medium |
+|---|---|
+
+**만들 파일**
+- 수정: `api/routers/assistant/chatbot.py`(A06 주소를 `POST /assistant/query`로), `tests/api/test_step3_assistant.py`(주소 변경 반영), `api/MOCK_API.md`(A06 주소·5단계 절 추가)
+- 새로: `api/mocks/clock.py`, `api/mocks/notices.py`, `api/schemas/festival_info.py`, `api/schemas/favorites.py`, `api/services/mock_festival_info.py`, `api/services/mock_favorites.py`, `api/routers/festivals/info.py`(빈 파일 채우기), `api/routers/accounts/favorites.py`(빈 파일 채우기)
+- `api/main.py`에 **라우터 등록 두 줄만** 추가 허용(`festivals/info.py`, `accounts/favorites.py`) — 다른 줄 변경 금지
+- `api/mocks/store.py`에 관심 축제 칸 추가 허용(기존 칸 변경 금지)
+- `tests/api/test_step5_info.py`, `tests/api/test_step5_favorites.py`
+
+**체크리스트**
+- [ ] R14 주소 수정(옛 주소 405/404)
+- [ ] R18 공통 판단 순서·시나리오
+- [ ] R19 A07
+- [ ] R20 A09
+- [ ] R21 A10
+- [ ] R22 A11~A13
+- [ ] R17 문서 갱신
+- [ ] 전체 시험 통과
+
+## 4단계 — 검토·인계 (Claude, 5단계 뒤 다시)
 - [x] Claude가 전체 시험을 직접 다시 실행하고 서버를 띄워 `/docs`·`curl` 3개 확인
 - [x] agy(Gemini 4 Hydrogen High, 읽기 전용)로 SPEC ↔ 코드 대조 검토 → 꼭 고칠 것 0개, 작은 수정 2개 Codex로 반영(FIX1)
 - [ ] `ohyun` push, 병합 요청 문구, 팀원별 디스코드 안내(화면·에이전트가 쓰는 법)
