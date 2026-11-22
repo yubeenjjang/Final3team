@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import pytest
@@ -100,6 +100,14 @@ def test_R16_login_success_and_invalid_credentials(client: TestClient) -> None:
         assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
         errors.append(response.json())
     assert errors[0] == errors[1]
+
+
+def test_R16_refresh_ttl_14_days(client: TestClient) -> None:
+    _signup(client)
+    login_at = datetime.now(timezone.utc)
+    tokens = _login(client)
+    refresh_expires_at = datetime.fromisoformat(tokens["refresh_expires_at"])
+    assert timedelta(days=13.9) <= refresh_expires_at - login_at <= timedelta(days=14.1)
 
 
 def test_R16_refresh_rotation_and_reuse_revokes_all_user_refresh_tokens(client: TestClient) -> None:
