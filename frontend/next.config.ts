@@ -4,9 +4,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  devIndicators: {
-    position: "top-right",
-  },
+  devIndicators: false,
 };
 
 export default nextConfig;

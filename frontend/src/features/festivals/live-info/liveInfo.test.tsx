@@ -2,7 +2,11 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveInfoSection } from "./LiveInfoSection";
-import { getCrowdColorClass, getPrecipitationLabel } from "./liveInfoUtils";
+import {
+  formatDateTimeShort,
+  getCrowdColorClass,
+  getPrecipitationLabel,
+} from "./liveInfoUtils";
 
 describe("F7 live info", () => {
   const originalFetch = globalThis.fetch;
@@ -22,6 +26,13 @@ describe("F7 live info", () => {
     expect(getPrecipitationLabel("snow")).toBe("눈");
     expect(getCrowdColorClass("yellow")).toContain("bg-crowd-yellow");
     expect(getCrowdColorClass("red")).toContain("bg-crowd-red");
+  });
+
+  it("F7 formats ISO timestamps in Asia/Seoul timezone", () => {
+    expect(formatDateTimeShort("2026-11-22T11:00:00+09:00")).toBe("11.22 11:00");
+    expect(formatDateTimeShort("2026-11-20T18:00:00+09:00")).toBe("11.20 18:00");
+    expect(formatDateTimeShort("2026-11-22T02:00:00Z")).toBe("11.22 11:00");
+    expect(formatDateTimeShort("2026-11-21T15:00:00Z")).toBe("11.22 00:00");
   });
 
   it("F7 renders crowd, weather, and notices independently when all succeed", async () => {

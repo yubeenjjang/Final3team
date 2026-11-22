@@ -261,4 +261,55 @@ describe("F7 festival detail", () => {
       "/festivals",
     );
   });
+
+  it("F7 falls back to placeholder on hero image error and allows period chip wrapping", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/festivals/fst_000001")) {
+        return new Response(
+          JSON.stringify(
+            buildDetailResponse({
+              start_date: "2026-11-20",
+              end_date: "2026-11-22",
+              image_url: "https://example.com/missing-hero.jpg",
+            }),
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          is_mock: true,
+          festival_id: "fst_000001",
+          status: "unsupported",
+          coverage: { scope: "seoul_only", region_code: "SEOUL", supported: false },
+          source: "seoul_citydata",
+          items: [],
+          areas: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<FestivalDetailView festivalId="fst_000001" />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "테스트 문화 축제" }),
+      ).toBeInTheDocument();
+    });
+
+    const periodEl = screen.getByText("2026.11.20 ~ 2026.11.22");
+    expect(periodEl.className).not.toContain("truncate");
+
+    const heroImg = screen.getByAltText("테스트 문화 축제");
+    expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
+
+    fireEvent.error(heroImg);
+
+    expect(screen.getByText("이미지 준비 중")).toBeInTheDocument();
+    expect(screen.queryByText("출처: 한국관광공사")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("테스트 문화 축제")).not.toBeInTheDocument();
+  });
 });

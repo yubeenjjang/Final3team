@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { CalendarDays, ImageOff, MapPin } from "lucide-react";
 import type { FestivalListItem } from "./api";
 import { dday, formatFestivalPeriod } from "./dday";
@@ -11,6 +14,7 @@ export interface FestivalCardProps {
 }
 
 export function FestivalCard({ item, today }: FestivalCardProps) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const badge =
     item.event_status === "cancelled"
       ? "취소"
@@ -20,6 +24,7 @@ export function FestivalCard({ item, today }: FestivalCardProps) {
   const locationText = item.venue_name
     ? `${regionLabel} · ${item.venue_name}`
     : regionLabel;
+  const showImage = Boolean(item.thumbnail_url) && failedSrc !== item.thumbnail_url;
 
   return (
     <Link
@@ -28,7 +33,7 @@ export function FestivalCard({ item, today }: FestivalCardProps) {
       className="group block overflow-hidden rounded-card border border-line-light bg-surface shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="relative h-44 w-full overflow-hidden bg-surface-soft/50">
-        {item.thumbnail_url ? (
+        {showImage && item.thumbnail_url ? (
           <>
             <Image
               src={item.thumbnail_url}
@@ -36,6 +41,7 @@ export function FestivalCard({ item, today }: FestivalCardProps) {
               fill
               sizes="(max-width: 480px) 100vw, 448px"
               unoptimized
+              onError={() => setFailedSrc(item.thumbnail_url ?? null)}
               className="object-contain p-1 transition-transform duration-200 group-hover:scale-[1.02]"
             />
             <span className="absolute bottom-2 right-2 rounded-chip bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-surface backdrop-blur-sm">

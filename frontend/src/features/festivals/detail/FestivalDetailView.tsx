@@ -74,6 +74,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const isFavorite = Boolean(authUser) && favoriteSaved;
 
   const [nearbyMessage, setNearbyMessage] = useState<string | null>(null);
+  const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -230,6 +231,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   }
 
   const heroImage = festival.image_url ?? festival.thumbnail_url;
+  const showHeroImage = Boolean(heroImage) && failedHeroSrc !== heroImage;
   const badge =
     festival.event_status === "cancelled"
       ? "취소"
@@ -257,7 +259,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       {/* 대표 이미지 + D-day + 하트 */}
       <section className="space-y-2">
         <div className="relative h-56 w-full overflow-hidden rounded-card border border-line-light bg-surface-soft/50">
-          {heroImage ? (
+          {showHeroImage && heroImage ? (
             <>
               <Image
                 src={heroImage}
@@ -265,6 +267,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
                 fill
                 sizes="(max-width: 480px) 100vw, 448px"
                 unoptimized
+                onError={() => setFailedHeroSrc(heroImage)}
                 className="object-contain p-1"
               />
               <span className="absolute bottom-2.5 right-2.5 rounded-chip bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-surface backdrop-blur-sm">
@@ -332,7 +335,9 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       <section aria-label="기본 정보" className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3 py-2.5 text-xs">
           <CalendarDays className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
-          <span className="truncate font-medium text-ink">{periodText}</span>
+          <span className="whitespace-normal font-medium leading-snug text-ink">
+            {periodText}
+          </span>
         </div>
         <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3 py-2.5 text-xs">
           <MapPin className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />

@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dday } from "./dday";
+import { FestivalCard } from "./FestivalCard";
 import { FestivalExploreView } from "./FestivalExploreView";
 import { getRegionLabel, REGION_OPTIONS } from "./regions";
 
@@ -204,5 +205,37 @@ describe("F6 festival explore", () => {
         screen.getByText("조건에 맞는 축제가 없어요"),
       ).toBeInTheDocument();
     });
+  });
+
+  it("F6 image error fallback", () => {
+    render(
+      <FestivalCard
+        item={{
+          festival_id: "fst_000010",
+          name: "이미지 실패 테스트 축제",
+          region_code: "SEOUL",
+          venue_name: "서울 광장",
+          lat: 37.566,
+          lng: 126.978,
+          start_date: "2026-12-05",
+          end_date: "2026-12-07",
+          event_status: "upcoming",
+          thumbnail_url: "https://example.com/missing.jpg",
+          image_credit: "한국관광공사",
+          source: "tourapi",
+          last_synced_at: "2026-11-22T00:00:00Z",
+        }}
+        today="2026-11-22"
+      />,
+    );
+
+    const img = screen.getByAltText("이미지 실패 테스트 축제");
+    expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
+
+    fireEvent.error(img);
+
+    expect(screen.getByText("이미지 준비 중")).toBeInTheDocument();
+    expect(screen.queryByText("출처: 한국관광공사")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("이미지 실패 테스트 축제")).not.toBeInTheDocument();
   });
 });

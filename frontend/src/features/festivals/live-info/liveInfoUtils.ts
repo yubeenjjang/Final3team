@@ -51,8 +51,17 @@ export function getNoticeTypeLabel(type: NoticeType): string {
   return NOTICE_TYPE_LABELS[type] ?? "안내";
 }
 
+const KST_SHORT_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Seoul",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
 /**
- * Format ISO datetime string to compact Korean month/day time string.
+ * Format ISO datetime string to compact Korean month/day time string in Asia/Seoul.
  */
 export function formatDateTimeShort(iso: string | null | undefined): string {
   if (!iso) {
@@ -62,9 +71,16 @@ export function formatDateTimeShort(iso: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}.${day} ${hours}:${minutes}`;
+  const parts = KST_SHORT_FORMATTER.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      map[part.type] = part.value;
+    }
+  }
+  const month = map.month ?? "";
+  const day = map.day ?? "";
+  const hour = map.hour === "24" ? "00" : (map.hour ?? "");
+  const minute = map.minute ?? "";
+  return `${month}.${day} ${hour}:${minute}`;
 }
