@@ -10,7 +10,7 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 ```
 시험: `uv run --with-requirements api/requirements.txt pytest tests/api -q` → 112개 통과(11/22).
 
-웹 화면(1차): `cd frontend && npm install && cp .env.local.example .env.local`(카카오 키는 따로 받기) → `npm run dev` → `http://localhost:3000`. 자세한 건 `frontend/README.md`.
+웹 화면(1차)은 **브랜치 `ohyun-web`**에 있습니다(프론트 담당 정예진·이수언 님과 월요일 결정 D6 뒤 `main` 병합). 보려면 `git fetch && git checkout ohyun-web` → `cd frontend && npm install && cp .env.local.example .env.local`(카카오 키는 따로 받기) → `npm run dev` → `http://localhost:3000`. 자세한 건 `ohyun-web`의 `frontend/README.md`.
 
 ## 누가 무엇을 보나
 | 팀원 | 문서 |
