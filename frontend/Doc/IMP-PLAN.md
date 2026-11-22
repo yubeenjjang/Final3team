@@ -46,7 +46,7 @@
 
 ## 5단계 — 흐름 시험
 **만들 파일:** `playwright.config.*`, `e2e/*.spec.ts`
-- [ ] F12 흐름 시험 전부 통과 + 화면 캡처
+- [x] F12 흐름 시험 전부 통과 + 화면 캡처
 
 ## 6단계 — 검토 (Claude)
 - [ ] 모의 서버 + 개발 서버 띄워 직접 확인
@@ -54,6 +54,7 @@
 - [ ] commit, push(사용자 지시 때), 팀 안내 문구
 
 ## 메모
+- 5단계: e2e는 Ubuntu 26.04에서 Playwright 브라우저 미지원 → `docker run --rm --network host -u $(id -u):$(id -g) -e HOME=/tmp -v "$PWD":/w -w /w mcr.microsoft.com/playwright:v1.57.0-noble npx playwright test`로 실행(서버 2개는 먼저 띄움). 11/22 8개 통과.
 - 3단계 검토 메모(6단계에서 처리): 시간 초과 등 실패 카드에서 제목과 본문이 같은 문구로 두 번 보임 · 결과 지도에 출발/도착 이름표(시안의 '출발'·'도착' 말풍선) 없음 · Codex 샌드박스에서는 Turbopack 포트 제한으로 `npm run build`가 실패하지만 Claude 환경에서는 통과(11/22).
 - 시안이 이미지 한 장뿐이라 색은 근사값(`DESIGN.md`). 이수언 님이 값을 주면 토큰만 바꾼다.
 - 테마·아래 탭이 화면마다 다른 것은 `DESIGN.md` 2절의 기본안으로 구현.
