@@ -18,7 +18,7 @@ from api.mocks.store import (
 from api.schemas.auth import LoginRequest, SignupRequest
 
 _ACCESS_DURATION = 1800
-_REFRESH_DURATION = timedelta(days=7)
+_REFRESH_DURATION = timedelta(days=14)
 
 
 def _password_hash(password: str, salt: bytes) -> bytes:

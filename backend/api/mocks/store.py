@@ -11,7 +11,7 @@ from api.schemas.routes import RouteDirection, RouteRequest, RouteStatus
 @dataclass
 class RouteRecord:
     route_request_id: str
-    access_token: str
+    access_token: str = field(repr=False)
     direction: RouteDirection
     request: RouteRequest
     festival: FestivalDetail

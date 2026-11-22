@@ -64,9 +64,10 @@
 - [ ] commit `feat(api): mock server step3 — assistant runs A06 and mock auth A32-A35`
 
 ## 4단계 — 검토·인계 (Claude)
-- [ ] Claude가 전체 시험을 직접 다시 실행하고 서버를 띄워 `/docs`·`curl` 3개 확인
-- [ ] agy(Gemini 4 Hydrogen High, 읽기 전용)로 SPEC ↔ 코드 대조 검토 → 틀린 곳만 Codex로 수정
+- [x] Claude가 전체 시험을 직접 다시 실행하고 서버를 띄워 `/docs`·`curl` 3개 확인
+- [x] agy(Gemini 4 Hydrogen High, 읽기 전용)로 SPEC ↔ 코드 대조 검토 → 꼭 고칠 것 0개, 작은 수정 2개 Codex로 반영(FIX1)
 - [ ] `ohyun` push, 병합 요청 문구, 팀원별 디스코드 안내(화면·에이전트가 쓰는 법)
 
 ## 메모 (구현 중 발견한 문서와의 차이)
 - A04가 `sync_ready`로 200을 줄 때 A05 조회 토큰을 함께 준다(API 설계문서 2절 200 표에는 없음 — 다음 개정 때 문서에 추가).
+- R15: 형식은 맞지만 축제가 없거나 좌표가 없어 경로를 못 만들면 작업을 `failed`로 확정(조회는 200).
