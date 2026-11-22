@@ -15,7 +15,7 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 ## 시험
 
 ```sh
-uv run --with-requirements api/requirements.txt pytest tests/api -q
+uv run --offline --with-requirements api/requirements.txt pytest tests/api -q
 ```
 
 ## A01 서버 상태
@@ -34,26 +34,37 @@ uv run --with-requirements api/requirements.txt pytest tests/api -q
 
 `POST /api/v1/routes/return`은 `request_id`, `festival_id`, `destination`을 받습니다. `origin`을 생략하면 축제 장소에서 출발합니다. 사용자 장소는 `query` 또는 `lat`과 `lng`로 지정합니다. 접수 응답은 202이며 `status_url`과 `route_access_token`을 반환합니다. `sync_ready`는 200으로 경로와 조회 토큰을 반환합니다. 같은 `request_id`와 본문으로 다시 접수하면 최초 응답을 재사용하며, 본문을 바꾸면 409를 반환합니다.
 
-```sh
-curl -sS -X POST 'http://localhost:8000/api/v1/routes/return' \
-  -H 'Content-Type: application/json' \
-  -d '{"request_id":"return-demo-001","festival_id":"fst_000001","destination":{"query":"서울역"}}'
-```
-
 ## A05 귀갓길 조회
 
 `GET /api/v1/routes/return/{route_request_id}`에 접수 응답에서 받은 `X-Route-Access-Token`을 보냅니다. 기본 시나리오에서는 첫 조회가 `processing`, 두 번째부터 `ready`입니다. 처리 실패 상태도 200으로 조회됩니다.
 
-아래 두 자리표시자를 접수 응답의 `route_request_id`와 `route_access_token`으로 바꾸고 두 번 호출합니다.
-
-```sh
-curl -sS 'http://localhost:8000/api/v1/routes/return/<route_request_id>' \
-  -H 'X-Route-Access-Token: <route_access_token>'
-```
-
 ## A25 가는 길 접수·조회
 
 `POST /api/v1/routes/visit`은 `request_id`, `festival_id`, `origin`을 받습니다. `destination`을 생략하면 축제 장소가 도착지입니다. `X-Route-Access-Token`을 보내 `GET /api/v1/routes/visit/{route_request_id}`로 조회합니다. 완료된 경로의 `direction`은 `visit`입니다.
+
+## A06 챗봇 작업 접수
+
+`POST /api/v1/assistant/runs`에 `request_id`와 `message`를 보냅니다. 기존 대화는 `conversation_id`로 이어갈 수 있습니다. 선택 항목으로 `context.festival_id`, `context.route_request_id`, `reference_date`를 보낼 수 있습니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 `request_id`와 본문을 다시 보내면 기존 접수 응답을 반환하며, 본문을 바꾸면 409를 반환합니다.
+
+## A06-1 챗봇 작업 조회
+
+`GET /api/v1/assistant/runs/{run_id}`에 `X-Run-Access-Token`을 보냅니다. 첫 조회는 `running`이고, 두 번째부터 `succeeded` 또는 `failed`입니다. 귀가 질문의 결과에 경로 ID와 토큰이 있으면 A05에서 경로를 조회할 수 있습니다.
+
+## A32 가입
+
+`POST /api/v1/auth/signup`에 `email`, `password`, `display_name`, `birth_year`, `gender`를 보냅니다. 가입하면 201과 사용자 ID, 닉네임을 반환합니다. 등록된 이메일 또는 닉네임이면 409를 반환합니다.
+
+## A33 로그인
+
+`POST /api/v1/auth/login`에 `email`과 `password`를 보냅니다. 로그인하면 액세스 토큰과 갱신 토큰, 사용자 정보를 반환합니다. 이메일 또는 비밀번호가 틀리면 401을 반환합니다.
+
+## A34 토큰 갱신
+
+`POST /api/v1/auth/refresh`에 `refresh_token`을 보냅니다. 성공 응답에는 새 액세스 토큰과 갱신 토큰이 들어 있습니다. 폐기된 갱신 토큰을 다시 보내면 해당 사용자의 갱신 토큰이 모두 폐기됩니다.
+
+## A35 로그아웃
+
+`POST /api/v1/auth/logout`에 `Authorization: Bearer <access_token>` 헤더와 `refresh_token` 본문을 보냅니다. 성공하면 본문 없이 204를 반환합니다.
 
 ## X-Mock-Scenario
 
@@ -78,3 +89,37 @@ A04와 A25 접수 요청에 아래 헤더 값을 지정할 수 있습니다.
 | `fst_000004` | 해운대 모래 축제 | BUSAN | 해운대해수욕장 | 35.1587, 129.1604 | 2026-06-01 ~ 2026-06-03 | ended | Type3 |
 | `fst_000005` | 평창 송어 축제 | GANGWON | 오대천 일원 | 37.5640, 128.3846 | 2026-12-26 ~ 2027-01-25 | upcoming | 없음 |
 | `fst_000006` | 장소 미정 축제 | GYEONGGI | 미정 | 미정 | 미정 | needs_review | 없음 |
+
+## curl 예시
+
+### 축제 목록
+
+```sh
+curl -sS 'http://localhost:8000/api/v1/festivals?region=SEOUL'
+```
+
+### 귀갓길 접수 → 조회
+
+접수 응답의 ID와 토큰을 아래 조회 명령에 넣고 두 번 호출합니다.
+
+```sh
+curl -sS -X POST 'http://localhost:8000/api/v1/routes/return' \
+  -H 'Content-Type: application/json' \
+  -d '{"request_id":"return-demo-001","festival_id":"fst_000001","destination":{"query":"서울역"}}'
+
+curl -sS 'http://localhost:8000/api/v1/routes/return/<route_request_id>' \
+  -H 'X-Route-Access-Token: <route_access_token>'
+```
+
+### 챗봇 접수 → 조회
+
+접수 응답의 ID와 토큰을 아래 조회 명령에 넣고 두 번 호출합니다.
+
+```sh
+curl -sS -X POST 'http://localhost:8000/api/v1/assistant/runs' \
+  -H 'Content-Type: application/json' \
+  -d '{"request_id":"assistant-demo-001","message":"귀가 경로 알려 줘","context":{"festival_id":"fst_000001"}}'
+
+curl -sS 'http://localhost:8000/api/v1/assistant/runs/<run_id>' \
+  -H 'X-Run-Access-Token: <run_access_token>'
+```
