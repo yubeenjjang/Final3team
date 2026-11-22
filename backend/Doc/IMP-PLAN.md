@@ -56,11 +56,11 @@
 - `api/mocks/store.py`에 작업·사용자 칸 추가 허용(기존 칸 변경 금지)
 
 **체크리스트**
-- [ ] R14 A06 접수·멱등·대화 확인
-- [ ] R15 A06-1 상태 진행·질문별 결과·귀가 질문은 실제 귀갓길 요청 생성(`create_ready_route`)
-- [ ] R16 A32~A35
-- [ ] R17 문서 완성
-- [ ] 전체 시험 통과
+- [x] R14 A06 접수·멱등·대화 확인
+- [x] R15 A06-1 상태 진행·질문별 결과·귀가 질문은 실제 귀갓길 요청 생성(`create_ready_route`)
+- [x] R16 A32~A35
+- [x] R17 문서 완성
+- [x] 전체 시험 통과
 - [ ] commit `feat(api): mock server step3 — assistant runs A06 and mock auth A32-A35`
 
 ## 4단계 — 검토·인계 (Claude)
