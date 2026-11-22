@@ -1,0 +1,2838 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "놀다가 API (mock)",
+    "version": "0.1.0-mock"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Get Health",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/festivals": {
+      "get": {
+        "summary": "List Festivals",
+        "operationId": "list_festivals_api_v1_festivals_get",
+        "parameters": [
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "SEOUL",
+                    "BUSAN",
+                    "DAEGU",
+                    "INCHEON",
+                    "GWANGJU",
+                    "DAEJEON",
+                    "ULSAN",
+                    "SEJONG",
+                    "GYEONGGI",
+                    "GANGWON",
+                    "CHUNGBUK",
+                    "CHUNGNAM",
+                    "JEONBUK",
+                    "JEONNAM",
+                    "GYEONGBUK",
+                    "GYEONGNAM",
+                    "JEJU"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "const": "ALL",
+                  "type": "string"
+                }
+              ],
+              "default": "ALL",
+              "title": "Region"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "upcoming",
+                    "ongoing",
+                    "ended",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "start_date",
+                "-start_date",
+                "name"
+              ],
+              "type": "string",
+              "default": "start_date",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FestivalPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/festivals/{festival_id}": {
+      "get": {
+        "summary": "Get Festival",
+        "operationId": "get_festival_api_v1_festivals__festival_id__get",
+        "parameters": [
+          {
+            "name": "festival_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+              "title": "Festival Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FestivalDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routes/return": {
+      "post": {
+        "summary": "Submit Return Route",
+        "operationId": "submit_return_route_api_v1_routes_return_post",
+        "parameters": [
+          {
+            "name": "X-Mock-Scenario",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "async_ready",
+              "title": "X-Mock-Scenario"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnRouteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "202": {
+            "description": "경로 요청 접수"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routes/return/{route_request_id}": {
+      "get": {
+        "summary": "Get Return Route",
+        "operationId": "get_return_route_api_v1_routes_return__route_request_id__get",
+        "parameters": [
+          {
+            "name": "route_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^rr_[0-9A-Za-z]{6,26}$",
+              "title": "Route Request Id"
+            }
+          },
+          {
+            "name": "X-Route-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Route-Access-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Return Route Api V1 Routes Return  Route Request Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routes/visit": {
+      "post": {
+        "summary": "Submit Visit Route",
+        "operationId": "submit_visit_route_api_v1_routes_visit_post",
+        "parameters": [
+          {
+            "name": "X-Mock-Scenario",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "async_ready",
+              "title": "X-Mock-Scenario"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisitRouteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "202": {
+            "description": "경로 요청 접수"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routes/visit/{route_request_id}": {
+      "get": {
+        "summary": "Get Visit Route",
+        "operationId": "get_visit_route_api_v1_routes_visit__route_request_id__get",
+        "parameters": [
+          {
+            "name": "route_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^rr_[0-9A-Za-z]{6,26}$",
+              "title": "Route Request Id"
+            }
+          },
+          {
+            "name": "X-Route-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Route-Access-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Visit Route Api V1 Routes Visit  Route Request Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assistant/query": {
+      "post": {
+        "summary": "Submit Run",
+        "operationId": "submit_run_api_v1_assistant_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Submit Run Api V1 Assistant Query Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assistant/runs/{run_id}": {
+      "get": {
+        "summary": "Fetch Run",
+        "operationId": "fetch_run_api_v1_assistant_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^run_[0-9A-Za-z]{6,26}$",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "X-Run-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Run-Access-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Fetch Run Api V1 Assistant Runs  Run Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/signup": {
+      "post": {
+        "summary": "Signup",
+        "operationId": "signup_api_v1_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Signup Api V1 Auth Signup Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Login Api V1 Auth Login Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Refresh",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Refresh Api V1 Auth Refresh Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/festivals/{festival_id}/notices": {
+      "get": {
+        "summary": "Get Notices",
+        "operationId": "get_notices_api_v1_festivals__festival_id__notices_get",
+        "parameters": [
+          {
+            "name": "festival_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+              "title": "Festival Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "operation",
+                    "traffic_control",
+                    "no_stop",
+                    "bus_detour",
+                    "road_closure"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Active Only"
+            }
+          },
+          {
+            "name": "X-Mock-Scenario",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Mock-Scenario"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/festivals/{festival_id}/weather": {
+      "get": {
+        "summary": "Get Weather",
+        "operationId": "get_weather_api_v1_festivals__festival_id__weather_get",
+        "parameters": [
+          {
+            "name": "festival_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+              "title": "Festival Id"
+            }
+          },
+          {
+            "name": "X-Mock-Scenario",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Mock-Scenario"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/festivals/{festival_id}/crowd": {
+      "get": {
+        "summary": "Get Crowd",
+        "operationId": "get_crowd_api_v1_festivals__festival_id__crowd_get",
+        "parameters": [
+          {
+            "name": "festival_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+              "title": "Festival Id"
+            }
+          },
+          {
+            "name": "X-Mock-Scenario",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Mock-Scenario"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrowdResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/favorites": {
+      "get": {
+        "summary": "List Favorites",
+        "operationId": "list_favorites_api_v1_me_favorites_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "-saved_at",
+                "start_date"
+              ],
+              "type": "string",
+              "default": "-saved_at",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoritesPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/favorites/{festival_id}": {
+      "put": {
+        "summary": "Save Favorite",
+        "operationId": "save_favorite_api_v1_me_favorites__festival_id__put",
+        "parameters": [
+          {
+            "name": "festival_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+              "title": "Festival Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteSave"
+                }
+              }
+            }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteSave"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Favorite",
+        "operationId": "delete_favorite_api_v1_me_favorites__festival_id__delete",
+        "parameters": [
+          {
+            "name": "festival_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+              "title": "Festival Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssistantContext": {
+        "properties": {
+          "festival_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^fst_[0-9A-Za-z]{6,26}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Festival Id"
+          },
+          "route_request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^rr_[0-9A-Za-z]{6,26}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Request Id"
+          }
+        },
+        "type": "object",
+        "title": "AssistantContext"
+      },
+      "AssistantRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "title": "Request Id"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^cv_[0-9A-Za-z]{6,26}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "context": {
+            "$ref": "#/components/schemas/AssistantContext"
+          },
+          "reference_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "message"
+        ],
+        "title": "AssistantRequest"
+      },
+      "Coverage": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "national",
+              "seoul_only"
+            ],
+            "title": "Scope"
+          },
+          "region_code": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "DAEGU",
+              "INCHEON",
+              "GWANGJU",
+              "DAEJEON",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU"
+            ],
+            "title": "Region Code"
+          },
+          "supported": {
+            "type": "boolean",
+            "title": "Supported"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "region_code",
+          "supported"
+        ],
+        "title": "Coverage"
+      },
+      "CrowdArea": {
+        "properties": {
+          "area_code": {
+            "type": "string",
+            "title": "Area Code"
+          },
+          "area_name": {
+            "type": "string",
+            "title": "Area Name"
+          },
+          "relation_type": {
+            "type": "string",
+            "const": "contains",
+            "title": "Relation Type"
+          },
+          "congest_level": {
+            "type": "string",
+            "enum": [
+              "여유",
+              "보통",
+              "약간 붐빔",
+              "붐빔"
+            ],
+            "title": "Congest Level"
+          },
+          "congest_color": {
+            "type": "string",
+            "enum": [
+              "green",
+              "yellow",
+              "orange",
+              "red"
+            ],
+            "title": "Congest Color"
+          },
+          "congest_message": {
+            "type": "string",
+            "title": "Congest Message"
+          },
+          "population_min": {
+            "type": "integer",
+            "title": "Population Min"
+          },
+          "population_max": {
+            "type": "integer",
+            "title": "Population Max"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "forecast": {
+            "items": {
+              "$ref": "#/components/schemas/CrowdForecast"
+            },
+            "type": "array",
+            "title": "Forecast"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area_code",
+          "area_name",
+          "relation_type",
+          "congest_level",
+          "congest_color",
+          "congest_message",
+          "population_min",
+          "population_max",
+          "observed_at",
+          "forecast"
+        ],
+        "title": "CrowdArea"
+      },
+      "CrowdForecast": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time"
+          },
+          "congest_level": {
+            "type": "string",
+            "enum": [
+              "여유",
+              "보통",
+              "약간 붐빔",
+              "붐빔"
+            ],
+            "title": "Congest Level"
+          },
+          "population_min": {
+            "type": "integer",
+            "title": "Population Min"
+          },
+          "population_max": {
+            "type": "integer",
+            "title": "Population Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "congest_level",
+          "population_min",
+          "population_max"
+        ],
+        "title": "CrowdForecast"
+      },
+      "CrowdResponse": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "stale",
+              "unavailable",
+              "unsupported",
+              "unverified"
+            ],
+            "title": "Status",
+            "default": "ok"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seoul_topis",
+              "operator",
+              "kma",
+              "seoul_citydata"
+            ],
+            "title": "Source"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/CrowdArea"
+            },
+            "type": "array",
+            "title": "Areas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "coverage",
+          "source"
+        ],
+        "title": "CrowdResponse"
+      },
+      "FavoriteItem": {
+        "properties": {
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "region_code": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "DAEGU",
+              "INCHEON",
+              "GWANGJU",
+              "DAEJEON",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU"
+            ],
+            "title": "Region Code"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "event_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "upcoming",
+                  "ongoing",
+                  "ended",
+                  "cancelled"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "needs_review"
+              }
+            ],
+            "title": "Event Status"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "saved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Saved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "name",
+          "region_code",
+          "start_date",
+          "end_date",
+          "event_status",
+          "thumbnail_url",
+          "saved_at"
+        ],
+        "title": "FavoriteItem"
+      },
+      "FavoriteSave": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "saved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Saved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "saved_at"
+        ],
+        "title": "FavoriteSave"
+      },
+      "FavoritesPage": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FavoriteItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "FavoritesPage"
+      },
+      "FestivalDetail": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "region_code": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "DAEGU",
+              "INCHEON",
+              "GWANGJU",
+              "DAEJEON",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU"
+            ],
+            "title": "Region Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "event_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "upcoming",
+                  "ongoing",
+                  "ended",
+                  "cancelled"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "needs_review"
+              }
+            ],
+            "title": "Event Status"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "image_credit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Credit"
+          },
+          "source": {
+            "type": "string",
+            "const": "tourapi",
+            "title": "Source",
+            "default": "tourapi"
+          },
+          "last_synced_at": {
+            "type": "string",
+            "title": "Last Synced At"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "overview": {
+            "type": "string",
+            "title": "Overview"
+          },
+          "fee_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fee Text"
+          },
+          "homepage_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepage Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "image_copyright": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageCopyright"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "name",
+          "region_code",
+          "venue_name",
+          "lat",
+          "lng",
+          "start_date",
+          "end_date",
+          "event_status",
+          "thumbnail_url",
+          "image_credit",
+          "last_synced_at",
+          "address",
+          "overview",
+          "fee_text",
+          "homepage_url",
+          "image_url",
+          "image_copyright",
+          "source_ref"
+        ],
+        "title": "FestivalDetail"
+      },
+      "FestivalEndpoint": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "festival",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "FestivalEndpoint"
+      },
+      "FestivalListItem": {
+        "properties": {
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "region_code": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "DAEGU",
+              "INCHEON",
+              "GWANGJU",
+              "DAEJEON",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU"
+            ],
+            "title": "Region Code"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "event_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "upcoming",
+                  "ongoing",
+                  "ended",
+                  "cancelled"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "needs_review"
+              }
+            ],
+            "title": "Event Status"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "image_credit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Credit"
+          },
+          "source": {
+            "type": "string",
+            "const": "tourapi",
+            "title": "Source",
+            "default": "tourapi"
+          },
+          "last_synced_at": {
+            "type": "string",
+            "title": "Last Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "name",
+          "region_code",
+          "venue_name",
+          "lat",
+          "lng",
+          "start_date",
+          "end_date",
+          "event_status",
+          "thumbnail_url",
+          "image_credit",
+          "last_synced_at"
+        ],
+        "title": "FestivalListItem"
+      },
+      "FestivalPage": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FestivalListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "FestivalPage"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status",
+            "default": "ok"
+          },
+          "db": {
+            "type": "string",
+            "const": "mock",
+            "title": "Db",
+            "default": "mock"
+          },
+          "redis": {
+            "type": "string",
+            "const": "mock",
+            "title": "Redis",
+            "default": "mock"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "HealthResponse"
+      },
+      "ImageCopyright": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Type1",
+              "Type3"
+            ],
+            "title": "Type"
+          },
+          "credit": {
+            "type": "string",
+            "title": "Credit"
+          },
+          "modify_allowed": {
+            "type": "boolean",
+            "title": "Modify Allowed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "credit",
+          "modify_allowed"
+        ],
+        "title": "ImageCopyright"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "Notice": {
+        "properties": {
+          "notice_id": {
+            "type": "string",
+            "title": "Notice Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "operation",
+              "traffic_control",
+              "no_stop",
+              "bus_detour",
+              "road_closure"
+            ],
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Effective To"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seoul_topis",
+              "operator"
+            ],
+            "title": "Source"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "control_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Control Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "notice_id",
+          "type",
+          "title",
+          "content",
+          "effective_from",
+          "effective_to",
+          "source",
+          "published_at"
+        ],
+        "title": "Notice"
+      },
+      "NoticeResponse": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "stale",
+              "unavailable",
+              "unsupported",
+              "unverified"
+            ],
+            "title": "Status",
+            "default": "ok"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seoul_topis",
+              "operator",
+              "kma",
+              "seoul_citydata"
+            ],
+            "title": "Source"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Notice"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "coverage",
+          "source"
+        ],
+        "title": "NoticeResponse"
+      },
+      "PlaceEndpoint": {
+        "properties": {
+          "query": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 39.0,
+                "minimum": 33.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 132.0,
+                "minimum": 124.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "type": {
+            "type": "string",
+            "const": "place",
+            "title": "Type",
+            "default": "place"
+          }
+        },
+        "type": "object",
+        "title": "PlaceEndpoint"
+      },
+      "RefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "format": "password",
+            "title": "Refresh Token",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest"
+      },
+      "ReturnRouteRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "title": "Request Id"
+          },
+          "festival_id": {
+            "type": "string",
+            "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+            "title": "Festival Id"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FestivalEndpoint"
+              },
+              {
+                "$ref": "#/components/schemas/PlaceEndpoint"
+              }
+            ],
+            "title": "Origin"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FestivalEndpoint"
+              },
+              {
+                "$ref": "#/components/schemas/PlaceEndpoint"
+              }
+            ],
+            "title": "Destination"
+          },
+          "travel_mode": {
+            "type": "string",
+            "enum": [
+              "transit",
+              "walk",
+              "car",
+              "taxi"
+            ],
+            "title": "Travel Mode",
+            "default": "transit"
+          },
+          "route_preference": {
+            "type": "string",
+            "enum": [
+              "fastest",
+              "less_crowded",
+              "accessible",
+              "min_walk",
+              "fewest_transfers"
+            ],
+            "title": "Route Preference",
+            "default": "fastest"
+          },
+          "user_constraints": {
+            "$ref": "#/components/schemas/UserConstraints"
+          },
+          "departure": {
+            "type": "string",
+            "const": "now",
+            "title": "Departure",
+            "default": "now"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "festival_id",
+          "destination"
+        ],
+        "title": "ReturnRouteRequest"
+      },
+      "SignupRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 2,
+            "title": "Display Name"
+          },
+          "birth_year": {
+            "type": "integer",
+            "minimum": 1900.0,
+            "title": "Birth Year"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ],
+            "title": "Gender"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "display_name",
+          "birth_year",
+          "gender"
+        ],
+        "title": "SignupRequest"
+      },
+      "SourceError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "FESTIVAL_LOCATION_UNKNOWN",
+              "SOURCE_RESULT_ERROR"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "title": "SourceError"
+      },
+      "UserConstraints": {
+        "properties": {
+          "with_child": {
+            "type": "boolean",
+            "title": "With Child",
+            "default": false
+          },
+          "wheelchair": {
+            "type": "boolean",
+            "title": "Wheelchair",
+            "default": false
+          },
+          "max_walk_m": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Walk M"
+          }
+        },
+        "type": "object",
+        "title": "UserConstraints"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VisitRouteRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "title": "Request Id"
+          },
+          "festival_id": {
+            "type": "string",
+            "pattern": "^fst_[0-9A-Za-z]{6,26}$",
+            "title": "Festival Id"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FestivalEndpoint"
+              },
+              {
+                "$ref": "#/components/schemas/PlaceEndpoint"
+              }
+            ],
+            "title": "Origin"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FestivalEndpoint"
+              },
+              {
+                "$ref": "#/components/schemas/PlaceEndpoint"
+              }
+            ],
+            "title": "Destination"
+          },
+          "travel_mode": {
+            "type": "string",
+            "enum": [
+              "transit",
+              "walk",
+              "car",
+              "taxi"
+            ],
+            "title": "Travel Mode",
+            "default": "transit"
+          },
+          "route_preference": {
+            "type": "string",
+            "enum": [
+              "fastest",
+              "less_crowded",
+              "accessible",
+              "min_walk",
+              "fewest_transfers"
+            ],
+            "title": "Route Preference",
+            "default": "fastest"
+          },
+          "user_constraints": {
+            "$ref": "#/components/schemas/UserConstraints"
+          },
+          "departure": {
+            "type": "string",
+            "const": "now",
+            "title": "Departure",
+            "default": "now"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "festival_id",
+          "origin"
+        ],
+        "title": "VisitRouteRequest"
+      },
+      "WeatherData": {
+        "properties": {
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "temperature_c": {
+            "type": "number",
+            "title": "Temperature C"
+          },
+          "precipitation_mm": {
+            "type": "number",
+            "title": "Precipitation Mm"
+          },
+          "precipitation_type": {
+            "type": "string",
+            "enum": [
+              "none",
+              "rain",
+              "rain_snow",
+              "snow",
+              "drizzle",
+              "drizzle_snow",
+              "snow_flurry"
+            ],
+            "title": "Precipitation Type"
+          },
+          "grid": {
+            "$ref": "#/components/schemas/WeatherGrid"
+          },
+          "forecast": {
+            "$ref": "#/components/schemas/WeatherForecast"
+          }
+        },
+        "type": "object",
+        "required": [
+          "observed_at",
+          "temperature_c",
+          "precipitation_mm",
+          "precipitation_type",
+          "grid"
+        ],
+        "title": "WeatherData"
+      },
+      "WeatherForecast": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "unverified",
+            "title": "Status",
+            "default": "unverified"
+          }
+        },
+        "type": "object",
+        "title": "WeatherForecast"
+      },
+      "WeatherGrid": {
+        "properties": {
+          "nx": {
+            "type": "integer",
+            "title": "Nx"
+          },
+          "ny": {
+            "type": "integer",
+            "title": "Ny"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nx",
+          "ny"
+        ],
+        "title": "WeatherGrid"
+      },
+      "WeatherResponse": {
+        "properties": {
+          "is_mock": {
+            "type": "boolean",
+            "const": true,
+            "title": "Is Mock",
+            "default": true
+          },
+          "festival_id": {
+            "type": "string",
+            "title": "Festival Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "stale",
+              "unavailable",
+              "unsupported",
+              "unverified"
+            ],
+            "title": "Status",
+            "default": "ok"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seoul_topis",
+              "operator",
+              "kma",
+              "seoul_citydata"
+            ],
+            "title": "Source"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "festival_id",
+          "coverage",
+          "source"
+        ],
+        "title": "WeatherResponse"
+      }
+    }
+  }
+}
