@@ -44,11 +44,35 @@ uv run --offline --with-requirements api/requirements.txt pytest tests/api -q
 
 ## A06 챗봇 작업 접수
 
-`POST /api/v1/assistant/runs`에 `request_id`와 `message`를 보냅니다. 기존 대화는 `conversation_id`로 이어갈 수 있습니다. 선택 항목으로 `context.festival_id`, `context.route_request_id`, `reference_date`를 보낼 수 있습니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 `request_id`와 본문을 다시 보내면 기존 접수 응답을 반환하며, 본문을 바꾸면 409를 반환합니다.
+`POST /api/v1/assistant/query`에 `request_id`와 `message`를 보냅니다. 기존 대화는 `conversation_id`로 이어갈 수 있습니다. 선택 항목으로 `context.festival_id`, `context.route_request_id`, `reference_date`를 보낼 수 있습니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 `request_id`와 본문을 다시 보내면 기존 접수 응답을 반환하며, 본문을 바꾸면 409를 반환합니다.
 
 ## A06-1 챗봇 작업 조회
 
 `GET /api/v1/assistant/runs/{run_id}`에 `X-Run-Access-Token`을 보냅니다. 첫 조회는 `running`이고, 두 번째부터 `succeeded` 또는 `failed`입니다. 귀가 질문의 결과에 경로 ID와 토큰이 있으면 A05에서 경로를 조회할 수 있습니다.
+
+## A07 공지·통제
+
+`GET /api/v1/festivals/{festival_id}/notices`는 공지와 교통 통제를 최근 효력 시작일 순으로 반환합니다. `type`으로 공지 종류를 고를 수 있습니다. 기본값인 `active_only=true`에서는 모의 기준 시각인 2026년 11월 22일 낮 12시(한국 시간)에 유효한 공지를 반환합니다. 종료된 공지까지 보려면 `active_only=false`를 지정합니다.
+
+## A09 날씨
+
+`GET /api/v1/festivals/{festival_id}/weather`는 현재 기온, 강수량, 강수 형태, 기상청 격자 좌표를 반환합니다. 예보 상태는 `unverified`입니다. 축제 좌표가 없으면 `unavailable`과 `FESTIVAL_LOCATION_UNKNOWN`을 반환합니다.
+
+## A10 혼잡 구역
+
+`GET /api/v1/festivals/{festival_id}/crowd`는 서울의 검증된 혼잡 구역과 예보 3건을 반환합니다. 서울 밖이거나 검증된 구역이 연결되지 않은 축제는 `unsupported`이며, 축제 좌표가 없으면 `unavailable`입니다.
+
+## A11 관심 축제 목록
+
+`GET /api/v1/me/favorites`는 `Authorization: Bearer <access_token>`에 해당하는 사용자의 관심 축제를 반환합니다. 기본값은 최근에 저장한 순서로 첫 페이지 20건입니다. `sort=start_date`로 축제 시작일 순으로 정렬하고 `page`와 `page_size`로 페이지를 선택할 수 있습니다.
+
+## A12 관심 축제 저장
+
+`PUT /api/v1/me/favorites/{festival_id}`에 액세스 토큰을 보냅니다. 처음 저장하면 201을 반환합니다. 이미 저장된 축제는 기존 `saved_at`을 유지하며 200을 반환합니다.
+
+## A13 관심 축제 삭제
+
+`DELETE /api/v1/me/favorites/{festival_id}`에 액세스 토큰을 보냅니다. 관심 목록에서 삭제하면 204를 반환합니다. 저장한 적이 없는 축제의 삭제도 204를 반환합니다.
 
 ## A32 가입
 
@@ -78,6 +102,15 @@ A04와 A25 접수 요청에 아래 헤더 값을 지정할 수 있습니다.
 | `async_timeout` | 202 `queued` | `processing` → `timed_out` (`ROUTE_TIMEOUT`) |
 | `overloaded` | 503 `ROUTE_OVERLOADED` | 해당 없음 |
 | 기타 | 422 `VALIDATION_ERROR` | 해당 없음 |
+
+A07, A09, A10 요청에도 `X-Mock-Scenario`를 보낼 수 있습니다. 축제 조회와 좌표·지원 범위를 먼저 확인합니다. 공지 조회에는 좌표가 필요 없습니다.
+
+| 값 | 응답 |
+| --- | --- |
+| `ok` (기본) | 200 `ok` |
+| `stale` | 200 `stale`, 기존 데이터와 오래된 정보 안내 |
+| `source_error` | 200 `unavailable`, 재시도 가능한 `SOURCE_RESULT_ERROR` |
+| 기타 | 422 `VALIDATION_ERROR` |
 
 ## 가상 축제 6건
 
@@ -116,7 +149,7 @@ curl -sS 'http://localhost:8000/api/v1/routes/return/<route_request_id>' \
 접수 응답의 ID와 토큰을 아래 조회 명령에 넣고 두 번 호출합니다.
 
 ```sh
-curl -sS -X POST 'http://localhost:8000/api/v1/assistant/runs' \
+curl -sS -X POST 'http://localhost:8000/api/v1/assistant/query' \
   -H 'Content-Type: application/json' \
   -d '{"request_id":"assistant-demo-001","message":"귀가 경로 알려 줘","context":{"festival_id":"fst_000001"}}'
 

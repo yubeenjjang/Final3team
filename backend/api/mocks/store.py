@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from itertools import count
 from threading import Lock
 
 from api.mocks.festivals import FESTIVALS
@@ -73,6 +74,16 @@ retired_refresh_tokens: dict[str, str] = {}
 auth_lock = Lock()
 
 
+@dataclass(frozen=True)
+class FavoriteRecord:
+    saved_at: datetime
+    sequence: int
+
+
+favorites_by_user: dict[str, dict[str, FavoriteRecord]] = {}
+favorite_sequence = count()
+
+
 def reset_store() -> None:
     with assistant_lock, route_lock, auth_lock:
         festivals.clear()
@@ -89,6 +100,7 @@ def reset_store() -> None:
         access_sessions.clear()
         refresh_sessions.clear()
         retired_refresh_tokens.clear()
+        favorites_by_user.clear()
 
 
 reset_store()

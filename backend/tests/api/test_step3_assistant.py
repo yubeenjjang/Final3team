@@ -4,11 +4,12 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
+QUERY = "/api/v1/assistant/query"
 RUNS = "/api/v1/assistant/runs"
 
 
 def _start(client: TestClient, **fields: object) -> dict:
-    response = client.post(RUNS, json={"request_id": "assistant-001", "message": "축제 알려줘", **fields})
+    response = client.post(QUERY, json={"request_id": "assistant-001", "message": "축제 알려줘", **fields})
     assert response.status_code == 202
     assert response.headers["X-Mock"] == "true"
     body = response.json()
@@ -37,9 +38,14 @@ def test_R14_accepted_and_idempotent(client: TestClient) -> None:
 
     _poll(client, run)
     assert _start(client) == run
-    conflict = client.post(RUNS, json={"request_id": "assistant-001", "message": "다른 질문"})
+    conflict = client.post(QUERY, json={"request_id": "assistant-001", "message": "다른 질문"})
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+def test_R14_legacy_submission_address_is_closed(client: TestClient) -> None:
+    response = client.post(RUNS, json={"request_id": "assistant-001", "message": "축제"})
+    assert response.status_code in (404, 405)
 
 
 @pytest.mark.parametrize(
@@ -56,7 +62,7 @@ def test_R14_accepted_and_idempotent(client: TestClient) -> None:
     ],
 )
 def test_R14_invalid_input(client: TestClient, fields: dict, invalid_field: str) -> None:
-    response = client.post(RUNS, json={"request_id": "assistant-001", "message": "축제", **fields})
+    response = client.post(QUERY, json={"request_id": "assistant-001", "message": "축제", **fields})
     assert response.status_code == 422
     error = response.json()["error"]
     assert error["code"] == "VALIDATION_ERROR"
@@ -75,7 +81,7 @@ def test_R14_existing_and_unknown_conversation(client: TestClient) -> None:
     assert second["conversation_id"] == first["conversation_id"]
     assert second["run_id"] != first["run_id"]
     response = client.post(
-        RUNS, json={"request_id": "assistant-003", "message": "축제", "conversation_id": "cv_zzzzzz"}
+        QUERY, json={"request_id": "assistant-003", "message": "축제", "conversation_id": "cv_zzzzzz"}
     )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
