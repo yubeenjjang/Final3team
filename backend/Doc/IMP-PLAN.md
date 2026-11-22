@@ -39,12 +39,12 @@
 - `api/mocks/store.py`에 귀갓길 저장 칸 추가는 허용(1단계 칸 삭제·이름 변경 금지)
 
 **체크리스트**
-- [ ] R10 입력 모델(Endpoint, 둘 다 축제 거부)
-- [ ] R11 A04 판단 순서·시나리오·멱등·200/202 본문
-- [ ] R12 A05 토큰·상태 진행·오류 본문
-- [ ] R13 A25
-- [ ] `api/services/mock_routes.py`에 3단계가 쓸 함수 `create_ready_route(festival_id: str, destination_query: str) -> tuple[str, str]`(route_request_id, route_access_token) 제공
-- [ ] 1단계 시험 포함 전부 통과
+- [x] R10 입력 모델(Endpoint, 둘 다 축제 거부)
+- [x] R11 A04 판단 순서·시나리오·멱등·200/202 본문
+- [x] R12 A05 토큰·상태 진행·오류 본문
+- [x] R13 A25
+- [x] `api/services/mock_routes.py`에 3단계가 쓸 함수 `create_ready_route(festival_id: str, destination_query: str) -> tuple[str, str]`(route_request_id, route_access_token) 제공
+- [x] 1단계 시험 포함 전부 통과
 - [ ] commit `feat(api): mock server step2 — return/visit routes A04 A05 A25`
 
 ## 3단계 — 챗봇 작업·인증
