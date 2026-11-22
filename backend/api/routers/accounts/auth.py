@@ -1,1 +1,3 @@
-# 회원가입, 로그인, 토큰 API
+from fastapi import APIRouter
+
+router = APIRouter()

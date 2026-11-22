@@ -1,1 +1,3 @@
-# 축제 가는 길과 귀가 경로 API
+from fastapi import APIRouter
+
+router = APIRouter()
