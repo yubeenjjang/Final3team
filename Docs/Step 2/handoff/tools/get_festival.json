@@ -1,0 +1,17 @@
+{
+  "name": "get_festival",
+  "description": "축제 하나의 장소·좌표·일정·출처를 확인한다. 귀가 출발점을 확인하거나 사용자가 고른 축제를 자세히 볼 때 쓴다. 어떤 축제인지 모르면 쓰지 말고 묻는다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "festival_id": {
+        "type": "string",
+        "description": "축제 ID (search_festivals 결과의 festival_id 그대로)"
+      }
+    },
+    "required": [
+      "festival_id"
+    ],
+    "additionalProperties": false
+  }
+}

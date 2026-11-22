@@ -1,0 +1,29 @@
+{
+  "name": "get_route_metrics",
+  "description": "(운영자 맥락) 귀가 조회 지표(요청량·p95·대기열·거절·중복률·내부/외부 지연)를 본다. 원인을 구분할 때 쓴다. 사건 또는 부하 시험 ID를 알면 함께 넣는다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "incident_id": {
+        "type": "string",
+        "description": "사건 ID (대화·운영 맥락에 주어진 incident_id 그대로)"
+      },
+      "simulation_id": {
+        "type": "string",
+        "description": "부하 시험 ID (있을 때만)"
+      },
+      "window": {
+        "type": "string",
+        "enum": [
+          "10s",
+          "1m",
+          "5m",
+          "15m"
+        ],
+        "default": "5m"
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}
