@@ -10,12 +10,16 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 ```
 시험: `uv run --with-requirements api/requirements.txt pytest tests/api -q` → 112개 통과(11/22).
 
+웹 화면(1차): `cd frontend && npm install && cp .env.local.example .env.local`(카카오 키는 따로 받기) → `npm run dev` → `http://localhost:3000`. 자세한 건 `frontend/README.md`.
+
 ## 누가 무엇을 보나
 | 팀원 | 문서 |
 |---|---|
 | 이수언·정예진 (화면) | [프론트_모의API_연결.md](프론트_모의API_연결.md) — 화면(수언님 UI 흐름도)별로 부를 API·시나리오 |
 | 한다영 (에이전트) | [에이전트_도구_인계.md](에이전트_도구_인계.md) + [`tools/`](tools/) 도구 13개 JSON Schema |
 | 신유빈·한태경 | 아래 '함께 쓰는 규칙' |
+| **전원** | [월요일_역할별_할일_결정사항.md](월요일_역할별_할일_결정사항.md) — 이번 주 할 일·같이 정할 것(D1~D9)·각자 질문 |
+| 신유빈·한다영·한태경 | [오토힐링_강사자료_대조.md](오토힐링_강사자료_대조.md) — 강사 11/17 자료 vs 현재 설계, 빠진 것 G1~G6, '한 장 정리' 초안 |
 
 ## 지금 되는 API (모의)
 | API | 주소 | 비고 |
