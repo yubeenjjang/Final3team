@@ -27,6 +27,15 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertEqual(calls, [("get_official_notices", {"festival_id": "fst_000001"})])
         self.assertIn("공지가 없습니다", result.answer)
 
+    def test_real_crowd_response_keeps_replacement_label(self):
+        area = {"area_code": "POI009", "area_name": "광화문·덕수궁", "relation_type": "contains", "congest_level": "붐빔", "observed_at": "2026-11-23T15:25:00+09:00", "forecast": []}
+        data = {"festival_id": "fst_000001", "status": "ok", "coverage": {"scope": "seoul_only", "region_code": "SEOUL", "supported": True}, "source": "seoul_citydata", "is_mock": False, "areas": [area], "nearby_areas": [{"area_code": "POI009", "area_name": area["area_name"], "distance_m": 0, "status": "ok", "data": area, "is_estimate": True}], "is_estimate": True}
+        result = run_festival_graph(lambda *_: {"ok": True, "data": data, "is_mock": False}, FestivalRequest("crowd", festival_id="fst_000001"))
+        self.assertEqual(result.outcome, "answered")
+        self.assertEqual([call["tool"] for call in result.used_tools], ["get_crowd"])
+        self.assertIn("최근 4주 같은 요일·시간대 평균", result.answer)
+        self.assertTrue(result.evidence[0]["is_estimate"])
+
     def test_unsupported_crowd(self):
         data = {"festival_id": "fst_000003", "status": "unsupported", "areas": []}
         result = run_festival_graph(lambda *_: {"ok": True, "data": data}, FestivalRequest("crowd", festival_id="fst_000003"))

@@ -158,7 +158,7 @@ class FestivalAgent:
             return self._end("unavailable", "혼잡 자료의 구역·시각·수준을 확인할 수 없습니다.", trace, used)
         is_estimate = data.get("is_estimate") is True
         prefix = "오래된 자료입니다. " if status == "stale" else ""
-        basis = "최근 4주 같은 시간대 평균" if is_estimate else "관측"
+        basis = "최근 4주 같은 요일·시간대 평균" if is_estimate else "관측"
         answer = f"{prefix}{area['area_name']} 지역 혼잡은 {area['congest_level']}입니다. {basis} 기준 시각 {observed_at}. 행사장 내부나 이동 경로의 혼잡을 뜻하지 않습니다.{mock}"
         evidence = [{"festival_id": request.festival_id, "area_name": area["area_name"], "observed_at": observed_at, "status": status, "coverage": coverage, "is_estimate": is_estimate, "source": data.get("source")}]
         return self._end("answered", answer, trace + ["stale" if status == "stale" else "answer"], used, evidence)

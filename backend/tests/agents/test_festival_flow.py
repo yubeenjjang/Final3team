@@ -55,7 +55,7 @@ class FestivalFlowTests(unittest.TestCase):
         data = {"festival_id": "fst_000001", "status": "ok", "coverage": {"scope": "seoul_only", "region_code": "SEOUL", "supported": True}, "source": "seoul_citydata", "is_estimate": True, "areas": [{"area_name": "광화문", "congest_level": "붐빔", "observed_at": "2026-11-23T15:00:00+09:00"}]}
         result = FestivalAgent(lambda *_: {"ok": True, "data": data, "is_mock": False}).run(FestivalRequest("crowd", festival_id="fst_000001"))
         self.assertEqual(result.outcome, "answered")
-        self.assertIn("최근 4주 같은 시간대 평균", result.answer)
+        self.assertIn("최근 4주 같은 요일·시간대 평균", result.answer)
         self.assertEqual(result.evidence[0]["source"], "seoul_citydata")
         self.assertTrue(result.evidence[0]["is_estimate"])
 
