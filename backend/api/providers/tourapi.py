@@ -11,6 +11,7 @@ import httpx2
 
 BASE_URL = httpx2.URL(scheme="https", host="apis.data.go.kr", path="/B551011/KorService2/")
 COMMON_PARAMS = {"MobileOS": "ETC", "MobileApp": "noldaga", "_type": "json"}
+LIST_CALL_LIMIT = 900
 ERROR_MESSAGES = {
     "NO_KEY": "TourAPI 서비스 키를 설정해 주세요.",
     "KEY_ERROR": "TourAPI 서비스 키를 확인해 주세요.",
@@ -97,16 +98,29 @@ class TourApiClient:
             params["eventEndDate"] = end.isoformat().replace("-", "")
 
         festivals: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        total = None
         page = 1
         while True:
             params["pageNo"] = str(page)
-            body = self._get_body("searchFestival2", params)
+            body = self._get_body("searchFestival2", params, LIST_CALL_LIMIT)
             items = self._items(body)
+            page_total = self._total_count(body)
+            if total is None:
+                total = page_total
+            if page_total != total or str(body.get("pageNo", page)) != str(page):
+                raise TourApiError("RESULT_ERROR", "목록 페이지 정보가 일치하지 않습니다.")
+            for item in items:
+                value = item.get("contentid")
+                content_id = str(value).strip() if value is not None else ""
+                if not content_id or content_id in seen_ids:
+                    raise TourApiError("RESULT_ERROR", "목록에 비어 있거나 중복된 축제 ID가 있습니다.")
+                seen_ids.add(content_id)
             festivals.extend(items)
-            if len(festivals) >= self._total_count(body):
+            if len(festivals) == total:
                 return festivals
-            if not items:
-                raise TourApiError("RESULT_ERROR", "목록 페이지에 항목이 없습니다.")
+            if len(festivals) > total or not items:
+                raise TourApiError("RESULT_ERROR", "목록 항목 수가 전체 건수와 일치하지 않습니다.")
             page += 1
 
     def get_common(

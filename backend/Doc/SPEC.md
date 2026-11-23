@@ -34,7 +34,7 @@
 
 ### R5. 외부 호출 없음
 - `httpx`·`requests`·`urllib`로 외부 주소를 부르는 코드가 없다. API 키·환경변수를 읽지 않는다.
-- **확인:** 시험 `test_R5_no_external_calls` — `api/` 아래 `.py`에서 `http://`·`https://` 문자열이 들어간 줄은 허용 목록(이미지 주소 `https://tong.visitkorea.or.kr/`, `localhost`)만 있음.
+- **확인** `test_R5_no_external_calls`에서 모의 API 경로의 HTTP·소켓 라이브러리 호출을 검사한다. URL 문자열은 데이터로 허용한다. 실조회 전용 공급원 어댑터와 오프라인 적재는 모의 API 검사 범위에서 제외한다.
 
 ## 1. 축제 (1단계)
 

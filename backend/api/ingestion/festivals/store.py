@@ -8,11 +8,15 @@ from typing import Literal
 from sqlalchemy import Connection, Engine, column, func, select, table
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.exc import DataError, IntegrityError
+from sqlalchemy.sql.selectable import ScalarSelect
 from ulid import ULID
 
 from api.ingestion.festivals.normalize import KST, FestivalRecord
 
 SOURCE_ID = "tourapi"
+PRESENCE_FIELD = "source_presence"
+MISSING = "missing_from_source"
+REAPPEARED = "reappeared_in_source"
 DETAIL_FIELDS = ("venue_name", "summary", "admission_fee_text", "official_url", "organizer")
 FESTIVAL_FIELDS = (
     "title", "start_date", "end_date", "address", "latitude", "longitude", "region_code",
@@ -39,7 +43,7 @@ FESTIVALS = table(
     column("review_status"), column("published_at"), column("collected_at"), column("last_synced_at"),
 )
 FESTIVAL_CHANGE_HISTORY = table(
-    "festival_change_history", column("festival_id"), column("field"),
+    "festival_change_history", column("change_id"), column("festival_id"), column("field"),
     column("before_value", JSONB), column("after_value", JSONB), column("source_id"),
     column("actor"), column("changed_at"),
 )
@@ -47,7 +51,7 @@ SOURCE_FESTIVALS = FESTIVAL_SOURCES.join(
     FESTIVALS, FESTIVAL_SOURCES.c.festival_id == FESTIVALS.c.festival_id
 )
 
-FieldValue = str | date | Decimal | None
+FieldValue = str | date | Decimal | dict[str, str] | None
 ErrorEntry = dict[str, str | None]
 UpsertAction = Literal["inserted", "unchanged", "updated"]
 
@@ -57,6 +61,18 @@ class StoredFestival:
     source_updated_at: datetime | None
     raw_checksum: str
     details: dict[str, str | None]
+
+
+@dataclass(frozen=True)
+class ListingScope:
+    since: date
+    until: date | None
+
+    def as_json(self) -> dict[str, str | None]:
+        return {
+            "endpoint": "searchFestival2", "region": "national",
+            "since": self.since.isoformat(), "until": self.until.isoformat() if self.until else None,
+        }
 
 
 @dataclass(frozen=True)
@@ -98,7 +114,7 @@ def changed_fields(
     return {name: value for name, value in values.items() if previous[name] != value}
 
 
-def _json_value(value: FieldValue) -> str | float | None:
+def _json_value(value: FieldValue) -> str | float | dict[str, str] | None:
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
@@ -127,14 +143,32 @@ def _write_history(
     ])
 
 
+def _record_presence(
+    connection: Connection, festival_id: str, job_id: str, reason: str, now: datetime,
+    previous: dict[str, str] | None = None,
+) -> None:
+    _write_history(
+        connection, festival_id, {PRESENCE_FIELD: previous},
+        {PRESENCE_FIELD: {"reason": reason, "job_id": job_id}}, now,
+    )
+
+
+def _last_presence() -> ScalarSelect[dict[str, str]]:
+    return select(FESTIVAL_CHANGE_HISTORY.c.after_value).where(
+        FESTIVAL_CHANGE_HISTORY.c.festival_id == FESTIVALS.c.festival_id,
+        FESTIVAL_CHANGE_HISTORY.c.source_id == SOURCE_ID,
+        FESTIVAL_CHANGE_HISTORY.c.field == PRESENCE_FIELD,
+    ).order_by(FESTIVAL_CHANGE_HISTORY.c.change_id.desc()).limit(1).scalar_subquery()
+
+
 def _upsert(
-    connection: Connection, record: FestivalRecord, job_id: str, now: datetime
+    connection: Connection, record: FestivalRecord, job_id: str, now: datetime,
 ) -> UpsertAction:
     source = (FESTIVAL_SOURCES.c.source_id == SOURCE_ID) & (
         FESTIVAL_SOURCES.c.source_item_id == record.source_item_id
     )
     previous = connection.execute(
-        select(FESTIVALS, FESTIVAL_SOURCES.c.raw_checksum)
+        select(FESTIVALS, FESTIVAL_SOURCES.c.raw_checksum, _last_presence().label("source_presence"))
         .select_from(SOURCE_FESTIVALS).where(source).with_for_update(of=FESTIVALS)
     ).mappings().one_or_none()
     action = upsert_action(previous["raw_checksum"] if previous else None, record.raw_checksum)
@@ -159,7 +193,10 @@ def _upsert(
         action = "unchanged"
     changes = {}
     if action == "updated":
-        changes = changed_fields(previous, festival_values(record, previous, now))
+        values = festival_values(record, previous, now)
+        if previous["source_presence"] and previous["review_status"] == "pending":
+            values.update(review_status="pending", published_at=None)
+        changes = changed_fields(previous, values)
         sync["raw_checksum"] = record.raw_checksum
     connection.execute(FESTIVALS.update().where(FESTIVALS.c.festival_id == festival_id).values(
         last_synced_at=now, **changes,
@@ -216,6 +253,7 @@ class FestivalStore:
         *,
         failed: bool = False,
         redact: Callable[[str], str] = str,
+        scope: ListingScope | None = None,
     ) -> JobResult:
         job_errors = errors.copy()
         job_filter = INGESTION_JOBS.c.job_id == job_id
@@ -224,20 +262,32 @@ class FestivalStore:
                 select(INGESTION_JOBS).where(job_filter).with_for_update()
             ).mappings().one()
             if previous["status"] != "running":
-                errors[:] = previous["error"] or []
+                saved = previous["error"]
+                errors[:] = saved["errors"] if isinstance(saved, dict) else saved or []
                 return JobResult(job_id, previous["status"], previous["scanned"], previous["inserted"],
                                  previous["updated"], previous["rejected"])
+            track_presence = not failed and self._is_current_job(connection, previous["started_at"])
             counts = Counter() if failed else self._save_records(
                 connection, job_id, records, job_errors, redact,
             )
             ended_at = datetime.now(KST)
             status = "failed" if failed else "partial" if job_errors else "success"
+            job_data = job_errors or None
+            seen = {record.source_item_id for record in records if record.source_item_id}
+            if track_presence and seen:
+                self._mark_reappeared(connection, job_id, seen, ended_at)
+            if track_presence and status == "success" and scope is not None:
+                self._mark_missing(connection, job_id, scope, seen, ended_at)
+                job_data = {
+                    "errors": job_errors,
+                    "listing": {"scope": scope.as_json(), "ids": sorted({redact(item) for item in seen})},
+                }
             result = JobResult(
                 job_id, status, len(records), counts["inserted"], counts["updated"], counts["rejected"],
             )
             connection.execute(INGESTION_JOBS.update().where(job_filter).values(
                 status=status, scanned=result.scanned, inserted=result.inserted, updated=result.updated,
-                rejected=result.rejected, ended_at=ended_at, error=job_errors or None,
+                rejected=result.rejected, ended_at=ended_at, error=job_data,
             ))
             if status == "success":
                 connection.execute(DATA_SOURCES.update().where(DATA_SOURCES.c.source_id == SOURCE_ID).values(
@@ -245,6 +295,72 @@ class FestivalStore:
                 ))
         errors[:] = job_errors
         return result
+
+    def _is_current_job(self, connection: Connection, started_at: datetime) -> bool:
+        # 같은 공급원의 업서트와 누락 판단을 함께 직렬화한다.
+        connection.execute(select(DATA_SOURCES.c.source_id).where(
+            DATA_SOURCES.c.source_id == SOURCE_ID,
+        ).with_for_update(key_share=True)).scalar_one()
+        newer = select(INGESTION_JOBS.c.job_id).where(
+            INGESTION_JOBS.c.source_id == SOURCE_ID,
+            INGESTION_JOBS.c.status.in_(("success", "partial")),
+            INGESTION_JOBS.c.started_at > started_at,
+        )
+        return not connection.execute(select(newer.exists())).scalar_one()
+
+    def _mark_missing(
+        self, connection: Connection, job_id: str, scope: ListingScope, seen: set[str], now: datetime,
+    ) -> None:
+        listing = INGESTION_JOBS.c.error["listing"]
+        previous_ids = connection.execute(
+            select(listing["ids"]).where(
+                INGESTION_JOBS.c.source_id == SOURCE_ID,
+                INGESTION_JOBS.c.status == "success",
+                listing["scope"] == scope.as_json(),
+            ).order_by(INGESTION_JOBS.c.started_at.desc(), INGESTION_JOBS.c.job_id.desc()).limit(1)
+        ).scalar_one_or_none()
+        missing = set(previous_ids or ()) - seen
+        if not missing:
+            return
+        sources = FESTIVAL_SOURCES.alias("seen_sources")
+        still_listed = select(sources.c.source_item_id).where(
+            sources.c.festival_id == FESTIVALS.c.festival_id,
+            sources.c.source_id == SOURCE_ID,
+            sources.c.source_item_id.in_(seen),
+        ).exists()
+        candidates = select(FESTIVALS).select_from(SOURCE_FESTIVALS).where(
+            FESTIVAL_SOURCES.c.source_id == SOURCE_ID,
+            FESTIVAL_SOURCES.c.source_item_id.in_(missing),
+            ~still_listed,
+            FESTIVALS.c.start_date >= scope.since,
+            FESTIVALS.c.review_status == "approved",
+            FESTIVALS.c.published_at.is_not(None),
+        )
+        if scope.until is not None:
+            candidates = candidates.where(FESTIVALS.c.start_date <= scope.until)
+        rows = connection.execute(candidates.with_for_update(of=FESTIVALS)).mappings().unique()
+        changes = {"review_status": "pending", "published_at": None}
+        for row in rows:
+            festival_id = row["festival_id"]
+            connection.execute(FESTIVALS.update().where(
+                FESTIVALS.c.festival_id == festival_id,
+            ).values(**changes))
+            _write_history(connection, festival_id, row, changes, now)
+            _record_presence(connection, festival_id, job_id, MISSING, now)
+
+    def _mark_reappeared(
+        self, connection: Connection, job_id: str, seen: set[str], now: datetime,
+    ) -> None:
+        presence = _last_presence()
+        rows = connection.execute(
+            select(FESTIVALS.c.festival_id, presence).select_from(SOURCE_FESTIVALS).where(
+                FESTIVAL_SOURCES.c.source_id == SOURCE_ID,
+                FESTIVAL_SOURCES.c.source_item_id.in_(seen),
+                presence["reason"].astext == MISSING,
+            ).distinct()
+        )
+        for festival_id, previous in rows:
+            _record_presence(connection, festival_id, job_id, REAPPEARED, now, previous)
 
     def _save_records(
         self,
@@ -254,10 +370,6 @@ class FestivalStore:
         errors: list[ErrorEntry],
         redact: Callable[[str], str],
     ) -> Counter[str]:
-        # 같은 출처의 저장을 직렬화해 아직 없는 contentid도 중복 삽입되지 않게 한다.
-        connection.execute(select(DATA_SOURCES.c.source_id).where(
-            DATA_SOURCES.c.source_id == SOURCE_ID,
-        ).with_for_update(key_share=True)).scalar_one()
         now = datetime.now(KST)
         counts: Counter[str] = Counter()
         for record in records:
