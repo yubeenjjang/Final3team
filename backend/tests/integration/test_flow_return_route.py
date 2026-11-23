@@ -185,3 +185,57 @@ def test_I07_visit_then_return_are_separate(flow: Flow) -> None:
         flow.client.get(back["status_url"], headers={ROUTE_TOKEN: visit["route_access_token"]}),
         403, "FORBIDDEN",
     )
+
+
+_INFO_FILLED = {"notices": "items", "weather": "data", "crowd": "areas"}
+
+
+@pytest.mark.parametrize("kind", ["notices", "weather", "crowd"])
+def test_I13_side_info_degraded_but_return_route_works(flow: Flow, kind: str) -> None:
+    """주변 정보(공지·날씨·혼잡)가 공급원 오류이거나 오래됐어도, 이유가 표시되고 귀갓길은 정상."""
+    field = _INFO_FILLED[kind]
+
+    broken = flow.info("fst_000001", kind, scenario="source_error")
+    assert broken["status"] == "unavailable"  # HTTP 오류가 아니라 200 + 상태로 알려준다
+    assert broken["error"]["code"] == "SOURCE_RESULT_ERROR"
+    assert broken["error"]["retryable"] is True
+    assert not broken.get(field)  # 오류일 때 값을 지어내지 않는다
+
+    old = flow.info("fst_000001", kind, scenario="stale")
+    assert old["status"] == "stale"
+    assert "정보가 오래됐어요" in old["notices"]
+    assert old.get(field)  # 오래된 값이라도 보여 주되 표시를 붙인다
+
+    fresh = flow.info("fst_000001", kind)
+    assert fresh["status"] == "ok"
+    assert "정보가 오래됐어요" not in fresh["notices"]
+
+    route = flow.poll_route(
+        flow.ok(
+            flow.submit_route(RETURN, {"request_id": f"i13-{kind}-0001", "festival_id": "fst_000001",
+                                       "destination": {"query": "서울역"}}),
+            202,
+        )
+    )
+    assert route["route_status"] == "ready"
+
+
+def test_I14_sync_ready_result_same_as_later_lookup(flow: Flow) -> None:
+    """바로 결과가 오는 경우(200): 받은 결과와 나중에 다시 조회한 결과가 같고, 같은 토큰으로 조회됨."""
+    festival = flow.festival("fst_000003")
+    immediate = flow.ok(
+        flow.submit_route(RETURN, {"request_id": "i14-return-0001", "festival_id": "fst_000003",
+                                   "destination": {"query": "부산역"}}, scenario="sync_ready"),
+        200,
+    )
+    assert immediate["route_status"] == "ready"
+    assert immediate["route_access_token"].startswith("rrt_")
+    assert_route_matches_festival(immediate, festival)
+
+    later = flow.poll_route({
+        "status_url": f"{RETURN}/{immediate['route_request_id']}",
+        "route_access_token": immediate["route_access_token"],
+    })
+    assert flow.polls == ["ready"]  # 기다릴 필요 없이 첫 조회부터 결과
+    for key in ("route_request_id", "festival_id", "origin", "destination", "route_candidates", "coverage"):
+        assert later[key] == immediate[key]

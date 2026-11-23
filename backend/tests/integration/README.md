@@ -27,6 +27,20 @@ uv run --with-requirements api/requirements.txt pytest tests/integration -q
 | I10 | 토큰 갱신 → 옛 토큰 재사용 | 재사용 감지 시 새 토큰까지 폐기 |
 | I11 | 챗봇 귀가 질문 → 챗봇이 준 경로 번호·토큰으로 귀가 조회 | 질문한 축제로 경로가 만들어짐, 같은 대화 번호로 이어 질문 |
 | I12 | 챗봇 실패 | 실패 안내가 나오고 축제 검색·귀갓길은 그대로 동작 |
+| I13 | 주변 정보(공지·날씨·혼잡) 공급원 오류·오래된 정보 | `source_error`는 200 `unavailable` + 재시도 가능, 값을 지어내지 않음 · `stale`은 값과 "정보가 오래됐어요" 표시 · 그래도 귀갓길은 정상 |
+| I14 | 바로 결과가 오는 귀갓길(`sync_ready`) | 200 결과와 나중에 다시 조회한 결과가 같음, 첫 조회부터 `ready` |
+
+## 시나리오 헤더 사용 범위
+
+`MOCK_API.md`의 `X-Mock-Scenario` 값을 모두 흐름에서 쓴다.
+
+| 값 | 흐름 |
+|---|---|
+| `async_ready`(기본) | I01 등 대부분 |
+| `async_unavailable`·`async_timeout` | I03 |
+| `overloaded` | I04 |
+| `sync_ready` | I14 |
+| `stale`·`source_error` | I13 |
 
 ## 시험이 고장을 잡는지 확인한 기록 (2026-11-23)
 
@@ -36,3 +50,5 @@ uv run --with-requirements api/requirements.txt pytest tests/integration -q
 |---|---|
 | 첫 구간 좌표를 `[경도, 위도]`로 뒤집음 | 5개 실패 (I01·I02·I07·I08·I11) |
 | 챗봇이 질문한 축제 대신 항상 `fst_000001`로 경로를 만듦 | I11 실패 |
+| 오래된 정보에 "정보가 오래됐어요" 표시를 붙이지 않음 | I13 3개 실패 |
+| 공급원 오류인데 값을 그대로 채움 | I13 3개 실패 |
