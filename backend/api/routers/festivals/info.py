@@ -2,9 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header, Path, Query
 
-from api.schemas.festival_info import CrowdResponse, NoticeResponse, NoticeType, WeatherResponse
+from api.schemas.festival_info import (
+    CrowdResponse, NoticeResponse, NoticeType, RealCrowdResponse, WeatherResponse,
+)
 from api.schemas.festivals import FESTIVAL_ID_PATTERN
-from api.services import mock_festival_info
+from api.services import mock_festival_info, seoul_crowd
 
 router = APIRouter(prefix="/festivals")
 FestivalId = Annotated[str, Path(pattern=FESTIVAL_ID_PATTERN)]
@@ -27,5 +29,9 @@ async def get_weather(festival_id: FestivalId, scenario: Scenario = None) -> Wea
 
 
 @router.get("/{festival_id}/crowd")
-async def get_crowd(festival_id: FestivalId, scenario: Scenario = None) -> CrowdResponse:
+async def get_crowd(
+    festival_id: FestivalId, scenario: Scenario = None,
+) -> RealCrowdResponse | CrowdResponse:
+    if seoul_crowd.uses_real_crowd():
+        return await seoul_crowd.get_service().get_crowd(festival_id)
     return mock_festival_info.get_crowd(festival_id, scenario)

@@ -1,0 +1,5973 @@
+{
+  "schema_version": 1,
+  "usage_note": "참고용(승인 방식 폐기). 2026-11-23 권오현 반경 방식 결정 후 런타임에서 사용하지 않습니다.",
+  "approved": false,
+  "sources": {
+    "seoul": {
+      "publisher": "서울특별시",
+      "dataset": "서울시 실시간 인구데이터 (OA-21778)",
+      "url": "https://data.seoul.go.kr/dataList/OA-21778/A/1/datasetView.do",
+      "license": "공공누리 1유형",
+      "attachment_updated": "2026-04-14",
+      "attachment_sha256": {
+        "서울시 주요 121장소 목록.xlsx": "60aedf332efef1535623e22c14af2acd6b3ccfa35e60423fbbea8cc8188f1ff7",
+        "서울시 주요 121장소 영역.zip": "fda69cd2ee3812103931cfd0ef1a0146336f06a23b6e1c2e4f9e0653620262ac"
+      },
+      "place_count": 121
+    },
+    "festivals": {
+      "source": "TourAPI via NOLDAGA A02 (region=SEOUL) and A03",
+      "started_at": "2026-11-23T15:54:15+09:00",
+      "completed_at": "2026-11-23T15:54:22+09:00",
+      "pages": {
+        "upcoming": 1,
+        "ongoing": 1,
+        "ended": 2,
+        "cancelled": 1,
+        "unfiltered": 2
+      },
+      "event_status_counts": {
+        "ongoing": 13,
+        "upcoming": 9,
+        "ended": 166,
+        "cancelled": 0,
+        "needs_review": 0
+      }
+    }
+  },
+  "geometry": {
+    "source_crs": "EPSG:4326",
+    "calculation_crs": "EPSG:5179",
+    "predicate": "polygon_covers_point",
+    "boundary_review_distance_m": 25,
+    "radius_fallback_m": null,
+    "repaired_area_codes": [
+      "POI070"
+    ]
+  },
+  "counts": {
+    "candidate": 48,
+    "review_required": 80,
+    "unsupported": 60
+  },
+  "festivals": [
+    {
+      "festival_id": "fst_01M835BYKKNJ8CZP9RP09ST18D",
+      "name": "2026 숭례문 파수의식",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "숭례문 광장",
+      "address": "서울특별시 중구 세종대로 40 (남대문로4가)",
+      "lat": 37.559928,
+      "lng": 126.975361,
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI131",
+          "area_name": "숭례문",
+          "category": "인구밀집지역",
+          "center_distance_m": 70,
+          "boundary_distance_m": 131.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C3R1X8SRFG0NFMP1EJNJ",
+      "name": "《소장품, 시대의 장면들》",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "아르코미술관 제1,2전시실",
+      "address": "서울특별시 종로구 동숭길 3 (동숭동)",
+      "lat": 37.580502,
+      "lng": 127.003256,
+      "start_date": "2026-10-16",
+      "end_date": "2026-12-06",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 256,
+          "boundary_distance_m": 82.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835ANWQBTZGTHPNBVGC67Y5",
+      "name": "국악공연 진연",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "진연",
+      "address": "서울특별시 종로구 인사동5길 10 (인사동)",
+      "lat": 37.572865,
+      "lng": 126.985653,
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI078",
+          "area_name": "인사동",
+          "category": "발달상권",
+          "center_distance_m": 117,
+          "boundary_distance_m": 191.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B2T9ZHCXJHVN62MDVZS5",
+      "name": "비건·할랄뷰티페어",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "코엑스 B홀",
+      "address": "서울특별시 강남구 영동대로 513 (삼성동)",
+      "lat": 37.511865,
+      "lng": 127.059204,
+      "start_date": "2027-05-12",
+      "end_date": "2027-05-14",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI001",
+          "area_name": "강남 MICE 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 122,
+          "boundary_distance_m": 116.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BT416XTDZXS6XMMDFNKA",
+      "name": "2026 D.FESTA 소극장축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "공간아울",
+      "address": "서울특별시 종로구 대학로 120 (동숭동)",
+      "lat": 37.581876,
+      "lng": 127.002293,
+      "start_date": "2026-10-07",
+      "end_date": "2026-10-25",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 82,
+          "boundary_distance_m": 30.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BVCZ6PRGD93M12984YXH",
+      "name": "2026 글로벌 크리에이터 아트페어",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "홍대입구역 8번 출구 광장",
+      "address": "서울특별시 마포구 동교동",
+      "lat": 37.556896,
+      "lng": 126.924142,
+      "start_date": "2026-06-13",
+      "end_date": "2026-06-13",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI055",
+          "area_name": "홍대입구역(2호선)",
+          "category": "인구밀집지역",
+          "center_distance_m": 101,
+          "boundary_distance_m": 51.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BVKPM27M550EDPT50T0C",
+      "name": "2026 남산 나이트 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "남산공원 백범광장",
+      "address": "서울특별시 중구 회현동1가 100-115",
+      "lat": 37.554828,
+      "lng": 126.979249,
+      "start_date": "2026-10-23",
+      "end_date": "2026-11-14",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI091",
+          "area_name": "남산공원",
+          "category": "공원",
+          "center_distance_m": 1332,
+          "boundary_distance_m": 91.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BWWJ05ZXQY08B7PK8WES",
+      "name": "2026 로컬 그라운드 연남",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "연남동 동진시장 일대(미로길)",
+      "address": "서울특별시 마포구 동교로 262-6 (연남동)",
+      "lat": 37.562856,
+      "lng": 126.925414,
+      "start_date": "2026-10-11",
+      "end_date": "2026-10-11",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI073",
+          "area_name": "연남동",
+          "category": "발달상권",
+          "center_distance_m": 304,
+          "boundary_distance_m": 185.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BX8V82D2RG9255B49TDS",
+      "name": "2026 보드게임콘",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "코엑스 전시장 B1홀",
+      "address": "서울특별시 강남구 영동대로 513 (삼성동)",
+      "lat": 37.511865,
+      "lng": 127.059204,
+      "start_date": "2026-07-16",
+      "end_date": "2026-07-19",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI001",
+          "area_name": "강남 MICE 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 122,
+          "boundary_distance_m": 116.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BXXEZSA9W04PVMGGHKXY",
+      "name": "2026 서울 펫림픽",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "월드컵공원 평화광장",
+      "address": "서울특별시 마포구 월드컵로 243-48 (성산동)",
+      "lat": 37.563274,
+      "lng": 126.897908,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-25",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI106",
+          "area_name": "월드컵공원",
+          "category": "공원",
+          "center_distance_m": 1433,
+          "boundary_distance_m": 102.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BY0EN65CEWYS6TVWVKDJ",
+      "name": "2026 서울국제불교박람회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "COEX 전시장 B홀",
+      "address": "서울특별시 강남구 영동대로 513 (삼성동)",
+      "lat": 37.511865,
+      "lng": 127.059204,
+      "start_date": "2026-04-02",
+      "end_date": "2026-04-05",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI001",
+          "area_name": "강남 MICE 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 122,
+          "boundary_distance_m": 116.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BY1V5BDK4YZ05Z1EWFTM",
+      "name": "2026 서울도시농업박람회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울숲 동부여가센터 일대",
+      "address": "서울특별시 성동구 뚝섬로 273 (성수동1가)",
+      "lat": 37.543069,
+      "lng": 127.041799,
+      "start_date": "2026-10-16",
+      "end_date": "2026-10-17",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI101",
+          "area_name": "서울숲공원",
+          "category": "공원",
+          "center_distance_m": 367,
+          "boundary_distance_m": 46.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BY51ASQ1TG8KHPA9YA8W",
+      "name": "2026 서울뮤직페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "노들섬",
+      "address": "서울특별시 용산구 양녕로 445",
+      "lat": 37.517664,
+      "lng": 126.958036,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI092",
+          "area_name": "노들섬",
+          "category": "공원",
+          "center_distance_m": 57,
+          "boundary_distance_m": 80.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C0806PY0X3QY529HK1SB",
+      "name": "2026 전남 콘텐츠 페어 수도권 특별 체험전 〈10개의 이야기, 하나의 만남〉",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "아라아트센터",
+      "address": "서울특별시 종로구 인사동9길 26 (견지동)",
+      "lat": 37.57347,
+      "lng": 126.983624,
+      "start_date": "2026-11-21",
+      "end_date": "2026-11-22",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI078",
+          "area_name": "인사동",
+          "category": "발달상권",
+          "center_distance_m": 220,
+          "boundary_distance_m": 45.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C0VFJ64RPKAGQRY92753",
+      "name": "2026 책 읽는 대한민국 캠페인 선포식",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "코엑스 별마당 도서관 열린 무대",
+      "address": "서울특별시 강남구 영동대로 513 (삼성동)",
+      "lat": 37.511824,
+      "lng": 127.059159,
+      "start_date": "2026-04-23",
+      "end_date": "2026-04-23",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI001",
+          "area_name": "강남 MICE 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 121,
+          "boundary_distance_m": 110.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C167MS8X95VNKE17WRBK",
+      "name": "2026 크리에이티브X성수",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "에스팩토리",
+      "address": "서울특별시 성동구 연무장15길 11 (성수동2가)",
+      "lat": 37.542255,
+      "lng": 127.059466,
+      "start_date": "2026-10-05",
+      "end_date": "2026-10-11",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI068",
+          "area_name": "성수카페거리",
+          "category": "발달상권",
+          "center_distance_m": 265,
+          "boundary_distance_m": 197.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C1Q7CZ0FFNE77BS5BB0M",
+      "name": "2026 한복문화주간",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "국립중앙박물관 열린마당(기념행사)",
+      "address": "서울특별시 용산구 서빙고로 137 (용산동6가)",
+      "lat": 37.524702,
+      "lng": 126.97774,
+      "start_date": "2026-10-19",
+      "end_date": "2026-10-25",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI089",
+          "area_name": "국립중앙박물관·용산가족공원",
+          "category": "공원",
+          "center_distance_m": 390,
+          "boundary_distance_m": 53.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C26DXE41MB7GDCY9BGP8",
+      "name": "2026젊은안무자창작공연",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "대학로예술극장 소극장",
+      "address": "서울특별시 종로구 대학로10길 17 동숭동복합건물",
+      "lat": 37.582095,
+      "lng": 127.00318,
+      "start_date": "2026-05-03",
+      "end_date": "2026-05-10",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 132,
+          "boundary_distance_m": 112.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AH6P7J51XNTSAZTFFBP5",
+      "name": "가락 옥토버페스트",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "가락몰 3층 하늘공원",
+      "address": "서울특별시 송파구 양재대로 932 (가락동) 가락몰 3층 하늘공원",
+      "lat": 37.496025,
+      "lng": 127.110753,
+      "start_date": "2026-10-16",
+      "end_date": "2026-10-18",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI058",
+          "area_name": "가락시장",
+          "category": "발달상권",
+          "center_distance_m": 301,
+          "boundary_distance_m": 37.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AHHB3JMHZZMX9J6YJEA9",
+      "name": "감탄로드 여행가챠 팝업스토어",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "감탄로드 여행가챠 팝업스토어",
+      "address": "서울특별시 성동구 연무장5가길 22 (성수동2가)",
+      "lat": 37.543303,
+      "lng": 127.055023,
+      "start_date": "2026-08-14",
+      "end_date": "2026-08-16",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI068",
+          "area_name": "성수카페거리",
+          "category": "발달상권",
+          "center_distance_m": 144,
+          "boundary_distance_m": 185.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AHM3N2YMD7KV93T2KV86",
+      "name": "강남 미디어 윈터페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "삼성역 5, 6번 출구 앞 광장",
+      "address": "서울특별시 강남구 영동대로 511 (삼성동)",
+      "lat": 37.510396,
+      "lng": 127.061051,
+      "start_date": "2025-12-19",
+      "end_date": "2026-01-03",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI001",
+          "area_name": "강남 MICE 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 110,
+          "boundary_distance_m": 99.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AHNGFQKC19V1WKGX02RV",
+      "name": "강남청년축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "강남스퀘어광장",
+      "address": "서울특별시 강남구 강남대로 지하396 (역삼동) 강남역",
+      "lat": 37.498165,
+      "lng": 127.028308,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-19",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI014",
+          "area_name": "강남역",
+          "category": "인구밀집지역",
+          "center_distance_m": 78,
+          "boundary_distance_m": 223.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AHS7RZPX39KSTJBED6NK",
+      "name": "강동선사문화축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울 암사동 유적, 암사역사공원 일대",
+      "address": "서울특별시 강동구 올림픽로 875 (암사동)",
+      "lat": 37.559061,
+      "lng": 127.130601,
+      "start_date": "2026-10-16",
+      "end_date": "2026-10-18",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI011",
+          "area_name": "서울 암사동 유적",
+          "category": "고궁·문화유산",
+          "center_distance_m": 175,
+          "boundary_distance_m": 47.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AQWTD4GVB8THE9GERZW7",
+      "name": "노들 미리봄 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "노들섬 잔디마당",
+      "address": "서울특별시 용산구 양녕로 445 (이촌동) 양녕로 445,446 노들섬 잔디마당",
+      "lat": 37.517664,
+      "lng": 126.958036,
+      "start_date": "2026-04-03",
+      "end_date": "2026-04-03",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI092",
+          "area_name": "노들섬",
+          "category": "공원",
+          "center_distance_m": 57,
+          "boundary_distance_m": 80.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AT4BX0XBMPGPYBHZFCAR",
+      "name": "도심 속 바다축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "노량진 수산시장 축구장 일대",
+      "address": "서울특별시 동작구 노들로 688 (노량진동) 노량진 수산시장 축구장 일대",
+      "lat": 37.515012,
+      "lng": 126.944524,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-25",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI063",
+          "area_name": "노량진",
+          "category": "발달상권",
+          "center_distance_m": 131,
+          "boundary_distance_m": 137.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AZSVK0VHZYD4DEY30CHN",
+      "name": "백년나이트 야시장 「26년 10월 : WICKED」",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "강북구 백년시장",
+      "address": "서울특별시 강북구 한천로144길 16 (수유동)",
+      "lat": 37.641721,
+      "lng": 127.025914,
+      "start_date": "2026-10-30",
+      "end_date": "2026-10-31",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI036",
+          "area_name": "수유역",
+          "category": "인구밀집지역",
+          "center_distance_m": 32,
+          "boundary_distance_m": 249.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B2YTJKDBJA3W9RS95CT1",
+      "name": "비그림파워코리아와 함께하는 2026 서울시향 파크 콘서트",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울어린이대공원 숲속의무대",
+      "address": "서울특별시 광진구 능동로 216 (능동)",
+      "lat": 37.548846,
+      "lng": 127.080016,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-19",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI104",
+          "area_name": "어린이대공원",
+          "category": "공원",
+          "center_distance_m": 121,
+          "boundary_distance_m": 360.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B4Y3AWK6SYXJMKETGJ6X",
+      "name": "서울국악축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "반포 한강공원 달빛광장",
+      "address": "서울특별시 서초구 신반포로11길 40 (반포동) 반포 한강공원 달빛광장",
+      "lat": 37.507694,
+      "lng": 126.992731,
+      "start_date": "2026-06-19",
+      "end_date": "2026-06-19",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI095",
+          "area_name": "반포한강공원",
+          "category": "공원",
+          "center_distance_m": 292,
+          "boundary_distance_m": 33.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B50C2YEJSF9QH56Q52GM",
+      "name": "서울국제작가축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "아라아트센터",
+      "address": "서울특별시 종로구 인사동9길 26 (견지동)",
+      "lat": 37.57342,
+      "lng": 126.983627,
+      "start_date": "2026-09-11",
+      "end_date": "2026-09-16",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI078",
+          "area_name": "인사동",
+          "category": "발달상권",
+          "center_distance_m": 221,
+          "boundary_distance_m": 45.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B58FEXSKAXMNJJPFY2H6",
+      "name": "서울서커스페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "노들섬",
+      "address": "서울특별시 용산구 양녕로 445 (이촌동) 노들섬",
+      "lat": 37.517664,
+      "lng": 126.958036,
+      "start_date": "2026-05-04",
+      "end_date": "2026-05-05",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI092",
+          "area_name": "노들섬",
+          "category": "공원",
+          "center_distance_m": 57,
+          "boundary_distance_m": 80.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B5F06SS66Q18X91HQHAH",
+      "name": "서울어텀페스타 개막행사",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "뚝섬한강공원 수변무대 일대",
+      "address": "서울특별 광진구 자양동 704-1",
+      "lat": 37.528439,
+      "lng": 127.06964,
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-18",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI093",
+          "area_name": "뚝섬한강공원",
+          "category": "공원",
+          "center_distance_m": 185,
+          "boundary_distance_m": 37.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B5ZTZCT5AYXYJVFMMH74",
+      "name": "섬유기획전 《안식의 결 Texture of Rest》",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "우란문화재단 우란1경 / 우란2경",
+      "address": "서울특별시 성동구 연무장7길 11 (성수동2가)",
+      "lat": 37.543805,
+      "lng": 127.054414,
+      "start_date": "2026-07-24",
+      "end_date": "2026-10-02",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI068",
+          "area_name": "성수카페거리",
+          "category": "발달상권",
+          "center_distance_m": 214,
+          "boundary_distance_m": 200.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BBWCQC9YWH3XKJX0ZJ6C",
+      "name": "온 가족 책 잔치",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울특별시교육청정독도서관 야외정원",
+      "address": "서울특별시 종로구 북촌로5길 48 (화동) 서울특별시교육청정독도서관 야외정원",
+      "lat": 37.579682,
+      "lng": 126.982365,
+      "start_date": "2026-11-07",
+      "end_date": "2026-11-07",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI066",
+          "area_name": "북촌한옥마을",
+          "category": "발달상권",
+          "center_distance_m": 318,
+          "boundary_distance_m": 234.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BE73A66N1FS9N8MPW0AW",
+      "name": "의정부지 상설 전통문화행사",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "의정부지 역사유적광장",
+      "address": "서울특별시 종로구 종로1길 45 (세종로)",
+      "lat": 37.574618,
+      "lng": 126.978385,
+      "start_date": "2026-04-11",
+      "end_date": "2026-10-31",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 423,
+          "boundary_distance_m": 94.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BFDF9VWEMKTXCAXC2ME4",
+      "name": "전국빵지자랑",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "가락몰 판매동 3층 하늘공원",
+      "address": "서울특별시 송파구 양재대로 932 (가락동) 가락몰 판매동 3층 하늘공원",
+      "lat": 37.496025,
+      "lng": 127.110753,
+      "start_date": "2026-05-08",
+      "end_date": "2026-05-10",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI058",
+          "area_name": "가락시장",
+          "category": "발달상권",
+          "center_distance_m": 301,
+          "boundary_distance_m": 37.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BFY8HB640ZJ7BHYNESNC",
+      "name": "정동문화축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "덕수궁 돌담길 일대",
+      "address": "서울특별시 중구 정동 (세종대로 19길 124)",
+      "lat": 37.567042,
+      "lng": 126.975347,
+      "start_date": "2026-10-16",
+      "end_date": "2026-10-17",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 461,
+          "boundary_distance_m": 168.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BGCG7ECZVH6F7338TRH9",
+      "name": "제104회 어린이날 기념행사",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "웨스틴 조선 서울 1F 그랜드볼룸",
+      "address": "서울특별시 중구 소공로 106 (소공동)",
+      "lat": 37.564484,
+      "lng": 126.980184,
+      "start_date": "2026-05-04",
+      "end_date": "2026-05-04",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 152,
+          "boundary_distance_m": 219.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BGKTKNRKR85SZC5QXGQX",
+      "name": "제132주년 동학농민혁명 기념식",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "국립중앙박물관 대강당",
+      "address": "서울특별시 용산구 서빙고로 137 (용산동6가)",
+      "lat": 37.524702,
+      "lng": 126.97774,
+      "start_date": "2026-05-11",
+      "end_date": "2026-05-11",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI089",
+          "area_name": "국립중앙박물관·용산가족공원",
+          "category": "공원",
+          "center_distance_m": 390,
+          "boundary_distance_m": 53.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BHDNNSPKK6SRDM3C7Q9M",
+      "name": "제23회 한강사랑 그림그리기 대회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "뚝섬한강공원 수변무대",
+      "address": "서울특별시 광진구 자양동 704-1",
+      "lat": 37.529629,
+      "lng": 127.069985,
+      "start_date": "2026-05-23",
+      "end_date": "2026-05-23",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI093",
+          "area_name": "뚝섬한강공원",
+          "category": "공원",
+          "center_distance_m": 144,
+          "boundary_distance_m": 89.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BK09VSJ6WSGEN5P9H94Z",
+      "name": "종묘 묘현례",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "종묘 영녕전 일원",
+      "address": "서울특별시 종로구 종로 157 (훈정동)",
+      "lat": 37.57098,
+      "lng": 126.995131,
+      "start_date": "2026-04-25",
+      "end_date": "2026-04-27",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI012",
+          "area_name": "창덕궁·종묘",
+          "category": "고궁·문화유산",
+          "center_distance_m": 870,
+          "boundary_distance_m": 45.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BK1VX4SJ4MFP863R8W50",
+      "name": "종묘대제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "종묘",
+      "address": "서울특별시 종로구 종로 157 종묘",
+      "lat": 37.574235,
+      "lng": 126.994431,
+      "start_date": "2026-05-03",
+      "end_date": "2026-05-03",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI012",
+          "area_name": "창덕궁·종묘",
+          "category": "고궁·문화유산",
+          "center_distance_m": 504,
+          "boundary_distance_m": 162.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BKZ6797H1CHBHCBXJ98B",
+      "name": "창덕궁 달빛기행",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "창덕궁",
+      "address": "서울특별시 종로구 율곡로 99 (와룡동) 창덕궁",
+      "lat": 37.577651,
+      "lng": 126.990231,
+      "start_date": "2026-04-16",
+      "end_date": "2026-05-31",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI012",
+          "area_name": "창덕궁·종묘",
+          "category": "고궁·문화유산",
+          "center_distance_m": 299,
+          "boundary_distance_m": 28.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BMQGHDMQ5HTV9S53YM2Z",
+      "name": "청춘대로",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "어린이대공원 열린무대",
+      "address": "서울특별시 광진구 능동로 216 (능동)",
+      "lat": 37.552012,
+      "lng": 127.07877,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-19",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI104",
+          "area_name": "어린이대공원",
+          "category": "공원",
+          "center_distance_m": 399,
+          "boundary_distance_m": 36.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BMTW7AJ10Q3WDWFDV9YG",
+      "name": "청춘마이크 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "노량진 축구장",
+      "address": "서울특별시 동작구 노들로 688 (노량진동)",
+      "lat": 37.515012,
+      "lng": 126.944524,
+      "start_date": "2026-10-03",
+      "end_date": "2026-10-03",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI063",
+          "area_name": "노량진",
+          "category": "발달상권",
+          "center_distance_m": 131,
+          "boundary_distance_m": 137.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BNH42N94SA3B88H9CQ41",
+      "name": "케미스트릿 강남역 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "케미스트릿 강남역",
+      "address": "서울특별시 서초구 서초대로77길 17 (서초동) (BLOCK 77)",
+      "lat": 37.499554,
+      "lng": 127.025752,
+      "start_date": "2026-09-05",
+      "end_date": "2026-09-06",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI014",
+          "area_name": "강남역",
+          "category": "인구밀집지역",
+          "center_distance_m": 224,
+          "boundary_distance_m": 67.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BNQRJSBMMWR6E7T8TZMB",
+      "name": "쿠키런 : 킹덤 아트 콜라보 프로젝트 특별전 - 위대한 왕국의 유산",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울특별시 종로구 인사동 아라아트센터",
+      "address": "서울특별시 종로구 인사동9길 26 (견지동)",
+      "lat": 37.57347,
+      "lng": 126.983624,
+      "start_date": "2026-01-23",
+      "end_date": "2026-05-17",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI078",
+          "area_name": "인사동",
+          "category": "발달상권",
+          "center_distance_m": 220,
+          "boundary_distance_m": 45.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BQQYA1AEFSYTT8NM1669",
+      "name": "퓨처그라운드 (Future Ground)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "롯데몰 김포공항점 1층 전시홀",
+      "address": "서울특별시 강서구 하늘길 지하77 (방화동)",
+      "lat": 37.562144,
+      "lng": 126.80157,
+      "start_date": "2025-05-30",
+      "end_date": "2026-05-10",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI061",
+          "area_name": "김포공항",
+          "category": "발달상권",
+          "center_distance_m": 92,
+          "boundary_distance_m": 270.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BR6XF2X4TW9E791E6T6E",
+      "name": "한강 서래섬 피크닉 콘서트",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "반포한강공원 서래섬 1교 피크닉장",
+      "address": "서울특별시 서초구 신반포로11길 40 (반포동)",
+      "lat": 37.507694,
+      "lng": 126.992731,
+      "start_date": "2026-10-09",
+      "end_date": "2026-10-11",
+      "decision": "candidate",
+      "reasons": [],
+      "candidates": [
+        {
+          "area_code": "POI095",
+          "area_name": "반포한강공원",
+          "category": "공원",
+          "center_distance_m": 292,
+          "boundary_distance_m": 33.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BXYV7AHJX3NM1QT1PBSB",
+      "name": "2026 서울거리공연 구석구석라이브",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "서울 전역",
+      "address": "서울특별시 종로구 세종대로 지하172 (세종로)",
+      "lat": 37.571623,
+      "lng": 126.976788,
+      "start_date": "2026-05-01",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 84,
+          "boundary_distance_m": 169.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 199,
+          "boundary_distance_m": 82.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2ET0VSV8AMQ978W356N",
+      "name": "20세기 사진 거장전 - 빛, 시간을 멈추다",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "아트조선스페이스",
+      "address": "서울특별시 중구 세종대로21길 30 (태평로1가)",
+      "lat": 37.567845,
+      "lng": 126.975896,
+      "start_date": "2026-11-20",
+      "end_date": "2027-03-28",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 126,
+          "boundary_distance_m": 10.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 361,
+          "boundary_distance_m": 173.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2V19VJPP5F8MSNBMCQ2",
+      "name": "DDP 건축투어",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자(DDP)",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.566054,
+      "lng": 127.009555,
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 122,
+          "boundary_distance_m": 58.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 190,
+          "boundary_distance_m": 160.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C3D0QMCMZD94331R17D4",
+      "name": "MATERIALISM｜비야케 잉겔스 그룹 기획 전시",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "서울도시건축전시관",
+      "address": "서울특별시 중구 세종대로 119 (태평로1가)",
+      "lat": 37.566884,
+      "lng": 126.976702,
+      "start_date": "2026-11-07",
+      "end_date": "2027-02-28",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 29,
+          "boundary_distance_m": 81.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 451,
+          "boundary_distance_m": 223.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AQS71CYY9XQ305ZMBERD",
+      "name": "남산봉수의식 등 전통문화행사",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "남산 봉수대 및 보신각",
+      "address": "서울특별시 종로구 종로 54 (관철동)",
+      "lat": 37.569767,
+      "lng": 126.983678,
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI010",
+          "area_name": "보신각",
+          "category": "고궁·문화유산",
+          "center_distance_m": 94,
+          "boundary_distance_m": 96.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI006",
+          "area_name": "종로·청계 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 1209,
+          "boundary_distance_m": 51.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AYKQYJSEDTRQZHEV6WCA",
+      "name": "문화가 흐르는 서울광장",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "서울광장 야외무대",
+      "address": "서울특별시 중구 을지로 지하12 (을지로1가)",
+      "lat": 37.565448,
+      "lng": 126.978782,
+      "start_date": "2026-05-06",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 307,
+          "boundary_distance_m": 61.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 624,
+          "boundary_distance_m": 16.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B4SMV8E675F28BCHCMCE",
+      "name": "서울 왕궁수문장 교대의식",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "덕수궁 대한문 앞",
+      "address": "서울특별시 중구 세종대로 99 (정동)",
+      "lat": 37.565055,
+      "lng": 126.976575,
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 226,
+          "boundary_distance_m": 70.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 654,
+          "boundary_distance_m": 152.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BNYT86BT58734QGGXYWV",
+      "name": "쿼드, 연극의 질문들：〈화염〉",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "대학로극장 쿼드",
+      "address": "서울특별시 종로구 동숭길 122 (동숭동)",
+      "lat": 37.583699,
+      "lng": 127.003717,
+      "start_date": "2026-11-14",
+      "end_date": "2026-12-06",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 219,
+          "boundary_distance_m": 19.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BPS7MJTDJKJXM5HEA6FG",
+      "name": "팔색찬란",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "청와대 사랑채 1층",
+      "address": "서울특별시 종로구 효자로13길 45 (효자동)",
+      "lat": 37.582545,
+      "lng": 126.973059,
+      "start_date": "2026-06-04",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "venue_to_confirm"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI067",
+          "area_name": "서촌",
+          "category": "발달상권",
+          "center_distance_m": 391,
+          "boundary_distance_m": 52.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BPX17Y44VEDJM1VMZ3N6",
+      "name": "페인터즈",
+      "event_status": "ongoing",
+      "region_code": "SEOUL",
+      "venue_name": "페인터즈 광화문 전용관",
+      "address": "서울특별시 중구 정동길 3 (정동) 경향신문사 1층",
+      "lat": 37.568173,
+      "lng": 126.969976,
+      "start_date": "2022-11-01",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI064",
+          "area_name": "덕수궁길·정동길",
+          "category": "발달상권",
+          "center_distance_m": 258,
+          "boundary_distance_m": 22.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BTC2H3QJTDAK3VFP3NS0",
+      "name": "2026 HUG RUN 허그런",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "상암월드컵공원 평화의 광장",
+      "address": "서울특별시 마포구 월드컵로 251 (성산동)",
+      "lat": 37.565905,
+      "lng": 126.896465,
+      "start_date": "2026-12-05",
+      "end_date": "2026-12-05",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI106",
+          "area_name": "월드컵공원",
+          "category": "공원",
+          "center_distance_m": 1183,
+          "boundary_distance_m": 244.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C06B75XV08CPSVS3FWET",
+      "name": "2026 전국민 AI 페스티벌",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자 아트홀",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.568045,
+      "lng": 127.01089,
+      "start_date": "2026-12-11",
+      "end_date": "2026-12-13",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 82,
+          "boundary_distance_m": 183.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 129,
+          "boundary_distance_m": 23.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2BKWC7X2EWQW8ESYYW8",
+      "name": "2027 코리아그랜드세일",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "명동 눈스퀘어 1층 / 전국(온오프라인)",
+      "address": "서울특별시 중구 명동길 14 (명동2가)",
+      "lat": 37.563412,
+      "lng": 126.982888,
+      "start_date": "2026-12-23",
+      "end_date": "2027-02-13",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 123,
+          "boundary_distance_m": 289.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AN12WDQ6WVMRSNPFQ9Z2",
+      "name": "광화문 마켓",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "광화문광장 및 세종로공원 일대",
+      "address": "서울특별시 종로구 세종대로 지하172 (세종로)",
+      "lat": 37.571625,
+      "lng": 126.976768,
+      "start_date": "2026-12-11",
+      "end_date": "2027-01-10",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 85,
+          "boundary_distance_m": 168.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 198,
+          "boundary_distance_m": 80.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B57450M888RBNEFVRWWA",
+      "name": "서울빛초롱축제",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "청계천(청계광장 ~ 삼일교)",
+      "address": "서울특별시 중구 태평로1가 1 청계천(청계광장 ~ 삼일교)",
+      "lat": 37.569204,
+      "lng": 126.977633,
+      "start_date": "2026-12-11",
+      "end_date": "2027-01-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 196,
+          "boundary_distance_m": 144.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 245,
+          "boundary_distance_m": 41.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 673,
+          "boundary_distance_m": 9.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BMB1QD1DFYQEN3GR8FVK",
+      "name": "청계천의 빛",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "서울특별시 중구 청계천 청계광장 일대",
+      "address": "서울특별시 중구 태평로 1가 1 청계천 청계광장 일대",
+      "lat": 37.569077,
+      "lng": 126.977599,
+      "start_date": "2026-12-11",
+      "end_date": "2026-12-31",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 209,
+          "boundary_distance_m": 147.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 230,
+          "boundary_distance_m": 44.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 663,
+          "boundary_distance_m": 21.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BNSTN1A0DN5TF3VFG38C",
+      "name": "쿼드, 연극의 질문들：〈서안화차〉",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "대학로극장 쿼드",
+      "address": "서울특별시 종로구 동숭길 122 (동숭동)",
+      "lat": 37.583699,
+      "lng": 127.003717,
+      "start_date": "2026-12-16",
+      "end_date": "2026-12-27",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 219,
+          "boundary_distance_m": 19.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BT2KQNVW8CXZZ5DAQ4VY",
+      "name": "1919 서대문, 그날의 함성",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서대문독립공원, 서대문형무소역사관, 감리교신학대학교 웨슬리채플관",
+      "address": "서울특별시 서대문구 통일로 251 (현저동) 서대문독립공원, 서대문형무소역사관, 감리교신학대학교 웨슬리채플관",
+      "lat": 37.574618,
+      "lng": 126.957328,
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI124",
+          "area_name": "서대문독립공원",
+          "category": "공원",
+          "center_distance_m": 86,
+          "boundary_distance_m": 36.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BTDM9EV570VQWP5BBGQQ",
+      "name": "2026 N서울타워 글로벌 나이트워크",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "백범광장",
+      "address": "서울특별 중구 회현동1가 100-115 백범광장",
+      "lat": 37.555064,
+      "lng": 126.979198,
+      "start_date": "2026-06-13",
+      "end_date": "2026-07-11",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI091",
+          "area_name": "남산공원",
+          "category": "공원",
+          "center_distance_m": 1343,
+          "boundary_distance_m": 93.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BTN5W4AS4R6D7Q7PR5B9",
+      "name": "2026 경북사과홍보행사",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울광장",
+      "address": "서울특별시 중구 을지로 지하12 (을지로1가)",
+      "lat": 37.565448,
+      "lng": 126.978782,
+      "start_date": "2026-11-02",
+      "end_date": "2026-11-04",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 307,
+          "boundary_distance_m": 61.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 624,
+          "boundary_distance_m": 16.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BV2JPZRPWN8F8BQ5JK6G",
+      "name": "2026 구미 로컬푸드 페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울광장",
+      "address": "서울특별시 중구 을지로 지하12 (을지로1가)",
+      "lat": 37.565567,
+      "lng": 126.978333,
+      "start_date": "2026-09-09",
+      "end_date": "2026-09-10",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 348,
+          "boundary_distance_m": 20.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 604,
+          "boundary_distance_m": 58.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BVB8BWQZH23QB35QFTNZ",
+      "name": "2026 귀어귀촌 어촌관광 한마당",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "광화문광장 놀이마당",
+      "address": "서울특별시 종로구 세종대로 지하172 (세종로) 광화문광장 놀이마당",
+      "lat": 37.571623,
+      "lng": 126.976788,
+      "start_date": "2026-05-11",
+      "end_date": "2026-05-13",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 84,
+          "boundary_distance_m": 169.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 199,
+          "boundary_distance_m": 82.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BVNKJ48M6Q2EC9QVVSG0",
+      "name": "2026 남산 야간 트래킹 「반짝반짝 남산밤길」",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "남산골한옥마을 및 남산 일대",
+      "address": "서울특별시 중구 퇴계로34길 28 (필동2가)",
+      "lat": 37.559542,
+      "lng": 126.994739,
+      "start_date": "2026-10-21",
+      "end_date": "2026-11-21",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI091",
+          "area_name": "남산공원",
+          "category": "공원",
+          "center_distance_m": 888,
+          "boundary_distance_m": 60.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BVQ73HM9E1VGP8AS896M",
+      "name": "2026 농촌여행 페스티벌 (제14회 도농교류의 날 기념)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울광장",
+      "address": "서울특별시 중구 을지로 지하12 (을지로1가)",
+      "lat": 37.565567,
+      "lng": 126.978333,
+      "start_date": "2026-06-16",
+      "end_date": "2026-06-16",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 348,
+          "boundary_distance_m": 20.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 604,
+          "boundary_distance_m": 58.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BW5GP0RTRT12D0HKMTEZ",
+      "name": "2026 대한민국 관광기념품 박람회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자 아트홀 1·2관",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.566054,
+      "lng": 127.009555,
+      "start_date": "2026-11-20",
+      "end_date": "2026-11-22",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 122,
+          "boundary_distance_m": 58.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 190,
+          "boundary_distance_m": 160.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BY3AF76DB4ZKGZ46A376",
+      "name": "2026 서울디자인위크",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.568045,
+      "lng": 127.01089,
+      "start_date": "2026-10-14",
+      "end_date": "2026-10-25",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 82,
+          "boundary_distance_m": 183.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 129,
+          "boundary_distance_m": 23.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BY6ZQM90FAJWZHXVH99X",
+      "name": "2026 서울발레페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "석촌호수 서호 수변무대 / 아뜰리에",
+      "address": "서울특별시 송파구 석촌호수로 191 (잠실동)",
+      "lat": 37.506816,
+      "lng": 127.098237,
+      "start_date": "2026-10-15",
+      "end_date": "2026-10-15",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI120",
+          "area_name": "잠실롯데타워·석촌호수",
+          "category": "발달상권",
+          "center_distance_m": 691,
+          "boundary_distance_m": 83.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI005",
+          "area_name": "잠실 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 1848,
+          "boundary_distance_m": 83.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BYA8DXCDCKNSQNPGC66E",
+      "name": "2026 서울한옥위크",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "북촌문화센터",
+      "address": "서울특별시 종로구 계동길 37 (계동)",
+      "lat": 37.578999,
+      "lng": 126.98669,
+      "start_date": "2026-10-02",
+      "end_date": "2026-10-11",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI129",
+          "area_name": "송현녹지광장",
+          "category": "공원",
+          "center_distance_m": 292,
+          "boundary_distance_m": 38.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI066",
+          "area_name": "북촌한옥마을",
+          "category": "발달상권",
+          "center_distance_m": 430,
+          "boundary_distance_m": 212.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BYNGFHNAN67D5R091PPB",
+      "name": "2026 쉬엄쉬엄모닝",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "광진교 / 잠실대교",
+      "address": "서울특별시 강동구 선사로 83-19 (천호동)",
+      "lat": 37.545248,
+      "lng": 127.117981,
+      "start_date": "2026-10-18",
+      "end_date": "2026-11-22",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI087",
+          "area_name": "광나루한강공원",
+          "category": "공원",
+          "center_distance_m": 1426,
+          "boundary_distance_m": 21.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BYQ7BS5EGESSK5H0C6GF",
+      "name": "2026 스프링워크서울",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": null,
+      "address": "서울특별시 중구 회현동1가 100-115",
+      "lat": 37.55509,
+      "lng": 126.97908,
+      "start_date": "2026-04-25",
+      "end_date": "2026-04-25",
+      "decision": "review_required",
+      "reasons": [
+        "missing_venue_name",
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI091",
+          "area_name": "남산공원",
+          "category": "공원",
+          "center_distance_m": 1354,
+          "boundary_distance_m": 96.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BZ2NHG3GYM12N1VQR0WW",
+      "name": "2026 연남동 주민화합 대축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": null,
+      "address": "서울특별시 마포구 연남동 255-30",
+      "lat": 37.561583,
+      "lng": 126.924307,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "review_required",
+      "reasons": [
+        "missing_venue_name"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI073",
+          "area_name": "연남동",
+          "category": "발달상권",
+          "center_distance_m": 174,
+          "boundary_distance_m": 78.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BZAFTPKQ5YPMFP8Q4R4Z",
+      "name": "2026 우리 임산물 숲푸드 대축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "광화문광장 육조마당 일대",
+      "address": "서울특별시 종로구 세종대로 175 (세종로)",
+      "lat": 37.57201,
+      "lng": 126.976307,
+      "start_date": "2026-05-13",
+      "end_date": "2026-05-14",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 143,
+          "boundary_distance_m": 132.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 164,
+          "boundary_distance_m": 40.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BZTNV9SMVJACE1QQRF2Y",
+      "name": "2026 이럴때이런음악 해설이 있는 청소년음악회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "세종체임버홀",
+      "address": "서울특별시 종로구 세종대로 175 (세종로)",
+      "lat": 37.571848,
+      "lng": 126.976168,
+      "start_date": "2026-08-14",
+      "end_date": "2026-08-14",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 136,
+          "boundary_distance_m": 118.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 186,
+          "boundary_distance_m": 27.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C14D1EAQ1D408GA55TYT",
+      "name": "2026 크리에이터 미디어 대전",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "코엑스 마곡 1층 전시장 / 마곡광장",
+      "address": "서울특별시 강서구 마곡중앙로 143 (마곡동)",
+      "lat": 37.564775,
+      "lng": 126.825253,
+      "start_date": "2026-08-28",
+      "end_date": "2026-08-29",
+      "decision": "review_required",
+      "reasons": [
+        "venue_to_confirm"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI032",
+          "area_name": "서울식물원·마곡나루역",
+          "category": "인구밀집지역",
+          "center_distance_m": 601,
+          "boundary_distance_m": 59.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C1J8KZW2SKV9V09QD13F",
+      "name": "2026 한강 종이비행기 축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의도한강공원 녹음수광장 (이크루즈 유람선 선착장 앞)",
+      "address": "서울특별시 영등포구 여의도동 85",
+      "lat": 37.524746,
+      "lng": 126.937737,
+      "start_date": "2026-10-10",
+      "end_date": "2026-10-10",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI105",
+          "area_name": "여의도한강공원",
+          "category": "공원",
+          "center_distance_m": 963,
+          "boundary_distance_m": 52.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 1079,
+          "boundary_distance_m": 77.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C1M2N1GQRVVHXN1D7G05",
+      "name": "2026 한강나이트워크42K with 토레타!",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의도한강공원 녹음수광장",
+      "address": "서울특별시 영등포구 여의공원로 68 (여의도동)",
+      "lat": 37.524979,
+      "lng": 126.937696,
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-02",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI105",
+          "area_name": "여의도한강공원",
+          "category": "공원",
+          "center_distance_m": 948,
+          "boundary_distance_m": 37.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 1075,
+          "boundary_distance_m": 62.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C208VC0RXTN8KSC4E1B9",
+      "name": "2026년 강제동원 희생자를 기리는 유족·시민 어울림행사",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "청계광장",
+      "address": "서울특별시 중구 태평로1가 1",
+      "lat": 37.569249,
+      "lng": 126.978013,
+      "start_date": "2026-06-13",
+      "end_date": "2026-06-13",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 200,
+          "boundary_distance_m": 111.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 260,
+          "boundary_distance_m": 7.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI006",
+          "area_name": "종로·청계 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 1711,
+          "boundary_distance_m": 10.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2GEMGCYXB726YVD438T",
+      "name": "4·19혁명국민문화제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "국립4·19민주묘지 및 강북구 일원",
+      "address": "서울특별시 강북구 도봉로89길 13 (수유동) 국립4·19민주묘지 및 강북구 일원",
+      "lat": 37.639339,
+      "lng": 127.025656,
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-19",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI036",
+          "area_name": "수유역",
+          "category": "인구밀집지역",
+          "center_distance_m": 238,
+          "boundary_distance_m": 94.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2NCFJZMXY89KXMWXWV5",
+      "name": "COSMOS BIGBANG 20TH ANNIVERSARY MEDIA EXHIBITION",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "K-문화 스테이션 / 두두두 서울(dududo seoul)",
+      "address": "서울특별시 중구 서소문로 지하127 (서소문동) 지하 2층",
+      "lat": 37.563579,
+      "lng": 126.975389,
+      "start_date": "2026-08-24",
+      "end_date": "2026-09-27",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 831,
+          "boundary_distance_m": 20.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2S4W2R1AKCDAQM85VWN",
+      "name": "D.FESTA 거리공연축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "대학로 마로니에공원 일대",
+      "address": "서울특별시 종로구 대학로 104 (동숭동)",
+      "lat": 37.580512,
+      "lng": 127.002374,
+      "start_date": "2026-05-16",
+      "end_date": "2026-05-17",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 225,
+          "boundary_distance_m": 21.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C2WMZ8AE4QSRTZN6HYPJ",
+      "name": "DDP 어린이 디자인 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "DDP 어울림광장, 팔거리, 잔디언덕",
+      "address": "서울특별시 중구 을지로 281 동대문디자인플라자",
+      "lat": 37.566054,
+      "lng": 127.009555,
+      "start_date": "2026-05-02",
+      "end_date": "2026-05-05",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 122,
+          "boundary_distance_m": 58.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 190,
+          "boundary_distance_m": 160.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C329YPEDDPHE3CZSK3P2",
+      "name": "GES2026 (게임 e스포츠 서울)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자(DDP) 아트홀",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.566054,
+      "lng": 127.009555,
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-20",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 122,
+          "boundary_distance_m": 58.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 190,
+          "boundary_distance_m": 160.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835C38KN4BVSA4GH8MCQDVQ",
+      "name": "K-일러스트레이션페어 마곡 2026",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "코엑스마곡 전시장(1F)",
+      "address": "서울특별시 강서구 마곡중앙로 143 (마곡동)",
+      "lat": 37.566727,
+      "lng": 126.825394,
+      "start_date": "2026-08-20",
+      "end_date": "2026-08-23",
+      "decision": "review_required",
+      "reasons": [
+        "venue_to_confirm"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI032",
+          "area_name": "서울식물원·마곡나루역",
+          "category": "인구밀집지역",
+          "center_distance_m": 510,
+          "boundary_distance_m": 48.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AJ7TT2NY3JNA6G0S76SP",
+      "name": "강북구 어린이날 대축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "북서울꿈의숲 (강북구 월계로 173 서문방면)",
+      "address": "서울특별시 강북구 월계로 173 (번동) 북서울꿈의숲",
+      "lat": 37.61967,
+      "lng": 127.044529,
+      "start_date": "2026-05-02",
+      "end_date": "2026-05-02",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI096",
+          "area_name": "북서울꿈의숲",
+          "category": "공원",
+          "center_distance_m": 386,
+          "boundary_distance_m": 22.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AK67VRNJQ2QTJYWNWYGD",
+      "name": "경복궁 별빛야행",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "경복궁",
+      "address": "서울특별시 종로구 사직로 161 (세종로) 경복궁",
+      "lat": 37.576031,
+      "lng": 126.976722,
+      "start_date": "2026-09-02",
+      "end_date": "2026-10-24",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI008",
+          "area_name": "경복궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 427,
+          "boundary_distance_m": 35.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 567,
+          "boundary_distance_m": 163.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AK7ZXWYPQ5GDF7XQDPQ4",
+      "name": "경복궁 생과방",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": null,
+      "address": "서울특별시 종로구 사직로 161 (세종로)",
+      "lat": 37.576031,
+      "lng": 126.976722,
+      "start_date": "2026-04-08",
+      "end_date": "2026-05-27",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "missing_venue_name"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI008",
+          "area_name": "경복궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 427,
+          "boundary_distance_m": 35.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 567,
+          "boundary_distance_m": 163.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AP7WDXFEP5RXXE0R11E3",
+      "name": "궁중문화축전",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "경복궁,창덕궁,덕수궁,창경궁,종묘",
+      "address": "서울특별시 종로구 사직로 161 경복궁",
+      "lat": 37.578768,
+      "lng": 126.976977,
+      "start_date": "2026-10-07",
+      "end_date": "2026-10-11",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI008",
+          "area_name": "경복궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 124,
+          "boundary_distance_m": 220.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835ASWX17ET2VQQTS3WJ9CH",
+      "name": "덕수궁 밤의 석조전",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "덕수궁 석조전",
+      "address": "서울특별시 중구 세종대로 99 (정동) 덕수궁",
+      "lat": 37.565055,
+      "lng": 126.976575,
+      "start_date": "2026-09-09",
+      "end_date": "2026-10-18",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 226,
+          "boundary_distance_m": 70.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 654,
+          "boundary_distance_m": 152.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835ATT7DEDA10489CBGTZTB",
+      "name": "동물행복페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의도한강공원",
+      "address": "서울특별시 영등포구 여의도동 83-6 여의도한강공원",
+      "lat": 37.531865,
+      "lng": 126.923225,
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-18",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI105",
+          "area_name": "여의도한강공원",
+          "category": "공원",
+          "center_distance_m": 545,
+          "boundary_distance_m": 7.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 786,
+          "boundary_distance_m": 204.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835AYF000WW5X7GZFMDZPBD",
+      "name": "문학주간2026 〈곁눈질〉",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "마로니에 공원",
+      "address": "서울특별시 종로구 대학로 104 (동숭동)",
+      "lat": 37.580512,
+      "lng": 127.002374,
+      "start_date": "2026-09-16",
+      "end_date": "2026-09-20",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 225,
+          "boundary_distance_m": 21.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B529NJ9NYXE1ZJ0R2581",
+      "name": "서울라이트 DDP 가을",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.566054,
+      "lng": 127.009555,
+      "start_date": "2026-09-03",
+      "end_date": "2026-09-13",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 122,
+          "boundary_distance_m": 58.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 190,
+          "boundary_distance_m": 160.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B53PBSQGDTZXCN0R50KA",
+      "name": "서울라이트 광화문",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "광화문광장 일대",
+      "address": "서울특별시 종로구 세종로 1-68 5호선 광화문역 광화문광장 일대",
+      "lat": 37.571679,
+      "lng": 126.976782,
+      "start_date": "2025-12-12",
+      "end_date": "2026-01-04",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 90,
+          "boundary_distance_m": 170.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 192,
+          "boundary_distance_m": 81.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B55BTSNZPM4MW3AP2XDH",
+      "name": "서울무형문화축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "남산골한옥마을",
+      "address": "서울특별시 중구 퇴계로34길 28 (필동2가) 남산골한옥마을",
+      "lat": 37.559542,
+      "lng": 126.994739,
+      "start_date": "2026-09-12",
+      "end_date": "2026-09-13",
+      "decision": "review_required",
+      "reasons": [
+        "venue_to_confirm"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI091",
+          "area_name": "남산공원",
+          "category": "공원",
+          "center_distance_m": 888,
+          "boundary_distance_m": 60.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B5AJT58GCN519ZS1M2MD",
+      "name": "서울세계도시문화축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "동대문디자인플라자(DDP)",
+      "address": "서울특별시 중구 을지로 281 (을지로7가)",
+      "lat": 37.566054,
+      "lng": 127.009555,
+      "start_date": "2026-05-09",
+      "end_date": "2026-05-10",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI083",
+          "area_name": "DDP(동대문디자인플라자)",
+          "category": "발달상권",
+          "center_distance_m": 122,
+          "boundary_distance_m": 58.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI002",
+          "area_name": "동대문 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 190,
+          "boundary_distance_m": 160.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B5BX596TKF0JJEDFVDXS",
+      "name": "서울스프링페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "한강공원 일원",
+      "address": "서울특별시 영등포구 여의동로 330 (여의도동) 한강공원 일원",
+      "lat": 37.526347,
+      "lng": 126.933595,
+      "start_date": "2026-04-10",
+      "end_date": "2026-05-05",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 727,
+          "boundary_distance_m": 226.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B5DFQ7KQR5MGRNV3SHDC",
+      "name": "서울썸머비치",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "광화문광장&세종로공원",
+      "address": "서울특별시 종로구 세종대로 175 (세종로)",
+      "lat": 37.571848,
+      "lng": 126.976168,
+      "start_date": "2026-07-20",
+      "end_date": "2026-08-09",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 136,
+          "boundary_distance_m": 118.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI088",
+          "area_name": "광화문광장",
+          "category": "공원",
+          "center_distance_m": 186,
+          "boundary_distance_m": 27.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B5R357RJH3AFJZV7HHW0",
+      "name": "서초뮤직앤아트페스티벌(SMAF)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울고속버스터미널 일대",
+      "address": "서울특별시 서초구 신반포로 194 (반포동)",
+      "lat": 37.506154,
+      "lng": 127.00557,
+      "start_date": "2026-08-29",
+      "end_date": "2026-08-30",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI017",
+          "area_name": "고속터미널역",
+          "category": "인구밀집지역",
+          "center_distance_m": 151,
+          "boundary_distance_m": 19.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B77122ZTQ351QDAJZZF6",
+      "name": "송파구 호수벚꽃축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "석촌호수",
+      "address": "서울특별시 송파구 송파나루길 206 (신천동) 석촌호수",
+      "lat": 37.511898,
+      "lng": 127.104245,
+      "start_date": "2026-04-03",
+      "end_date": "2026-04-11",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI120",
+          "area_name": "잠실롯데타워·석촌호수",
+          "category": "발달상권",
+          "center_distance_m": 91,
+          "boundary_distance_m": 259.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI005",
+          "area_name": "잠실 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 1099,
+          "boundary_distance_m": 259.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B7B6V7D6N8YR7X4HC38P",
+      "name": "수라간 시식공감",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "경복궁",
+      "address": "서울특별시 종로구 사직로 161 (세종로) 경복궁",
+      "lat": 37.576031,
+      "lng": 126.976722,
+      "start_date": "2026-05-13",
+      "end_date": "2026-05-24",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI008",
+          "area_name": "경복궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 427,
+          "boundary_distance_m": 35.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 567,
+          "boundary_distance_m": 163.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B8FS2HXQ9QVDTQPB4WP7",
+      "name": "신촌글로벌대학문화축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "신촌지역일대",
+      "address": "서울특별시 서대문구 창천동 연세로 스타광장",
+      "lat": 37.5567,
+      "lng": 126.936775,
+      "start_date": "2026-09-11",
+      "end_date": "2026-09-13",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI122",
+          "area_name": "신촌 스타광장",
+          "category": "발달상권",
+          "center_distance_m": 25,
+          "boundary_distance_m": 42.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI040",
+          "area_name": "신촌·이대역",
+          "category": "인구밀집지역",
+          "center_distance_m": 198,
+          "boundary_distance_m": 177.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B8P6FABQ1C8H33HAR2FV",
+      "name": "아시아프 (ASYAAF 100)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "아트조선스페이스",
+      "address": "서울특별시 중구 세종대로21길 30 (태평로1가)",
+      "lat": 37.567845,
+      "lng": 126.975896,
+      "start_date": "2026-07-01",
+      "end_date": "2026-08-05",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 126,
+          "boundary_distance_m": 10.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 361,
+          "boundary_distance_m": 173.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B8QVPXN1ZEZYN34PKZRS",
+      "name": "아이가 행복입니다 S9",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "롯데타워 월드파크 잔디광장",
+      "address": "서울특별시 송파구 올림픽로 300 (신천동)",
+      "lat": 37.513713,
+      "lng": 127.104302,
+      "start_date": "2026-10-08",
+      "end_date": "2026-10-09",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI120",
+          "area_name": "잠실롯데타워·석촌호수",
+          "category": "발달상권",
+          "center_distance_m": 255,
+          "boundary_distance_m": 76.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI119",
+          "area_name": "잠실역",
+          "category": "인구밀집지역",
+          "center_distance_m": 396,
+          "boundary_distance_m": 76.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI005",
+          "area_name": "잠실 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 1017,
+          "boundary_distance_m": 76.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835B9TK9VPNGAJT3SJ8RX4M",
+      "name": "양천가족 거리축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "신정네거리역 일대(서울남부지방법원 방향 약 900m 구간)",
+      "address": "서울특별시 양천구 중앙로 265-1 (신정동) 신정네거리역 일대(서울남부지방법원 방향 약 900m 구간)",
+      "lat": 37.519991,
+      "lng": 126.852861,
+      "start_date": "2026-10-25",
+      "end_date": "2026-10-25",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI117",
+          "area_name": "신정네거리역",
+          "category": "인구밀집지역",
+          "center_distance_m": 259,
+          "boundary_distance_m": 61.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BA4SDQM17VVYEP1DCFGH",
+      "name": "어린이날 도서관 큰 잔치",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "국립어린이청소년도서관",
+      "address": "서울특별시 강남구 테헤란로7길 21 (역삼동) 국립어린이청소년도서관",
+      "lat": 37.50067,
+      "lng": 127.030153,
+      "start_date": "2026-05-05",
+      "end_date": "2026-05-05",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI014",
+          "area_name": "강남역",
+          "category": "인구밀집지역",
+          "center_distance_m": 269,
+          "boundary_distance_m": 2.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BAZNJ808EVTBHYSS1ARB",
+      "name": "영등포 여의도 봄꽃축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의서로 윤중로 벚꽃길",
+      "address": "서울 영등포구 여의서로 60-2 여의서로 윤중로 벚꽃길",
+      "lat": 37.532051,
+      "lng": 126.922645,
+      "start_date": "2026-04-03",
+      "end_date": "2026-04-07",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 820,
+          "boundary_distance_m": 204.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BB46ASS8NCKTMPMSQEJR",
+      "name": "영양고추 H.O.T 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울광장",
+      "address": "서울특별시 중구 을지로 지하12 (을지로1가)",
+      "lat": 37.565448,
+      "lng": 126.978782,
+      "start_date": "2026-08-27",
+      "end_date": "2026-08-29",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 307,
+          "boundary_distance_m": 61.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 624,
+          "boundary_distance_m": 16.9,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BB7B4CT30SBNTDTRZXXP",
+      "name": "영주 사과축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울시 청계광장",
+      "address": "서울 중구 태평로1가 1 청계광장",
+      "lat": 37.569075,
+      "lng": 126.977592,
+      "start_date": "2026-11-13",
+      "end_date": "2026-11-15",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 209,
+          "boundary_distance_m": 148.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 230,
+          "boundary_distance_m": 44.7,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 663,
+          "boundary_distance_m": 21.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BC47HGTP1G1FJSH3V4GN",
+      "name": "요즘 청년, 요즘 문화",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "홍대카페",
+      "address": "서울특별시 마포구 어울마당로 68 (서교동)",
+      "lat": 37.551097,
+      "lng": 126.921494,
+      "start_date": "2026-09-04",
+      "end_date": "2026-09-05",
+      "decision": "review_required",
+      "reasons": [
+        "venue_to_confirm"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI007",
+          "area_name": "홍대 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 314,
+          "boundary_distance_m": 186.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BDGYETJV4F5BQ9T7M6WE",
+      "name": "유기농데이",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "청계광장",
+      "address": "서울특별시 중구 태평로1가 1",
+      "lat": 37.569192,
+      "lng": 126.978019,
+      "start_date": "2026-06-09",
+      "end_date": "2026-06-09",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 206,
+          "boundary_distance_m": 110.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 254,
+          "boundary_distance_m": 7.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 654,
+          "boundary_distance_m": 1.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI006",
+          "area_name": "종로·청계 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 1711,
+          "boundary_distance_m": 4.6,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BGAR6GA54GP0VXJ0P0YY",
+      "name": "정조대왕 능행차 공동재현",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "경복궁",
+      "address": "서울특별시 종로구 사직로 161 (세종로)",
+      "lat": 37.576031,
+      "lng": 126.976722,
+      "start_date": "2026-10-04",
+      "end_date": "2026-10-04",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI008",
+          "area_name": "경복궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 427,
+          "boundary_distance_m": 35.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 567,
+          "boundary_distance_m": 163.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BH2735ACPAT5TD3VAT7E",
+      "name": "제18회 서울건축문화제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울도시건축전시관 B3 비움홀",
+      "address": "서울특별시 중구 세종대로 119 (태평로1가)",
+      "lat": 37.566884,
+      "lng": 126.976702,
+      "start_date": "2026-09-15",
+      "end_date": "2026-10-11",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 29,
+          "boundary_distance_m": 81.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 451,
+          "boundary_distance_m": 223.2,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BK4MK2RQP64A7YF22CC9",
+      "name": "중앙아시아 봄맞이축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울광장",
+      "address": "서울특별시 중구 세종대로 110 (태평로1가) 서울광장",
+      "lat": 37.566371,
+      "lng": 126.977918,
+      "start_date": "2026-05-16",
+      "end_date": "2026-05-17",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas",
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI130",
+          "area_name": "시의회 앞",
+          "category": "인구밀집지역",
+          "center_distance_m": 116,
+          "boundary_distance_m": 15.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "category": "관광특구",
+          "center_distance_m": 426,
+          "boundary_distance_m": 56.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI009",
+          "area_name": "광화문·덕수궁",
+          "category": "고궁·문화유산",
+          "center_distance_m": 510,
+          "boundary_distance_m": 115.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BKV4KN9QKRM1P2H58ZY2",
+      "name": "창경궁 야연",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "창경궁 문정전 일원",
+      "address": "서울특별시 종로구 창경궁로 185 (와룡동)",
+      "lat": 37.578881,
+      "lng": 126.996449,
+      "start_date": "2026-09-24",
+      "end_date": "2026-10-04",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI012",
+          "area_name": "창덕궁·종묘",
+          "category": "고궁·문화유산",
+          "center_distance_m": 274,
+          "boundary_distance_m": 14.5,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BM0Q8DDSEAZTDFTBRGNP",
+      "name": "창립 65주년 기념 한국경제인협회와 함께하는 2026 서울시향 강변음악회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의도 한강공원 물빛무대 앞 광장",
+      "address": "서울특별시 영등포구 한강남자전거길 1451 (여의도동)",
+      "lat": 37.530849,
+      "lng": 126.927746,
+      "start_date": "2026-06-13",
+      "end_date": "2026-06-13",
+      "decision": "review_required",
+      "reasons": [
+        "overlapping_areas"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI105",
+          "area_name": "여의도한강공원",
+          "category": "공원",
+          "center_distance_m": 211,
+          "boundary_distance_m": 57.3,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        },
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 675,
+          "boundary_distance_m": 138.4,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BNVEQV2K113NF4Q35B0A",
+      "name": "쿼드, 연극의 질문들：〈옥상 밭 고추는 왜〉",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "대학로극장 쿼드",
+      "address": "서울특별시 종로구 동숭길 122 (동숭동)",
+      "lat": 37.583699,
+      "lng": 127.003717,
+      "start_date": "2026-09-19",
+      "end_date": "2026-10-04",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 219,
+          "boundary_distance_m": 19.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BNX6JAJNWYGKTNK5R45H",
+      "name": "쿼드, 연극의 질문들：〈혁명의 춤〉",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "대학로극장 쿼드",
+      "address": "서울특별시 종로구 동숭길 122 (동숭동)",
+      "lat": 37.583699,
+      "lng": 127.003717,
+      "start_date": "2026-10-28",
+      "end_date": "2026-11-08",
+      "decision": "review_required",
+      "reasons": [
+        "near_boundary"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI054",
+          "area_name": "혜화역",
+          "category": "인구밀집지역",
+          "center_distance_m": 219,
+          "boundary_distance_m": 19.8,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BR5M308H7FHVVC8B1WZH",
+      "name": "한강 다리밑 영화관",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의도한강공원 원효대교 남단 하부",
+      "address": "서울특별시 영등포구 여의동로 330 (여의도동)",
+      "lat": 37.526348,
+      "lng": 126.933595,
+      "start_date": "2026-08-08",
+      "end_date": "2026-08-22",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 728,
+          "boundary_distance_m": 226.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BRACJQJQC1XV0FPNV2MG",
+      "name": "한강야경투어",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "여의도한강공원",
+      "address": "서울특별시 영등포구 여의동로 330 (여의도동)",
+      "lat": 37.526348,
+      "lng": 126.933595,
+      "start_date": "2026-05-01",
+      "end_date": "2026-09-19",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 728,
+          "boundary_distance_m": 226.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BRC6ZC03D9GCV8BGKJEJ",
+      "name": "한강역사탐방",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "한강공원 및 인근 문화유산",
+      "address": "서울특별시 영등포구 여의동로 330 (여의도동)",
+      "lat": 37.526348,
+      "lng": 126.933595,
+      "start_date": "2026-04-20",
+      "end_date": "2026-11-15",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI072",
+          "area_name": "여의도",
+          "category": "발달상권",
+          "center_distance_m": 728,
+          "boundary_distance_m": 226.0,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BREB3C60HP105A5MKYJB",
+      "name": "한강페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "잠원한강공원 다목적운동장 등",
+      "address": "서울특별시 강남구 압구정동 386 잠원한강공원",
+      "lat": 37.528369,
+      "lng": 127.020486,
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-25",
+      "decision": "review_required",
+      "reasons": [
+        "multiple_sites_or_route"
+      ],
+      "candidates": [
+        {
+          "area_code": "POI111",
+          "area_name": "잠원한강공원",
+          "category": "공원",
+          "center_distance_m": 717,
+          "boundary_distance_m": 72.1,
+          "strict_interior": true,
+          "repaired_boundary": false,
+          "relation_type": "contains",
+          "approved": false
+        }
+      ],
+      "nearest_excluded_area": null
+    },
+    {
+      "festival_id": "fst_01M835BTXBHATBAJDVXKC2DDGN",
+      "name": "2026 과학영재교육 페스티벌",
+      "event_status": "upcoming",
+      "region_code": "SEOUL",
+      "venue_name": "한국과학기술회관 B1F~1F",
+      "address": "서울특별시 강남구 테헤란로7길 22 (역삼동)",
+      "lat": 37.500722,
+      "lng": 127.03074,
+      "start_date": "2026-12-23",
+      "end_date": "2026-12-23",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI014",
+        "area_name": "강남역",
+        "category": "인구밀집지역",
+        "center_distance_m": 310,
+        "boundary_distance_m": 47.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BV7FHB4D1SYZME1XR04A",
+      "name": "2026 국제선명상대회",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "봉은사, 봉은문화회관",
+      "address": "서울특별시 강남구 봉은사로 531 (삼성동)",
+      "lat": 37.515826,
+      "lng": 127.057734,
+      "start_date": "2026-04-03",
+      "end_date": "2026-11-12",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI001",
+        "area_name": "강남 MICE 관광특구",
+        "category": "관광특구",
+        "center_distance_m": 574,
+        "boundary_distance_m": 256.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BWA4YD6H1JBH2KTCAT38",
+      "name": "2026 대한민국 우리술 대축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "aT센터 제1전시장",
+      "address": "서울특별시 서초구 강남대로 27 (양재동)",
+      "lat": 37.46734,
+      "lng": 127.040736,
+      "start_date": "2026-11-13",
+      "end_date": "2026-11-15",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI112",
+        "area_name": "청계산",
+        "category": "공원",
+        "center_distance_m": 3063,
+        "boundary_distance_m": 1209.7,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BWGJ3CS0MX6SHWRZ10M1",
+      "name": "2026 도서관의 날 · 도서관주간",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "국립중앙도서관 및 전국 도서관",
+      "address": "서울특별시 서초구 반포대로 201 (반포동)",
+      "lat": 37.497629,
+      "lng": 127.004532,
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-10",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI098",
+        "area_name": "서리풀공원·몽마르뜨공원",
+        "category": "공원",
+        "center_distance_m": 690,
+        "boundary_distance_m": 41.5,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BWJ3PRK9CDD8WPFCB1RW",
+      "name": "2026 동작 미래과학페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "대방공원운동장(노량진근린공원)",
+      "address": "서울특별시 동작구 여의대방로36길 71 (대방동)",
+      "lat": 37.507752,
+      "lng": 126.926736,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI072",
+        "area_name": "여의도",
+        "category": "발달상권",
+        "center_distance_m": 1919,
+        "boundary_distance_m": 885.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BWM0S1ZG4NV4H4SV7MB0",
+      "name": "2026 두근두근 별길마켓",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "길음역 7번출구 - 미아초등학교 거리 일대",
+      "address": "서울특별시 성북구 삼양로 41 (길음동, 한우리타운)",
+      "lat": 37.606764,
+      "lng": 127.023584,
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-17",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI026",
+        "area_name": "미아사거리역",
+        "category": "인구밀집지역",
+        "center_distance_m": 873,
+        "boundary_distance_m": 426.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BXABN7GK62WNX6Q6P3SG",
+      "name": "2026 보드게임페스타(시즌2)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "세텍 1, 2 전시실",
+      "address": "서울특별시 강남구 남부순환로 3104 (대치동)",
+      "lat": 37.496038,
+      "lng": 127.070752,
+      "start_date": "2026-11-21",
+      "end_date": "2026-11-22",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI118",
+        "area_name": "잠실새내역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1911,
+        "boundary_distance_m": 1504.4,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BY8N8E89AY3KA3ERHKW7",
+      "name": "2026 서울식품유통대전(K푸드쇼)",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "양재 aT센터 제1전시장",
+      "address": "서울특별시 서초구 강남대로 27 (양재동)",
+      "lat": 37.468279,
+      "lng": 127.039136,
+      "start_date": "2026-06-16",
+      "end_date": "2026-06-16",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI112",
+        "area_name": "청계산",
+        "category": "공원",
+        "center_distance_m": 3203,
+        "boundary_distance_m": 1293.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835C02VA8RH42WFVDGH9YH0",
+      "name": "2026 자원순환 시민행사 : 앨리스와 떠나는 에코 원더랜드",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "상일동산",
+      "address": "서울특별시 강동구 상일동 185",
+      "lat": 37.549078,
+      "lng": 127.165427,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI016",
+        "area_name": "고덕역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1051,
+        "boundary_distance_m": 854.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835C23BG4MFZHB81WWRBN2J",
+      "name": "2026년 제7회 김치의 날 X 제4회 위킴 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "aT센터 제1전시장",
+      "address": "서울특별시 서초구 강남대로 27 (양재동)",
+      "lat": 37.468279,
+      "lng": 127.039136,
+      "start_date": "2026-11-20",
+      "end_date": "2026-11-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI112",
+        "area_name": "청계산",
+        "category": "공원",
+        "center_distance_m": 3203,
+        "boundary_distance_m": 1293.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835C35BQP2N4GRF5Z3XVGC8",
+      "name": "ING 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "언더스탠드에비뉴",
+      "address": "서울특별시 성동구 왕십리로 63 (성수동1가)",
+      "lat": 37.543623,
+      "lng": 127.043586,
+      "start_date": "2026-05-22",
+      "end_date": "2026-05-24",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI101",
+        "area_name": "서울숲공원",
+        "category": "공원",
+        "center_distance_m": 530,
+        "boundary_distance_m": 83.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AH9GE3DD7ZA3R92Q0DPN",
+      "name": "가족 예술축제 [톡톡]",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울문화예술교육센터 양천, 서서울호수공원",
+      "address": "서울특별시 양천구 남부순환로64길 2 (신월동) 서울문화예술교육센터 양천",
+      "lat": 37.52822,
+      "lng": 126.832146,
+      "start_date": "2026-05-02",
+      "end_date": "2026-05-03",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI117",
+        "area_name": "신정네거리역",
+        "category": "인구밀집지역",
+        "center_distance_m": 2183,
+        "boundary_distance_m": 1870.4,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AHQ8TAXDZ74PHZEMJZMR",
+      "name": "강남페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "도산대로, 개포동 마루공원, 봉은사",
+      "address": "서울특별시 강남구 도산대로 320 (논현동)",
+      "lat": 37.522143,
+      "lng": 127.036934,
+      "start_date": "2026-10-03",
+      "end_date": "2026-10-05",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI071",
+        "area_name": "압구정로데오거리",
+        "category": "발달상권",
+        "center_distance_m": 405,
+        "boundary_distance_m": 37.5,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AJB5MWE1F6BX152X9MB5",
+      "name": "강서봄빛페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "방화근린공원",
+      "address": "서울특별시 강서구 금낭화로 178 (방화동) 방화근린공원",
+      "lat": 37.581036,
+      "lng": 126.814621,
+      "start_date": "2026-04-04",
+      "end_date": "2026-04-04",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI085",
+        "area_name": "강서한강공원",
+        "category": "공원",
+        "center_distance_m": 700,
+        "boundary_distance_m": 600.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AJCGJN81XM1M4N6TKKZJ",
+      "name": "강서어린이 동화축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "방화근린공원",
+      "address": "서울특별시 강서구 금낭화로 178 (방화동) 176 방화근린공원",
+      "lat": 37.581033,
+      "lng": 126.814718,
+      "start_date": "2026-04-25",
+      "end_date": "2026-04-25",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI085",
+        "area_name": "강서한강공원",
+        "category": "공원",
+        "center_distance_m": 696,
+        "boundary_distance_m": 595.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AJX4VA392GPMHMGNQ9M8",
+      "name": "겸재문화예술제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "겸재정선미술관",
+      "address": "서울특별시 강서구 양천로47길 36 (마곡동) 겸재정선미술관",
+      "lat": 37.572228,
+      "lng": 126.838413,
+      "start_date": "2026-05-09",
+      "end_date": "2026-05-09",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI032",
+        "area_name": "서울식물원·마곡나루역",
+        "category": "인구밀집지역",
+        "center_distance_m": 828,
+        "boundary_distance_m": 205.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AKJMAJJ2BGP6Y5GN3GZR",
+      "name": "경흥대로 도봉옛길 문화제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "다락원(평화울림터, 서울 창포원), 도봉옛길",
+      "address": "서울특별시 도봉구 도봉동 1-8",
+      "lat": 37.691173,
+      "lng": 127.048657,
+      "start_date": "2026-06-20",
+      "end_date": "2026-06-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI079",
+        "area_name": "창동 신경제 중심지",
+        "category": "발달상권",
+        "center_distance_m": 3922,
+        "boundary_distance_m": 3239.0,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AN2CGS4R013RW4SPFXNZ",
+      "name": "광희로드 페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "을지로44길ㆍ42길  마른내로 일대",
+      "address": "서울특별시 중구 을지로44길 31 (광희동1가)",
+      "lat": 37.56472,
+      "lng": 127.006456,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI002",
+        "area_name": "동대문 관광특구",
+        "category": "관광특구",
+        "center_distance_m": 495,
+        "boundary_distance_m": 29.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835ANAGP9CN50C01S4R7723",
+      "name": "구로청소년축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "우신고등학교 운동장",
+      "address": "서울특별시 구로구 부일로 917 (궁동) 우신고등학교 운동장",
+      "lat": 37.494902,
+      "lng": 126.826354,
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-17",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI086",
+        "area_name": "고척돔",
+        "category": "공원",
+        "center_distance_m": 3608,
+        "boundary_distance_m": 3421.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835APBTDQVRNB0BEQW37RW1",
+      "name": "그루브 인 관악",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "신림역 별빛내린천, S1472 관천로문화플랫폼",
+      "address": "서울특별시 관악구 신림로3길 35 (신림동) 신림역 별빛내린천, S1472 관천로문화플랫폼",
+      "lat": 37.467553,
+      "lng": 126.944962,
+      "start_date": "2026-07-11",
+      "end_date": "2026-07-12",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI031",
+        "area_name": "서울대입구역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1616,
+        "boundary_distance_m": 1339.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AQYG3TS0V953J44S9W05",
+      "name": "노원 북 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "하계2동 주민센터 앞 경춘선숲길 일대",
+      "address": "서울특별시 노원구 공릉로55길 88 (하계동) 하계2동 주민센터 앞 경춘선숲길 일대",
+      "lat": 37.632043,
+      "lng": 127.067954,
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-18",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI096",
+        "area_name": "북서울꿈의숲",
+        "category": "공원",
+        "center_distance_m": 2624,
+        "boundary_distance_m": 2078.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AQZVR6TRF2ESTFEC07W6",
+      "name": "노원달빛산책",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "당현천 일원",
+      "address": "서울특별시 노원구 동일로 1322-70 (상계동) 당현천 일원",
+      "lat": 37.649443,
+      "lng": 127.065687,
+      "start_date": "2026-10-16",
+      "end_date": "2026-11-08",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI079",
+        "area_name": "창동 신경제 중심지",
+        "category": "발달상권",
+        "center_distance_m": 1221,
+        "boundary_distance_m": 363.4,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AT1V3814QJ08QDBTV9JA",
+      "name": "도곡 메타세쿼이아 로드 페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "양재천로",
+      "address": "서울특별시 강남구 양재천로 199 (도곡동) ~167 양재천로",
+      "lat": 37.483104,
+      "lng": 127.047266,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI041",
+        "area_name": "양재역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1201,
+        "boundary_distance_m": 816.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835ATAY7E0WGWCA7XWACFDT",
+      "name": "동대문구 맥주축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "장안1수변공원",
+      "address": "서울특별시 동대문구 장안동 24-1",
+      "lat": 37.566591,
+      "lng": 127.075333,
+      "start_date": "2026-08-28",
+      "end_date": "2026-08-29",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI049",
+        "area_name": "장한평역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1072,
+        "boundary_distance_m": 702.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835ATCESEDJWG0Y674X8B77",
+      "name": "동대문구 북 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "동대문구청 미래광장 및 다목적 강당",
+      "address": "서울특별시 동대문구 천호대로 145 (용두동) 동대문구청",
+      "lat": 37.574392,
+      "lng": 127.039897,
+      "start_date": "2026-09-12",
+      "end_date": "2026-09-12",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI081",
+        "area_name": "청량리 제기동 일대 전통시장",
+        "category": "발달상권",
+        "center_distance_m": 714,
+        "boundary_distance_m": 439.3,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835ATDY77CQSB8X37WDBV5V",
+      "name": "동대문구 청소년 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "배봉산근린공원 열린광장",
+      "address": "서울특별시 동대문구 한천로43길 22 (전농동) 배봉산근린공원 열린광장",
+      "lat": 37.580594,
+      "lng": 127.066978,
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-17",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI056",
+        "area_name": "회기역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1459,
+        "boundary_distance_m": 1087.7,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835ATJW8Q5F2PKZ56CS3FSC",
+      "name": "동대문페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "장한로 일대(우리은행 사거리 ~ 장안동사거리 / 700m)",
+      "address": "서울특별시 동대문구 한천로14길 87 (장안동) ~서울 동대문구 장안동",
+      "lat": 37.566347,
+      "lng": 127.067559,
+      "start_date": "2026-10-03",
+      "end_date": "2026-10-03",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI049",
+        "area_name": "장한평역",
+        "category": "인구밀집지역",
+        "center_distance_m": 560,
+        "boundary_distance_m": 280.1,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AWK8Q0RMGP0GKJWPVGNJ",
+      "name": "무브살롱 : 살롱그라운드",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "양재천 영동1교 하부 굴다리 및 칸트의 산책길 앞",
+      "address": "서울특별시 서초구 양재동 126-6",
+      "lat": 37.475101,
+      "lng": 127.03817,
+      "start_date": "2026-04-03",
+      "end_date": "2026-05-17",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI041",
+        "area_name": "양재역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1195,
+        "boundary_distance_m": 786.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AY4K1F6TH06ACR8VRDQW",
+      "name": "문구전 2026 여름",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "양재 aT센터",
+      "address": "서울특별시 서초구 강남대로 27 (양재동)",
+      "lat": 37.468279,
+      "lng": 127.039136,
+      "start_date": "2026-07-04",
+      "end_date": "2026-07-05",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI112",
+        "area_name": "청계산",
+        "category": "공원",
+        "center_distance_m": 3203,
+        "boundary_distance_m": 1293.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835AY961VJ5N8109MPGJCSC",
+      "name": "문래예술제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "문래동 일대",
+      "address": "서울특별시 영등포구 도림로133길 15 (문래동2가)",
+      "lat": 37.51301,
+      "lng": 126.894145,
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI038",
+        "area_name": "신도림역",
+        "category": "인구밀집지역",
+        "center_distance_m": 556,
+        "boundary_distance_m": 373.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B479DA9AQVPQM4ZHR553",
+      "name": "새활용 페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울새활용플라자 및 새활용거리",
+      "address": "서울특별시 성동구 자동차시장길 49 (용답동)",
+      "lat": 37.558612,
+      "lng": 127.057823,
+      "start_date": "2026-09-04",
+      "end_date": "2026-09-06",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI049",
+        "area_name": "장한평역",
+        "category": "인구밀집지역",
+        "center_distance_m": 710,
+        "boundary_distance_m": 287.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B4HR65PZME43R36VY2Z7",
+      "name": "서대문 봄빛축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "안산 ~ 홍제천 일대",
+      "address": "서울특별시 서대문구 모래내로 370 (홍은동) 안산 ~ 홍제천 일대",
+      "lat": 37.581953,
+      "lng": 126.937033,
+      "start_date": "2026-04-03",
+      "end_date": "2026-04-05",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI128",
+        "area_name": "홍제폭포",
+        "category": "공원",
+        "center_distance_m": 129,
+        "boundary_distance_m": 43.7,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B4K6NM6T90QR5RP5V6H7",
+      "name": "서리풀뮤직페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "반포대로",
+      "address": "서울특별시 서초구 서초대로 233 서초역 반포대로(서초역~서초3동사거리)",
+      "lat": 37.491824,
+      "lng": 127.007593,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI098",
+        "area_name": "서리풀공원·몽마르뜨공원",
+        "category": "공원",
+        "center_distance_m": 435,
+        "boundary_distance_m": 313.4,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B4QDW1SBGHYY3745RQNX",
+      "name": "서울 불암산 철쭉제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "불암산 힐링타운",
+      "address": "서울특별시 노원구 한글비석로12길 51-27 (중계동) 불암산 힐링타운",
+      "lat": 37.65548,
+      "lng": 127.080632,
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-26",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI079",
+        "area_name": "창동 신경제 중심지",
+        "category": "발달상권",
+        "center_distance_m": 2288,
+        "boundary_distance_m": 1205.1,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B4VZES2W8JSXN1W7KNEJ",
+      "name": "서울거리예술축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "뚝섬한강공원 / 서울숲",
+      "address": "서울특별시 광진구 능동로 10 (자양동)",
+      "lat": 37.531703,
+      "lng": 127.066766,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI093",
+        "area_name": "뚝섬한강공원",
+        "category": "공원",
+        "center_distance_m": 504,
+        "boundary_distance_m": 36.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B5GE5W7SVE80TE7Q9BBK",
+      "name": "서울프린지페스티벌2026",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서보아트스페이스",
+      "address": "서울특별시 마포구 월드컵북로 94 (성산동)",
+      "lat": 37.562037,
+      "lng": 126.915063,
+      "start_date": "2026-08-06",
+      "end_date": "2026-08-23",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI073",
+        "area_name": "연남동",
+        "category": "발달상권",
+        "center_distance_m": 644,
+        "boundary_distance_m": 217.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B5PH7T735QJ2XP4J4YD7",
+      "name": "서초 클래식 테마파크",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "방배 뒷벌 어린이공원",
+      "address": "서울특별시 서초구 방배중앙로19길 4 (방배동)",
+      "lat": 37.489876,
+      "lng": 126.986892,
+      "start_date": "2026-06-12",
+      "end_date": "2026-06-14",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI051",
+        "area_name": "총신대입구(이수)역",
+        "category": "인구밀집지역",
+        "center_distance_m": 672,
+        "boundary_distance_m": 319.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B5SV38FBG0ARG8BH9ESP",
+      "name": "서초책있는거리 10월 북캠핑",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "국립중앙도서관~서래골공원",
+      "address": "서울특별시 서초구 반포대로 201 (반포동)",
+      "lat": 37.497629,
+      "lng": 127.004532,
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-24",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI098",
+        "area_name": "서리풀공원·몽마르뜨공원",
+        "category": "공원",
+        "center_distance_m": 690,
+        "boundary_distance_m": 41.5,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B5V7B815MV7FE4KDYANM",
+      "name": "석계역 달빛야시장",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "석계역 문화공원",
+      "address": "서울특별시 노원구 월계동 56-5 석계역 문화공원 일대",
+      "lat": 37.615291,
+      "lng": 127.06423,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-19",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI096",
+        "area_name": "북서울꿈의숲",
+        "category": "공원",
+        "center_distance_m": 2166,
+        "boundary_distance_m": 1748.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B5WP50T7J87TSV7DBNXQ",
+      "name": "선농대제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "선농단역사공원, 종암초등학교 운동장, 왕산로·고산자로 일대",
+      "address": "서울특별시 동대문구 무학로44길 38 (제기동) 선농단역사공원, 종암초등학교 운동장, 왕산로·고산자로 일대",
+      "lat": 37.581184,
+      "lng": 127.031889,
+      "start_date": "2026-04-18",
+      "end_date": "2026-04-18",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI081",
+        "area_name": "청량리 제기동 일대 전통시장",
+        "category": "발달상권",
+        "center_distance_m": 716,
+        "boundary_distance_m": 314.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B653HV37Y61F5NS060GB",
+      "name": "성북 책모꼬지 북페스티벌",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "성북구청 앞 바람마당교, 성북천 수변활력거점 일대",
+      "address": "서울특별시 성북구 보문로 168 (삼선동5가)",
+      "lat": 37.58944,
+      "lng": 127.01677,
+      "start_date": "2026-09-06",
+      "end_date": "2026-09-06",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI035",
+        "area_name": "성신여대입구역",
+        "category": "인구밀집지역",
+        "center_distance_m": 328,
+        "boundary_distance_m": 111.4,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B681T0NHYY5HMGDP040B",
+      "name": "성북거리문화축제 다다페스타",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "꿈의숲아이파크-래미안장위퍼스트하이 사이길",
+      "address": "서울특별시 성북구 장월로 149 (장위동) 꿈의숲아이파크-래미안장위퍼스트하이 사이길",
+      "lat": 37.618219,
+      "lng": 127.051093,
+      "start_date": "2026-10-31",
+      "end_date": "2026-10-31",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI096",
+        "area_name": "북서울꿈의숲",
+        "category": "공원",
+        "center_distance_m": 968,
+        "boundary_distance_m": 574.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B69FNH078WTWWP8EC2MS",
+      "name": "성북문화바캉스",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울숭덕초등학교, 우이천다목적광장, 길음동 유휴부지",
+      "address": "서울특별시 성북구 정릉로 279 (정릉동)",
+      "lat": 37.603825,
+      "lng": 127.013292,
+      "start_date": "2026-07-25",
+      "end_date": "2026-08-09",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI035",
+        "area_name": "성신여대입구역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1307,
+        "boundary_distance_m": 1064.6,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B6B0C6WG01N4GMHN7DC1",
+      "name": "성북세계음식축제 누리마실",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "성북로 일대(성북동주민센터 건너편 ~ 홍익중고 앞 버스정류장)",
+      "address": "서울특별시 성북구 성북동 142-1 성북로 일대(성북동 주민센터 건너편~홍익중고 앞 버스정류장)",
+      "lat": 37.59279,
+      "lng": 127.002239,
+      "start_date": "2026-06-07",
+      "end_date": "2026-06-07",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI054",
+        "area_name": "혜화역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1144,
+        "boundary_distance_m": 848.3,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B9MYECGV58DZ3F1K0Z1J",
+      "name": "양재아트살롱",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "양재천길 살롱스트림(수변무대~영동1교)",
+      "address": "서울특별시 서초구 양재동 261-23 양재천길 살롱스트림(수변무대~영동1교)",
+      "lat": 37.476743,
+      "lng": 127.041497,
+      "start_date": "2026-10-02",
+      "end_date": "2026-10-25",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI041",
+        "area_name": "양재역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1163,
+        "boundary_distance_m": 779.1,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B9PC0FJMF1Q05NJGCRMR",
+      "name": "양재천 벚꽃 등(燈) 축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "양재천 벚꽃길(영동1교~영동2교 구간)",
+      "address": "서울특별시 서초구 양재동 261-23 양재천 벚꽃길(영동1교~영동2교 구간)",
+      "lat": 37.476614,
+      "lng": 127.041515,
+      "start_date": "2026-03-30",
+      "end_date": "2026-04-19",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI041",
+        "area_name": "양재역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1176,
+        "boundary_distance_m": 791.4,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835B9QSQKF9GBTMZ69817FG",
+      "name": "양재천을 품은 양재도서관 「물길 따라 그림책 여행」",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서초구립양재도서관 앞 양재오솔숲도서관",
+      "address": "서울특별시 서초구 양재천로 33 (양재동) 서초구립양재도서관 앞 양재오솔숲도서관",
+      "lat": 37.473701,
+      "lng": 127.033606,
+      "start_date": "2026-10-10",
+      "end_date": "2026-11-08",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI041",
+        "area_name": "양재역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1292,
+        "boundary_distance_m": 913.7,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BAXMCJ373DN1Q46FVD8B",
+      "name": "영등포 북페스타 오늘만 북클럽",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "문래근린공원",
+      "address": "서울특별시 영등포구 문래동3가 61 문래근린공원",
+      "lat": 37.516997,
+      "lng": 126.894031,
+      "start_date": "2026-09-17",
+      "end_date": "2026-09-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI074",
+        "area_name": "영등포 타임스퀘어",
+        "category": "발달상권",
+        "center_distance_m": 1071,
+        "boundary_distance_m": 646.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BC5ZY7TJ0KTWA1PXAK75",
+      "name": "용산 국가유산야행",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "서울 효창공원",
+      "address": "서울특별시 용산구 효창원로 177-18 (효창동)",
+      "lat": 37.544509,
+      "lng": 126.961877,
+      "start_date": "2026-09-11",
+      "end_date": "2026-09-12",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI046",
+        "area_name": "용산역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1584,
+        "boundary_distance_m": 1004.1,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BC7JNF2DMA7M36ZEPCRJ",
+      "name": "용산청년축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "용산공원 장교숙소 5단지",
+      "address": "서울특별시 용산구 서빙고로 221 (용산동6가)",
+      "lat": 37.52061,
+      "lng": 126.988347,
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-19",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI089",
+        "area_name": "국립중앙박물관·용산가족공원",
+        "category": "공원",
+        "center_distance_m": 657,
+        "boundary_distance_m": 230.8,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BE8NYD24YJEK18CYRVKJ",
+      "name": "이순신 축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "이순신 생가터 일근 (명보아트홀 사거리 일원)",
+      "address": "서울특별시 중구 마른내로 47 (초동) 명보극장",
+      "lat": 37.564706,
+      "lng": 126.993214,
+      "start_date": "2026-04-25",
+      "end_date": "2026-04-25",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI091",
+        "area_name": "남산공원",
+        "category": "공원",
+        "center_distance_m": 1457,
+        "boundary_distance_m": 399.7,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BG877Y7BHNYM69JXP3TX",
+      "name": "정순왕후 문화제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "숭인근린공원(동망봉일대)",
+      "address": "서울특별시 종로구 동망산길 150 (숭인동)",
+      "lat": 37.577579,
+      "lng": 127.018134,
+      "start_date": "2026-04-18",
+      "end_date": "2026-04-18",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI006",
+        "area_name": "종로·청계 관광특구",
+        "category": "관광특구",
+        "center_distance_m": 2017,
+        "boundary_distance_m": 552.1,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BGVTGP2VSKSG139TF9GD",
+      "name": "제14회 자문밖문화축제 Art Passages：예술적 여정",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "자문밖문화포럼",
+      "address": "서울특별시 종로구 평창31길 5 (평창동)",
+      "lat": 37.611826,
+      "lng": 126.975721,
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-20",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI066",
+        "area_name": "북촌한옥마을",
+        "category": "발달상권",
+        "center_distance_m": 3363,
+        "boundary_distance_m": 2405.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BHNJWSPT6AKYKMPTBHCQ",
+      "name": "제3회 쉬엄쉬엄 한강 3종 축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "뚝섬 한강 공원",
+      "address": "서울특별시 광진구 능동로 10 (자양동)",
+      "lat": 37.531703,
+      "lng": 127.066766,
+      "start_date": "2026-06-05",
+      "end_date": "2026-06-07",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI093",
+        "area_name": "뚝섬한강공원",
+        "category": "공원",
+        "center_distance_m": 504,
+        "boundary_distance_m": 36.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BJA8F67NBHS9E9EBX1A8",
+      "name": "제8회 금천과학축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "금천구청 일대",
+      "address": "서울특별시 금천구 시흥대로73길 70 (시흥동)",
+      "lat": 37.456441,
+      "lng": 126.895507,
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-19",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI013",
+        "area_name": "가산디지털단지역",
+        "category": "인구밀집지역",
+        "center_distance_m": 3035,
+        "boundary_distance_m": 2463.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BKQN8VB9KQ4DJAP8HP9Z",
+      "name": "차 없는 잠수교 뚜벅뚜벅축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "잠수교 및 반포한강공원 일원",
+      "address": "서울특별시 서초구 반포동 잠수교",
+      "lat": 37.512861,
+      "lng": 126.997353,
+      "start_date": "2026-09-06",
+      "end_date": "2026-10-25",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI095",
+        "area_name": "반포한강공원",
+        "category": "공원",
+        "center_distance_m": 412,
+        "boundary_distance_m": 46.9,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BMY4FFZGV75126BJKN2K",
+      "name": "초안산 수국축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "초안산 수국동산 및 염광고등학교 야외음악당",
+      "address": "서울특별시 노원구 월계동 산46-3 초안산 수국동산 및 염광고등학교 야외음악당",
+      "lat": 37.629443,
+      "lng": 127.047566,
+      "start_date": "2026-06-20",
+      "end_date": "2026-06-21",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI096",
+        "area_name": "북서울꿈의숲",
+        "category": "공원",
+        "center_distance_m": 1016,
+        "boundary_distance_m": 259.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BNE3Y36RRF18DA011XBY",
+      "name": "컨템포러리 아티스트 프로젝트 《이완 - 나는 쓴다》",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "예술의전당 서예박물관 제3전시실",
+      "address": "서울특별시 서초구 남부순환로 2406 (서초동)",
+      "lat": 37.48024,
+      "lng": 127.014215,
+      "start_date": "2026-07-17",
+      "end_date": "2026-09-27",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI018",
+        "area_name": "교대역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1327,
+        "boundary_distance_m": 856.2,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BNMMR6Y5PB3Y0VS1YESP",
+      "name": "코리안드림 한강대축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "뚝섬한강공원 수변무대",
+      "address": "서울특별시 광진구 강변북로 2273 (자양동)",
+      "lat": 37.529365,
+      "lng": 127.073978,
+      "start_date": "2026-10-03",
+      "end_date": "2026-10-03",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI093",
+        "area_name": "뚝섬한강공원",
+        "category": "공원",
+        "center_distance_m": 219,
+        "boundary_distance_m": 1.0,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    },
+    {
+      "festival_id": "fst_01M835BPHMHAX8CJBY1GYH1A2V",
+      "name": "트로트축제X봄꽃축제",
+      "event_status": "ended",
+      "region_code": "SEOUL",
+      "venue_name": "장안1 수변공원",
+      "address": "서울특별시 동대문구 장안동 24-1",
+      "lat": 37.56681,
+      "lng": 127.075342,
+      "start_date": "2026-04-04",
+      "end_date": "2026-04-05",
+      "decision": "unsupported",
+      "reasons": [
+        "no_containing_area"
+      ],
+      "candidates": [],
+      "nearest_excluded_area": {
+        "area_code": "POI049",
+        "area_name": "장한평역",
+        "category": "인구밀집지역",
+        "center_distance_m": 1085,
+        "boundary_distance_m": 723.0,
+        "strict_interior": false,
+        "repaired_boundary": false
+      }
+    }
+  ]
+}
