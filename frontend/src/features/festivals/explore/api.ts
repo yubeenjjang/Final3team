@@ -7,6 +7,9 @@ export type ListFestivalsQuery = NonNullable<
   operations["list_festivals_api_v1_festivals_get"]["parameters"]["query"]
 >;
 
+/** 기본 목록: 진행 중 + 예정 */
+export const DEFAULT_STATUSES = "ongoing,upcoming";
+
 /**
  * Fetch paginated festival list from A02.
  */
@@ -18,7 +21,8 @@ export function listFestivals(
     query: {
       region: query.region,
       q: query.q ?? undefined,
-      status: query.status ?? undefined,
+      // 상태를 고르지 않으면 끝난 축제는 빼고 진행 중·예정만 (A02 여러 상태 필터 I13)
+      status: (query.status ?? DEFAULT_STATUSES) as ListFestivalsQuery["status"],
       sort: query.sort,
       page: query.page,
       page_size: query.page_size,

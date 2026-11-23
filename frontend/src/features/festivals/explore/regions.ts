@@ -45,7 +45,7 @@ export const REGION_OPTIONS: RegionOption[] = [
 ];
 
 export const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
-  { value: "", label: "전체" },
+  { value: "", label: "진행·예정" },
   { value: "ongoing", label: "진행 중" },
   { value: "upcoming", label: "예정" },
   { value: "ended", label: "종료" },
