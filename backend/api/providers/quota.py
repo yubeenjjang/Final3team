@@ -11,7 +11,7 @@ from typing import Literal, cast
 
 from api.providers.route_base import KST, as_kst
 
-QuotaProvider = Literal["tmap", "kakao", "kakao_local"]
+QuotaProvider = Literal["tmap", "kakao", "kakao_local", "seoul_citydata"]
 
 _LIMITS: dict[QuotaProvider, tuple[str, str]] = {
     "tmap": ("ROUTE_TMAP_DAILY_LIMIT", "10"),
@@ -22,12 +22,18 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QuotaGuard:
-    def __init__(self, *, now: Callable[[], datetime] | None = None) -> None:
-        self._path = Path(os.environ.get("ROUTE_QUOTA_FILE", "./.route_quota.json"))
+    def __init__(self, *, now: Callable[[], datetime] | None = None, crowd: bool = False) -> None:
+        limits: dict[QuotaProvider, tuple[str, str]]
+        if crowd:
+            self._path = Path(os.environ.get("CROWD_QUOTA_FILE", "./.crowd_quota.json"))
+            limits = {"seoul_citydata": ("CROWD_SEOUL_DAILY_LIMIT", "1000")}
+        else:
+            self._path = Path(os.environ.get("ROUTE_QUOTA_FILE", "./.route_quota.json"))
+            limits = _LIMITS
         self._lock_path = self._path.with_name(f"{self._path.name}.lock")
         self._limits = {
             provider: int(os.environ.get(env, default))
-            for provider, (env, default) in _LIMITS.items()
+            for provider, (env, default) in limits.items()
         }
         self._now = now if now is not None else lambda: datetime.now(KST)
 
@@ -70,9 +76,14 @@ class QuotaGuard:
                 state = json.load(data)
         except FileNotFoundError:
             return {}
+        if not isinstance(state, dict):
+            raise ValueError("조회 한도 파일의 형식이 올바르지 않아요.")
+        counts = state.get("counts")
+        if not isinstance(counts, dict):
+            raise ValueError("조회 한도 파일의 사용량 형식이 올바르지 않아요.")
         if state["date"] != day:
             return {}
-        return cast(dict[QuotaProvider, int], state["counts"])
+        return cast(dict[QuotaProvider, int], counts)
 
     def _write(self, day: str, counts: dict[QuotaProvider, int]) -> None:
         with NamedTemporaryFile(
