@@ -168,10 +168,13 @@ def test_P4_normalizes_synthetic_itinerary(city: str, mode: str, fare: int) -> N
         ([(0, [0, 0])], False),
         ([(1, []), (0, [0])], False),
         ([(1, []), (0, [1])], True),
+        ([(None, []), (0, [0])], False),
+        ([(None, [])], None),
+        ([(0, [None])], None),
     ],
 )
-def test_P4_all_transit_legs_must_have_running_service(
-    services: list[tuple[int, list[int]]], running: bool
+def test_P13_all_transit_legs_are_checked(
+    services: list[tuple[int | None, list[int | None]]], running: bool | None
 ) -> None:
     legs = [
         {
@@ -187,11 +190,36 @@ def test_P4_all_transit_legs_must_have_running_service(
     }
     body = {"metaData": {"plan": {"itineraries": [itinerary] * 4}}}
     with httpx2.Client(transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=body))) as http:
-        result = TmapClient(http).query(QUERY)
+        client = TmapClient(http)
+        if running is False:
+            with pytest.raises(ProviderError) as caught:
+                client.query(QUERY)
+            assert caught.value.kind == "service_ended"
+            return
+        result = client.query(QUERY)
 
     assert [candidate["candidate_id"] for candidate in result.candidates] == ["c1", "c2", "c3"]
     assert result.candidates[0]["service_running"] is running
     assert result.candidates[0]["legs"][0]["path"] == [[37.123457, 126.123457]]
     if len(legs) == 2:
         assert result.candidates[0]["summary"] == "지하철 1회 환승"
-    assert result.notices == ([] if running else ["막차가 끝난 구간이 있어요"])
+    assert result.notices == []
+
+
+@pytest.mark.parametrize("primary_service", [0, None], ids=["ended", "missing"])
+def test_P13_unnamed_running_alternative_omits_line(primary_service: int | None) -> None:
+    body = json.loads((FIXTURES / "tmap_seoul.json").read_text())
+    leg = body["metaData"]["plan"]["itineraries"][0]["legs"][1]
+    leg["route"] = "합성예시 대표 노선"
+    leg["Lane"] = [{"service": 1}]
+    if primary_service is None:
+        del leg["service"]
+    else:
+        leg["service"] = primary_service
+
+    with httpx2.Client(transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=body))) as http:
+        result = TmapClient(http).query(QUERY)
+
+    candidate, = result.candidates
+    assert candidate["service_running"] is True
+    assert "line" not in candidate["legs"][1]

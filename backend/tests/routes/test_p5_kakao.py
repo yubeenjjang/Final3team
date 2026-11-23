@@ -107,10 +107,11 @@ def test_P6_normalizes_synthetic_routes(city: str, mode: str) -> None:
     candidate, = result.candidates
     assert [entry["candidate_id"] for entry in multiple.candidates] == ["c1", "c2", "c3"]
     assert candidate["walk_m"] is None
-    assert candidate["service_running"] is True
+    assert candidate["service_running"] is None
     assert result.notices == [
         "2차 공급원(카카오맵) 결과예요. 이 결과는 저장하지 않아 다시 보려면 새로 조회해야 해요.",
         "첫·끝 도보 정보가 없어요",
+        "막차 확인 불가",
     ]
     assert candidate["mode_evidence"] == {
         "bus_crowding": {"status": "unsupported", "reason": "2차 공급원은 버스 혼잡 근거를 주지 않아요"}

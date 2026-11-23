@@ -15,7 +15,8 @@ from api.providers.route_base import (
 )
 
 _URL = httpx2.URL(scheme="https", host="apis.openapi.sk.com", path="/transit/routes")
-_LAST_SERVICE_NOTICE = "막차가 끝난 구간이 있어요"
+SERVICE_ENDED_NOTICE = "운행이 끝난 구간이 있어요"
+_SERVICE_STATUS = {"0": False, "1": True}
 
 
 class TmapClient(RouteProviderClient):
@@ -57,10 +58,11 @@ class TmapClient(RouteProviderClient):
             candidates = []
         if not candidates:
             raise ProviderError("temporary", self.provider)
-        notices = []
-        if any(not candidate["service_running"] for candidate in candidates):
-            notices.append(_LAST_SERVICE_NOTICE)
-        return ProviderResult(self.provider, "primary", queried_at, candidates, notices)
+        available = [candidate for candidate in candidates if candidate["service_running"] is not False]
+        if not available:
+            raise ProviderError("service_ended", self.provider)
+        notices = [SERVICE_ENDED_NOTICE] if len(available) != len(candidates) else []
+        return ProviderResult(self.provider, "primary", queried_at, available, notices)
 
 
 def _itineraries(status: int, body: dict[str, Any]) -> list[dict[str, Any]]:
@@ -105,27 +107,58 @@ def _stop(station: dict[str, Any]) -> dict[str, object]:
     return stop
 
 
-def _leg(leg: dict[str, Any]) -> dict[str, Any]:
+def _leg(leg: dict[str, Any]) -> tuple[dict[str, Any], bool | None]:
     normalized = {
         "mode": {"WALK": "walk", "BUS": "bus", "SUBWAY": "subway"}[leg["mode"]],
         "duration_min": minutes(leg["sectionTime"]),
         "path": _path(leg),
     }
-    if leg.get("route"):
-        normalized["line"] = leg["route"]
+    running, line = _leg_service(leg)
+    if line:
+        normalized["line"] = line
     stations = (leg.get("passStopList") or {}).get("stations")
     if stations is not None:
         normalized["stops"] = [_stop(station) for station in stations]
-    return normalized
+    return normalized, running
 
 
-def _is_running(leg: dict[str, Any]) -> bool:
-    if leg["mode"] == "WALK" or leg.get("service") in (1, "1"):
-        return True
-    return any(lane.get("service") in (1, "1") for lane in leg.get("Lane") or [])
+def _leg_service(leg: dict[str, Any]) -> tuple[bool | None, str | None]:
+    line = leg.get("route")
+    primary = _SERVICE_STATUS.get(str(leg.get("service")))
+    if leg["mode"] == "WALK" or primary is True:
+        return True, line
+    if primary is False:
+        line = None
+
+    statuses = [primary]
+    for key in ("Lane", "lane"):
+        lanes = leg.get(key)
+        if lanes is None:
+            continue
+        if not isinstance(lanes, list):
+            statuses.append(None)
+            continue
+        for lane in lanes:
+            status = _SERVICE_STATUS.get(str(lane.get("service"))) if isinstance(lane, dict) else None
+            statuses.append(status)
+            if status is True:
+                name = lane.get("route")
+                if isinstance(name, str) and name.strip():
+                    return True, name
+
+    if True in statuses:
+        return True, None
+    if None in statuses:
+        return None, line
+    return False, None
 
 
 def _candidate(index: int, entry: dict[str, Any]) -> dict[str, object]:
+    legs = [_leg(leg) for leg in entry["legs"]]
+    statuses = {running for _, running in legs}
+    running = None if None in statuses else True
+    if False in statuses:
+        running = False
     return make_candidate(
         index,
         duration_min=minutes(entry["totalTime"]),
@@ -133,7 +166,7 @@ def _candidate(index: int, entry: dict[str, Any]) -> dict[str, object]:
         walk_m=entry["totalWalkDistance"],
         transfers=entry["transferCount"],
         fare_krw=entry["fare"]["regular"]["totalFare"],
-        legs=[_leg(leg) for leg in entry["legs"]],
-        service_running=all(_is_running(leg) for leg in entry["legs"]),
+        legs=[leg for leg, _ in legs],
+        service_running=running,
         bus_crowding={"status": "unverified", "reason": "버스 혼잡 연결 전"},
     )
