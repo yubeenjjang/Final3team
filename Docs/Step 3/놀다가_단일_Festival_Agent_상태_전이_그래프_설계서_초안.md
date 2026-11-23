@@ -304,6 +304,10 @@ W24 확인 순서는 다음과 같다.
 
 학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <공유받은 API 주소>`를 실행하면 진행·예정 상태를 **각각** 조회한 뒤 첫 축제의 상세 정보를 확인한다. 도구 JSON Schema의 `status`는 단일 값만 허용하지만 API는 쉼표로 구분한 여러 값을 받으므로, 도구 계약이 바뀌기 전에는 `ongoing,upcoming`을 Agent 인자로 보내지 않는다. 이 확인은 실제 축제 DB의 검색·상세까지만 포함하고 혼잡은 제외한다.
 
+### A-5. 실제 DB 형태와 혼잡 모의 응답의 혼합 시험
+
+최신 `origin/ohyun`은 실제 DB 축제 ID를 공통 조회에 연결했지만 `get_crowd`는 여전히 모의 서비스를 사용한다. 실제 API 응답 화면에서 확인한 긴 축제 ID `fst_01M835BPX17Y44VEDJM1VMZ3N6`와 `is_mock:false` 검색·상세 형태를 **로컬에 구성한 응답**으로 `search_detail_crowd`를 실행했다. 같은 ID가 `get_festival`과 `get_crowd`에 그대로 전달됐고, 혼잡 응답을 `status:unsupported`, `is_mock:true`로 주면 최종 `outcome=partial`과 모의 데이터 안내가 나왔다. 이는 형식·상태 전이 시험이며 학원 API에 집 컴퓨터의 Agent가 직접 접속한 결과가 아니다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. 팀에서 모델을 결정한 뒤 Supervisor→Festival 구조화 입력 계약과, 단독 시험에서 자연어 입력을 쓸지 여부를 확정한다. 그 결과에 맞춰 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
