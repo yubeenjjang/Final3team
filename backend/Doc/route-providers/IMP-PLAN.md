@@ -14,11 +14,11 @@
 - 읽기만: `tests/routes/fixtures/*`(합성), `api/services/mock_routes.py`(`_candidate` 칸 이름 확인), `api/providers/tourapi.py`(키 숨김·클라이언트 주입 방식 참고)
 
 **체크리스트**
-- [ ] P1 내부 형식·오류 종류
-- [ ] P2·P3·P4 TMAP 호출·오류 판정·변환(좌표 뒤집기·막차)
-- [ ] P5·P6·P7 카카오 대중교통·오류·변환·장소 검색
-- [ ] P8 한도 계산기(파일 잠금·날짜·동시성)
-- [ ] 시험 전부 통과
+- [x] P1 내부 형식·오류 종류
+- [x] P2·P3·P4 TMAP 호출·오류 판정·변환(좌표 뒤집기·막차)
+- [x] P5·P6·P7 카카오 대중교통·오류·변환·장소 검색
+- [x] P8 한도 계산기(파일 잠금·날짜·동시성)
+- [x] 시험 전부 통과
 - [ ] commit `feat(routes): TMAP/Kakao adapters, internal route format, daily quota guard`
 
 ## 2단계 — 실제 경로 서비스·A04/A05/A25 연결
