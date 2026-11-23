@@ -4,6 +4,7 @@
 |---|---|---|---|
 | 1 | Codex · gpt-6.2-sol · reasoning medium | P1~P8 (어댑터·한도, 연결 없음) | 합성 고정 파일 준비 ✅ 11/23 |
 | 2 | Codex · gpt-6.2-sol · reasoning **high** (전환·동기/비동기·캐시·병합 규칙) | P9~P12 | 1단계 시험 통과 |
+| STEP3 막차 처리 | Codex | P13~P15 (강사 API 2 · W36 일부) | 5절 규칙·합성 응답 대조 |
 | 3-실행 | Claude | 실제 호출: **TMAP 3건 이내**(한태경 님 같은 날 사용 여부 먼저 확인)·카카오 대중교통 3건·장소 검색 3건 → 응답은 모양만 확인 후 **바로 삭제**(TMAP 24시간·카카오 저장 금지), 결과는 호출 기록 표로만. 노트북 시연에 `ROUTE_PROVIDER=real` 적용 여부는 오현 님이 결정 | 2단계 시험 통과 |
 
 ## 1단계 — 공통 형식·TMAP·카카오 어댑터·한도
@@ -44,6 +45,15 @@
 | | `ROUTE_TMAP_DAILY_LIMIT=0`으로 카카오 강제 | 장소 검색 1 · **카카오 대중교통 1** | 200 `kakao/secondary`, 후보 3개, 버스 혼잡 `unsupported`, 안내 3개 → A05 재조회 `unavailable`+`ROUTE_SECONDARY_SYNC_ONLY`, 본문 없음 |
 - 합계: **TMAP 2건(하루 10건 중)**, 카카오 대중교통 1건, 카카오 장소 검색 4건. 서버 로그에 키 없음. `X-Mock` 없음·`is_mock:false` 확인.
 - 남은 것: 카카오 경로선 좌표가 소수 8자리로 옴(TMAP은 6자리) — 화면에는 문제없음, 나중에 맞춤.
+
+## STEP3 막차 처리
+
+- 수정: `api/providers/{route_base,tmap,kakao}.py`, `api/services/real_routes.py`, `tests/routes/{test_p2_tmap,test_p5_kakao,test_p9_real_routes}.py`.
+- 문서: 이 트랙의 TODO·SPEC·IMP-PLAN 및 `codex/STEP3.md`, `Docs/Step 2/API_설계문서.md`, `Docs/Step 2/handoff/API_연동_현황표.md`.
+- [x] P13 TMAP 운행 판정·후보 제외·대체 노선명
+- [x] P14 전체 종료 응답·카카오 막차 안내
+- [x] P15 고정 파일 시험·전체 시험·설계서와 연동표 갱신
+- 오프라인 `python -m pytest` 전체 결과는 335개 통과, 일회용 DB가 필요한 6개는 건너뜀. 현재 샌드박스에서는 TestClient 스레드 알림에 임시 파이프를 사용했다.
 
 ## 메모
 - (11/23) TMAP 무료 하루 10건(오류도 셈)·유료 전환은 11/26 결정 대기(`TMAP_PAID_PLAN`) → 한도는 환경변수.

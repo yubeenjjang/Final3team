@@ -22,7 +22,7 @@ from api.providers.route_base import (
     RouteQuery,
     as_kst,
 )
-from api.providers.tmap import TmapClient
+from api.providers.tmap import SERVICE_ENDED_NOTICE, TmapClient
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import Endpoint, FestivalEndpoint, RouteDirection, RouteRequest, RouteStatus
 from api.services.festival_lookup import find_festival
@@ -48,6 +48,7 @@ class _Failure:
     retryable: bool = False
     status: RouteStatus = "unavailable"
     http_status: int = 200
+    notices: tuple[str, ...] = ()
 
 
 _UPSTREAM_ERROR = _Failure(*_FAILURES["async_unavailable"])
@@ -58,6 +59,10 @@ _RESULT_EXPIRED = _Failure("ROUTE_RESULT_EXPIRED", "경로가 만료됐어요. �
 _PROVIDER_FAILURES: dict[ErrorKind, _Failure] = {
     "too_close": _Failure("ROUTE_NO_RESULT", "걸어서 갈 수 있는 거리예요"),
     "no_result": _Failure(*_FAILURES["async_no_result"]),
+    "service_ended": _Failure(
+        "ROUTE_NO_RESULT", "지금은 대중교통으로 갈 수 없어요",
+        notices=(SERVICE_ENDED_NOTICE,),
+    ),
     "bad_request": _Failure("ROUTE_INVALID", "출발지와 도착지를 확인해 주세요."),
     "timeout": _TIMEOUT,
 }
@@ -307,7 +312,7 @@ class RealRouteService:
     async def _fallback(
         self, query: RouteQuery, primary_error: ErrorKind, sync_deadline: float
     ) -> ProviderResult | _Failure:
-        if primary_error in ("too_close", "bad_request"):
+        if primary_error in ("too_close", "bad_request", "service_ended"):
             return _PROVIDER_FAILURES[primary_error]
         loop = asyncio.get_running_loop()
         if loop.time() >= sync_deadline:
@@ -388,7 +393,7 @@ class RealRouteService:
             body.update(self._ready_payload(record, result))
         elif failure is not None:
             body["error"] = {"code": failure.code, "message": failure.message, "retryable": failure.retryable}
-            body["notices"] = [failure.message]
+            body["notices"] = [failure.message, *failure.notices]
         else:
             body["retry_after_s"] = _RETRY_AFTER_S
         return body

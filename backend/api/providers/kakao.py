@@ -17,6 +17,7 @@ _BASE_URL = httpx2.URL(scheme="https", host="dapi.kakao.com")
 _NOTICES = (
     "2차 공급원(카카오맵) 결과예요. 이 결과는 저장하지 않아 다시 보려면 새로 조회해야 해요.",
     "첫·끝 도보 정보가 없어요",
+    "막차 확인 불가",
 )
 
 
@@ -103,6 +104,6 @@ def _candidate(index: int, route: dict[str, Any]) -> dict[str, object]:
         transfers=properties["transfers"],
         fare_krw=properties["fare"]["value"],
         legs=[_leg(step) for step in route["steps"]],
-        service_running=True,
+        service_running=None,
         bus_crowding={"status": "unsupported", "reason": "2차 공급원은 버스 혼잡 근거를 주지 않아요"},
     )

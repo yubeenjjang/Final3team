@@ -13,12 +13,14 @@ Coordinates = tuple[float, float]
 ProviderName = Literal["tmap", "kakao"]
 ProviderTier = Literal["primary", "secondary"]
 ErrorKind = Literal[
-    "config", "no_result", "too_close", "bad_request", "region", "temporary", "timeout", "quota"
+    "config", "no_result", "service_ended", "too_close", "bad_request", "region", "temporary",
+    "timeout", "quota",
 ]
 
 _ERROR_DETAILS: dict[ErrorKind, str] = {
     "config": "공급원 API 키 설정을 확인해 주세요.",
     "no_result": "조건에 맞는 결과가 없어요.",
+    "service_ended": "지금은 대중교통으로 갈 수 없어요",
     "too_close": "출발지와 도착지가 너무 가까워요.",
     "bad_request": "공급원에 보낸 요청 값이 올바르지 않아요.",
     "region": "공급원이 지원하는 지역이 아니에요.",
@@ -82,7 +84,7 @@ def make_candidate(
     transfers: int,
     fare_krw: int,
     legs: list[dict[str, Any]],
-    service_running: bool,
+    service_running: bool | None,
     bus_crowding: dict[str, str],
 ) -> dict[str, object]:
     return {

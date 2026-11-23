@@ -1,8 +1,10 @@
 import asyncio
 import hashlib
 import hmac
+import json
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from threading import Barrier, Event
@@ -10,9 +12,10 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx2 import Response
+from httpx2 import Client, MockTransport, Request, Response
 
 from api.main import app
+from api.providers.kakao import KakaoClient
 from api.providers.quota import QuotaProvider
 from api.providers.route_base import (
     KST,
@@ -23,7 +26,9 @@ from api.providers.route_base import (
     RouteQuery,
     make_candidate,
 )
+from api.providers.tmap import TmapClient
 from api.services import real_routes
+from . import FIXTURES, TEST_KEY
 
 _RETURN = "/api/v1/routes/return"
 _VISIT = "/api/v1/routes/visit"
@@ -413,3 +418,125 @@ def test_P11_expiry_removes_shared_tmap_body_for_all_ids(routes: Routes) -> None
     _body(routes.client.post(_RETURN, json={**body, "request_id": "real-route-03"}), 200)
     assert len(routes.tmap.queries) == 2
     assert _poll(routes, second)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+
+
+@pytest.mark.parametrize("lane_key", ["Lane", "lane"])
+def test_P13_tmap_all_candidates_running(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch, lane_key: str
+) -> None:
+    monkeypatch.setenv("TMAP_APP_KEY", TEST_KEY)
+    payload = json.loads((FIXTURES / "tmap_seoul.json").read_text())
+    itineraries = payload["metaData"]["plan"]["itineraries"]
+    alternative = deepcopy(itineraries[0])
+    alternative["legs"][1].update(
+        service="0",
+        **{lane_key: [{"service": "1", "route": "합성예시 급행"}]},
+    )
+    itineraries.append(alternative)
+
+    with Client(transport=MockTransport(lambda _: Response(200, json=payload))) as http:
+        monkeypatch.setattr(routes.service, "_tmap", lambda: TmapClient(http))
+        ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
+
+    assert ready["route_status"] == "ready"
+    assert ready["completed_valid_route"] is True
+    assert [candidate["candidate_id"] for candidate in ready["route_candidates"]] == ["c1", "c2"]
+    assert all(candidate["service_running"] is True for candidate in ready["route_candidates"])
+    assert ready["route_candidates"][1]["legs"][1]["line"] == "합성예시 급행"
+    assert "운행이 끝난 구간이 있어요" not in ready["notices"]
+    assert routes.quota.calls == ["tmap"]
+
+
+@pytest.mark.parametrize("all_ended", [False, True], ids=["partly_ended", "all_ended"])
+def test_P13_tmap_excludes_ended_candidates(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch, all_ended: bool
+) -> None:
+    monkeypatch.setenv("TMAP_APP_KEY", TEST_KEY)
+    payload = json.loads((FIXTURES / "tmap_seoul.json").read_text())
+    itineraries = payload["metaData"]["plan"]["itineraries"]
+    ended = deepcopy(itineraries[0])
+    ended["legs"][1].update(service=0, Lane=[{"service": 0}])
+    itineraries.insert(0, ended)
+    if all_ended:
+        itineraries[1]["legs"][1]["service"] = 0
+
+    with Client(transport=MockTransport(lambda _: Response(200, json=payload))) as http:
+        monkeypatch.setattr(routes.service, "_tmap", lambda: TmapClient(http))
+        result = _body(routes.client.post(_RETURN, json=_BODY), 200)
+        polled = _poll(routes, result)
+
+    assert routes.quota.calls == ["tmap"]
+    assert not routes.kakao.queries
+    assert "운행이 끝난 구간이 있어요" in result["notices"]
+    if all_ended:
+        assert result["route_status"] == "unavailable"
+        assert result["completed_valid_route"] is False
+        assert result["error"] == {
+            "code": "ROUTE_NO_RESULT", "message": "지금은 대중교통으로 갈 수 없어요", "retryable": False,
+        }
+        assert "route_candidates" not in result
+        assert not routes.service._cache
+        assert polled == {key: value for key, value in result.items() if key != "route_access_token"}
+    else:
+        assert result["route_status"] == "ready"
+        assert result["completed_valid_route"] is True
+        candidate, = result["route_candidates"]
+        assert candidate["candidate_id"] == "c2"
+        assert candidate["service_running"] is True
+        assert polled == {**result, "updated_at": routes.clock.now.isoformat()}
+
+
+def test_P14_tmap_service_ended_after_202(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 0.2)
+    monkeypatch.setenv("TMAP_APP_KEY", TEST_KEY)
+    payload = json.loads((FIXTURES / "tmap_seoul.json").read_text())
+    payload["metaData"]["plan"]["itineraries"][0]["legs"][1]["service"] = 0
+    gate = Event()
+
+    def handler(_: Request) -> Response:
+        assert gate.wait(2)
+        return Response(200, json=payload)
+
+    with Client(transport=MockTransport(handler)) as http:
+        monkeypatch.setattr(routes.service, "_tmap", lambda: TmapClient(http))
+        try:
+            queued = _body(routes.client.post(_RETURN, json=_BODY), 202)
+        finally:
+            gate.set()
+        routes.finish(queued["route_request_id"])
+        final = _poll(routes, queued)
+
+    assert final["route_status"] == "unavailable"
+    assert final["completed_valid_route"] is False
+    assert final["error"] == {
+        "code": "ROUTE_NO_RESULT", "message": "지금은 대중교통으로 갈 수 없어요", "retryable": False,
+    }
+    assert "운행이 끝난 구간이 있어요" in final["notices"]
+    assert "route_candidates" not in final
+    assert routes.quota.calls == ["tmap"]
+    assert not routes.kakao.queries
+
+
+def test_P14_kakao_last_service_unknown_in_sync_response(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("KAKAO_REST_API_KEY", TEST_KEY)
+    routes.tmap.error = "no_result"
+    payload = json.loads((FIXTURES / "kakao_transit_seoul.json").read_text())
+
+    with Client(transport=MockTransport(lambda _: Response(200, json=payload))) as http:
+        monkeypatch.setattr(routes.service, "_kakao", lambda: KakaoClient(http))
+        ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
+        polled = _poll(routes, ready)
+
+    assert routes.quota.calls == ["tmap", "kakao"]
+    assert ready["route_status"] == "ready"
+    assert ready["provider_tier"] == "secondary"
+    candidate, = ready["route_candidates"]
+    assert candidate["service_running"] is None
+    assert "막차 확인 불가" in ready["notices"]
+    assert polled["error"]["code"] == "ROUTE_SECONDARY_SYNC_ONLY"
+    assert "route_candidates" not in polled
+    assert not routes.service._cache

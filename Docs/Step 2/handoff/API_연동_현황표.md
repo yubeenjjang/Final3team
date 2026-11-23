@@ -2,15 +2,15 @@
 
 > 신유빈 님 11/23 요청 ④(요청·응답 예시, 필수 입력값, 상태·오류 코드, 실제·모의 구분, API별 진행 상황과 연동 가능일)와 강사 11/20 API 피드백 1·2(시연에서 모의 구간과 실제 구간 구분, 동기 전용 결과 구분)에 답하는 문서입니다.
 > **원칙:** 모의 → 실제로 바뀌어도 주소·요청과 기존 응답 키를 유지합니다. 실제 응답은 `is_mock:false`이며 A10은 실제 구역 목록 등 선택 필드를 추가합니다. 화면은 지금 모의 서버로 붙이고, 실제 전환일에 주소(`NEXT_PUBLIC_API_BASE`)만 바꾸면 됩니다.
-> 자세한 요청·응답 예시: [`backend/api/MOCK_API.md`](../../../backend/api/MOCK_API.md)(curl 예시·시나리오) · 화면별 흐름: [프론트_모의API_연결.md](프론트_모의API_연결.md) · 계약 원문: API 설계문서 v0.3.3
+> 자세한 요청·응답 예시: [`backend/api/MOCK_API.md`](../../../backend/api/MOCK_API.md)(curl 예시·시나리오) · 화면별 흐름: [프론트_모의API_연결.md](프론트_모의API_연결.md) · 계약 원문: API 설계문서 v0.4
 
 ## 1. API별 상태 (12/8 중간 시연 흐름 = ★)
 | API | 주소 | 지금 | 실제 연결 예정 | 실제 데이터 | 근거(WBS) | 비회원 |
 |---|---|---|---|---|---|---|
 | ★ A02 축제 목록·검색 | `GET /festivals` | **실제 ✅ 11/23** (`FESTIVAL_DATA=db`, 기본은 모의) | — | TourAPI 전국 축제 870건(공개 869) | — | ✅ |
 | ★ A03 축제 상세 | `GET /festivals/{id}` | **실제 ✅ 11/23** (`FESTIVAL_DATA=db`) | — | TourAPI 상세(소개·입장료는 원본에 있을 때만) | — | ✅ |
-| ★ A04·A05 귀가 경로 | `POST /routes/return` → `GET /routes/return/{id}` | 모의 | **11/27** | TMAP 1차 · 카카오 2차 | W36 | ✅ (토큰으로 본인 요청만) |
-| A25 가는 길 | `POST /routes/visit` → `GET /routes/visit/{id}` | 모의 | 11/27 (A04와 같은 코드) | 같음 | W36 | ✅ |
+| ★ A04·A05 귀가 경로 | `POST /routes/return` → `GET /routes/return/{id}` | 기본 모의 · 실제 모드(`ROUTE_PROVIDER=real`) 막차 처리 구현 | **11/27** | TMAP 1차 · 카카오 2차 | W36 | ✅ (토큰으로 본인 요청만) |
+| A25 가는 길 | `POST /routes/visit` → `GET /routes/visit/{id}` | 기본 모의 · 실제 모드 막차 처리 구현 | 11/27 (A04와 같은 코드) | 같음 | W36 | ✅ |
 | A10 혼잡(서울만) | `GET /festivals/{id}/crowd` | **실제(`CROWD_PROVIDER=real`)**, 기본 모의 | — | 서울시 실시간 인구데이터 · 1km 이내 최대 3곳 | W89 | ✅ |
 | A09 날씨 | `GET /festivals/{id}/weather` | 모의 | 11/30 | 기상청 단기예보 | W34 | ✅ |
 | A07 공지·통제 | `GET /festivals/{id}/notices` | 모의 | 12/10 | 공식 공지 수집 | 유빈 11/23 일정 | ✅ |
@@ -41,7 +41,7 @@
 | `ROUTE_TIMEOUT` | 처리 제한 시간 초과 | true | 경로를 찾는 시간이 초과됐어요 | `async_timeout` |
 | `ROUTE_OVERLOADED` | 과부하(503) | true | 요청이 많아요, 잠시 뒤 다시 | `overloaded` |
 | `ROUTE_SECONDARY_SYNC_ONLY` | 2차(카카오) 결과는 저장할 수 없어 **나중 조회로 줄 수 없음** | true | 잠시 뒤 다시 조회해 주세요 | `async_secondary_sync_only` · `sync_secondary` 뒤 재조회 *(6단계 추가)* |
-| `ROUTE_NO_RESULT` | 조건에 맞는 경로 없음 | **false** | 조건에 맞는 경로가 없어요 | `async_no_result` *(6단계)* |
+| `ROUTE_NO_RESULT` | 조건에 맞는 경로 없음 또는 TMAP 후보 모두 운행 종료 | **false** | 조건에 맞는 경로가 없어요 / 지금은 대중교통으로 갈 수 없어요 | `async_no_result` *(6단계)* |
 | `ROUTE_QUOTA_EXCEEDED` | 공급원 하루 한도 소진 | **false** | 공식 교통 안내를 확인해 주세요 | `async_quota_exceeded` *(6단계)* |
 | `ROUTE_INVALID` (400) | 목적지를 못 찾음 | false | 목적지를 찾을 수 없어요 | 목적지에 `없는곳` |
 | `FESTIVAL_LOCATION_UNKNOWN` (400) | 축제 좌표 없음 | false | 축제 위치를 확인할 수 없어요 | `fst_000006` |
@@ -52,6 +52,7 @@
 | `primary` | TMAP | 200(바로) 또는 202 → 상태 조회 | 결과 보존 시간 안에는 A05로 다시 조회 가능 |
 | `secondary` | 카카오맵 | **200(접수 응답) 안에서만** | ❌ 저장 불가 → 다시 보려면 **새로 요청**. A05로 다시 부르면 `ROUTE_SECONDARY_SYNC_ONLY` |
 | `mock` | 모의 서버 | 둘 다 | 가능 |
+- 실제 모드에서는 TMAP의 운행 종료 후보를 제외하고 남은 후보만 표시합니다. 카카오 후보는 `service_running=null`이며 '막차 확인 불가'는 `notices`에 들어갑니다.
 - 화면은 `secondary` 결과를 받으면 **그 화면에서 바로 그리고**, 새로고침·뒤로가기 뒤에는 '다시 조회' 버튼을 보여 주세요(같은 결과를 다시 불러올 수 있다고 안내하지 않기).
 - 시연에서는 화면 구석의 **'모의 데이터' 표시(`is_mock`)**로 모의/실제 구간을 구분합니다.
 
@@ -60,3 +61,4 @@
 |---|---|---|
 | 11/23 | 처음 작성. 6단계(2차 공급원·오류 시나리오) 모의 서버 반영 | 권오현 |
 | 11/23 | A02·A03 실제 DB 조회(TourAPI 870건), 여러 상태 필터, 실제 축제 ID로 귀가 등 연결 | 권오현 |
+| 11/23 | W36 STEP3 막차 처리와 합성 응답 시험 반영(기본 모의 유지) | 권오현 |
