@@ -33,3 +33,7 @@ FastAPI 서버와 AI Agent 작업을 만드는 폴더입니다.
 `get_db()`는 비회원 요청용입니다. 로그인 요청은 JWT 검증 후 `user_db_session(검증된_user_id)`을 사용합니다. 내부 작업과 Celery는 `service_db_session()` 또는 `get_service_db()`를 사용합니다. 이 세션 함수는 실제 DB 연결 시점에 환경변수를 읽습니다.
 
 DB 없이 `python -m unittest backend.tests.db.test_session`으로 세션 흐름을 확인할 수 있습니다. 실제 PostgreSQL에서 A→비회원→B의 연결 재사용 시험은 테스트 DB 설정 후 `DB_LIVE_TEST=1`을 지정해 같은 명령을 실행합니다.
+
+## DB 스키마 적용
+
+`DB_MIGRATION_DSN`에 **스키마·역할 생성 권한이 있는 관리자 계정**의 PostgreSQL 접속 문자열을 설정한 뒤, 프로젝트 루트에서 `python -m backend.shared.db.migrate`를 실행합니다. 런타임 계정(`noldaga_app`, `noldaga_service`)으로 실행하지 않습니다. 기존 `Docs/Step 2/db/001~009` SQL을 한 파일씩 트랜잭션으로 적용하고 `migration_meta.schema_migrations`에 파일 해시와 적용 시각을 기록합니다. 이미 적용한 파일은 건너뛰며, 적용된 파일 내용이 달라지면 중단합니다. 실제 비밀번호와 관리자 접속 문자열은 Git에 올리지 않습니다.

@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from sqlalchemy import text
 
-from backend.shared.db.session import user_db_session
+from backend.shared.db.session import service_db_session, user_db_session
 
 
 class _Transaction:
@@ -80,6 +80,14 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
 @unittest.skipUnless(os.environ.get("DB_LIVE_TEST") == "1", "실제 테스트 DB가 필요합니다")
 class LiveSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_user_and_service_use_separate_roles(self):
+        async with user_db_session() as session:
+            user_role = (await session.execute(text("SELECT current_user"))).scalar_one()
+        with service_db_session() as session:
+            service_role = session.execute(text("SELECT current_user")).scalar_one()
+        self.assertEqual(user_role, "noldaga_app")
+        self.assertEqual(service_role, "noldaga_service")
+
     async def test_same_connection_does_not_keep_previous_user(self):
         """실제 PostgreSQL 풀에서 A → 비회원 → B의 문맥 누출을 확인합니다."""
         first_user, second_user = uuid4(), uuid4()
@@ -97,3 +105,13 @@ class LiveSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(observed[0][1], str(first_user))
         self.assertIn(observed[1][1], (None, ""))
         self.assertEqual(observed[2][1], str(second_user))
+
+    async def test_failed_request_rolls_back_user_context(self):
+        user_id = uuid4()
+        with self.assertRaises(RuntimeError):
+            async with user_db_session(user_id) as session:
+                await session.execute(text("SELECT current_setting('app.user_id', true)"))
+                raise RuntimeError("request failed")
+        async with user_db_session() as session:
+            remaining = (await session.execute(text("SELECT current_setting('app.user_id', true)"))).scalar_one()
+        self.assertIn(remaining, (None, ""))
