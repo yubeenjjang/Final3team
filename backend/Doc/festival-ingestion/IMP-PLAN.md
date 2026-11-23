@@ -80,3 +80,17 @@
 - (11/23) 상세 요청이 실패하거나 생략된 건은 기존 상세와 저장된 수정 시각을 유지한다. 다음 실행은 유효한 목록 수정 시각이 저장된 값보다 새로우면 상세를 다시 요청한다.
 - (11/23) 공개 행에 소개·수집 시각·TourAPI 원본 번호가 없으면 응답의 문자열 자료형을 유지하기 위해 빈 문자열을 보낸다.
 - (11/23) I12의 DB 응답 본문은 `is_mock: false`다. `X-Mock` 헤더 제거는 3단계 수정 범위 밖인 `api/main.py`의 공통 미들웨어 변경이 필요하다.
+
+## FIX1 — 실제 축제 ID로 귀가·현장 정보·관심·AI 질문 (I14, 11/23)
+담당: Codex · gpt-6.2-sol · reasoning medium
+
+**만들 파일(목록 밖 금지)**
+- 새로: `api/services/festival_lookup.py`
+- 고침(축제 찾는 줄만): `api/services/mock_routes.py`, `api/services/mock_festival_info.py`, `api/services/mock_favorites.py`, `api/services/mock_assistant.py`
+- 새로: `tests/api/test_i14_festival_lookup.py`
+
+**체크리스트**
+- [ ] I14 찾기 한 곳 + 4개 서비스 교체
+- [ ] 기존 시험 + 새 시험 전부 통과
+- [ ] (Claude) 노트북 DB 모드에서 목록 → 상세 → 귀가 결과 전체 흐름 확인
+- [ ] commit `fix(api): look up festivals via one function so real DB IDs work for routes, live info, favorites, assistant`

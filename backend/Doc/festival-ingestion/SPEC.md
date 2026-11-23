@@ -127,3 +127,12 @@
 - A02 `status`는 쉼표로 여러 값을 받는다(`upcoming`·`ongoing`·`ended`·`cancelled` 중, 중복 허용·공백 무시). 하나만 보내면 지금과 똑같다. 모르는 값이 하나라도 있으면 422 `VALIDATION_ERROR`. 빈 값(`status=`)도 422.
 - 모의(`mock`)와 DB(`db`) 둘 다 같은 규칙. 목적: 화면이 끝난 축제를 빼고(`status=ongoing,upcoming`) 부를 수 있게. **API 기본값(필터 없음 = 전부)은 바꾸지 않는다.**
 - **확인(mock):** `status=ongoing,upcoming` → `fst_000001`·`fst_000002`·`fst_000003`·`fst_000005`(4건) · `status=ongoing` → 기존과 같음 · `status=ongoing,mars` → 422 · `status=` → 422.
+
+## 7. FIX1 — 실제 축제 ID로 귀가·현장 정보·관심·AI 질문 (11/23, Claude 검증 중 발견)
+- 문제: `FESTIVAL_DATA=db`에서 A03까지는 실제 축제가 나오지만, 귀가(A04·A25)·공지·날씨·혼잡(A07·A09·A10)·관심 축제(A11~A13)·AI 질문(A06)은 **모의 축제 6건 dict(`api.mocks.store.festivals`)에서만** 축제를 찾아 실제 ID에 404 `FESTIVAL_NOT_FOUND`.
+### I14. 축제 찾기 한 곳
+- `api/services/festival_lookup.py`에 `find_festival(festival_id: str) -> FestivalDetail | None` 하나: `FESTIVAL_DATA=db`이면 `festival_store.get_festival`(공개 축제만), 아니면 모의 dict. **위 서비스들은 모두 이 함수로만** 축제를 찾는다(모의 dict 직접 접근 금지 — 시험 데이터 준비 코드 제외).
+- 바뀌는 것은 **축제를 찾는 곳뿐**. 경로 결과·날씨 값·공지·혼잡 값은 지금처럼 모의(축제 좌표·지역은 찾은 축제 값 사용), 응답의 `is_mock: true`·`X-Mock` 그대로(이 응답들은 아직 모의라 맞음).
+- AI 질문(A06)의 기본 축제 `fst_000001`: DB 모드면 `context.festival_id`가 없을 때 **진행 중 축제 첫 번째**(A02 `status=ongoing` 기본 정렬 1번)를 쓴다. 없으면 지금처럼 실패 대신 `fst_000001` 대신의 규칙: 경로 없이 답변만(`route_request_id` 없음).
+- **확인(mock):** 기존 시험 전부 그대로 · `find_festival("fst_000001")` 모의 값 · `find_festival("fst_999999")` None.
+- **확인(DB 모드, 일반 시험 — `festival_store.get_festival`을 monkeypatch로 가짜 실제 축제 반환):** `FESTIVAL_DATA=db` + 실제 형식 ID(`fst_01M835BPX17Y44VEDJM1VMZ3N6`)로 A04 → 202, 조회 2회차 `ready`·`origin.name`이 가짜 축제 `venue_name` · A09·A07·A10 → 200 · A12 저장 → 200, A11 목록에 그 축제 · 모르는 ID → 404 `FESTIVAL_NOT_FOUND`.
