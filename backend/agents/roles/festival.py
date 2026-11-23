@@ -11,7 +11,7 @@ from typing import Any, Callable, Mapping
 
 
 ToolCall = Callable[[str, Mapping[str, Any]], Mapping[str, Any]]
-ALLOWED_TOOLS = frozenset({"search_festivals", "get_festival", "get_crowd"})
+ALLOWED_TOOLS = frozenset({"search_festivals", "get_festival", "get_crowd", "get_official_notices"})
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,7 @@ class FestivalRequest:
     q: str | None = None
     status: str | None = None
     page_size: int | None = None
+    notice_type: str | None = None
 
 
 @dataclass
@@ -43,18 +44,23 @@ class FestivalAgent:
 
     def run(self, request: FestivalRequest) -> FestivalResult:
         trace = ["START", "interpret"]
-        if request.intent not in {"search", "detail", "crowd"}:
+        if request.intent not in {"search", "detail", "crowd", "notices"}:
             target = "Route" if request.intent == "route" else "Supervisor"
             return FestivalResult("handoff_required", "담당 기능으로 전달이 필요합니다.", transitions=trace + ["handoff_required", "END"], handoff_target=target)
 
         trace.append("check_slots")
-        if request.intent in {"detail", "crowd"} and not request.festival_id:
+        if request.intent in {"detail", "crowd", "notices"} and not request.festival_id:
             return FestivalResult("clarification_needed", "어느 축제인지 알려주세요.", transitions=trace + ["clarification_needed", "END"])
 
         if request.intent == "search":
             tool = "search_festivals"
             args = {key: value for key in ("region", "date_from", "date_to", "q", "status", "page_size")
                     if (value := getattr(request, key)) is not None}
+        elif request.intent == "notices":
+            tool = "get_official_notices"
+            args = {"festival_id": request.festival_id}
+            if request.notice_type is not None:
+                args["type"] = request.notice_type
         else:
             tool = "get_festival" if request.intent == "detail" else "get_crowd"
             args = {"festival_id": request.festival_id}
@@ -104,6 +110,27 @@ class FestivalAgent:
 
         if data.get("festival_id") != request.festival_id:
             return self._end("unavailable", "선택한 축제와 조회 결과가 일치하지 않습니다.", trace, used)
+        if request.intent == "notices":
+            status = data.get("status")
+            if status == "unsupported":
+                return self._end("unsupported", "이 축제의 공식 공지 조회는 지원하지 않습니다." + mock, trace + ["unsupported"], used)
+            if status not in {"ok", "stale"}:
+                return self._end("unavailable", "현재 공식 공지를 확인할 수 없습니다." + mock, trace + ["unavailable"], used)
+            coverage = data.get("coverage")
+            if not isinstance(coverage, dict) or coverage.get("supported") is not True:
+                return self._end("unavailable", "공식 공지의 지원 범위를 확인할 수 없습니다.", trace, used)
+            items = data.get("items")
+            if not isinstance(items, list):
+                return self._end("unavailable", "공식 공지 목록을 확인할 수 없습니다.", trace, used)
+            if not items:
+                return self._end("answered", "확인할 수 있는 공식 공지가 없습니다." + mock, trace + ["empty_result"], used)
+            required = ("notice_id", "title", "source", "published_at", "effective_from", "effective_to")
+            if any(not isinstance(item, dict) or not all(item.get(key) for key in required) for item in items):
+                return self._end("unavailable", "공식 공지의 출처나 효력 시각을 확인할 수 없습니다.", trace, used)
+            prefix = "오래된 자료입니다. " if status == "stale" else ""
+            summaries = ", ".join(f"{item['title']} (출처 {item['source']}, 게시 {item['published_at']}, 효력 {item['effective_from']}~{item['effective_to']})" for item in items)
+            evidence = [{key: item[key] for key in required} for item in items]
+            return self._end("answered", f"{prefix}공식 공지: {summaries}.{mock}", trace + ["stale" if status == "stale" else "answer"], used, evidence)
         if request.intent == "detail":
             evidence = self._evidence(data)
             if not all(evidence.values()):

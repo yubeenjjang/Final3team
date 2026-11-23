@@ -6,7 +6,7 @@
 
 전체 서비스의 에이전트는 Supervisor·Festival·Route·Diagnosis·Recovery **5개**다. 이번 문서는 그중 Festival Agent **한 개의 내부 상태 전이**를 설계한다. 기획서 6.1·6.2절에 따라 **Supervisor가 사용자 의도·축제 선택·조건을 파악하고 필요한 경우 Festival을 호출**한다. Festival은 전달받은 축제 ID·조건을 검증하고 축제 도구를 사용한다. 현재 단독 실행기와 시험 하네스는 Supervisor 대신 구조화된 요청을 넘기고 결과를 받는다. Supervisor와의 실제 연결은 W44~W47의 별도 설계 대상이다.
 
-이번 필수 흐름은 **전국 축제 검색, 선택된 축제 상세, 서울에서 매핑이 검증된 축제 주변 지역 혼잡 조회**다. 공식 공지·시설은 도구 계약과 자료 공급원이 확인될 때 확장한다. 날씨는 서비스 필수 기능이지만 현재 13개 도구에 없으므로 이번 단일 그래프의 실행 대상으로 두지 않는다. 코스 추천·RAG는 W27·W37과 연결되는 후속 흐름이다. **관심 저장은 팀 합의에 따라 Supervisor가 처리하며, 단일 Festival Agent는 `save_favorite`를 호출하지 않는다.**
+이번 필수 흐름은 **전국 축제 검색, 선택된 축제 상세, 서울에서 매핑이 검증된 축제 주변 지역 혼잡 조회**다. 공식 공지 조회도 단독 흐름으로 연결했으며 현재는 모의 API의 계약과 전이만 검증했다. 실제 공식 자료 공급원이 준비되기 전에는 현장 공지로 제공하지 않는다. 시설은 자료 공급원이 확인될 때 확장한다. 날씨는 서비스 필수 기능이지만 현재 13개 도구에 없으므로 이번 단일 그래프의 실행 대상으로 두지 않는다. 코스 추천·RAG는 W27·W37과 연결되는 후속 흐름이다. **관심 저장은 팀 합의에 따라 Supervisor가 처리하며, 단일 Festival Agent는 `save_favorite`를 호출하지 않는다.**
 
 Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 조치를 실행하지 않는다. 그런 질문은 `handoff_required` 결과로 끝내고, 나중에 Supervisor가 담당 에이전트로 전달한다. 단독 시험에서는 '이 단독 범위에서 처리하지 않음'으로 표시한다.
 
@@ -46,8 +46,8 @@ flowchart TD
 | 개념 단계 | 현재 LangGraph 노드 | 확인할 사실 |
 |---|---|---|
 | 요청 범위 판정 | `interpret` | 구조화된 `intent`를 검사한다. 자연어를 해석하지 않는다. |
-| 필수 값 확인 | `check_slots` | 상세·혼잡의 축제 ID, 복합 요청의 명시적 첫 결과 선택을 확인한다. |
-| 도구 선택·실행 | `select_tool` → `call_tool` | 허용된 세 도구만 선택하고 예산을 확인한다. |
+| 필수 값 확인 | `check_slots` | 상세·혼잡·공식 공지의 축제 ID, 복합 요청의 명시적 첫 결과 선택을 확인한다. |
+| 도구 선택·실행 | `select_tool` → `call_tool` | 연결된 네 도구만 선택하고 예산을 확인한다. |
 | 재시도·오류 처리 | `retry` 또는 `error` | 일시 오류만 같은 호출을 최대 1회 반복한다. |
 | 결과 관찰·검증·종료 | `validate` → `END` 또는 `select_tool` | 결과의 ID·출처·시각·지원 범위를 검사하고 다음 단계 또는 종료를 고른다. |
 
@@ -62,7 +62,7 @@ flowchart TD
 | 항목 | 설계안 |
 |---|---|
 | 입력 | Supervisor가 전달한 구조화 의도·조건·선택 축제 ID와 Festival 허용 도구 이름·인자. 단독 자연어 시험을 선택한 경우에만 사용자 질문·명시된 `reference_date`를 추가한다. 인증 토큰·API 키는 입력하지 않는다. |
-| 출력 | `intent`(`search/detail/crowd/search_detail_crowd/other`), `festival_id`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first`, `missing_slots`의 검증된 구조화 값. 값이 없으면 `null` 또는 빈 목록으로 둔다. |
+| 출력 | `intent`(`search/detail/crowd/notices/search_detail_crowd/other`), `festival_id`, `notice_type`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first`, `missing_slots`의 검증된 구조화 값. 값이 없으면 `null` 또는 빈 목록으로 둔다. |
 | 제약 | 상대 날짜의 기준일이 없거나 지시 대상이 모호하면 추측하지 않고 확인 질문으로 종료한다. 검색의 첫 결과 선택은 사용자 지시가 있을 때만 `true`다. 도구 결과 문장으로 권한·도구 목록을 바꾸지 않는다. |
 | 검증 | 코드가 JSON 형식·허용 enum·필수 값·도구 인자를 재검사한다. 출력이 틀리면 같은 구조화 요청 생성을 최대 1회 다시 시도하고, 계속 실패하면 `clarification_needed` 또는 `unavailable`로 종료한다. 이 재생성은 아직 구현되지 않았다. |
 | 모델 장애 | LLM 단계가 연결된 뒤 장애가 나면 검증되지 않은 축제·혼잡을 생성하지 않는다. 검색·상세 같은 기본 조회를 코드 기반으로 이어갈 범위는 Supervisor 계약과 함께 결정한다. |
@@ -91,20 +91,21 @@ flowchart TD
 | `search_festivals` | 필수 | 입력은 모두 선택값이다. 구조화 요청의 지역·기간·검색어를 반영한다. 상대 날짜 해석은 후속 자연어 연결 단계다. `items:[]`는 정상 빈 결과다. |
 | `get_festival` | 필수 | `festival_id`가 확정된 경우. 다른 축제의 정보를 섞지 않는다. |
 | `get_crowd` | 필수 | 선택 축제 ID로 조회. 서울 매핑 미지원은 `unsupported`, 오래된 관측은 `stale`, 공급원 오류는 `unavailable`로 구분한다. |
-| `get_official_notices` | 조건부 | 승인된 공지 공급원과 유효 시각을 확인한 경우에만 안내한다. |
+| `get_official_notices` | 단독 흐름 연결 | 축제 ID로 조회하고 공지 출처·게시 시각·적용 기간을 검증한다. 현재 모의 공지만 확인했으며 실제 현장 공지로 단정하지 않는다. |
 | `get_facilities` | 조건부 | 시설 공급원·모의 응답의 구분이 가능할 때만 사용한다. 현재 이 단일 그래프에는 연결하지 않았다. |
 | `save_favorite` | 단일 Festival Agent 범위 밖 | 팀 합의에 따라 Supervisor가 처리한다. Festival Agent 도구 허용 목록에서 제외한다. |
 | `get_weather` | 후속 후보 | 현재 13개 도구에 없다. 도구·API 계약과 BFCL 영향 검토 후 추가한다. |
 
 이름·인자·허용값은 API 설계 v0.3.3의 JSON Schema 및 `origin/ohyun` 브랜치의 `handoff/tools/*.json`을 따른다. 이 문서에서 새로운 도구 인자를 임의 확정하지 않는다. 운영자 전용 `get_incident`·`get_route_metrics`·`list_allowed_actions`·`propose_recovery_action` 등은 Festival Agent에 제공하지 않는다.
 
-### 5-1. 이번 주 필수 도구 3개의 확정 입력·결과
+### 5-1. 연결된 도구 4개의 입력·결과
 
 | 도구 | 입력 JSON Schema 요약 | 성공 결과에서 확인할 필드 | 오류·특수 상태 |
 |---|---|---|---|
 | `search_festivals` | 모두 선택: `region`(기본 `ALL`, 17개 시·도 코드), `date_from`·`date_to`(`YYYY-MM-DD`, 순서·최대 366일 검증), `q`(1~50자), `status`(`upcoming/ongoing/ended/cancelled`), `page_size`(1~20, 기본 10). **도구 스키마에는 `bbox`·`sort`·`page`가 없다.** | `data.items[]`의 `festival_id`, `name`, `region_code`, 날짜, `source`, `last_synced_at`; `total`·`page`·`page_size` | `items:[]`는 `ok:true`인 결과 없음. `VALIDATION_ERROR`는 되묻거나 입력 수정, `TOOL_TIMEOUT`·`RATE_LIMITED`는 제한 재시도. |
 | `get_festival` | 필수 `festival_id:string` 하나. 검색 결과의 ID나 선택 문맥의 ID를 그대로 사용 | `data.festival_id`, `name`, 장소·주소·좌표, 날짜, `source`, `source_ref`, `last_synced_at`. 빈값 허용 필드는 그대로 표시 | `FESTIVAL_NOT_FOUND`는 재선택 요청. ID 형식 오류는 `VALIDATION_ERROR`, 일시적 호출 오류는 `TOOL_TIMEOUT`. |
 | `get_crowd` | 필수 `festival_id:string` 하나. 지역 코드나 관측구역 코드를 인자로 보내지 않음 | `data.festival_id`, `status`, `coverage`, `areas[]`의 `area_name`, `relation_type`, `congest_level`, `observed_at`, 별도 `forecast[]` | `status:unsupported`는 정상 미지원. `status:stale`은 관측 시각을 밝히고 현재 상태로 단정하지 않음. `status:unavailable`은 정보 제공 불가. 본문 결과 코드 오류는 `SOURCE_RESULT_ERROR`. |
+| `get_official_notices` | 필수 `festival_id:string`, 선택 `type`(`operation/traffic_control/no_stop/bus_detour/road_closure`) | `data.festival_id`, `status`, `coverage`, `items[]`의 `notice_id`, `title`, `source`, `published_at`, `effective_from`, `effective_to` | `items:[]`는 정상 빈 결과. `unsupported`·`unavailable`은 공지 확인 불가, `stale`은 오래된 자료임을 표시. 현재 검증 자료는 모의 응답이다. |
 
 `search_festivals` 도구의 기본 `page_size`는 10이지만 공개 축제 목록 API의 기본값은 20이다. 연결 어댑터는 도구 호출에서 값이 생략되면 API 요청에 `page_size=10`을 명시한다.
 
@@ -115,7 +116,7 @@ flowchart TD
 
 | 상황 | 도구·다음 전이 | 한도 초과 시 |
 |---|---|---|
-| 검색·상세·혼잡 조회 필요 | 해당 단계의 허용 도구 1개 선택 | 도구 호출 4회 또는 30초 예산 초과 시 `unavailable`/`partial` |
+| 검색·상세·혼잡·공지 조회 필요 | 해당 단계의 허용 도구 1개 선택 | 도구 호출 4회 또는 30초 예산 초과 시 `unavailable`/`partial` |
 | 도구가 `retryable:true` 오류 반환 | `retry` → 같은 `call_tool` | 같은 호출 최대 1회 재시도 후 `error` |
 | 도구가 `retryable:false` 오류 반환 | 재시도 없이 `error` | 없는 축제·입력 오류는 확인 질문, 기타는 확인 불가 |
 | 결과의 출처·시각·지원 범위 검증 실패 | `validate`에서 종료 | 임의 데이터 보충이나 LLM 재추론 없음 |
@@ -129,7 +130,7 @@ flowchart TD
 |---|---|---|
 | 실행 중 단기 상태 | `FestivalGraphState`의 `request`, `stage`, 선택 축제 ID, 호출 수, `parts`, `evidence`, `trace` | 한 번의 `.invoke()` 동안 사용한다. 실행 종료 후에는 `FestivalResult`만 호출자에게 반환한다. |
 | 대화 문맥 | `FestivalRequest.festival_id` 등 호출자가 전달한 값만 사용 | 세션 기억·Redis 연결은 아직 없다. 축제 변경 시 문맥 초기화 규칙은 W26에서 정한다. |
-| 장기 지식 | 이번 세 도구 흐름에는 없음 | 공식 안내 RAG·벡터 저장은 W27 이후 별도 계약으로 연결한다. 현재 혼잡을 정적 문서로 대체하지 않는다. |
+| 장기 지식 | 현재 네 도구 흐름에는 없음 | 공식 안내 RAG·벡터 저장은 W27 이후 별도 계약으로 연결한다. 현재 혼잡을 정적 문서로 대체하지 않는다. |
 | 체크포인트 | `graph.compile()`에 checkpointer가 없음 | 중단된 노드부터 자동 재개하지 못한다. 재호출은 새로운 실행이며, 읽기 전용 도구를 처음부터 다시 부를 수 있다. `thread_id`와 저장 기간은 W26에서 결정한다. |
 
 API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별개다. 체크포인트가 없는 현재 구현을 장애 후 재개 기능으로 설명하지 않는다. 세션 식별자·보존 기간을 확정할 때 API·DB 문서와 이름을 맞춘다.
@@ -139,10 +140,10 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 | 구분 | 필드 | 의미와 규칙 |
 |---|---|---|
-| 입력 | `intent`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first` | 현재 실행 코드는 해석된 구조화 요청을 받는다. 자연어 질문 해석과 상대 날짜 변환은 후속 연결 단계다. |
-| 입력 | `festival_id` | 상세·혼잡 조회할 축제 ID. 인증 맥락은 현재 공개 조회 범위에서 사용하지 않는다. |
+| 입력 | `intent`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first`, `notice_type` | 현재 실행 코드는 해석된 구조화 요청을 받는다. 자연어 질문 해석과 상대 날짜 변환은 후속 연결 단계다. |
+| 입력 | `festival_id` | 상세·혼잡·공식 공지 조회할 축제 ID. 인증 맥락은 현재 공개 조회 범위에서 사용하지 않는다. |
 | 추적 | `transitions`, `used_tools` | 노드 방문 순서와 도구 호출 결과를 남긴다. HTTP `request_id`를 최종 결과에 전달하는 기능은 후속 작업이다. |
-| 판단 | `intent`, `stage` | `search`, `detail`, `crowd`, `search_detail_crowd`를 처리한다. 범위 밖 의도는 인계한다. 복합 요청에서 첫 결과 선택은 `select_first=true`가 필요하다. |
+| 판단 | `intent`, `stage` | `search`, `detail`, `crowd`, `notices`, `search_detail_crowd`를 처리한다. 범위 밖 의도는 인계한다. 복합 요청에서 첫 결과 선택은 `select_first=true`가 필요하다. |
 | 도구 | `tool`, `args`, `response`, `attempts`, `tool_call_count`, `stage`, `selected_festival_id` | 복합 요청의 `stage`는 `search → detail → crowd`. 검색 결과의 첫 ID를 후속 호출에 전달한다. |
 | 검증 | `evidence`, 도구 응답의 `coverage`·`status` | 축제 ID·출처·시각·지역 지원 여부를 확인한다. `unsupported`는 호출 실패와 구별한다. 별도 `validation_errors` 상태 필드는 아직 없다. |
 | 출력 | `answer`, `outcome`, `handoff_target` | `outcome`은 `answered`, `partial`, `clarification_needed`, `unsupported`, `unavailable`, `handoff_required` 중 하나. 복합 요청 중간 실패·미지원은 앞서 확인한 정보를 보존해 `partial`로 끝낸다. |
@@ -179,7 +180,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 코드 노드 | 하는 일 | 다음 단계 |
 |---|---|---|
 | `interpret` | 이미 분류된 `intent`가 Festival 범위인지 확인. 자연어 분류는 아직 구현하지 않음 | `check_slots` 또는 `END` |
-| `check_slots` | 상세·혼잡의 `festival_id`와 복합 요청의 `select_first` 확인 | `select_tool` 또는 `END` |
+| `check_slots` | 상세·혼잡·공식 공지의 `festival_id`와 복합 요청의 `select_first` 확인 | `select_tool` 또는 `END` |
 | `select_tool` | 현재 `stage`에 맞는 허용 도구 1개와 인자 구성 | `call_tool` |
 | `call_tool` | 호출 예산 검사, API 래퍼 실행, 응답·오류 기록 | `validate`, `retry`, `error` 또는 `END` |
 | `retry` | 동일 도구 호출 재시도 기록 | `call_tool` |
@@ -199,7 +200,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `select_tool` | 현재 `stage` 확정 | `call_tool` | 단계마다 `attempts=0` 초기화 |
 | `call_tool` | 호출 전·후 시간 또는 총 4회 예산 초과 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록 |
 | `call_tool` | `response.ok=true` | `validate` | — |
-| `call_tool` | 오류가 재시도 가능, `attempts<2`, 총 호출 수 `<3` | `retry` | 같은 단계 최대 1회 재시도 |
+| `call_tool` | 오류가 재시도 가능, `attempts<2`, 총 호출 수 `<4` | `retry` | 같은 단계 최대 1회 재시도 |
 | `call_tool` | 그 밖의 오류 | `error` | 같은 도구 추가 호출 없음 |
 | `retry` | 항상 | `call_tool` | 다음 호출에서도 시간·횟수 검사 |
 | `validate` | 단일 조회 완료·빈 결과·미지원·근거 실패 | `END` | 결과별 `outcome` 반환 |
@@ -217,6 +218,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 없는 축제 ID | 사용자에게 재선택 요청. 자동 검색 복귀는 후속 검토 사항. |
 | 서울 밖 또는 미매핑 혼잡 | `unsupported`를 정상적인 결과 상태로 처리. 다른 지역 혼잡으로 채우지 않음. |
 | 검색 결과 0건 | `ok:true`와 `items:[]`를 정상 처리하고 조건에 맞는 결과가 없다고 안내. 임의 축제 생성 금지. |
+| 공식 공지 결과 0건 | 정상 빈 결과로 처리하되 전체 현장 공지가 없다고 단정하지 않는다. 모의 응답은 모의임을 표시한다. |
 | 혼잡 `stale` | `observed_at`과 오래된 정보 경고를 함께 제시하고 현재 혼잡이라고 단정하지 않음. |
 | 혼잡 `unavailable` | 공급원 오류·좌표 누락 등 이유를 확인 가능한 범위에서 안내하고 현재 혼잡값을 만들지 않음. |
 | 일시적 도구 오류·시간 초과 | `retryable=true`일 때만 **최대 1회** 재시도. 전체 실행 시간·도구 호출 상한을 초과하면 `unavailable`. |
@@ -266,6 +268,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | “그 축제”만 말하고 선택 문맥 없음 | 해석→확인 질문 | 임의 축제 선택·도구 호출 없음 |
 | 없는 축제 ID | `get_festival` 오류→재선택 질문 | 다른 축제를 사실처럼 대신 안내하지 않음 |
 | 도구 시간 초과 | 호출→1회 제한 재시도→확인 불가 | 반복 무한 루프 없음. HTTP 요청 ID를 최종 결과에 보존하는 기능은 후속 작업 |
+| 공식 공지 단독 조회 | 축제 ID 확인→`get_official_notices`→검증→답변 | 공지 출처·게시·효력 시각 표시, 모의 자료 명시 |
 | 날씨 또는 귀가 요청 | 범위 판정→인계/미지원 안내 | 미정 도구 호출·날씨 추측·경로 생성 없음 |
 
 위 표는 **상태 전이 시험 계획**이다. 실제 확인 결과는 아래에 기록한다. BFCL 문항 평가와 실제 DB 연동은 아직 하지 않았다.
@@ -312,12 +315,18 @@ W24 확인 순서는 다음과 같다.
 
 복합 요청에서 검색 성공 후 상세 도구가 한 번 시간 초과되고 재시도에 성공하는 경우도 확인했다. 기존 3회 상한에서는 혼잡 조회 전에 `partial`로 끝났으나, 태경님 검토를 반영한 **4회 상한에서는 혼잡 조회까지 진행해 `answered`로 끝난다.** 일시 오류가 두 번 발생해 네 번째 호출 뒤에도 재시도가 필요하면 `budget_exceeded`, `outcome=partial`로 종료하고 이미 확인한 검색·상세 결과를 보존한다. 두 경우 모두 `backend/tests/agents/test_festival_graph.py`에 반복 실행 가능한 시험으로 추가했다.
 
+### A-6. 공식 공지 단독 흐름의 모의 API 검증
+
+`get_official_notices(festival_id, type?)`를 Festival Agent에 연결했다. 선택한 축제 ID가 없으면 도구를 부르지 않고 되묻는다. 응답의 축제 ID·지원 범위·공지별 출처·게시 시각·효력 기간을 검사하고, 필수 근거가 빠진 공지는 안내하지 않는다. 빈 목록은 정상 빈 결과로 처리하며, 모의 응답은 모의 데이터임을 밝힌다.
+
+현재 `origin/ohyun` 브랜치의 **공지 라우터만** 별도 로컬 앱에 연결해 HTTP로 확인했다. 모의 축제 `fst_000001`에서 유효한 공지 2건, `type=traffic_control`에서 1건을 받았다. `fst_000002`의 빈 목록은 `answered`로 끝났고, 효력 기간이 지난 공지는 API에서 제외됐다. 에이전트 단독·그래프 시험은 기존 23개에 공지 사례 3개를 더해 **26개 통과**했다. 현재 환경에서 `backend/` 기준 `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`로 재실행했다. 전체 오현님 서버를 Windows에서 실행하거나 실제 공식 공지 공급원과 연결한 검증은 아니다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. 팀에서 모델을 결정한 뒤 Supervisor→Festival 구조화 입력 계약과, 단독 시험에서 자연어 입력을 쓸지 여부를 확정한다. 그 결과에 맞춰 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
 2. 세션·체크포인트를 도입할 시점에 `thread_id`, 보존 기간, 중단 후 재개 규칙을 W26 및 DB 문서와 맞춘다.
 3. 날씨 답변: Festival Agent의 최종 범위에 둘지, `get_weather` 도구를 언제 추가할지, BFCL 문항에 어떤 영향을 주는지 결정한다.
-4. 공식 공지·시설 자료와 모의 API의 실제 준비 상태를 확인한다. 없는 자료를 시험 성공으로 꾸미지 않는다.
+4. 공식 공지의 실제 공급원과 시설 자료의 준비 상태를 확인한다. 현재 공지는 모의 API와의 계약만 검증했다.
 5. 재시도·호출·전체 시간 예산과 상태 저장 필드를 구현 담당자와 확정한다.
 6. 도구 계약은 `origin/ohyun` 최신 브랜치를 기준으로 유지한다. 인계 문서의 Festival Agent 도구 목록에서 `save_favorite`가 제외된 상태도 확인했다.
 

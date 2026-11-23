@@ -37,7 +37,7 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
     def interpret(state: FestivalGraphState) -> dict[str, Any]:
         request = state["request"]
         trace = ["START", "interpret"]
-        if request.intent not in {"search", "detail", "crowd", "search_detail_crowd"}:
+        if request.intent not in {"search", "detail", "crowd", "notices", "search_detail_crowd"}:
             target = "Route" if request.intent == "route" else "Supervisor"
             result = FestivalResult("handoff_required", "담당 기능으로 전달이 필요합니다.", transitions=trace + ["handoff_required", "END"], handoff_target=target)
             return {"trace": result.transitions, "result": result}
@@ -48,7 +48,7 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
     def slots(state: FestivalGraphState) -> dict[str, Any]:
         request = state["request"]
         trace = state["trace"] + ["check_slots"]
-        if request.intent in {"detail", "crowd"} and not request.festival_id:
+        if request.intent in {"detail", "crowd", "notices"} and not request.festival_id:
             result = FestivalResult("clarification_needed", "어느 축제인지 알려주세요.", transitions=trace + ["clarification_needed", "END"])
             return {"trace": result.transitions, "result": result}
         if request.intent == "search_detail_crowd" and not request.select_first:
@@ -63,6 +63,11 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
             tool = "search_festivals"
             args = {key: value for key in ("region", "date_from", "date_to", "q", "status", "page_size")
                     if (value := getattr(request, key)) is not None}
+        elif stage == "notices":
+            tool = "get_official_notices"
+            args = {"festival_id": state.get("selected_festival_id") or request.festival_id}
+            if request.notice_type is not None:
+                args["type"] = request.notice_type
         else:
             tool = "get_festival" if stage == "detail" else "get_crowd"
             args = {"festival_id": state.get("selected_festival_id") or request.festival_id}

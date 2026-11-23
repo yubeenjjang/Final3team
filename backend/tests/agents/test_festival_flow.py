@@ -51,6 +51,25 @@ class FestivalFlowTests(unittest.TestCase):
         self.assertEqual(result.outcome, "unavailable")
         self.assertIn("지원 범위", result.answer)
 
+    def test_official_notices_include_source_and_effective_time(self):
+        item = {"notice_id": "ntc_000001", "title": "세종대로 일부 차로 통제", "source": "seoul_topis", "published_at": "2026-11-20T09:00:00+09:00", "effective_from": "2026-11-20T18:00:00+09:00", "effective_to": "2026-12-31T23:00:00+09:00"}
+        calls = []
+        def tool(name, args):
+            calls.append((name, dict(args)))
+            return {"ok": True, "data": {"festival_id": "fst_000001", "status": "ok", "coverage": {"scope": "national", "region_code": "SEOUL", "supported": True}, "items": [item]}, "is_mock": True}
+        result = FestivalAgent(tool).run(FestivalRequest("notices", festival_id="fst_000001", notice_type="traffic_control"))
+        self.assertEqual(result.outcome, "answered")
+        self.assertEqual(calls, [("get_official_notices", {"festival_id": "fst_000001", "type": "traffic_control"})])
+        self.assertIn("seoul_topis", result.answer)
+        self.assertIn("효력", result.answer)
+        self.assertIn("모의 데이터", result.answer)
+
+    def test_official_notices_without_evidence_are_not_presented(self):
+        data = {"festival_id": "fst_000001", "status": "ok", "coverage": {"scope": "national", "region_code": "SEOUL", "supported": True}, "items": [{"notice_id": "ntc_000001", "title": "통제"}]}
+        result = FestivalAgent(lambda *_: {"ok": True, "data": data}).run(FestivalRequest("notices", festival_id="fst_000001"))
+        self.assertEqual(result.outcome, "unavailable")
+        self.assertIn("출처", result.answer)
+
     def test_retry_once_then_stop(self):
         attempts = []
         def tool(*_):

@@ -1,4 +1,4 @@
-"""Minimal HTTP wrappers for the three single Festival Agent tools."""
+"""Minimal HTTP wrappers for the single Festival Agent tools."""
 
 from __future__ import annotations
 
@@ -22,6 +22,15 @@ class FestivalApiTools:
             # The agent tool defaults to 10, while the public API defaults to 20.
             query = urlencode({"page_size": 10, **args})
             url = f"{self.base_url}/festivals" + (f"?{query}" if query else "")
+        elif name == "get_official_notices":
+            if (set(args) - {"festival_id", "type"} or "festival_id" not in args
+                    or not isinstance(args["festival_id"], str)
+                    or ("type" in args and args["type"] not in {"operation", "traffic_control", "no_stop", "bus_detour", "road_closure"})):
+                return self._invalid()
+            festival_id = quote(args["festival_id"], safe="")
+            url = f"{self.base_url}/festivals/{festival_id}/notices"
+            if "type" in args:
+                url += "?" + urlencode({"type": args["type"]})
         elif name in {"get_festival", "get_crowd"}:
             if set(args) != {"festival_id"} or not isinstance(args["festival_id"], str):
                 return self._invalid()

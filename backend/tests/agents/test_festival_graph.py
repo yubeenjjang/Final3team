@@ -17,6 +17,16 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertEqual(result.outcome, "clarification_needed")
         self.assertEqual(result.used_tools, [])
 
+    def test_notices_empty_result_is_answered_without_fabrication(self):
+        calls = []
+        def tool(name, args):
+            calls.append((name, dict(args)))
+            return {"ok": True, "data": {"festival_id": "fst_000001", "status": "ok", "coverage": {"scope": "national", "region_code": "SEOUL", "supported": True}, "items": []}, "is_mock": True}
+        result = run_festival_graph(tool, FestivalRequest("notices", festival_id="fst_000001"))
+        self.assertEqual(result.outcome, "answered")
+        self.assertEqual(calls, [("get_official_notices", {"festival_id": "fst_000001"})])
+        self.assertIn("공지가 없습니다", result.answer)
+
     def test_unsupported_crowd(self):
         data = {"festival_id": "fst_000003", "status": "unsupported", "areas": []}
         result = run_festival_graph(lambda *_: {"ok": True, "data": data}, FestivalRequest("crowd", festival_id="fst_000003"))
