@@ -158,7 +158,7 @@ flowchart TD
 
 ### 7-3. W24 실제 데이터 연결 준비 상태
 
-최신 `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣는다. 혼잡 API는 아직 모의 응답을 반환한다. DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 따라서 **실제 DB 축제 검색·상세 또는 서울 혼잡의 단독 E2E는 검증하지 않았다.**
+최신 `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣는다. 혼잡 API는 아직 모의 응답을 반환한다. DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
 
 W24 확인 순서는 다음과 같다.
 
@@ -171,6 +171,8 @@ W24 확인 순서는 다음과 같다.
 ### 7-4. 축제 DB 준비 안내 반영
 
 오현님은 2026-11-23에 TourAPI 전국 축제 870건을 학원 서버 DB에 적재했고, 진행·예정 축제는 59건이라고 공유했다. 해당 서버는 학원 와이파이 내부 주소로 안내됐으며 현재 작업 환경에서는 접속 시간이 초과되어 실제 응답을 직접 확인하지 못했다. 따라서 이 수치는 팀원 안내 사항이고 본 설계서의 실행 검증 결과가 아니다. 서울 혼잡 매핑은 준비 중이며 혼잡 API 응답은 여전히 모의 데이터라고 안내받았다.
+
+맥북 Safari에서 전달받은 화면으로 실제 API의 목록과 상세 응답을 **수동 대조**했다. 목록에는 `is_mock:false`, `total:869`, 축제 ID `fst_01M835BPX17Y44VEDJM1VMZ3N6`, `source:tourapi`, `last_synced_at:2026-11-23T11:57:22.397300+09:00`이 보였고, 상세 응답도 같은 축제 ID와 `is_mock:false`, `source:tourapi`, 같은 갱신 시각을 표시했다. 이로써 해당 한 건의 실제 DB 검색→상세 응답 일치는 확인했다. 화면의 `total:869`와 팀원이 안내한 적재 870건은 집계 기준이 다를 수 있으나 원인은 아직 확인하지 않았다. Safari에서 한글이 깨져 보여 축제 이름·장소 문구의 정확성은 판정하지 않았다. **Festival Agent가 집 컴퓨터에서 실제 API를 호출한 결과는 아직 아니다.**
 
 학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <공유받은 API 주소>`를 실행하면 진행·예정 상태를 **각각** 조회한 뒤 첫 축제의 상세 정보를 확인한다. 도구 JSON Schema의 `status`는 단일 값만 허용하지만 API는 쉼표로 구분한 여러 값을 받으므로, 도구 계약이 바뀌기 전에는 `ongoing,upcoming`을 Agent 인자로 보내지 않는다. 이 확인은 실제 축제 DB의 검색·상세까지만 포함하고 혼잡은 제외한다.
 
