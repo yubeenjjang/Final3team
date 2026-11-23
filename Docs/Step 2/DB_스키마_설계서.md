@@ -10,9 +10,10 @@
 |---|---|
 | **정본(이 문서의 기준 위치)** | GitHub `yubeenjjang/Final3team` → `Docs/Step 2/DB_스키마_설계서.md`. **이 경로만 정본**이며 로컬 파일·Discord 첨부는 사본입니다 |
 | 짝 문서 | `Docs/Step 2/API_설계문서.md` v0.4 — ID 형식은 03 문서 0절, API 필드 ↔ DB 컬럼 대응은 03 문서 16절 |
-| 기준 문서 | **기획서 최신본(11/19 05:18 신유빈 님 공유, v3.1 다음판)** · 기획서 v3.1 · WBS 128개, 결정대장 D-009~D-039 + 11/20 결정(추천 취향 아기 동반 제외), 팀 자체 평가 30문항(11/18), 강사 2차 의견(11/18)·일일 피드백(11/19), 수업 가이드 「DB 스키마 설계서 작성법」(11/18) |
+| 기준 문서 | **기획서 최신본**([놀다가 기획서](../Step%201/놀다가_기획서.md), 11/19 05:18 신유빈 님 공유, v3.1 다음판) · [WBS 128개](../Step%201/놀다가_WBS.md), 결정대장 D-009~D-039 + 11/20 결정(추천 취향 아기 동반 제외), 팀 자체 평가 30문항(11/18), 강사 2차 의견(11/18)·일일 피드백(11/19), 수업 가이드 「DB 스키마 설계서 작성법」(11/18) |
 | DB | **AWS 위 Docker PostgreSQL 17 + pgvector**(이미지 `pgvector/pgvector:pg17`) / 캐시·임시 상태: Docker Redis. **인증은 FastAPI 자체 JWT**(Supabase 사용 안 함, **D-037 11/19 결정** — 기획서·WBS 최신본과 일치, 11/20 GitHub 대조) |
-| 진행 단계 | ☑ 초안 작성(11/19) → ☑ 팀 검토 완료(11/19) → ☑ GitHub 정본 업로드(v0.3.1, 11/19 `91b3337`) → ☑ v0.3.2 교체(11/20 12:32 `41c66a5`) → ☑ v0.3.3 교체 + `db/` 폴더 업로드(11/20 16:24 신유빈 `e8aecb4`) → ☐ 대시보드 제출(링크 `Docs/Step 2/DB_스키마_설계서.md`) → ☑ **v0.4 작성(11/23, 강사 11/20 피드백 반영)** → ☐ v0.4 GitHub 정본 교체(`ohyun` 병합) → ☐ 대시보드 재제출 |
+| 진행 단계 | ☑ 초안 작성(11/19) → ☑ 팀 검토 완료(11/19) → ☑ GitHub 정본 업로드(v0.3.1, 11/19 `91b3337`) → ☑ v0.3.2 교체(11/20 12:32 `41c66a5`) → ☑ v0.3.3 교체 + `db/` 폴더 업로드(11/20 16:24 신유빈 `e8aecb4`) → ☑ **v0.4 작성(11/23, 강사 11/20 피드백 반영)** → ☐ v0.4 GitHub 정본 교체(`ohyun` 병합) → ☐ 대시보드 링크·제출·접수 상태 팀 확인 대기 |
+| v0.4 대조 기준 | `ohyun`의 `4f8b8c2`에 있는 코드·SQL과 11/23 로컬 시험 기록. v0.4 GitHub 정본 기준 커밋은 병합 뒤 기록 |
 | **SQL 실행 확인** | 기본 DDL(30개 테이블) + 마이그레이션 002(`assistant_runs`)·003(축제 이미지 칸)·004(`festival_trends`·개인정보)·005(추천·친구)·006(방문 코스·공지 이력)·007(동행·채팅·알림·신고, 총 48개)·008(교차 검토 반영: 권한·숨김·검색 경로·누락 칸)·009(기능 상세 시나리오: 출발·도착 선택, 닉네임·출생연도·성별, 채팅방 신고, 앱 사용법 RAG)를 **운영과 같은 Docker 이미지(PostgreSQL 17.12 + pgvector 0.8.7)로 집 컴퓨터에서 2026-11-20 다시 실행, 시험 T1~T43(확인 149개) 모두 통과, `EXPLAIN ANALYZE` 측정**(5·10절). 시험 SQL·실행기는 `db/` 파일로 분리. **AWS 서버에서는 아직 실행하지 않았습니다**(예정: W65 12/07–10, 담당 신유빈) |
 
 > 테이블은 **설계안**이며 실제 AWS 서버에는 아직 만들지 않았습니다. 외부 공급원 필드(TourAPI·TMAP·카카오맵 등)는 실호출 뒤 확정합니다(8절).
@@ -30,21 +31,19 @@
 | 2026-11-20 | AI 교차 검토 3종(Claude Opus 5.5 · Codex gpt-6.2-sol · agy Gemini 4 Hydrogen XHigh) | 전체 + `db/` | 마이그레이션 008(권한·숨김 축제·검색 경로·동행 글 숨김·복구 조치 해제 기록·부하 시험 칸·공개 표시 이름), 시험 T42(12개), 탈퇴·보존·Redis·RLS 범위 문장 정리, 한태경 11/20 15:03(카카오 저장 불가 공식 답변·공식 한도) → v0.3.3. 제출 뒤 처리는 03 문서 11-1절 |
 | 2026-11-20 | 팀 답변(한태경 보존 검토 · 정예진 권한 정책안 · 신유빈 보존·열람·크롤링) | 7-0·7-1·6-4·10절 | 목적지 라벨 DB 제거·해시 HMAC, 챗봇 마스킹·탈퇴 삭제, 로그 IP, 동행 3일·친구 30일, 채팅 열람 참여자·관리자, 권한 기준안, `festival_trends`(004) → v0.3.3 |
 | 2026-11-20 | 강사(11/19 피드백 7건) · 권오현 | 전체 | 1차 반영(v0.3.2): 정본 파일명(`DB_스키마_설계서.md`)·짝 문서 버전, 옛 Supabase 문장, 길찾기·택시·자전거 실호출 결과. **4번 반영**: 7-0 보존·만료 통합표. **1·2·3·5·6번 반영**: 시험 SQL 분리·재실행(10절), 연결 재사용 시험·규칙(3절), AWS 예정일, 13개 검증 범위, RAG 결정일. **7번**: 기획서·WBS와 DB·인증 일치 확인, 파일명 정리. 13개 테이블 DDL은 005·007로 완료. **남은 것**: AWS 실행(W65), 임베딩 결정(11/25) — 권오현 개인 정리본(공유본은 이 표) |
-
----
-
-| 2026-11-23 | 강사(11/20 DB 피드백 6건) · 권오현 | 전체 + `db/` + 실행 코드 | **v0.4**: 0-A 반영표, 데이터가 있는 DB 시험 T44~T48(009 사전 검사·파일 단위 트랜잭션·안전한 되돌리기), 마이그레이션 010, `route_key` HMAC, 7-2 열람 범위, 10-A 시험 환경 구분, 개인 PC 경로 제거 |
+| 2026-11-23 | 강사(11/20 DB 피드백 6건) · 권오현 | 전체 + `db/` + 실행 코드 | **v0.4**: 0-A 반영표, 데이터가 있는 DB 시험 T44~T48(009 사전 검사·파일 단위 트랜잭션·안전한 되돌리기), 마이그레이션 010, `route_key` HMAC, 7-2 열람 범위, 10-A 시험 환경 구분, 개인 PC 경로 제거. 팀 검토자: **검토 대기**(아래 합의 4건은 API 설계서 19절 참고) |
+| 2026-11-23 | 신유빈(Discord 답변) | D1 DB 접근 방식·011 조회 토큰 해시·실제 수집 담당·연결 반납 시 `RESET ALL` | 각 항목의 합의 범위·구현과 재검증 상태는 API 설계서 19절. 011에서 `user_id`를 두지 않는 정리는 재확인 대기 |
 
 ## 0-A. 강사 11/20 피드백 반영표 (v0.4, 2026-11-23)
 
 | # | 피드백 | 상태 | 반영 위치 | 근거(다시 확인하는 방법) |
 |---|---|---|---|---|
-| 1 | **데이터가 있는 DB**에서 변경·되돌리기 안전 확인(009 닉네임 제약·되돌리기 손실), 파일 단위 트랜잭션, 손실 조건 | ✅ | **10-A절** T44~T48, `db/009_precheck.sql`(적용 전 검사), `009_scenario_v1_down.sql` 보완(축제 좌표 채우기 → 안 되면 멈춤), **적용 규칙: 모든 마이그레이션은 `psql -1`(파일 단위 트랜잭션)** | `bash db/run_tests_009_existing.sh` → `db/results_2026-11-23_009_existing.log` 13개 PASS |
-| 2 | `route_key` HMAC, 삭제·익명화 뒤 다른 곳에 남는지, 신고 채팅 관리자 열람·차단/탈퇴·에이전트 열람 범위, 행 접근 제한과 서버 권한이 같은 규칙 | ✅ 문서·코드 / 🟡 시험 일부 | 4절 `route_key`(HMAC), **7-2절**(열람 범위), API 설계문서 18절(전달 범위) | 경로 코드 시험 "route_key에 좌표 없음", T010a~e(공개 축제만) |
-| 3 | 로컬 시험 ≠ AWS·실서비스 검증, 시험별 환경·입력·기대·실제, AWS 재확인 기준 | ✅ | **10-A절** 환경 구분표 | AWS는 W65(12/07~10)에 `run_tests.sh`·`run_tests_009_existing.sh` 같은 파일로 별도 시험 DB에서 재실행(운영 데이터 초기화 금지) |
-| 4 | 핵심 흐름(축제 조회→귀가 요청→처리 상태→결과 저장) DB부터 연결, 최신 구조(009) 기준 | ✅ 축제 · 🟡 귀가 저장 | 10-A(실제 870건 적재·A02/A03 DB 조회), **마이그레이션 010**(부록 10), 귀가 요청·결과 저장은 **011(11/23 합의)** 뒤(8절) | 학원 노트북 DB(001~010) |
-| 5 | RAG 모델·차원 확정 전 1024를 확정처럼 쓰지 않기 | ✅ (v0.3.3부터 '임시') | 2절 | 11/25 결정 뒤 반영 |
-| 6 | 문서·시험·제출본 같은 기준(기준 commit·적용 순서·확인 기록), 정본에서 SQL·시험·결과로 바로 가기 | ✅ | 10절 표 + 10-A(파일·결과 로그), 문서 정보 진행 단계 | `Docs/Step 2/db/` 안에 SQL·시험·결과 로그 함께 |
+| 1 | **데이터가 있는 DB**에서 009 적용·되돌리기와 손실 조건 확인 | ✅ 로컬 확인 | **10-A-2절** T44~T48, `db/009_precheck.sql` | 기존 데이터 시험 13개 PASS. 009 적용·되돌리기는 `psql -1 -v ON_ERROR_STOP=1`, 010은 SQL 파일 내부의 `BEGIN`/`COMMIT`으로 처리(10절) |
+| 2 | `route_key` HMAC, 삭제·익명화 뒤 남는 정보, 신고 채팅 관리자 열람·차단/탈퇴·에이전트 범위 | 🟡 일부 | 4절, 7-2절, API 설계서 18절 | HMAC 키 시험과 010 기록 확인. **남은 것** — 요청 원문 정리 뒤 메모리·로그·DB·Redis 검사, 관리자 열람 범위와 접근 기록 서버 시험, DB와 API 공개 조건 차이 확인 |
+| 3 | 로컬·AWS·실서비스 시험과 재실행 기준 구분 | 🟡 일부 | **10-A절** 환경 구분표 | **남은 것** — 실제 연결 풀·권한·동시 실행 검증과 AWS W65(12/07~10, 신유빈) 별도 시험 DB 재실행. 010 재실행용 SQL·로그는 추가 확인 필요 |
+| 4 | 핵심 흐름의 최신 DB 구조 연결(축제 조회→귀가 요청→처리 상태→결과 저장) | 🟡 일부 | 10-A절(실제 870건 적재·A02/A03 DB 조회), 부록 10 | **남은 것** — 011 뒤 귀가 상태·결과를 API·에이전트·워커와 DB에 연결, 같은 축제로 화면에서 흐름 확인(8절, API 설계서 17절) |
+| 5 | RAG 모델·차원·검색·재적재 방법과 문서 범위 확정 | 🟡 일부 | 2절, API 설계서 19절, WBS W27 | `VECTOR(1024)`는 임시. **남은 것** — 11/25까지 모델·검색·재적재 방법과 앱 사용법 포함 여부를 합의하고 검증(한다영·권오현) |
+| 6 | 문서·시험·제출본 같은 기준(커밋·적용 순서·검토 기록) | 🟡 일부 | 10절 파일표·10-A절 결과, 문서 정보 | **남은 것** — 010 시험 SQL·로그, 합의 4건 외 검토자 확인, 병합 뒤 기준 커밋·대시보드 링크와 접수 확인, 기획서의 옛 경로·버전을 담당자와 맞추기 |
 
 ## 1. ERD 관계 명세
 
@@ -485,7 +484,7 @@ erDiagram
 - **앱 사용법 문서(009, 시나리오 S05):** `category='app_guide'` — 팀이 LLM으로 초안을 만들고(`authored_by='llm_draft'`) 관리자가 승인한 것만 검색, 축제와 무관(`festival_id` NULL)하고 `app_version` 필수(앱이 바뀌면 다시 생성·승인). 챗봇이 '친구 신청은 어떻게 해?' 같은 질문에 이 문서로 답하고, 없는 기능은 가능하다고 말하지 않음.
 - 검색은 `approval_status='approved'` 이고 **지금 유효한**(`(effective_from IS NULL OR effective_from <= now()) AND (effective_to IS NULL OR effective_to > now())`) 문서만 대상으로 합니다.
 - RAG는 1차 시연 필수가 아닙니다. 실시간 혼잡·날씨·경로를 RAG로 대신하지 않습니다.
-- **RAG 사용 범위(강사 DB 피드백 6):** 챗봇(A06)이 **축제 공식 안내문(운영 공지·안전·교통 안내·FAQ)** 과 **승인된 앱 사용법 문서(`app_guide`, 009)** 를 근거로 답할 때만 씁니다. 실시간 값·경로·사용자 대화는 넣지 않습니다. 이 범위 확정도 위 결정일(11/25 전)에 함께 합니다. 그 전까지 `rag_documents`·`rag_chunks`는 **예정 구조**입니다.
+- **RAG 사용 범위(강사 DB 피드백 5):** WBS W27은 축제 공식 안내문을 대상으로 합니다. 009에는 승인된 앱 사용법(`app_guide`)을 담을 구조도 있습니다. 앱 사용법을 실제 A06 검색에 넣을지는 11/25 W27 착수 전 한다영·권오현이 API·WBS와 맞춰 확정합니다. 실시간 값·경로·사용자 대화는 검색 자료에서 제외합니다.
 
 ### 2-1. 에이전트 메모리 저장 위치 (수업 가이드 S20)
 
@@ -514,8 +513,9 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | 테이블 | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | `users`, `refresh_tokens` | service만 | service(가입·로그인) | service | service |
-| `festivals` | 공개: `published_at IS NOT NULL` 인 행 / admin: 전체(service 경유) | service(수집·admin 승인) | service | 금지(게시 상태로 숨김) |
-| `festival_sources`, `ingestion_jobs`, `festival_change_history` | service(A02·A03의 `source` 표시도 service가 읽어 붙임), admin | service | service | 금지 |
+| `festivals` | `noldaga_app`: 게시 시각이 있고 `review_status <> 'hidden'`인 행(008). A02·A03은 승인 행만(7-2절) / admin: 전체(service 경유) | service(수집·admin 승인) | service | 금지(게시 상태로 숨김) |
+| `festival_sources` | `noldaga_app`(010): 008 축제 RLS로 보이는 행의 `festival_id`·`source_id`·`source_item_id`·`source_url`만(A03 `source_ref`). `raw_checksum`·`fetched_at`·`last_job_id`는 앱 계정에 비공개. service·admin(service 경유)은 전체 | service | service | 금지 |
+| `ingestion_jobs`, `festival_change_history` | service·admin(service 경유) | service | service | 금지 |
 | `festival_review_queue` | admin(service 경유) | service | admin 승인·반려(service 경유) | 금지 |
 | `profiles` | **본인만** | service(가입 시) | 본인(**`display_name` 컬럼만**), admin의 역할 변경은 service 경유 | service |
 | `favorites` | **본인만** | 본인(`user_id = app_current_user()`) | 금지 | 본인 |
@@ -531,7 +531,7 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | `realtime_snapshots` | service(최신 유효값만 API로) | service | 금지 | service(보존 기간 정리) |
 | `rag_documents`, `rag_chunks` | service(에이전트 검색), admin | service | service | service |
 
-'(service 경유)'는 FastAPI가 권한을 확인한 뒤 `noldaga_service`로 읽고 쓴다는 뜻입니다. 운영자 화면 조회를 `noldaga_app` 정책으로 옮기는 것은 v0.4에서 정합니다.
+'(service 경유)'는 FastAPI가 권한을 확인한 뒤 `noldaga_service`로 읽고 쓴다는 뜻입니다. 운영자 화면 조회를 `noldaga_app` 정책으로 옮기는 범위는 검토 대기입니다.
 
 **사용자 정보 설정 시점과 트랜잭션 종료 규칙 (강사 11/19 DB 피드백 2 — 10절 T21~T23으로 시험함)**
 
@@ -541,7 +541,7 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | ② 사용자 설정 | 같은 트랜잭션 첫 문장으로 `SELECT set_config('app.user_id', :sub, true)`(= `SET LOCAL`). 비로그인은 **설정하지 않음**(→ `app_current_user()`가 NULL → 본인 데이터 0행, 쓰기 거부). 세 번째 인자 `true`가 '이 트랜잭션에서만'이라는 뜻 |
 | ③ 금지 | **`SET app.user_id`(LOCAL 없음)·`set_config(…, false)`는 쓰지 않음** — 연결에 남아 다음 요청(다른 사용자)으로 새어 나감(T22에서 실제로 확인). 코드 검사(grep)·리뷰 항목으로 막음 |
 | ④ 요청 끝 | 성공하면 `COMMIT`, 오류면 `ROLLBACK`. 둘 다 사용자 설정이 사라짐(T21h). 트랜잭션 밖에서 `noldaga_app`으로 쿼리하지 않음(자동 커밋 모드 금지) |
-| ⑤ 연결 반납 | 연결 풀 반납 때 `RESET ALL` 또는 풀의 reset 동작을 켜 둠(③을 실수로 어겨도 한 번 더 지움) |
+| ⑤ 연결 반납 | `RESET ALL`로 세션에 남은 설정을 초기화합니다. `backend/shared/db/connection.py`에 구현됨(`yubeen` 브랜치, `6f767d9`). `ohyun` 축제 조회·수집과 연결 및 한태경의 독립 재검증 DB-09는 예정입니다 |
 | ⑥ 역할 분리 | 사용자 요청 = `noldaga_app`(RLS 적용) / 수집·감지·정책·워커 = `noldaga_service`(서버 안에서만). 한 요청 안에서 둘을 섞지 않음 |
 
 ### 3-1. 정책 SQL (부록 DDL 끝 — 실행·시험함)
@@ -572,6 +572,8 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 
 ## 4. JWT·Redis 세션 수명주기
 
+아래 Redis 키와 권한 처리표는 연결 예정 규칙입니다. **현재 실경로 코드(11/23)**는 요청 본문(장소 검색어·좌표 포함)과 토큰 원문을 서버 메모리에 두고 보존 시간 검사를 하지 않습니다. TMAP 결과 본문만 60초 뒤 정리되며, 만료 뒤 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=true`)를 돌려줍니다. 011 뒤 권오현이 Redis·DB 연결과 토큰 만료를 구현하고 만료·삭제 뒤 메모리·로그·DB·Redis에 장소 원문이 남는지 확인합니다. DB에 저장한 TMAP 결과를 24시간 이내에 정리한 뒤에는 A05에서 같은 오류 코드를 `retryable=false`로 반환할 예정입니다(API 설계서 2-2·17-3·18-2절).
+
 **인증 흐름 (FastAPI 자체 JWT — D-037)**
 ① `POST /api/v1/auth/login`(이메일·비밀번호, `users.password_hash`는 bcrypt/argon2) → **Access JWT**(수명 30분, `sub`=user_id, `role`, `jti` 포함, 임시) + **Refresh Token**(수명 14일, 원문은 사용자에게만, DB `refresh_tokens`에는 해시만) → ② FastAPI가 요청마다 서명·만료·발급자 검증 → ③ `profiles.role`로 역할 확인(JWT 클레임과 다르면 DB 값 우선) → ④ Access 만료 시 `POST /api/v1/auth/refresh` — **Refresh는 쓸 때마다 새로 발급하고 이전 것은 `revoked_at` 기록(교체 방식)**, 폐기된 Refresh가 다시 오면 그 사용자의 Refresh 전부 폐기 → ⑤ `POST /api/v1/auth/logout` 시 Refresh 폐기 + Redis `revoked:{jti}` 등록(남은 Access 수명만큼 TTL).
 - Redis TTL은 모두 **고정**(조회할 때 늘리지 않음). 세션 연장은 Refresh 교체로만 합니다.
@@ -585,7 +587,7 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 | `route:inflight:{route_key}` | 진행 중인 조회의 `route_request_id` | **12초**(= 경로 전체 처리 제한 10초 + 2초, 임시. v0.3의 5초는 처리보다 먼저 만료돼 고침) | **동일 요청 병합(singleflight)** — 같은 키가 있으면 새 조회 대신 결과를 기다림 |
 | `route:cache:{route_key}` | 검증된 경로 결과 JSON | `valid_until`까지(60초 후보) | 유효 캐시 제공. **메타데이터·감사는 PostgreSQL `route_cache_entries`** |
 | `route:req:{route_request_id}` | 상태(`queued`…`ready`) | 10분 | 상태 조회 API 빠른 응답 |
-| `route:token:{route_request_id}` | 요청 토큰 해시 | 10분 | 비로그인 사용자의 본인 요청 확인 |
+| `route:token:{route_request_id}` | 요청 토큰 해시 | 10분 | A05에서 본인 요청 확인(로그인·비로그인 공통) |
 | `policy:route:active` | 켜진 조치 목록 `{action, enabled_at, incident_id}` | 정책 코드가 직접 해제 + **안전 TTL `stop_condition.max_minutes`+60초**(코드가 죽어도 조치가 계속 켜져 있지 않게) | **장애 감지 후에만** 켜지는 복구 조치 상태 — 처음부터 켜 두지 않음 |
 | `refresh:lock:{token_id}` | `1` | 5초 | 같은 Refresh로 동시에 두 번 교체되는 것 방지 |
 | `quota:{provider}:{YYYYMMDD}` | 오늘 호출 수·비용 (`provider` = `tmap`·`kakao`) | 다음 날 0시(KST) | **길찾기 공급원별 일일 한도**(TMAP 무료 10건 — 종량제 미등록, 카카오맵 무료 1,000건). 오류 응답도 1건으로 셈. 하루 비용 상한 **0원**(값의 기준은 03 문서 9-1 ⑤)·80% 경고, 100%면 그 공급원 중지 |
@@ -597,11 +599,12 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 |---|---|
 | JWT가 먼저 만료(Redis 키는 남음) | **JWT 기준**으로 401. Redis에 남은 값은 권한 근거로 쓰지 않음 |
 | `revoked:{jti}`가 먼저 만료 | 생기지 않게 TTL을 JWT 남은 수명과 같게 둠 |
-| `route:token`(10분)이 먼저 만료 | 상태 조회 401 → 같은 `request_id`로 다시 요청하면 같은 `route_request_id`와 새 토큰을 받음(멱등). `route_requests`에는 사용자 ID를 저장하지 않음(개인정보 최소화) |
+| `route:token`(10분)이 먼저 만료 | 상태 조회 401. 011에서 로그인·비로그인 모두 A05 조회 토큰의 해시로 확인하며 `route_requests`에 `user_id` 또는 토큰 원문을 저장하지 않음. 다시 요청할 때 토큰 재발급·멱등 처리 기준은 구현 때 확인(8절) |
 | `route:req` 만료·Redis 장애 | 상태는 PostgreSQL `route_requests`에서 읽음(느려질 뿐 틀리지 않음) |
-| Redis 장애로 `revoked` 확인 불가 | 공개 API는 영향 없음. **운영자 API(`/api/v1/admin/**`)는 거부(안전 쪽)** |
+| Redis 장애로 `revoked:{jti}` 확인 불가 | 보호 API 중 **읽기는 그대로 처리**, **쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`**. 공개 API는 영향 없음(API 설계서 1-1절, 권오현 W18 시험 예정) |
 
-- `route_key` = **HMAC-SHA256(서버 비밀키 `ROUTE_KEY_SECRET`,** 방향(return/visit) | 출발(축제 좌표 또는 사용자 장소, 소수 4자리 반올림) | 도착(같은 방식) | travel_mode | route_preference | 정규화한 user_constraints | 출발 시각 구간(5분 단위) | 통제 버전 | 공급원)`. **이 중 하나라도 다르면 다른 요청**입니다. 목적지가 다른 요청에 비슷한 캐시를 주지 않습니다 (강사 2차 의견 3).
+- **`route_key` 현재 동작(코드 기준, 11/23):** `backend/api/services/real_routes.py`의 HMAC-SHA256 입력은 방향(return/visit), 출발·도착 좌표(소수 4자리), `travel_mode`, `route_preference`, 5분 시간 구간입니다. `ROUTE_KEY_SECRET`이 비어 있으면 프로세스 시작 때 만든 임의 키를 씁니다. 확인 시험은 `backend/tests/routes/test_p9_real_routes.py`의 `test_P10_cache_key_uses_hmac_and_rounded_coordinates`입니다.
+- **구현 예정:** 정규화한 `user_constraints`·통제 버전·공급원은 현재 키에 없으므로 이 값만 다르면 같은 키를 쓸 수 있습니다. 권오현이 조건 반영과 복구 조치(W48, 12/04) 전에 키에 추가합니다(API 설계서 17-3절).
 - 캐시가 처음부터 항상 켜진 것은 "기본 성능 설계"이고, 오토힐링은 `policy:route:active`에 **감지 뒤 켜진 기록**이 있어야 설명됩니다 (강사 11/17·11/18 의견).
 
 ---
@@ -1098,16 +1101,16 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 
 | 데이터 | 사용자 본인 | 다른 사용자 | 관리자 | 에이전트(LLM 포함) | 삭제·탈퇴·차단 뒤 | DB 행 접근 제한(RLS) ↔ 서버 검사 |
 |---|---|---|---|---|---|---|
-| 귀가 요청·결과(`route_requests`·`route_results`) | 요청 토큰·세션으로 자기 요청만(A05) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 30일 뒤 행 삭제, 장소는 HMAC 해시만, TMAP 경로 내용 24시간 안 삭제 | RLS: service만 / 서버: 토큰 해시 비교(**011, 11/23 합의** — 원본 토큰은 저장 안 함) |
-| 축제(`festivals`·`festival_sources`) | 공개 축제만 | 같음 | 전체(검토 대기 포함) | 공개 축제만 | 관리자 숨김(`hidden`)은 수집이 다시 공개하지 않음 | RLS: `published_at IS NOT NULL`(001·010) / 서버: 같은 조건(A02·A03) — 시험 T010a·I12 |
-| 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지만** 열람, 열람할 때마다 `chat_admin_access` 기록(수정·삭제 금지, T40c) | **넘기지 않음** | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 '알 수 없음' | RLS: 방 멤버 함수(007) / 서버: 같은 멤버 확인 |
+| 귀가 요청·결과(`route_requests`·`route_results`) | A05 요청 토큰으로 자기 요청만(로그인 여부 공통) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 예정: 30일 뒤 행 삭제, 장소 HMAC 해시만, TMAP 경로 내용 24시간 안 삭제 | 현재 A05는 메모리 토큰을 비교. DB 연결(011) 뒤 service로 읽고 토큰 해시를 비교, 원문 토큰은 DB에 저장하지 않음 |
+| 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만 | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 관리자 숨김(`hidden`)은 수집이 다시 공개하지 않음 | DB 008 RLS: `published_at IS NOT NULL AND review_status <> 'hidden'`(010 조인도 이 범위). 서버 A02·A03: `published_at IS NOT NULL AND review_status = 'approved'`. 게시 시각이 있는 `pending` 행은 DB 조건을 통과하지만 서버에서 제외됨. 수집 DB 시험 I12와 010 기록은 10-A절 |
+| 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지 1건만**. 방 신고는 방 정보·신고 사유로 처리. 메시지를 보여 주기 전에 `chat_admin_access`에 열람 이유를 기록(A77) | 넘기지 않음 | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 ‘알 수 없음’ | RLS: 방 멤버 함수(007). 관리자 열람 범위의 서버 검사·기록 시험은 A77 구현과 W128(12/17–18 권한 검증)에서 진행. T40c는 기록 삭제 차단 시험 |
 | 가입 정보(출생연도·성별) | 본인 | 동행 글 작성자가 **대기·승인된 신청자만**(`app_applicant_profile`, 009) | 운영 필요 시 | 넘기지 않음 | 탈퇴 시 NULL(A80) | 함수 안 조건 = 서버 조건 |
 | 차단 관계 | 자기가 차단한 목록 | 서로 검색·신청 불가(닉네임 검색 양쪽 제외, 009) | 신고 처리 때 | 넘기지 않음 | 차단 해제 전까지 유지 | `app_find_user_by_nickname`(009) |
 | 챗봇 질문·작업 | 본인(세션 또는 `run_token`) | 불가 | 마스킹된 기록만 | 질문 문장 + 선택 축제 | 보존 기간 뒤 삭제(7-0) | RLS·토큰 해시(002) |
 
 ## 8. 실제 데이터 근거·미확인 항목
 
-> **11/23 발견 — 마이그레이션 011(11/23 신유빈 동의, 구현 예정):** `route_requests`에 비로그인 조회 토큰을 확인할 칸이 없습니다(`assistant_runs`에는 `run_token_hash` 있음). `access_token_hash TEXT`(+ `user_id` 또는 토큰 중 하나는 꼭 있음 CHECK)를 추가하고, A05는 서버가 `noldaga_service`로 읽은 뒤 토큰 해시를 비교해 맞을 때만 돌려줍니다(3절 권한표 '사용자는 A05 요청 토큰으로만 본인 요청 조회'와 같은 규칙). 지금 경로 코드는 결과를 메모리에만 두어 이 칸이 아직 필요 없지만, DB 저장 연결 전에 넣어야 합니다.
+> **마이그레이션 011(구현 예정, 귀가 결과 DB 연결 전 권오현):** 001~010의 `route_requests`에는 토큰 해시 칸이 없습니다. 새 요청에 `access_token_hash TEXT NOT NULL`을 두고 로그인·비로그인 모두 A05에서 `noldaga_service`로 읽은 해시와 요청 토큰을 비교합니다. `user_id` 칸은 두지 않고 토큰 원문은 DB에 저장하지 않습니다. 신유빈은 11/23 토큰 해시 추가·검증 방식에 동의했습니다. `user_id` 미추가와 기존 행 처리(유효 토큰 해시가 없는 행의 정리·재요청 방식)는 제약 적용 전에 팀 확인이 필요합니다(API 설계서 19절).
 
 **확보한 원본:** 서울시 `citydata_ppltn` 광화문·덕수궁 응답(2026-11-16 샘플 키, 11/19 정식 키 재호출 `evidence/responses/2026-11-19_seoul-ppltn_광화문덕수궁.json`) → 혼잡 `payload`의 필드(`AREA_CD`·`AREA_CONGEST_LVL`·`AREA_PPLTN_MIN/MAX`·`PPLTN_TIME`·`FCST_PPLTN[]`)를 이 원본으로 정했습니다. 나머지 공급원은 03 문서 10-1절 '최소 실호출 계획'으로 확인합니다.
 
@@ -1120,7 +1123,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | 자전거 존·택시 승강장 공급원 | ✅ **둘 다 전국**(11/19 실호출): 자전거 = 행안부 전국 공영자전거(6,314건), 택시 = 전국택시승강장표준데이터 15139230(서울 268·부산 87). 택시·일부 주차장은 **위경도 없음** → 카카오 주소 검색으로 좌표 변환 후 `facilities` 적재 | 권오현·한태경 | 정함 |
 | 서비스 범위 → 수집 대상 | ✅ D-022·D-036: 한 공급원에서 전국을 받으면 전국, 아니면 서울만 | 팀 | 정함 |
 | DB 운영 방식 | ✅ **AWS 위 Docker PostgreSQL + 자체 JWT**(D-037). **기획서·WBS 최신본(GitHub main, 11/20 대조)과 일치**(Supabase 0건) | 권오현 | 정함 |
-| AWS 서버에서 DDL 실행 | **아직 없음** — 같은 Docker 이미지로 집 컴퓨터에서만 확인(10절). 같은 `db/run_tests.sh` 순서로 AWS에서 재실행 | 신유빈 | **W65 12/07–10** |
+| AWS 서버에서 DDL 실행 | **아직 없음** — 로컬 실행 기록은 10·10-A절. AWS 시험 DB에서 001~009와 010을 각 절차대로 다시 확인 | 신유빈 | **W65 12/07–10** |
 | 임베딩 모델·차원(`VECTOR(1024)` 임시)·RAG 사용 범위 | 후보 2개(2절), 범위 초안(2절) | 한다영·권오현 | **11/25 전(W27 착수)** |
 | **챗봇 작업 테이블 `assistant_runs`** (A06 비동기 작업, 03 문서 7-6) | ✅ **11/20 마이그레이션 002로 추가·시험(T24)**. 처음 설계: 작업 1건 = 1행: `run_id` PK(`^run_`)·`request_id` UNIQUE(멱등)·`conversation_id`·`run_status`(queued·running·retrying·succeeded·failed)·`answer`(카카오 경로 내용 금지)·`error_code`·`queued_at`/`started_at`/`ended_at`, RLS 본인·service. 48개 테이블·시험 T24·T34에 포함 | 권오현 | 완료 |
 | TTL·보존 기간 숫자(캐시 60초, 요청 30일, 라벨 24시간, 실시간 값 7일, 체크포인트 7일 등) | **7-0 보존표로 통합**(저장 위치·만료 때 지울 것·남길 것·근거·담당). 대부분 임시 | 7-0 '담당' 칸 | W16 11/20 · W96 12/04 · W54 12/16 |
@@ -1169,11 +1172,13 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 
 ## 10. 실행 확인 기록 (2026-11-20 재실행 — 다시 돌릴 수 있는 파일로)
 
-**강사 11/19 DB 피드백 1:** 테이블 생성 SQL과 시험 SQL을 별도 파일로 나누고 실행 순서·버전·기대/실제 결과를 연결했습니다. 아래 파일만 있으면 누구나 같은 조건으로 다시 돌릴 수 있습니다.
+**강사 11/19 DB 피드백 1:** 001~009 기본 시험과 기존 데이터가 있는 009 시험은 아래 실행기로 재실행할 수 있습니다. 010은 적용·되돌리기 SQL과 별도 통과 기록이 있습니다(10-A-3).
+
+적용 순서는 001→…→008→009 사전 검사→009→010입니다. 001~009 적용·되돌리기는 파일 단위로 `psql -1 -v ON_ERROR_STOP=1 -f <파일>`을 사용합니다(표의 기본 시험은 빈 DB에 적용). 010은 적용·되돌리기 SQL에 `BEGIN`/`COMMIT`이 있어 `psql -v ON_ERROR_STOP=1 -f <파일>`로 실행합니다.
 
 | 순서 | 파일 (GitHub `Docs/Step 2/db/`) | 내용 |
 |---|---|---|
-| 1 | `db/001_schema_v0.3.1.sql` (= `04_DDL_v0.3.sql`·부록 DDL, 마이그레이션 001) | 기본 30개 테이블·외래키 43·RLS·트리거·권한 |
+| 1 | `db/001_schema_v0.3.1.sql` (기본 마이그레이션 001, 부록 DDL) | 기본 30개 테이블·외래키 43·RLS·트리거·권한 |
 | 2 | `db/002_assistant_runs.sql` (되돌리기 `002_assistant_runs_down.sql`) | 챗봇 작업 테이블 1개 + 외래키 2 + RLS (03 문서 7-6) |
 | 2-1 | `db/003_festival_images.sql` (되돌리기 `003_festival_images_down.sql`) | `festivals`에 썸네일·저작권 유형 칸 2개 (03 문서 2-4 이미지 규칙) |
 | 2-2 | `db/004_trends_and_privacy.sql` (되돌리기 `004_trends_and_privacy_down.sql`) | `festival_trends`(A42) 1개 + 외래키 3, 목적지 라벨 칸 삭제·장소 해시 NULL 허용(개인정보) |
@@ -1181,17 +1186,22 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | 2-4 | `db/006_visit_course_and_notices.sql` (되돌리기 `006_visit_course_and_notices_down.sql`) | `assistant_runs`에 `run_kind`·`result`(AI 방문 코스), `notice_events`(공지 관리 이력, 추가만) + 외래키 2 |
 | 2-5 | `db/007_companion_chat_notifications.sql` (되돌리기 `007_companion_chat_notifications_down.sql`) | 동행 3·채팅 3·알림 1·신고 1·관리자 열람 기록 1 = 9개 테이블 + 외래키 19 + RLS·멤버 확인 함수 2개 |
 | 2-6 | `db/008_review_fixes.sql` (되돌리기 `008_review_fixes_down.sql`) | 교차 검토 반영: 프로필 검색 허용 권한, 숨긴 축제 공개 제외, 권한 함수 검색 경로 고정, 동행 글 숨김 칸 + 외래키 1, 복구 조치 해제 기록, 부하 시험 칸 3개, 공개 표시 이름 함수 |
+| 2-7 사전 검사 | `db/009_precheck.sql` | 기존 DB의 닉네임 제약 위반·삭제되는 값 확인. 결과를 보고 009 적용 여부 결정(10-A-2) |
 | 2-7 | `db/009_scenario_v1.sql` (되돌리기 `009_scenario_v1_down.sql`) | 기능 상세 시나리오(11/20 신유빈 초안 + 사용자 결정): 귀갓길·가는 길 출발·도착 선택(`origin_type`·`destination_type`·장소 해시 2칸, `user_place_hash` 대체), `profiles.birth_year`·`gender`, 닉네임 2~12자·중복 금지(친구 코드·검색 허용 칸 삭제), 신청자 정보·닉네임 검색 함수, 신고 대상 `chat_room`, RAG `app_guide` |
+| 2-8 | `db/010_festival_sources_public.sql` (되돌리기 `010_festival_sources_public_down.sql`) | 공개 축제 원본 컬럼 읽기 권한·RLS. 적용·되돌리기는 각 파일 내부 트랜잭션. 010 증빙은 10-A-3 |
 | 3 | `db/tests_v0.3.2.sql` → `db/tests_v0.3.2_after_backup.sql` | 시험 T1~T43 (스스로 판정: 기대와 다르면 `FAIL`로 멈춤) |
 | 4 | `db/explain_v0.3.2.sql` | 축제 검색 인덱스 전후 실행 계획(데이터 생성 SQL 포함) |
-| — | `db/run_tests.sh` | 위 1~4를 새 컨테이너에서 순서대로 실행하고 컨테이너를 지움. 결과는 `db/results_YYYY-MM-DD.log` |
+| — | `db/run_tests.sh` | 새 컨테이너에서 001~009 적용·되돌리기와 3·4번 실행. 010과 009 사전 검사는 포함하지 않음 |
+| — | `db/run_tests_009_existing.sh` · `db/tests_009_existing_data.sql` | 기존 데이터로 사전 검사→적용→실패 시 취소→되돌리기·다시 적용(T44~T48) |
+| — | `db/results_2026-11-20.log` · `db/results_2026-11-23.log` | 기본 시험 T1~T43과 실행 계획 기록. 각각 PASS 149개 |
+| — | `db/results_2026-11-23_009_existing.log` | 기존 데이터 시험 T44~T48, PASS 13개 |
 
 | 항목 | 내용 |
 |---|---|
 | 환경 | 집 컴퓨터 Docker `pgvector/pgvector:pg17`(digest `sha256:b513c485…`) — **PostgreSQL 17.12**, `vector` 0.8.7, `pg_trgm` 1.6. **운영(AWS)과 같은 이미지** |
 | 결과 | 001 뒤 테이블 30·외래키 43 → 002 적용 → **되돌리기 확인(테이블 사라짐)** → 다시 적용 → 003~009도 각각 적용·되돌리기·다시 적용 → 테이블 48·외래키 80·**RLS 48개 모두 켬**. **확인 149개 모두 PASS, FAIL 0** (`db/results_2026-11-20.log`) |
 | AWS | **미실행.** 같은 이미지·DDL·시험을 AWS에서 다시 돌릴 예정: WBS W65(AWS Docker·DB 운영 구성, 신유빈, 12/07–12/10). 로컬 통과를 배포 환경 검증으로 쓰지 않습니다(강사 피드백 3) |
-| 코드 위치 | `Docs/Step 2/db/`는 **설계 검증 증빙 사본**입니다. 구현을 시작하면 001~009 마이그레이션을 팀 협업 규칙(11/20 신유빈) 6절대로 `backend/shared/db/migrations/`에 넣고, 이 폴더의 시험을 그 파일로 돌립니다(W17 마이그레이션 적용, 신유빈·권오현) |
+| 코드 위치 | `Docs/Step 2/db/`에 설계 검증 SQL·시험·로그를 둡니다. `yubeen` 실행기는 001~009까지이며, 010·011 실행 범위와 검증은 병합 때 신유빈이 갱신합니다(W17, API 설계서 19절) |
 
 | 시험 | 기대 | 결과(11/20) |
 |---|---|---|
@@ -1238,7 +1248,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | **T43 기능 상세 시나리오(새, 009)** | 성별 값 제한, 작성자는 신청자 나이·성별 봄·남은 0행, 닉네임 정확히 일치 1명·일부만 0명·결과에 나이·성별 없음, 출발·도착 둘 다 축제 거부, 출발을 사용자 장소로 1행, 축제 장소인데 해시 거부, 채팅방 신고 1행, 앱 사용법 문서 버전 없음 거부, **차단 관계 양쪽 검색 제외·차단 없는 사람은 찾음**, 함수 결과 칸 직접 비교 | ✅ 15개 |
 | **T26 축제 대표 이미지(새, 003)** | 이미지 주소만 있고 저작권 유형 없음 거부, 모르는 유형 거부, 셋 함께 저장 성공 | ✅ `festivals_image_copyright_needed` / `festivals_image_copyright_type_check` / 1행 |
 
-- T21의 '같은 연결'은 시험 파일 전체가 DB 연결 1개로 실행되는 것으로 재현했습니다(연결 풀이 같은 연결을 다음 요청에 다시 주는 상황). 실제 서버의 연결 풀(SQLAlchemy·asyncpg)로 같은 시험을 하는 것은 API 구현 때(W18 인증 시험, 11/23–26) 다시 합니다.
+- T21의 '같은 연결'은 시험 파일 전체가 DB 연결 1개로 실행되는 것으로 재현했습니다(연결 풀이 같은 연결을 다음 요청에 다시 주는 상황). 공통 연결 풀은 SQLAlchemy 2 + psycopg 3(`yubeen` 브랜치)입니다. `ohyun` 병합·연결 뒤 W18과 DB-09에서 서버 경로를 다시 확인합니다(3절 ⑤).
 - 시험 데이터는 모두 가짜(`@test.local`)이고 시험 컨테이너는 끝나면 지웁니다.
 
 ---
@@ -1248,13 +1258,13 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 ### 10-A-1. 시험 환경 구분
 | 환경 | 무엇을 | 언제 | 데이터 | 결과 |
 |---|---|---|---|---|
-| **일회용 로컬 Docker**(집 PC, `pgvector/pgvector:pg17`) | 기본 시험 T1~T43(`run_tests.sh`) | 11/20·**11/23 재실행** | 시험 데이터만 | 전부 PASS(11/23: 009 되돌리기 보완 뒤에도 그대로) |
+| **일회용 로컬 Docker**(집 PC, `pgvector/pgvector:pg17`) | 기본 SQL 시험 T1~T43(`run_tests.sh`, 001~009) | 11/20·11/23 | 시험 데이터만 | 11/23 로그 PASS 149개·FAIL 0 |
 | 일회용 로컬 Docker | **T44~T48 데이터가 있는 DB에서 009**(`run_tests_009_existing.sh`) | 11/23 | 사용자 3·경로 2(귀가·가는 길)·신고·RAG 시험 행 | 13개 PASS — `results_2026-11-23_009_existing.log` |
-| 일회용 로컬 Docker | 마이그레이션 010 T010a~e | 11/23 | 공개·비공개 축제 각 1 | 5개 PASS(아래) |
-| 일회용 로컬 Docker | 수집·축제 조회 DB 시험 6개(`backend/tests/ingestion -m db`) | 11/23 | 시험 축제 | 6개 PASS |
+| 일회용 로컬 Docker | 마이그레이션 010 T010a~e | 11/23 | 시험용 공개·비공개 축제(세부 입력 기록 없음) | 구현 계획에 5개 통과 기록(10-A-3) |
+| 일회용 로컬 Docker | 수집·축제 조회 pytest DB 시험 6개(`backend/tests/ingestion/`에서 `-m db`) | 11/23 | 시험 축제 | 6개 통과 기록([수집 구현 계획 3단계](../../backend/Doc/festival-ingestion/IMP-PLAN.md#3단계--a02a03-db-조회-i12i13)) |
 | **학원 노트북 개발 DB**(로컬, 노트북 안에서만 열림) | 001~010 적용 + **TourAPI 실제 870건 적재** → 재수집 | 11/23 | 실제 축제(공개 869·검토 1) | 1회차 inserted 870 · 2회차 inserted 0·updated 0·상세 재호출 0, `schema_migrations` 001~010 |
-| **AWS(시험 DB)** | 위 시험 전부 같은 파일로 재실행, 결과 로그 저장 | **예정 W65(12/07~10)** | 시험 데이터(운영 데이터를 지우며 시험하지 않음) | — |
-- 실제 서버의 연결 풀·여러 작업 동시 실행·권한 처리 전체 확인은 **아직 아님**(유빈 님 `shared/db/session.py` 연결 뒤 태경 님 DB-09 등으로 확인 예정).
+| **AWS(시험 DB)** | 기본·기존 데이터 시험은 같은 이미지와 실행기로 재실행. 010은 별도 적용·되돌리기 및 권한 시험 절차와 증빙 확인 후 재실행 | **예정 W65(12/07~10, 신유빈)** | 별도 시험 데이터 | 미실행. 환경·입력·기대·실제와 결과 로그 기록 예정 |
+- 실제 서버의 연결 풀·여러 작업 동시 실행·권한 처리는 `backend/shared/db/session.py`(`yubeen` 브랜치)를 병합·연결한 뒤 DB-09 등에서 확인합니다. `backend/tests/db/test_session.py`(`yubeen` 브랜치)의 시험 6개는 이 문서의 수집·조회 pytest DB 시험 6개와 별도입니다.
 
 ### 10-A-2. 데이터가 있는 DB에서 009 (T44~T48)
 | 시험 | 입력 | 기대 | 실제 |
@@ -1270,13 +1280,16 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 **되돌릴 수 없는(손실) 조건 정리:** ① 009 적용 = `friend_code`·`nickname_searchable` 값 삭제(사전 검사가 건수 안내) ② 009 되돌리기 = `app_guide` 문서·`chat_room` 신고·출생연도·성별 삭제, 출발·도착 둘 다 사용자인 경로는 해시 하나만 남음, 좌표 없는 축제의 그런 경로가 있으면 되돌리기 불가(멈춤). → AWS 적용 전 **사전 검사 → `psql -1` 적용 → 결과 로그** 순서를 지킴.
 
 ### 10-A-3. 마이그레이션 010 (부록 10)
-| 시험 | 기대 | 실제 |
-|---|---|---|
-| T010a | `noldaga_app`은 공개 축제의 원본 번호만 봄 | PASS |
-| T010b | 축제와 원본 조인이 공개 축제만 | PASS |
-| T010c | `raw_checksum` 등 내부 칸은 거부 | PASS |
-| T010d | 되돌리기 뒤 다시 거부 | PASS |
-| T010e | 다시 적용 | PASS |
+
+11/23 일회용 DB의 T010a~e 5개 통과와 학원 노트북 DB의 공개 축제 869건 조인 확인은 [수집 구현 계획 3단계 첫 문단](../../backend/Doc/festival-ingestion/IMP-PLAN.md#3단계--a02a03-db-조회-i12i13)에 기록돼 있습니다. `Docs/Step 2/db/`에는 010 적용·되돌리기 SQL이 있습니다. **T010 시험 SQL·실행 스크립트·결과 로그는 이 폴더에 아직 없습니다.** `run_tests.sh`의 실행 범위는 009까지입니다. 아래 입력은 확인 항목에 필요한 조건이며 행별 실제 입력과 출력은 기록에서 확인할 수 없습니다.
+
+| 시험 | 확인 입력 | 기대 결과 | 실제 기록 |
+|---|---|---|---|
+| T010a | `noldaga_app`으로 공개·비공개 축제의 원본 번호 조회 | DB RLS로 보이는 축제의 원본 번호만 반환 | T010a~e 통과 기록 |
+| T010b | `noldaga_app`으로 축제와 원본 조인 | DB RLS로 보이는 축제만 조인 | 같음 |
+| T010c | `noldaga_app`으로 `raw_checksum` 등 내부 칸 조회 | 권한 거부 | 같음 |
+| T010d | 010 되돌린 뒤 앱 계정으로 원본 조회 | 권한 거부 | 같음 |
+| T010e | 010 다시 적용 | 권한·정책 복원 | 같음 |
 
 ## 부록 10. 마이그레이션 010 — 공개 축제의 원본 번호 읽기 (`db/010_festival_sources_public.sql`과 같은 내용)
 ```sql
@@ -1899,7 +1912,7 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 
 ```sql
 -- 놀다가 DB 마이그레이션 002: 챗봇 작업 테이블 assistant_runs (API 설계서 v0.3.2 7-6, A06 비동기 작업)
--- 적용 순서: 001(= 04_DDL_v0.3.sql, 기본 30개 테이블) 다음. 되돌리기: 002_assistant_runs_down.sql
+-- 적용 순서: 001(001_schema_v0.3.1.sql, 기본 30개 테이블) 다음. 되돌리기: 002_assistant_runs_down.sql
 -- 작업 1건 = 1행. 상태 머신 queued → running → succeeded / retrying / failed (강사 11/19 워커 구조)
 
 CREATE TABLE assistant_runs (
@@ -2419,7 +2432,7 @@ GRANT EXECUTE ON FUNCTION app_public_display_name(UUID) TO noldaga_app;
 ```sql
 -- 놀다가 DB 마이그레이션 009 (2026-11-20, 기능 상세 시나리오 초안 16:43 반영 — 사용자 결정)
 -- 적용 순서: 001 → … → 008 → 009. 되돌리기: 009_scenario_v1_down.sql
--- 기준: 놀다가_기능_상세시나리오_초안.md S03·S05·S06·S07·S08, 11/20 사용자 결정(나이·성별 필수, 닉네임 중복 금지·정확히 일치 검색, 귀갓길 출발·도착 선택)
+-- 기준: Docs/3team/놀다가_기능_시나리오_초안.md S03·S05·S06·S07·S08, 11/20 사용자 결정(나이·성별 필수, 닉네임 중복 금지·정확히 일치 검색, 귀갓길 출발·도착 선택)
 
 -- ① 회원가입 닉네임·출생연도·성별 (S03). 가입 때 API가 셋 다 필수로 받음. 탈퇴하면 NULL(A80)이라 DB 칸은 NULL 허용
 ALTER TABLE profiles
@@ -2502,5 +2515,5 @@ ALTER TABLE rag_documents
 | v0.3 | 2026-11-19 | **TMAP 24시간 사용 제한 반영**: `route_results.purged_at`, 24시간 안 경로 내용 삭제 규칙, 시험 T20. **팀 검토 반영(11/19 신유빈·정예진)**: `route_preference` 값을 기획서 FR-R01~R05로(`less_crowded`·`min_walk`), 택시 승강장 범위(전국 공급원 없으면 서울), `trace_id` 미도입 명시, 최신 기획서 대조, 신규 13개 테이블 후보(7-1, v0.4). **D-038: 길찾기 1차 TMAP·2차 카카오맵** — `provider` 값 `tmap`·`kakao`·`mock_adapter`, 카카오맵 응답은 내용 저장·캐시·공유 금지(CHECK), Redis 한도에 비용 상한. **D-037: Supabase → AWS 위 Docker PostgreSQL 17 + pgvector, 자체 JWT 인증** — `users`·`refresh_tokens` 추가, 접속 역할 `noldaga_app`(RLS)·`noldaga_service`(우회), `app_current_user()`, 30개 테이블 모두 RLS + 공개·본인·운영자 정책, 컬럼 권한(프로필 이름·후기 본문만 수정). **AI 교차 검토 20건 반영**: 복구 시도 결과는 `pending`일 때 1회만 채움(트리거), 사건은 `status`·`closed_at`만 수정·삭제 금지(트리거), 캐시 테이블에 `festival_id`, 시험 멱등 키, `NULLS NOT DISTINCT`, 공지 제목·내용, RAG 문서 제목·4칸 표, 인덱스 보강(장소 이름·사건별), 자전거 실시간 보류, 대화 세션 ID 분리, API↔DB 이름 차이 전체, 기획서 5.4 대조. **수업 가이드 체크리스트·강사 피드백·D-033~D-036 반영**, 운영과 같은 이미지로 DDL 실행·시험 20개 통과, `EXPLAIN ANALYZE`(모의 2만 건), ERD 선 43 = 관계 표 43, 모든 테이블 `created_at`. 03 v0.3 맞춤: `route_preference`, `provider`·`provider_tier`, 근거 분리, `validity_check`, `phase`, `fault`, `idempotency_key`, `fallback_provider_switch`, `stop_reason`, `responder_type` |
 | v0.3.1 | 2026-11-19 | **v0.3(팀 문서함 1차 업로드본) 이후 수정분**: `route_preference` 값 = 기획서 FR-R01~R05, 택시 승강장 범위, `trace_id` 미도입, 최신 기획서 대조, 신규 13개 테이블 후보(7-1), TMAP 24시간 제한(`route_results.purged_at`, 시험 T20 — 총 20개 통과) |
 | v0.3.2 | 2026-11-20 | **강사 11/19 피드백 1차 반영**: 정본 파일명 `Docs/Step 2/DB_스키마_설계서.md`·짝 문서 `API_설계문서.md` v0.3.2, 옛 'Supabase 확정' 문장 정리(기획서·WBS와 일치 확인). **11/19 한태경 실호출 반영**: 길찾기 `candidates` 연결 상태, 버스 혼잡 공급원 확인, 택시·자전거 전국(택시는 좌표 변환 후 `facilities`). **DDL 변경 없음**(v0.3.1 그대로, 시험 20개). API v0.3.2의 A06 비동기 변경에 따라 `assistant_runs` 테이블을 **v0.4 추가 예정**으로 8절에 기록. Redis TTL 기준을 03 문서 9-1로 일원화, `route:inflight` 5초 → 12초, `policy:route:active` 안전 TTL. **DB 피드백 4번**: 7-0 보존 기간·만료 통합표(공급원·개인정보·감사·로그·백업, 만료 때 지울 것/남길 것, 정리 작업 `retention_sweeper`), **TMAP 24시간 규칙 충돌 3곳 수정**(대화 체크포인트·챗봇 답변·백업). 시험 T21·T22는 v0.4. **DB 피드백 1·2·3·5·6 반영(11/20)**: 시험 SQL·실행기를 `db/` 파일로 분리(`run_tests.sh`·`tests_v0.3.2.sql`·`explain_v0.3.2.sql`), 같은 이미지로 재실행 — 확인 51개 통과(T1~T25), **DB 연결 재사용 시험 T21~T23**(같은 연결에서 앞 사용자 남지 않음·사용자 없음 0행·타인 데이터 0행)과 3절 '사용자 정보 설정 시점·트랜잭션 종료 규칙', **마이그레이션 002 `assistant_runs`**(31개 테이블·외래키 45, 되돌리기 확인, 부록 2, ERD·관계 표 갱신), 백업 시험 T25, AWS 예정일 W65 12/07–10, 추가 13개 테이블 검증 범위·일정, RAG 사용 범위·임베딩 결정일 11/25. (앞 문장의 'T21·T22 v0.4'는 체크포인트·답변 시험을 뜻하며 API 구현 때 함) **축제 대표 이미지(D-031 확인)**: 마이그레이션 003(`thumbnail_url`·`image_copyright_type`, 이미지가 있으면 저작권 유형 필수), 시험 T26, 부록 3 — TourAPI 원본 16건 모두 이미지·`Type3` 확인. **남은 것**: 피드백 1~6번(시험 SQL 분리, 연결 재사용 권한 시험, AWS 예정일, 보존·만료 통합표, 추가 13개 테이블 범위, RAG·임베딩 결정일) |
-| v0.4 | 2026-11-23 | **강사 11/20 피드백 반영 재제출**: 0-A 반영표, 데이터가 있는 DB 시험 T44~T48·`009_precheck.sql`·009 되돌리기 보완(좌표 채우기 또는 멈춤)·`psql -1` 적용 규칙, 마이그레이션 010(공개 축제 원본 번호)·시험 T010a~e, `route_key` HMAC, 7-2 열람 범위, 10-A 시험 환경 구분(로컬/학원 노트북/AWS 예정), 마이그레이션 011(8절, 11/23 신유빈 동의), TourAPI 실제 870건 적재 기록, 개인 PC 경로 제거 |
+| v0.4 | 2026-11-23 | **강사 11/20 피드백 반영 재제출**: 0-A 반영표, 데이터가 있는 DB 시험 T44~T48·`009_precheck.sql`·009 되돌리기 보완(좌표 채우기 또는 멈춤)·`psql -1` 적용 규칙, 마이그레이션 010(공개 축제 원본 번호)·시험 T010a~e, `route_key` HMAC, 7-2 열람 범위, 10-A 시험 환경 구분(로컬/학원 노트북/AWS 예정), 마이그레이션 011(8절, 11/23 신유빈 동의), TourAPI 실제 870건 적재 기록, 개인 PC 경로 제거<br>**교차 검토 반영(11/23, Codex·Gemini)**: 010 권한·RLS와 서버 공개 차이, 011 토큰 해시, Redis 장애 503 범위, 귀가 키·메모리 현재 동작, A77 열람 범위, 시험 기록·재실행 범위, 검토·제출 상태 정리 |
 | v0.3.3 | 2026-11-20 | **팀 답변 반영(11/20 오후)**: 마이그레이션 004 — `festival_trends`(API A42 지금 핫한 축제, 크롤링 이름·순위만, 연결된 것만 공개) + 외래키 3(총 32개 테이블·48개), 목적지 라벨 칸 삭제(Redis 24시간)·장소 해시 HMAC·NULL 허용(한태경 검토), 시험 T27·T28(확인 62개 통과), 7-0 보존표 확정·수정(동행 3일·친구 30일, 챗봇 Q&A 마스킹·탈퇴 즉시 삭제, 로그 전체 IP 금지, 감사 테이블 개인정보 칸 없음 확인, 탈퇴 처리), 7-1 권한 기준안(정예진 정책안 + 채팅 열람 참여자·관리자), ERD·관계 표 48, 부록 4  **마이그레이션 005 — 맞춤 추천·친구**: `user_festival_preferences`·`festival_tags`(규칙 후보 → LLM 검증, 근거 필수)·`festival_engagement_daily`·`friend_requests`·`friendships`·`user_blocks`·`profiles` 친구 코드, 외래키 10(총 38개 테이블·58개), 시험 T29~T33(확인 86개 통과), 7-1 13개 중 6개 완료·7개 W114, ERD·관계 표 58, 부록 5  **마이그레이션 006 — 기획서 필수 기능 대조로 찾은 빈칸**: `assistant_runs.run_kind`·`result`(AI 방문 코스 FR-P01·P03), `notice_events`(공지 등록·수정·승인 이력 FR-O06·D05, 추가만), 외래키 2(총 39개 테이블·60개), 시험 T34·T35(확인 95개 통과), 부록 6  **마이그레이션 007 — 동행·채팅·알림·신고**: 9개 테이블(`chat_rooms`·`companion_posts`·`companion_applications`·`meeting_places`·`chat_members`·`chat_messages`·`notifications`·`reports`·`chat_admin_access`), 정원 CHECK·재신청 부분 UNIQUE·방별 순서·`client_message_id` 중복 방지·입장 뒤 메시지만 보이는 RLS·멤버 확인 함수, 외래키 19(총 48개 테이블·79개), 시험 T36~T41(확인 122개 통과), 7-0 보존(동행 3일·친구 30일·알림·신고), 7-1 13개 전부 완료, ERD·관계 표 79, 부록 7  **제출 전 교차 검토 반영(Claude·Codex·agy)**: 마이그레이션 008 — 프로필 `nickname_searchable` 권한, 숨긴 축제 공개 제외, SECURITY DEFINER 검색 경로 고정, 동행 글 숨김 `hidden_at`·`hidden_by`(외래키 1, 총 80), 복구 시도 `improved` 뒤 조치 해제 1회 기록, `load_simulations.limits_version`·`stop_requested_at`·`error`, `app_public_display_name`. 시험 T42(확인 134개 통과), 부록 8. 문서: 진행 단계·RLS 48개·Redis 비용 상한 0원·EXPLAIN 최신 로그 값·TMAP 정리(`evidence='{}'`)·카카오 캐시 금지(공식 답변)·에이전트 입출력 경로 금지·탈퇴 덮어쓰기·만남 장소 3일·RAG `effective_from`. **추천**: 취향 `pet_or_baby` → `pet`, `with_baby`·`with_pet`·`baby_friendly` 삭제 — 반려견은 취향 값 하나(005, 기획서 11/20 15:32 main과 같음)  **기능 상세 시나리오 반영(17:30, 마이그레이션 009)**: 귀갓길·가는 길 출발·도착 선택(`origin_type`·`destination_type`·장소 해시 2칸), 회원가입 닉네임·출생연도·성별(필수, 나이·성별은 동행 작성자에게만), 닉네임 2~12자·중복 금지·정확히 일치 검색(친구 코드 삭제), 신고 대상 `chat_room`, RAG `app_guide`(LLM 초안 → 승인). 시험 T43(확인 149개 통과 — 17:31 교차 검토 반영: 차단 관계 검색 제외·작성자/신청 상태 확인·축제 좌표 조건·down 보완), 부록 9 |
