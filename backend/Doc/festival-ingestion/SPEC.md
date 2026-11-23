@@ -136,3 +136,14 @@
 - AI 질문(A06)의 기본 축제 `fst_000001`: DB 모드면 `context.festival_id`가 없을 때 **진행 중 축제 첫 번째**(A02 `status=ongoing` 기본 정렬 1번)를 쓴다. 없으면 지금처럼 실패 대신 `fst_000001` 대신의 규칙: 경로 없이 답변만(`route_request_id` 없음).
 - **확인(mock):** 기존 시험 전부 그대로 · `find_festival("fst_000001")` 모의 값 · `find_festival("fst_999999")` None.
 - **확인(DB 모드, 일반 시험 — `festival_store.get_festival`을 monkeypatch로 가짜 실제 축제 반환):** `FESTIVAL_DATA=db` + 실제 형식 ID(`fst_01M835BPX17Y44VEDJM1VMZ3N6`)로 A04 → 202, 조회 2회차 `ready`·`origin.name`이 가짜 축제 `venue_name` · A09·A07·A10 → 200 · A12 저장 → 200, A11 목록에 그 축제 · 모르는 ID → 404 `FESTIVAL_NOT_FOUND`.
+
+## 8. TourAPI 목록 누락 (4단계, 신유빈 11/23 17:12 동의)
+### I15. 동일 범위와 전체 완료
+- `collect --db`에서 목록의 모든 페이지가 정상 완료되고 저장이 성공한 경우에만 누락을 대조한다. 재시도가 성공하면 해당 페이지는 완료다. 끝내 실패한 페이지, 잘못된 페이지 번호·전체 건수·중복/누락 ID, 한도 초과, 중단, `--limit`, 상세/저장 오류가 있으면 누락 판단을 건너뛴다. `--no-detail`은 목록 전체가 정상 완료되면 사용할 수 있다.
+- 범위는 `searchFestival2` + `--since`·`--until`(생략도 구분) + 전국 조건으로 식별한다. 지역 등 조회 조건이 추가되면 범위 식별에도 포함한다. 같은 범위의 직전 성공 목록에 있던 ID만 비교하고, 저장된 시작일도 현재 날짜 범위 안이어야 한다. 범위 기록이 없는 기존 수집과 새 범위의 첫 수집은 기준만 마련한다.
+### I16. 누락 처리 및 이력
+- 누락된 공개 축제는 `review_status='pending'`, `published_at=NULL`로 저장한다. `event_status`는 유지한다. 관리자 숨김 및 기존 검토 상태는 유지한다.
+- DB 001~010을 사용한다. 대조 가능한 작업은 `ingestion_jobs.error` JSONB에 `errors`·`listing`(범위·ID 목록)을 저장한다. 기존 오류 배열과 NULL도 읽을 수 있다. `festival_change_history`에 공개 칸 변경과 `source_presence` 전이(`missing_from_source`, `job_id`)를 같은 트랜잭션으로 저장한다.
+### I17. 재등장
+- 다시 목록에 나타나면 `reappeared_in_source`와 작업 ID를 이력에 한 번 남긴다. 검토 대기 상태는 상세·체크섬이 바뀐 뒤에도 유지한다. 목록 복귀만으로는 실제 개최 여부를 확인할 수 없으므로 공개 복귀는 관리자 검토로 결정한다.
+- **확인:** DB 없는 목록 완료/실패·한도 시험과 `db` 시험으로 동일 범위 누락, 다른 범위 유지, 이력·재등장·재실행을 확인한다.

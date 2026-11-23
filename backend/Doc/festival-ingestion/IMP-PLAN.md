@@ -94,3 +94,15 @@
 - [x] 기존 시험 + 새 시험 전부 통과
 - [ ] (Claude) 노트북 DB 모드에서 목록 → 상세 → 귀가 결과 전체 흐름 확인
 - [ ] commit `fix(api): look up festivals via one function so real DB IDs work for routes, live info, favorites, assistant`
+
+## 4단계 — TourAPI 목록 누락 (I15~I17)
+
+**만들 파일**
+- 고침: `api/providers/tourapi.py`(목록 전체 완료 검증), `api/ingestion/festivals/collect.py`(완료 범위 전달), `api/ingestion/festivals/store.py`(비교·공개 상태·이력).
+- 시험: `tests/ingestion/test_i15_source_presence.py` 및 목록 페이지 시험 응답 보완.
+
+**체크리스트**
+- [x] 동일 범위 전체 완료 시에만 누락을 처리하고 이력에 남긴다.
+- [x] 재등장 이력을 남기고 검토 대기를 유지한다.
+- [x] 전체 오프라인 시험을 실행한다.
+- [ ] 일회용 PostgreSQL에서 `db` 표시 시험을 실행한다.

@@ -103,6 +103,7 @@ def test_I8_no_detail_and_limit_still_fetch_all_pages(tmp_path: Path) -> None:
         payload = listing()
         body = payload["response"]["body"]
         items = body["items"]["item"]
+        body["pageNo"] = int(request.url.params["pageNo"])
         body["items"]["item"] = items[:2] if request.url.params["pageNo"] == "1" else items[2:]
         return httpx2.Response(200, json=payload)
 
@@ -146,6 +147,7 @@ def test_I8_detail_quota_counts_retries_without_exceeding_900(tmp_path: Path) ->
         nonlocal first_common
         endpoint = request.url.path.rsplit("/", 1)[-1]
         if endpoint == "searchFestival2":
+            body["pageNo"] = int(request.url.params["pageNo"])
             begin = (int(request.url.params["pageNo"]) - 1) * 100
             body["items"]["item"] = items[begin : begin + 100]
             return httpx2.Response(200, json=payload)

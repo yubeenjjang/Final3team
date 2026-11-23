@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.ingestion.db import IngestionDBError, create_ingestion_engine
 from api.ingestion.festivals.normalize import KST, FestivalRecord, normalize_festival
-from api.ingestion.festivals.store import ErrorEntry, FestivalStore, JobResult, StoredFestival
+from api.ingestion.festivals.store import ErrorEntry, FestivalStore, JobResult, ListingScope, StoredFestival
 from api.providers.tourapi import TourApiClient, TourApiError
 
 DETAIL_CALL_LIMIT = 900
@@ -119,9 +119,12 @@ def _finish_db_job(
     errors: list[ErrorEntry],
     status: int,
     redact: Callable[[str], str],
+    scope: ListingScope | None,
 ) -> tuple[JobResult | None, int]:
     try:
-        return store.finish_job(job_id, records, errors, failed=bool(status), redact=redact), status
+        return store.finish_job(
+            job_id, records, errors, failed=bool(status), redact=redact, scope=scope,
+        ), status
     except SQLAlchemyError:
         _db_error(errors, "db_finish")
     try:
@@ -171,7 +174,10 @@ def _collect(args: argparse.Namespace, http_client: httpx2.Client | None) -> int
             _db_error(errors, "db_load" if job_id else "db_start")
             status = 1
         if store is not None and job_id is not None:
-            job, status = _finish_db_job(store, job_id, records, errors, status, redact)
+            scope = None
+            if not status and not errors and args.limit is None and not issues["detail_skipped_quota"]:
+                scope = ListingScope(args.since, args.until)
+            job, status = _finish_db_job(store, job_id, records, errors, status, redact, scope)
 
     publishable = sum(record.publishable for record in records)
     report = {
