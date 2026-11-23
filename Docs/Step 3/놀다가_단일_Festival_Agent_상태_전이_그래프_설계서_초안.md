@@ -332,6 +332,14 @@ W24 확인 순서는 다음과 같다.
 
 학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <API 주소> --crowd-festival-id <서울 축제 ID>`를 실행하도록 준비했다. 축제 검색·상세는 실제 DB 응답을 요구하고, 혼잡은 `is_mock:false`인지와 Agent 종료 상태·대체값 표시를 대조한다. `unsupported`·`unavailable`은 기록하지만 혼잡 조회 성공으로 세지 않는다. 실행 전 서버의 `CROWD_PROVIDER=real` 및 축제 DB 모드가 활성화됐는지 확인해야 한다.
 
+첫 시험 ID 후보는 오현님 11/23 조사표의 진행 중인 서울 축제 **2026 숭례문 파수의식** `fst_01M835BYKKNJ8CZP9RP09ST18D`다. 조사표의 구역 연결은 당시 참고 초안이므로, 현재 API의 축제 존재 여부와 반경 1km 판정은 실행 응답으로 다시 확인한다. **프로젝트 코드가 있고 학원망에 접속되는 컴퓨터**에서, API 주소가 `http://192.100.200.242:3000/api/v1`로 유지된다면 `backend/`를 기준으로 다음을 실행한다.
+
+```powershell
+uv run --with-requirements agents/requirements.txt python -m agents.check_festival_live --base-url http://192.100.200.242:3000/api/v1 --crowd-festival-id fst_01M835BYKKNJ8CZP9RP09ST18D
+```
+
+현재 집 컴퓨터에서는 위 학원 API의 축제 목록 조회가 5초 안에 연결되지 않아 이 시험을 실행하지 못했다. 맥북에서 Safari로 API를 확인하는 것만으로는 Windows의 Festival Agent 전체 E2E가 되지 않는다. `is_mock:false`와 `agent_outcome=answered`가 모두 확인돼야 실제 혼잡 조회 성공으로 기록한다. 평균 대체값이면 답변에 같은 요일·시간대 평균 표시가 있어야 한다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. 11/27 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 팀에서 모델과 Supervisor→Festival 입력 계약을 결정하면 자연어 입력 시험의 추가 여부를 정하고, 추가 시 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
