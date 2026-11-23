@@ -112,8 +112,18 @@
 - `db`일 때: 사용자 요청이므로 **`noldaga_app`** 계정(`DB_USER_PASSWORD`), 요청마다 트랜잭션, 비회원은 `app.user_id`를 설정하지 않음(D1). 공개 축제만(`review_status='approved' AND published_at IS NOT NULL`).
 - 응답 칸 대응: `name←title`, `lat/lng←latitude/longitude`, `overview←summary`, `fee_text←admission_fee_text`, `homepage_url←official_url`, `source="tourapi"`, `source_ref←festival_sources.source_item_id`, `image_credit`·`image_copyright`는 R6 규칙(이미지 있으면 "한국관광공사"). `is_mock: false`, 헤더 `X-Mock` 없음.
 - `event_status`는 **조회 시점 KST 오늘로 다시 계산**(저장 값이 어제 기준일 수 있음).
+- **DB 연결:** `api/services/festival_store.py`에 `noldaga_app` 엔진 생성 **한 곳**(환경변수 `DB_HOST`·`DB_PORT`·`DB_NAME`·`DB_USER_PASSWORD`, 사용자 `noldaga_app` 고정, `hide_parameters=True`). 요청마다 `with engine.begin()` 트랜잭션 하나. 유빈 님 `shared/db/session.py`가 나오면 이 함수만 바꾼다.
+- **`source_ref`:** `festival_sources`(`source_id='tourapi'`)의 `source_item_id`. 마이그레이션 **010**으로 `noldaga_app`이 공개 축제의 이 칸만 읽을 수 있다(11/23 Claude 추가·시험 완료). `raw_checksum` 등은 읽지 않는다.
+- 필터·정렬·페이지는 **SQL에서** 처리(전체를 파이썬으로 가져와 거르지 않음). `q`는 `title`·`venue_name` ILIKE(입력의 `%`·`_`는 이스케이프). 기본 정렬 `start_date` 오름차순 + 날짜 없는 것 마지막 + 같은 날이면 `festival_id`.
+- `event_status` 필터는 조회 시점 KST 오늘 기준 계산값으로 거른다(저장 칸이 아니라 날짜로 SQL 조건: upcoming = start > today, ongoing = start ≤ today ≤ end, ended = end < today, cancelled = 저장 값 `cancelled`).
 - **확인:** `FESTIVAL_DATA=mock` → 기존 시험 전부 그대로 통과 · DB 시험(`-m db`): 시험용 축제 3건 저장 후 A02 total 3·`region` 필터·`q` 검색·`pending` 축제 안 보임·A03 `is_mock is False`·없는 ID 404.
 
 ## 6. 시험 고정 파일 (1단계) — `tests/ingestion/fixtures/`
 - Claude가 11/23 실제 응답에서 골라 **키 없이** 넣어 둔다: `search_page1.json`(5건: 3379778 서울·2536122 부산·292950 `12` 광주 남구·3486674 `12` 전남 강진군·2865122 한국 밖 좌표), `common_<id>.json`·`intro_<id>.json`(5건), `error_key.txt`(틀린 키 403 응답 본문), `empty.json`.
 - Codex는 이 파일을 **고치지 않는다**. 더 필요한 모양은 시험 안에서 dict로 만든다.
+
+
+### I13. 여러 상태 한 번에 (`status=ongoing,upcoming`) — 11/23 추가
+- A02 `status`는 쉼표로 여러 값을 받는다(`upcoming`·`ongoing`·`ended`·`cancelled` 중, 중복 허용·공백 무시). 하나만 보내면 지금과 똑같다. 모르는 값이 하나라도 있으면 422 `VALIDATION_ERROR`. 빈 값(`status=`)도 422.
+- 모의(`mock`)와 DB(`db`) 둘 다 같은 규칙. 목적: 화면이 끝난 축제를 빼고(`status=ongoing,upcoming`) 부를 수 있게. **API 기본값(필터 없음 = 전부)은 바꾸지 않는다.**
+- **확인(mock):** `status=ongoing,upcoming` → `fst_000001`·`fst_000002`·`fst_000003`·`fst_000005`(4건) · `status=ongoing` → 기존과 같음 · `status=ongoing,mars` → 422 · `status=` → 422.
