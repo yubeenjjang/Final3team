@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from sqlalchemy import text
 
+from backend.shared.config import load_db_settings
+from backend.shared.db.connection import create_user_engine
 from backend.shared.db.session import service_db_session, user_db_session
 
 
@@ -80,6 +82,27 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
 @unittest.skipUnless(os.environ.get("DB_LIVE_TEST") == "1", "실제 테스트 DB가 필요합니다")
 class LiveSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_committed_session_setting_is_reset_on_pool_return(self):
+        """DB-09: 커밋된 일반 세션 설정도 다음 요청에 남지 않아야 합니다."""
+        engine = create_user_engine(load_db_settings())
+        user_id = str(uuid4())
+        try:
+            async with engine.connect() as connection:
+                first_pid = (await connection.execute(text("SELECT pg_backend_pid()"))).scalar_one()
+                await connection.execute(
+                    text("SELECT set_config('app.user_id', :user_id, :local)"),
+                    {"user_id": user_id, "local": False},
+                )
+                await connection.commit()
+            async with engine.connect() as connection:
+                second_pid, remaining = (await connection.execute(text(
+                    "SELECT pg_backend_pid(), current_setting('app.user_id', true)"
+                ))).one()
+        finally:
+            await engine.dispose()
+        self.assertEqual(first_pid, second_pid)
+        self.assertIn(remaining, (None, ""))
+
     async def test_user_and_service_use_separate_roles(self):
         async with user_db_session() as session:
             user_role = (await session.execute(text("SELECT current_user"))).scalar_one()
