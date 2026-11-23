@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-23 14:13:18 KST
+# 놀다가 DB 시험 결과 — 2026-11-23 14:51:37 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -178,23 +178,23 @@ PASS T43k 앱 사용법 문서에 앱 버전 없음 — 거부됨: new row for r
 전체 백업에서 표식 1건 (1 이상이어야 시험이 의미 있음) / route_results 데이터 제외 백업에서 0건
 PASS T25 — 제외 백업에 TMAP 경로 내용 없음
 PASS T20b TMAP 경로 내용을 purged_at과 함께 지움 — 1 행 바뀜
-AFTER-BACKUP TESTS PASSED
 PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
+AFTER-BACKUP TESTS PASSED
 ## 5. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
 Buffers: shared hit=296
-->  Seq Scan on festivals (actual time=0.074..1.247 rows=26 loops=1)
+->  Seq Scan on festivals (actual time=0.072..1.180 rows=26 loops=1)
 Rows Removed by Filter: 19976
 Buffers: shared hit=296
 Buffers: shared hit=95
-Planning Time: 0.143 ms
-Execution Time: 1.264 ms
+Planning Time: 0.233 ms
+Execution Time: 1.197 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
 Buffers: shared hit=35
-->  Bitmap Heap Scan on festivals (actual time=0.055..0.069 rows=26 loops=1)
+->  Bitmap Heap Scan on festivals (actual time=0.047..0.060 rows=26 loops=1)
 Buffers: shared hit=35
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.050..0.050 rows=26 loops=1)
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.041..0.041 rows=26 loops=1)
 Buffers: shared hit=9
-Planning Time: 0.116 ms
-Execution Time: 0.098 ms
+Planning Time: 0.079 ms
+Execution Time: 0.090 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)
