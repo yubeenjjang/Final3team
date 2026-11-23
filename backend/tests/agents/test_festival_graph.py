@@ -100,6 +100,42 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertIn("광복로", result.answer)
         self.assertIn("지원하지 않습니다", result.answer)
 
+    def test_long_real_festival_id_is_reused_with_mock_crowd_labeled(self):
+        festival_id = "fst_01M835BPX17Y44VEDJM1VMZ3N6"
+        item = {"festival_id": festival_id, "name": "축제", "source": "tourapi", "last_synced_at": "2026-11-23T11:57:22+09:00"}
+        calls = []
+        def tool(name, args):
+            calls.append((name, dict(args)))
+            if name == "search_festivals":
+                return {"ok": True, "data": {"items": [item], "is_mock": False}}
+            if name == "get_festival":
+                return {"ok": True, "data": {**item, "venue_name": "축제 장소", "is_mock": False}}
+            return {"ok": True, "data": {"festival_id": festival_id, "status": "unsupported", "areas": [], "is_mock": True}}
+        result = run_festival_graph(tool, FestivalRequest("search_detail_crowd", select_first=True))
+        self.assertEqual(result.outcome, "partial")
+        self.assertEqual([args["festival_id"] for _, args in calls[1:]], [festival_id, festival_id])
+        self.assertIn("모의 데이터", result.answer)
+        self.assertIn("지원하지 않습니다", result.answer)
+
+    def test_composite_retry_consumes_budget_and_preserves_partial_result(self):
+        festival_id = "fst_000001"
+        item = {"festival_id": festival_id, "name": "축제", "source": "tourapi", "last_synced_at": "2026-11-23T11:57:22+09:00"}
+        calls = []
+        def tool(name, args):
+            calls.append(name)
+            if name == "search_festivals":
+                return {"ok": True, "data": {"items": [item]}}
+            if len(calls) == 2:
+                return {"ok": False, "error": {"code": "TOOL_TIMEOUT", "retryable": True}}
+            if name == "get_festival":
+                return {"ok": True, "data": {**item, "venue_name": "축제 장소"}}
+            self.fail("crowd must not run after the third tool call")
+        result = run_festival_graph(tool, FestivalRequest("search_detail_crowd", select_first=True))
+        self.assertEqual(calls, ["search_festivals", "get_festival", "get_festival"])
+        self.assertEqual(result.outcome, "partial")
+        self.assertIn("조회 제한", result.answer)
+        self.assertIn("budget_exceeded", result.transitions)
+
     def test_deadline_stops_before_call(self):
         ticks = iter([0.0, 31.0])
         result = run_festival_graph(lambda *_: self.fail("must not call"), FestivalRequest("search"), clock=lambda: next(ticks))
