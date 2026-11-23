@@ -352,6 +352,10 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 사용자가 같은 축제의 `observed_at:"2026-11-23T16:55:00+09:00"`, `status:"ok"`, `is_estimate:false`인 실제 응답 JSON을 채팅으로 제공했다. 붙여넣은 `source_url`의 `https\://`와 `datasetView\.do`는 JSON 문법상 유효하지 않은 이스케이프라, **Agent가 소비하는 필드만 원문 값 그대로 추출한 검토용 JSON**으로 재생했다. `get_crowd` 1회 호출 후 `agent_outcome=answered`였고, 답변은 “숭례문 지역 혼잡은 보통입니다. 관측 기준 시각 2026-11-23T16:55:00+09:00. 행사장 내부나 이동 경로의 혼잡을 뜻하지 않습니다.”였다. 확인용 파일은 실행 후 삭제했다. 이는 실제 응답의 핵심 필드와 Agent 처리 결과의 호환 검증이며, 원문 전체 재생이나 직접 HTTP E2E로 확대하지 않는다.
 
+### A-9. 실제 축제 DB 검색·상세 응답의 ID 검증
+
+사용자가 학원망 API의 서울 진행 축제 검색(`page_size=1`)과 숭례문 파수의식 상세 응답을 제공했다. 두 응답 모두 `is_mock:false`, `source:"tourapi"`, `last_synced_at:"2026-11-23T11:57:22.397300+09:00"`이지만, **검색 첫 결과는 페인터즈 `fst_01M835BPX17Y44VEDJM1VMZ3N6`, 상세는 숭례문 파수의식 `fst_01M835BYKKNJ8CZP9RP09ST18D`로 ID가 다르다.** URL의 복사 이스케이프를 제외하고 Agent가 소비하는 필드를 추출해 재생했을 때 검색 단독과 상세 단독은 각각 `answered`였다. 두 응답을 하나의 `search_detail_crowd` 흐름으로 주면 검색→상세 2회 뒤 **ID 불일치를 감지해 `partial`로 종료**했고, 혼잡 도구는 호출하지 않았다. 이는 잘못된 축제의 상세·혼잡을 섞지 않는 전이 검증이며 검색→상세→혼잡 전체 성공으로 기록하지 않는다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
