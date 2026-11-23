@@ -31,7 +31,28 @@
 - [ ] commit `feat(ingestion): TourAPI client, festival normalize/validate, offline collector`
 
 ## 2단계 — DB 저장 (I9~I11)
-**만들 파일** — 2단계 시작 때 Claude가 확정해서 적는다.
+**준비(Claude, ✅ 11/23):** `api/requirements.txt`에 `sqlalchemy==2.0.45`, `psycopg[binary]==3.3.2`, `python-ulid==3.1.0` 추가·캐시. 1단계 실제 수집 결과: 870건(공개 869·검토 1), 오류 0.
+
+**만들 파일(목록 밖 금지)**
+- 새로: `api/ingestion/db.py`(I9), `api/ingestion/festivals/store.py`(I10)
+- 고침: `api/ingestion/festivals/collect.py`(`--db` 옵션·I11만 추가, 기존 동작 유지)
+- 새로: `tests/ingestion/conftest.py`(`db` 표시 등록, DB 시험용 fixture), `tests/ingestion/test_i9_db.py`, `tests/ingestion/test_i10_store.py`, `tests/ingestion/test_i11_changed_only.py`
+- 읽기만: `Docs/Step 2/db/001_schema_v0.3.1.sql`의 `data_sources`·`festivals`·`festival_sources`·`ingestion_jobs`·`festival_change_history` 블록, `003_festival_images.sql`(이미지 칸)
+
+**DB 시험 규칙**
+- `@pytest.mark.db` 시험은 환경변수 **`TEST_DB_URL`**(예: `postgresql+psycopg://noldaga_service:...@127.0.0.1:55432/noldaga`)이 없으면 **건너뜀**. Codex 샌드박스에서는 건너뛴 상태로 끝나도 된다(Claude가 일회용 도커 DB로 실행).
+- 시험마다 대상 표를 비우고 시작(`TRUNCATE festival_change_history, festival_sources, festivals, ingestion_jobs RESTART IDENTITY CASCADE`). **개발 DB(학원 노트북)에서는 시험을 돌리지 않는다.**
+- DB 없이도 돌아가는 부분(업서트 판단 로직: 새로/같음/바뀜 판정, 바뀐 칸 목록 계산, 공개 규칙)은 **순수 함수로 분리해 일반 시험**으로도 확인한다.
+- `data_sources` 기본 행: `source_id='tourapi'`, `name='한국관광공사 TourAPI'`, `provider_org='한국관광공사'`, `scope='national'`, `is_realtime=false`, `refresh_s=86400`, `key_site='data.go.kr'`, `status='verified'`. 수집 성공 때 `last_success_at` 갱신.
+
+**체크리스트**
+- [ ] I9 연결 한 곳·비밀번호 숨김
+- [ ] I10 업서트(새로·같음·바뀜·hidden 유지·이력·작업 기록)
+- [ ] I11 바뀐 축제만 상세
+- [ ] 일반 시험 전부 통과(DB 시험은 건너뜀 표시)
+- [ ] (Claude) 일회용 DB에서 `-m db` 전부 통과
+- [ ] (Claude) 학원 노트북 DB에 실제 저장 2회: 1회차 inserted 870, 2회차 inserted 0·updated 0·상세 호출 0
+- [ ] commit `feat(ingestion): festival upsert to DB with change history, ingestion jobs, changed-only detail refetch`
 
 ## 3단계 — A02·A03 DB 조회 (I12)
 **만들 파일** — 3단계 시작 때 Claude가 확정해서 적는다.
