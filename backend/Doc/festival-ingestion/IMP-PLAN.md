@@ -46,13 +46,15 @@
 - `data_sources` 기본 행: `source_id='tourapi'`, `name='한국관광공사 TourAPI'`, `provider_org='한국관광공사'`, `scope='national'`, `is_realtime=false`, `refresh_s=86400`, `key_site='data.go.kr'`, `status='verified'`. 수집 성공 때 `last_success_at` 갱신.
 
 **체크리스트**
-- [ ] I9 연결 한 곳·비밀번호 숨김
-- [ ] I10 업서트(새로·같음·바뀜·hidden 유지·이력·작업 기록)
-- [ ] I11 바뀐 축제만 상세
-- [ ] 일반 시험 전부 통과(DB 시험은 건너뜀 표시)
-- [ ] (Claude) 일회용 DB에서 `-m db` 전부 통과
-- [ ] (Claude) 학원 노트북 DB에 실제 저장 2회: 1회차 inserted 870, 2회차 inserted 0·updated 0·상세 호출 0
-- [ ] commit `feat(ingestion): festival upsert to DB with change history, ingestion jobs, changed-only detail refetch`
+- [x] I9 연결 한 곳·비밀번호 숨김
+- [x] I10 업서트(새로·같음·바뀜·hidden 유지·이력·작업 기록)
+- [x] I11 바뀐 축제만 상세
+- [x] 일반 시험 전부 통과(DB 시험은 건너뜀 표시)
+- [x] (Claude) 일회용 DB에서 `-m db` 전부 통과
+- [x] (Claude) 학원 노트북 DB에 실제 저장 2회: 1회차 inserted 870, 2회차 inserted 0·updated 0·상세 호출 0
+- [x] commit `feat(ingestion): festival upsert to DB with change history, ingestion jobs, changed-only detail refetch`
+
+**2-실행 결과(11/23, 로컬 = 학원 노트북 DB, AWS 아님):** 일회용 DB `-m db` 4개 통과(Claude 수정 2곳: 시험 정리 `TRUNCATE`→`DELETE` — 수집 계정에 TRUNCATE 권한 없음이 맞음, DB에서 읽은 시각을 KST로). 1회차는 **오늘 상세 호출 한도(기능별 1,000) 보호**를 위해 1단계 결과 `festivals.jsonl`을 API 재호출 없이 저장 → inserted 870. 2회차 `collect --db` 실제 실행 → 목록 9회·**상세 0회**, inserted 0·updated 0. DB: festivals 870·published 869·pending 1·history 0·jobs 2건 success.
 
 ## 3단계 — A02·A03 DB 조회 (I12)
 **만들 파일** — 3단계 시작 때 Claude가 확정해서 적는다.
@@ -60,3 +62,5 @@
 ## 메모
 - (11/23) 지역 코드 `12`(전남광주통합특별시)를 구(200~399)=광주·나머지=전남으로 나눈 것은 **임시 규칙** — 팀 확인 필요(API 0-1 지역 코드에 통합 코드를 둘지).
 - (11/23) `published_at` 자동 공개(`approved`)는 관리자 검토 화면(나중) 전까지의 임시 규칙.
+- (11/23) I11의 수정 시각은 DDL에 따라 `festival_sources`와 연결된 `festivals.source_updated_at`에서 읽는다. I7의 검토 대상 중 제목·지역 코드가 없는 건은 두 컬럼의 `NOT NULL` 제약 때문에 작업의 `rejected`로 집계한다. 날짜·좌표가 누락된 건은 제목과 지역 코드가 있으면 `pending`으로 저장한다.
+- (11/23) 상세 요청이 실패하거나 생략된 건은 기존 상세와 저장된 수정 시각을 유지한다. 다음 실행은 유효한 목록 수정 시각이 저장된 값보다 새로우면 상세를 다시 요청한다.
