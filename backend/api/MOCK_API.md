@@ -101,6 +101,10 @@ A04와 A25 접수 요청에 아래 헤더 값을 지정할 수 있습니다.
 | `async_unavailable` | 202 `queued` | `processing` → `unavailable` (`ROUTE_UPSTREAM_ERROR`) |
 | `async_timeout` | 202 `queued` | `processing` → `timed_out` (`ROUTE_TIMEOUT`) |
 | `overloaded` | 503 `ROUTE_OVERLOADED` | 해당 없음 |
+| `sync_secondary` | 200 `ready` (`provider: kakao`, `provider_tier: secondary`) | `unavailable` (`ROUTE_SECONDARY_SYNC_ONLY`) |
+| `async_secondary_sync_only` | 202 `queued` | `processing` → `unavailable` (`ROUTE_SECONDARY_SYNC_ONLY`) |
+| `async_no_result` | 202 `queued` | `processing` → `unavailable` (`ROUTE_NO_RESULT`, 재시도 불가) |
+| `async_quota_exceeded` | 202 `queued` | `processing` → `unavailable` (`ROUTE_QUOTA_EXCEEDED`, 재시도 불가) |
 | 기타 | 422 `VALIDATION_ERROR` | 해당 없음 |
 
 A07, A09, A10 요청에도 `X-Mock-Scenario`를 보낼 수 있습니다. 축제 조회와 좌표·지원 범위를 먼저 확인합니다. 공지 조회에는 좌표가 필요 없습니다.

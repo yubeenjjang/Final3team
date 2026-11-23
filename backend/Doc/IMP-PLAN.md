@@ -102,9 +102,9 @@
 - 새로: `tests/api/test_step6_provider_scenarios.py`
 
 **체크리스트**
-- [ ] R23 `sync_secondary` + 재조회 `ROUTE_SECONDARY_SYNC_ONLY`
-- [ ] R24 `async_secondary_sync_only`
-- [ ] R25 `async_no_result`·`async_quota_exceeded`
-- [ ] R26 MOCK_API.md 표·새 시험
-- [ ] 기존 시험 112개 + 새 시험 전부 통과
-- [ ] commit `feat(api): mock step6 — secondary provider sync-only and route error scenarios`
+- [x] R23 `sync_secondary` + 재조회 `ROUTE_SECONDARY_SYNC_ONLY`
+- [x] R24 `async_secondary_sync_only`
+- [x] R25 `async_no_result`·`async_quota_exceeded`
+- [x] R26 MOCK_API.md 표·새 시험
+- [x] 기존 시험 112개 + 새 시험 전부 통과
+- [x] commit `feat(api): mock step6 — secondary provider sync-only and route error scenarios`
