@@ -82,6 +82,8 @@ flowchart TD
 
 현재 `transitions`, `used_tools`, `evidence`는 결과와 함께 반환되지만 별도 JSON Lines 저장소나 `trace_id` 영속 기록은 없다. 향후 추적 로그에는 노드·도구·판정 요약만 남기고 모델의 내부 추론, 인증 정보, 외부 응답 원문은 기록하지 않는다. 이 기록 정책은 다음 자기 성찰 시험의 입력·기대 전이와 연결한다.
 
+**11/27 단독 실행 입력:** 현재 구현과 기획서 6.1절의 역할 분담에 따라 시험 하네스가 `FestivalRequest`의 구조화된 `intent`·축제 ID·검색 조건을 전달한다. 이는 Supervisor를 모의한 입력이며, 자연어 분류나 LLM 재추론의 성능을 검증하는 시험으로 해석하지 않는다. 후속 통합에서 Supervisor의 실제 출력 계약이 확정되면 같은 필드로 연결한다.
+
 ## 5. 도구 선택 및 재추론
 
 | 도구 | 이번 그래프 | 호출 조건·주의 |
@@ -236,6 +238,19 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 모든 경로는 `FestivalResult`를 반환하고 `END`에 도달한다. API의 `run_status`나 실제 사용자 화면의 성공 상태와 동일하게 취급하지 않는다.
 
 ## 부록 A. 설계 검토와 실행 근거
+
+### A-0. 구조화 요청 한 건의 실제 그래프 추적 (2026-11-23)
+
+입력은 `FestivalRequest(intent="search_detail_crowd", select_first=True, region="SEOUL")`이다. 시험 하네스가 서울 축제 한 건과 서울 지원 혼잡 응답을 **모의 데이터**로 제공했다. 아래 표의 `validate_result`, `answer`, `advance_detail`, `advance_crowd`는 별도 LangGraph 노드가 아니라 `validate` 노드가 남긴 전이 추적 값이다.
+
+| 순서 | 실행 노드·결과 | 다음 전이 | 핵심 State 변경 |
+|---|---|---|---|
+| 1 | `interpret` → `check_slots` | Festival 범위·필수 조건 충족 | `stage=search`, `tool_call_count=0`, `parts=[]` |
+| 2 | `select_tool` → `call_tool` → `validate` | 검색 성공 → `advance_detail` | `tool=search_festivals`, `args={region:SEOUL}`, `selected_festival_id=fst_000001`, `tool_call_count=1`, 검색 근거 보관 |
+| 3 | `select_tool` → `call_tool` → `validate` | 상세 성공 → `advance_crowd` | `tool=get_festival`, `args={festival_id:fst_000001}`, `stage=crowd`, `tool_call_count=2`, 상세 근거·답변 보관 |
+| 4 | `select_tool` → `call_tool` → `validate` | 혼잡 검증 통과 → `END` | `tool=get_crowd`, 같은 축제 ID, `coverage.supported=true`, 관측 시각 확인, `tool_call_count=3` |
+
+실제 반환값은 `outcome=answered`, `used_tools` 3건, `evidence` 3건이었다. 기록된 전이 순서는 `START → interpret → check_slots → select_tool → call_tool → validate_result → answer → advance_detail → select_tool → call_tool → validate_result → answer → advance_crowd → select_tool → call_tool → validate_result → answer → END`다. 이 추적은 **모의 응답을 사용하는 단독 그래프 시험**이며 사용자 자연어·실제 DB·현장 혼잡을 검증하지 않는다.
 
 | 사례 | 기대 경로 | 확인할 결과 |
 |---|---|---|
