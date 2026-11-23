@@ -29,6 +29,10 @@ class DBSettings:
 
 def load_db_settings() -> DBSettings:
     """환경변수를 읽고, 누락된 설정 이름만 오류에 표시합니다."""
+    from dotenv import find_dotenv, load_dotenv
+
+    # 로컬 .env를 읽되, 배포 환경에서 이미 설정한 값은 덮어쓰지 않습니다.
+    load_dotenv(find_dotenv(usecwd=True), override=False)
     required = (
         "DB_HOST",
         "DB_NAME",
