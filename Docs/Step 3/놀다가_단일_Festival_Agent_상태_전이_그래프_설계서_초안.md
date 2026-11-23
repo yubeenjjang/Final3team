@@ -348,6 +348,8 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 집 Windows에서 실제 응답 본문을 재생할 수 있도록 `backend/agents/check_festival_capture.py`를 추가했다. 학원망 맥북 Safari의 `/crowd` 응답 화면에서 JSON 전체를 복사해 채팅에 붙이거나 `.json` 파일로 전달받은 뒤, Windows `backend/`에서 `uv run --with-requirements agents/requirements.txt python -m agents.check_festival_capture <응답 파일.json>`을 실행한다. `is_mock:false`와 축제 ID를 확인하고 **저장된 실제 응답을 Festival Agent 그래프의 `get_crowd` 결과로 한 번 주입**한다. 이 방식은 Agent의 검증·답변 호환성을 확인하지만, Agent가 학원 서버에 직접 HTTP 요청을 보낸 단독 E2E는 아니다.
 
+사용자가 같은 축제의 `observed_at:"2026-11-23T16:55:00+09:00"`, `status:"ok"`, `is_estimate:false`인 실제 응답 JSON을 채팅으로 제공했다. 붙여넣은 `source_url`의 `https\://`와 `datasetView\.do`는 JSON 문법상 유효하지 않은 이스케이프라, **Agent가 소비하는 필드만 원문 값 그대로 추출한 검토용 JSON**으로 재생했다. `get_crowd` 1회 호출 후 `agent_outcome=answered`였고, 답변은 “숭례문 지역 혼잡은 보통입니다. 관측 기준 시각 2026-11-23T16:55:00+09:00. 행사장 내부나 이동 경로의 혼잡을 뜻하지 않습니다.”였다. 확인용 파일은 실행 후 삭제했다. 이는 실제 응답의 핵심 필드와 Agent 처리 결과의 호환 검증이며, 원문 전체 재생이나 직접 HTTP E2E로 확대하지 않는다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. 11/27 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 팀에서 모델과 Supervisor→Festival 입력 계약을 결정하면 자연어 입력 시험의 추가 여부를 정하고, 추가 시 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
