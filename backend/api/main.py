@@ -1,3 +1,4 @@
+import re
 import secrets
 import string
 from collections.abc import Awaitable, Callable
@@ -20,6 +21,7 @@ from api.routers import health
 from api.routers.accounts import auth
 from api.routers.assistant import chatbot
 from api.routers.festivals import catalog
+from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
 
 app = FastAPI(title="놀다가 API (mock)", version="0.1.0-mock")
@@ -69,8 +71,18 @@ async def add_response_headers(
             },
         )
     response.headers["X-Request-ID"] = request_id
-    response.headers["X-Mock"] = "true"
+    if not _serves_real_data(request):
+        response.headers["X-Mock"] = "true"
     return response
+
+
+_REAL_FESTIVAL_PATHS = re.compile(r"^/api/v1/festivals(/fst_[0-9A-Za-z]{6,26})?/?$")
+
+
+def _serves_real_data(request: Request) -> bool:
+    """FESTIVAL_DATA=db일 때 축제 목록(A02)·상세(A03)는 실제 DB 응답이라 X-Mock을 붙이지 않는다.
+    공지·날씨·혼잡(A07·A09·A10) 등 다른 주소는 아직 모의라 그대로 붙인다."""
+    return uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(request.url.path))
 
 
 for module in (health, catalog, routes, chatbot, auth):
