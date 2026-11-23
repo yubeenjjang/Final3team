@@ -4,7 +4,7 @@ import string
 from datetime import datetime, timedelta, timezone
 
 from api.errors import ApiError
-from api.mocks.store import RouteRecord, festivals, route_lock, route_request_keys, route_requests
+from api.mocks.store import RouteRecord, route_lock, route_request_keys, route_requests
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import (
     Endpoint,
@@ -15,6 +15,7 @@ from api.schemas.routes import (
     RouteRequest,
     RouteStatus,
 )
+from api.services.festival_lookup import find_festival
 
 _ALPHABET = string.ascii_letters + string.digits
 _KST = timezone(timedelta(hours=9))
@@ -74,7 +75,7 @@ def _register_route(
     scenario: str,
 ) -> RouteRecord:
     with route_lock:
-        festival = festivals.get(request.festival_id)
+        festival = find_festival(request.festival_id)
         if festival is None:
             raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없어요.")
         _validate_endpoints(request, festival)
