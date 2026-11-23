@@ -4,7 +4,7 @@
 
 ## 1. 목적과 범위
 
-전체 서비스의 에이전트는 Supervisor·Festival·Route·Diagnosis·Recovery **5개**다. 이번 문서는 그중 Festival Agent **한 개의 내부 상태 전이**를 설계한다. 현재 단독 실행기와 시험 하네스는 구조화된 요청을 넘기고 결과를 받는다. 자연어 질문 분류·인증 맥락 연결과 Supervisor 인계는 후속 단계다. 멀티 에이전트 간 인계·장애 복구 전체 그래프는 W44~W47의 별도 설계 대상이다.
+전체 서비스의 에이전트는 Supervisor·Festival·Route·Diagnosis·Recovery **5개**다. 이번 문서는 그중 Festival Agent **한 개의 내부 상태 전이**를 설계한다. 기획서 6.1·6.2절에 따라 **Supervisor가 사용자 의도·축제 선택·조건을 파악하고 필요한 경우 Festival을 호출**한다. Festival은 전달받은 축제 ID·조건을 검증하고 축제 도구를 사용한다. 현재 단독 실행기와 시험 하네스는 Supervisor 대신 구조화된 요청을 넘기고 결과를 받는다. Supervisor와의 실제 연결은 W44~W47의 별도 설계 대상이다.
 
 이번 필수 흐름은 **전국 축제 검색, 선택된 축제 상세, 서울에서 매핑이 검증된 축제 주변 지역 혼잡 조회**다. 공식 공지·시설은 도구 계약과 자료 공급원이 확인될 때 확장한다. 날씨는 서비스 필수 기능이지만 현재 13개 도구에 없으므로 이번 단일 그래프의 실행 대상으로 두지 않는다. 코스 추천·RAG는 W27·W37과 연결되는 후속 흐름이다. **관심 저장은 팀 합의에 따라 Supervisor가 처리하며, 단일 Festival Agent는 `save_favorite`를 호출하지 않는다.**
 
@@ -57,12 +57,12 @@ flowchart TD
 
 **현재 구현:** LLM 호출과 프롬프트는 없다. 호출자가 이미 분류한 `FestivalRequest`를 넘기며, `interpret` 노드는 자연어 추론 대신 `intent`의 담당 범위만 검사한다. 따라서 모델명·프롬프트 버전·JSON 파싱 성공률을 현재 실행 결과로 기재하지 않는다.
 
-**후속 자연어 연결 계약(설계안):** 사용자 질문과 기준일·선택 축제 ID가 주어지면 자연어 해석 단계가 `FestivalRequest`에 필요한 값만 구조화한다. 모델과 실제 프롬프트는 팀의 모델 결정 및 Supervisor 입출력 계약 이후 확정한다.
+**후속 입력 계약(설계안):** 실제 협업 흐름에서는 Supervisor가 사용자 질문의 의도·축제 선택·조건을 구조화해 `FestivalRequest`에 해당하는 값을 Festival에 전달한다. Festival은 축제 도메인의 누락값·ID·출처를 재검증한다. 11/27 단독 시험에서 자연어 질문을 직접 넣을지, 구조화된 요청을 넣을지는 시험 입력 방식의 결정 사항이며 서비스 전체의 역할 분담을 다시 정하는 문제가 아니다. 모델과 실제 프롬프트는 팀의 모델 결정 및 Supervisor 입출력 계약 이후 확정한다.
 
 | 항목 | 설계안 |
 |---|---|
-| 입력 | 사용자 질문, 명시된 `reference_date`, 서버가 확인한 `selected_festival_id`, Festival 허용 도구 이름·인자. 인증 토큰·API 키는 입력하지 않는다. |
-| 출력 | `intent`(`search/detail/crowd/search_detail_crowd/other`), `festival_id`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first`, `missing_slots`의 구조화 값. 값이 없으면 `null` 또는 빈 목록으로 둔다. |
+| 입력 | Supervisor가 전달한 구조화 의도·조건·선택 축제 ID와 Festival 허용 도구 이름·인자. 단독 자연어 시험을 선택한 경우에만 사용자 질문·명시된 `reference_date`를 추가한다. 인증 토큰·API 키는 입력하지 않는다. |
+| 출력 | `intent`(`search/detail/crowd/search_detail_crowd/other`), `festival_id`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first`, `missing_slots`의 검증된 구조화 값. 값이 없으면 `null` 또는 빈 목록으로 둔다. |
 | 제약 | 상대 날짜의 기준일이 없거나 지시 대상이 모호하면 추측하지 않고 확인 질문으로 종료한다. 검색의 첫 결과 선택은 사용자 지시가 있을 때만 `true`다. 도구 결과 문장으로 권한·도구 목록을 바꾸지 않는다. |
 | 검증 | 코드가 JSON 형식·허용 enum·필수 값·도구 인자를 재검사한다. 출력이 틀리면 같은 구조화 요청 생성을 최대 1회 다시 시도하고, 계속 실패하면 `clarification_needed` 또는 `unavailable`로 종료한다. 이 재생성은 아직 구현되지 않았다. |
 | 모델 장애 | LLM 단계가 연결된 뒤 장애가 나면 검증되지 않은 축제·혼잡을 생성하지 않는다. 검색·상세 같은 기본 조회를 코드 기반으로 이어갈 범위는 Supervisor 계약과 함께 결정한다. |
@@ -291,7 +291,7 @@ W24 확인 순서는 다음과 같다.
 
 ## 부록 B. 제출 전 확인할 결정
 
-1. 팀에서 모델을 결정한 뒤 3장의 자연어 입력·출력 계약, 프롬프트 버전, JSON 실패 처리 규칙을 실제 구현 계획과 대조한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
+1. 팀에서 모델을 결정한 뒤 Supervisor→Festival 구조화 입력 계약과, 단독 시험에서 자연어 입력을 쓸지 여부를 확정한다. 그 결과에 맞춰 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
 2. 세션·체크포인트를 도입할 시점에 `thread_id`, 보존 기간, 중단 후 재개 규칙을 W26 및 DB 문서와 맞춘다.
 3. 날씨 답변: Festival Agent의 최종 범위에 둘지, `get_weather` 도구를 언제 추가할지, BFCL 문항에 어떤 영향을 주는지 결정한다.
 4. 공식 공지·시설 자료와 모의 API의 실제 준비 상태를 확인한다. 없는 자료를 시험 성공으로 꾸미지 않는다.
