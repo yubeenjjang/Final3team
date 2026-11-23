@@ -7,9 +7,9 @@ from api.mocks.store import (
     auth_lock,
     favorite_sequence,
     favorites_by_user,
-    festivals,
 )
 from api.schemas.favorites import FavoriteItem, FavoriteSave, FavoritesPage, FavoritesQuery
+from api.services.festival_lookup import find_festival
 
 
 def _user_id(authorization: str | None, now: datetime) -> str:
@@ -24,7 +24,7 @@ def save_favorite(authorization: str | None, festival_id: str) -> tuple[Favorite
     with auth_lock:
         now = datetime.now(timezone.utc)
         user_id = _user_id(authorization, now)
-        if festival_id not in festivals:
+        if find_festival(festival_id) is None:
             raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
         saved = favorites_by_user.setdefault(user_id, {})
         record = saved.get(festival_id)
@@ -47,7 +47,11 @@ def list_favorites(authorization: str | None, query: FavoritesQuery) -> Favorite
     with auth_lock:
         user_id = _user_id(authorization, datetime.now(timezone.utc))
         saved = favorites_by_user.get(user_id, {})
-        entries = [(festivals[festival_id], record) for festival_id, record in saved.items()]
+        entries = [
+            (festival, record)
+            for festival_id, record in saved.items()
+            if (festival := find_festival(festival_id)) is not None
+        ]
 
     entries.sort(key=lambda entry: entry[1].sequence, reverse=True)
     if query.sort == "start_date":

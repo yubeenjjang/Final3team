@@ -11,12 +11,17 @@ from api.mocks.store import (
     assistant_request_keys,
     assistant_runs,
 )
+from api.routers.festivals.catalog import uses_festival_db
 from api.schemas.assistant import AssistantRequest
+from api.schemas.festivals import FestivalQuery
+from api.services import festival_store
+from api.services.festival_lookup import find_festival
 from api.services.mock_routes import create_ready_route
 
 _ALPHABET = string.ascii_letters + string.digits
 _KST = timezone(timedelta(hours=9))
 _RUNS_PATH = "/api/v1/assistant/runs"
+_MOCK_FESTIVAL_ID = "fst_000001"
 
 
 def _now() -> str:
@@ -124,13 +129,33 @@ def _failed(tool_error: str) -> dict[str, object]:
 def _complete_run(request: AssistantRequest) -> dict[str, object]:
     if "실패" in request.message:
         return _failed("TOOL_TIMEOUT")
-    if any(keyword in request.message for keyword in ("귀가", "돌아가", "가는 길")):
-        return _complete_route_run(request.context.festival_id or "fst_000001")
+    wants_route = any(keyword in request.message for keyword in ("귀가", "돌아가", "가는 길"))
+    db_mode = uses_festival_db()
+    festival_id = request.context.festival_id
+    if festival_id is None and db_mode:
+        page = festival_store.list_festivals(FestivalQuery(status="ongoing", page_size=1))
+        festival_id = page.items[0].festival_id if page.items else None
+    elif not db_mode:
+        festival_id = festival_id if wants_route and festival_id else _MOCK_FESTIVAL_ID
+    if wants_route and festival_id is not None:
+        return _complete_route_run(festival_id)
+
+    festival = find_festival(festival_id) if festival_id is not None else None
+    answer = "현재 안내할 수 있는 축제가 없어요.(모의)"
+    evidence: list[dict[str, str]] = []
+    if festival is not None:
+        answer = (
+            f"안내할 축제는 {festival.name}예요.(모의)" if db_mode
+            else f"이번 주 서울에서 열리는 축제는 {festival.name}예요.(모의)"
+        )
+        evidence.append({
+            "type": "festival", "ref": festival.festival_id, "provider": "tourapi", "queried_at": _now()
+        })
     return {
         "run_status": "succeeded",
-        "answer": "이번 주 서울에서 열리는 축제는 광화문 겨울빛 축제예요.(모의)",
+        "answer": answer,
         "used_tools": [{"tool": "search_festivals", "ok": True, "error_code": None}],
-        "evidence": [{"type": "festival", "ref": "fst_000001", "provider": "tourapi", "queried_at": _now()}],
+        "evidence": evidence,
     }
 
 

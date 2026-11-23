@@ -90,7 +90,7 @@
 - 새로: `tests/api/test_i14_festival_lookup.py`
 
 **체크리스트**
-- [ ] I14 찾기 한 곳 + 4개 서비스 교체
-- [ ] 기존 시험 + 새 시험 전부 통과
+- [x] I14 찾기 한 곳 + 4개 서비스 교체
+- [x] 기존 시험 + 새 시험 전부 통과
 - [ ] (Claude) 노트북 DB 모드에서 목록 → 상세 → 귀가 결과 전체 흐름 확인
 - [ ] commit `fix(api): look up festivals via one function so real DB IDs work for routes, live info, favorites, assistant`
