@@ -1,0 +1,41 @@
+# IMP-PLAN — 축제 실제 수집·저장·조회
+
+단계마다 만들 파일만 만들고 → 시험 → 체크 → (Claude 실제 실행·검증) → commit. 앞 단계가 끝나기 전에 다음 단계로 가지 않는다.
+
+| 단계 | 담당 (도구·모델) | 요구 | 시작 조건 |
+|---|---|---|---|
+| 1 | Codex · gpt-6.2-sol · reasoning medium | I1~I8 | 고정 파일 준비(✅ 11/23) |
+| 1-실행 | Claude | 실제 수집 `--since 2026-01-01`(목록 9회 + 상세 약 1,740회 → 기능별 1,000 한도 안) → report 확인 | 1단계 시험 통과 |
+| 2 | Codex · gpt-6.2-sol · reasoning high (업서트·변경 이력·재실행 규칙) | I9~I11 | 1-실행 끝, Claude가 `sqlalchemy`·`psycopg[binary]`·`python-ulid`를 requirements에 넣고 캐시 준비 |
+| 2-실행 | Claude | 로컬 도커 `pgvector/pgvector:pg17` + 마이그레이션 001~009 → `-m db` 시험 → 실제 저장 2회(재실행 중복 0 확인) | 2단계 시험 통과 |
+| 3 | Codex · gpt-6.2-sol · reasoning medium | I12 | 2-실행 끝 |
+| 3-실행 | Claude | `FESTIVAL_DATA=db`로 서버 → A02·A03 실제 응답 확인, 웹 화면(ohyun-web) 확인, 노트북 시연 최신화 | 3단계 시험 통과 |
+
+## 1단계 — TourAPI 클라이언트 + 정규화·검사 + 수집 실행기(DB 없음)
+**만들 파일(목록 밖 금지)**
+- 채움: `api/providers/tourapi.py`(지금은 주석 한 줄)
+- 새로: `api/ingestion/festivals/__init__.py`, `api/ingestion/festivals/normalize.py`, `api/ingestion/festivals/collect.py`
+- 새로: `tests/ingestion/__init__.py`, `tests/ingestion/test_i1_tourapi_client.py`, `tests/ingestion/test_i4_normalize.py`, `tests/ingestion/test_i8_collect.py`
+- 읽기만: `tests/ingestion/fixtures/*`(고치지 않음)
+
+**체크리스트**
+- [ ] I1 설정·키 숨김·재시도
+- [ ] I2 목록 전체 페이지·상세·오류 코드(KEY_ERROR 포함)
+- [ ] I3 출력 모양
+- [ ] I4 지역 코드(`12` 나누기 포함)
+- [ ] I5 날짜·좌표·이미지·상태·체크섬
+- [ ] I6 상세 칸 정리
+- [ ] I7 공개 판정
+- [ ] I8 수집 명령·보고서·한도 보호
+- [ ] `tests/ingestion` + `tests/api` 전부 통과
+- [ ] commit `feat(ingestion): TourAPI client, festival normalize/validate, offline collector`
+
+## 2단계 — DB 저장 (I9~I11)
+**만들 파일** — 2단계 시작 때 Claude가 확정해서 적는다.
+
+## 3단계 — A02·A03 DB 조회 (I12)
+**만들 파일** — 3단계 시작 때 Claude가 확정해서 적는다.
+
+## 메모
+- (11/23) 지역 코드 `12`(전남광주통합특별시)를 구(200~399)=광주·나머지=전남으로 나눈 것은 **임시 규칙** — 팀 확인 필요(API 0-1 지역 코드에 통합 코드를 둘지).
+- (11/23) `published_at` 자동 공개(`approved`)는 관리자 검토 화면(나중) 전까지의 임시 규칙.
