@@ -66,10 +66,10 @@
 - 읽기만: `Docs/Step 2/db/001_schema_v0.3.1.sql`의 `festivals`·`festival_sources` 블록과 558~562행(공개 정책), `010_festival_sources_public.sql`
 
 **체크리스트**
-- [ ] I12 모의/DB 고르기·응답 칸·공개 축제만·SQL 필터·KST 상태
-- [ ] I13 여러 상태
-- [ ] 일반 시험 전부 통과(DB 시험 건너뜀)
-- [ ] (Claude) 일회용 DB `-m db` 통과
+- [x] I12 모의/DB 고르기·응답 칸·공개 축제만·SQL 필터·KST 상태
+- [x] I13 여러 상태
+- [x] 일반 시험 전부 통과(DB 시험 건너뜀)
+- [x] (Claude) 일회용 DB `-m db` 통과(6개, Claude가 X-Mock 헤더 처리 main.py 보완)
 - [ ] (Claude) 학원 노트북 `FESTIVAL_DATA=db` 실행 → 맥 화면에서 실제 축제 확인
 - [ ] commit `feat(api): festivals A02/A03 read from DB (FESTIVAL_DATA=db), multi-status filter`
 
@@ -78,3 +78,5 @@
 - (11/23) `published_at` 자동 공개(`approved`)는 관리자 검토 화면(나중) 전까지의 임시 규칙.
 - (11/23) I11의 수정 시각은 DDL에 따라 `festival_sources`와 연결된 `festivals.source_updated_at`에서 읽는다. I7의 검토 대상 중 제목·지역 코드가 없는 건은 두 컬럼의 `NOT NULL` 제약 때문에 작업의 `rejected`로 집계한다. 날짜·좌표가 누락된 건은 제목과 지역 코드가 있으면 `pending`으로 저장한다.
 - (11/23) 상세 요청이 실패하거나 생략된 건은 기존 상세와 저장된 수정 시각을 유지한다. 다음 실행은 유효한 목록 수정 시각이 저장된 값보다 새로우면 상세를 다시 요청한다.
+- (11/23) 공개 행에 소개·수집 시각·TourAPI 원본 번호가 없으면 응답의 문자열 자료형을 유지하기 위해 빈 문자열을 보낸다.
+- (11/23) I12의 DB 응답 본문은 `is_mock: false`다. `X-Mock` 헤더 제거는 3단계 수정 범위 밖인 `api/main.py`의 공통 미들웨어 변경이 필요하다.

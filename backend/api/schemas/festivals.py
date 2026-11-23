@@ -1,8 +1,8 @@
 import re
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated, Literal, get_args
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import AfterValidator, BaseModel, BeforeValidator, Field
 
 from api.schemas.common import MockResponse
 
@@ -40,15 +40,29 @@ def _parse_query_date(value: str) -> date:
 QueryDate = Annotated[date, BeforeValidator(_parse_query_date)]
 
 
+def _validate_status(value: str) -> str:
+    statuses = tuple(status.strip() for status in value.split(","))
+    if any(status not in get_args(FilterStatus) for status in statuses):
+        raise ValueError("축제 상태를 확인해 주세요.")
+    return ",".join(statuses)
+
+
+QueryStatus = Annotated[str, AfterValidator(_validate_status)]
+
+
 class FestivalQuery(BaseModel):
     region: RegionCode | Literal["ALL"] = "ALL"
     date_from: QueryDate | None = None
     date_to: QueryDate | None = None
     q: str | None = Field(default=None, min_length=1, max_length=50)
-    status: FilterStatus | None = None
+    status: QueryStatus | None = None
     sort: Literal["start_date", "-start_date", "name"] = "start_date"
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
+
+    @property
+    def statuses(self) -> tuple[str, ...]:
+        return tuple(self.status.split(",")) if self.status is not None else ()
 
 
 class ImageCopyright(BaseModel):
@@ -74,6 +88,7 @@ class FestivalListItem(BaseModel):
 
 
 class FestivalDetail(FestivalListItem, MockResponse):
+    is_mock: bool = True
     address: str | None
     overview: str
     fee_text: str | None
@@ -84,6 +99,7 @@ class FestivalDetail(FestivalListItem, MockResponse):
 
 
 class FestivalPage(MockResponse):
+    is_mock: bool = True
     items: list[FestivalListItem]
     total: int
     page: int
