@@ -9,6 +9,8 @@ from langgraph.graph import END, START, StateGraph
 
 from agents.roles.festival import FestivalAgent, FestivalRequest, FestivalResult, ToolCall
 
+MAX_TOOL_CALLS = 4  # Three normal stages plus one transient retry.
+
 
 class FestivalGraphState(TypedDict, total=False):
     request: FestivalRequest
@@ -68,7 +70,7 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
 
     def invoke_tool(state: FestivalGraphState) -> dict[str, Any]:
         trace = state["trace"] + ["call_tool"]
-        if clock() >= state["deadline_at"] or state["tool_call_count"] >= 3:
+        if clock() >= state["deadline_at"] or state["tool_call_count"] >= MAX_TOOL_CALLS:
             result = _budget_result(state, trace)
             return {"result": result, "trace": result.transitions}
         try:
@@ -89,7 +91,7 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
         response = state["response"]
         if response.get("ok") is True:
             return "validate"
-        if (response.get("error") or {}).get("retryable") and state["attempts"] < 2 and state["tool_call_count"] < 3:
+        if (response.get("error") or {}).get("retryable") and state["attempts"] < 2 and state["tool_call_count"] < MAX_TOOL_CALLS:
             return "retry"
         return "error"
 
@@ -118,6 +120,10 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
         return _finish_composite(state, result)
 
     def error(state: FestivalGraphState) -> dict[str, Any]:
+        if ((state["response"].get("error") or {}).get("retryable")
+                and state["attempts"] < 2 and state["tool_call_count"] >= MAX_TOOL_CALLS):
+            result = _budget_result(state, state["trace"] + ["handle_error"])
+            return {"result": result, "trace": result.transitions}
         result = agent._error(state["response"].get("error") or {}, state["trace"] + ["handle_error"], state["used_tools"])
         if state["request"].intent == "search_detail_crowd":
             return _finish_composite(state, result)

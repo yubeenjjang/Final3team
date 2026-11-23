@@ -19,7 +19,7 @@ flowchart TD
     I -->|Festival 범위| S{필수 입력 충분?}
     S -->|아니요| Q[누락값 질문 후 종료]
     S -->|예| P[허용 도구·인자 선택]
-    P --> B{30초·3회 호출 예산 남음?}
+    P --> B{30초·4회 호출 예산 남음?}
     B -->|아니요| U[확인 불가 또는 부분 결과로 종료]
     B -->|예| T[축제 도구 호출]
     T -->|ok=true| V[ID·출처·시각·지원 범위 검증]
@@ -115,7 +115,7 @@ flowchart TD
 
 | 상황 | 도구·다음 전이 | 한도 초과 시 |
 |---|---|---|
-| 검색·상세·혼잡 조회 필요 | 해당 단계의 허용 도구 1개 선택 | 도구 호출 3회 또는 30초 예산 초과 시 `unavailable`/`partial` |
+| 검색·상세·혼잡 조회 필요 | 해당 단계의 허용 도구 1개 선택 | 도구 호출 4회 또는 30초 예산 초과 시 `unavailable`/`partial` |
 | 도구가 `retryable:true` 오류 반환 | `retry` → 같은 `call_tool` | 같은 호출 최대 1회 재시도 후 `error` |
 | 도구가 `retryable:false` 오류 반환 | 재시도 없이 `error` | 없는 축제·입력 오류는 확인 질문, 기타는 확인 불가 |
 | 결과의 출처·시각·지원 범위 검증 실패 | `validate`에서 종료 | 임의 데이터 보충이나 LLM 재추론 없음 |
@@ -170,7 +170,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `evidence` | `list[dict[str, Any]]` | `interpret`, `validate` | 복합 흐름의 근거 |
 | `deadline_at` | `float` | `interpret` | 단조 시계의 종료 시각. 현재 실행 내부에서만 유효 |
 | `timeout_s` | `float` | `interpret` | 실행 시간 예산 |
-| `tool_call_count` | `int` | `interpret`, `call_tool` | 전체 도구 호출 수(최대 3) |
+| `tool_call_count` | `int` | `interpret`, `call_tool` | 전체 도구 호출 수(최대 4) |
 
 `FestivalResult`의 `outcome`, `answer`, `evidence`, `transitions`, `used_tools`, `handoff_target`은 그래프 State의 개별 필드가 아니라 **최종 `result` 객체의 필드**다. HTTP `request_id`와 LLM 재추론 횟수는 아직 이 State에 없다.
 
@@ -197,13 +197,13 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `check_slots` | 필수 축제 ID 또는 복합 선택 지시 누락 | `END` (`clarification_needed`) | 도구 호출 없음 |
 | `check_slots` | 필수 값 충족 | `select_tool` | — |
 | `select_tool` | 현재 `stage` 확정 | `call_tool` | 단계마다 `attempts=0` 초기화 |
-| `call_tool` | 호출 전·후 시간 또는 총 3회 예산 초과 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록 |
+| `call_tool` | 호출 전·후 시간 또는 총 4회 예산 초과 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록 |
 | `call_tool` | `response.ok=true` | `validate` | — |
 | `call_tool` | 오류가 재시도 가능, `attempts<2`, 총 호출 수 `<3` | `retry` | 같은 단계 최대 1회 재시도 |
 | `call_tool` | 그 밖의 오류 | `error` | 같은 도구 추가 호출 없음 |
 | `retry` | 항상 | `call_tool` | 다음 호출에서도 시간·횟수 검사 |
 | `validate` | 단일 조회 완료·빈 결과·미지원·근거 실패 | `END` | 결과별 `outcome` 반환 |
-| `validate` | 복합 검색·상세 성공, 다음 단계 필요 | `select_tool` | 검색→상세→혼잡, 총 3회 호출 상한 |
+| `validate` | 복합 검색·상세 성공, 다음 단계 필요 | `select_tool` | 정상 3회 호출, 전체 상한 4회(일시 오류 재시도 1회분) |
 | `validate` | 복합 후속 단계 완료·실패 | `END` | 앞 단계 답변이 있으면 `partial` |
 | `error` | 항상 | `END` | 없는 ID·입력 오류는 확인 질문, 기타는 확인 불가 |
 
@@ -224,7 +224,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 출처·시각·지원 범위 검증 실패 | 확인 불가를 명시하고 종료. 혼잡 `ok`·`stale`에는 `coverage.supported=true`가 필요하다. 모의 결과는 실제 현장 정보로 표시하지 않음. |
 | Festival 범위 밖 질문 | `handoff_required`. 단독 실행에서 다른 에이전트를 직접 호출하지 않음. |
 
-**현재 코드 예산:** 도구 호출 최대 3회(재시도 포함), 동일 호출 재시도 최대 1회, 전체 실행 시간 기본 30초. 노드에서 호출 전후 시간을 확인하고 초과 시 `unavailable` 또는 앞서 확인한 정보가 있으면 `partial`로 종료한다. 이는 **협력적 시간 제한**이며 진행 중인 동기 HTTP 호출을 30초 시점에 강제로 중단하지는 않는다. HTTP 래퍼의 호출별 기본 타임아웃은 5초다. 실제 한도는 W23/W24에서 다시 확정한다.
+**현재 코드 예산:** 정상 복합 흐름은 도구 3회, 전체 상한은 **4회(재시도 포함)**, 동일 호출 재시도 최대 1회, 전체 실행 시간 기본 30초다. 따라서 검색·상세·혼잡 중 한 번의 일시 오류는 재시도 후에도 다음 단계로 진행할 수 있다. 노드에서 호출 전후 시간을 확인하고 초과 시 `unavailable` 또는 앞서 확인한 정보가 있으면 `partial`로 종료한다. 이는 **협력적 시간 제한**이며 진행 중인 동기 HTTP 호출을 30초 시점에 강제로 중단하지는 않는다. HTTP 래퍼의 호출별 기본 타임아웃은 5초다. 실제 한도는 W23/W24에서 다시 확정한다.
 
 
 ### 9-1. 최종 결과의 세 범주
@@ -274,7 +274,9 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 오현님 브랜치 `origin/ohyun`의 `a663d0e` 모의 API를 별도 로컬 서버로 실행했다. 모의 API의 축제 검색·상세·혼잡 관련 시험은 **32개 통과**했다. 모의 서버 자료는 실제 축제·현장 상태가 아니다.
 
-`backend/agents/festival_graph.py`의 LangGraph 노드는 `interpret → check_slots → select_tool → call_tool → validate`로 연결했고, 오류·1회 재시도 분기를 둔다. 긴 축제 ID 전달과 복합 요청의 재시도·호출 상한 사례를 추가한 뒤 단독 처리·LangGraph 분기 시험 **22개를 다시 실행해 모두 통과**했다. 서울 검색·상세·혼잡과 부산 미지원도 모의 API 연결 상태에서 예상대로 종료했다.
+`backend/agents/festival_graph.py`의 LangGraph 노드는 `interpret → check_slots → select_tool → call_tool → validate`로 연결했고, 오류·1회 재시도 분기를 둔다. 긴 축제 ID 전달과 복합 요청의 재시도·호출 상한 사례를 추가했다. 태경님 검토를 반영해 전체 호출 상한을 4회로 조정한 뒤 단독 처리·LangGraph 분기 시험 **23개를 다시 실행해 모두 통과**했다. 서울 검색·상세·혼잡과 부산 미지원도 모의 API 연결 상태에서 예상대로 종료했다.
+
+시험은 `backend/`에서 `python -m pytest tests/agents/test_festival_flow.py tests/agents/test_festival_graph.py -q` 형태로 실행했다(`23 passed`). 단독 `pytest` 명령은 현재 작업 환경의 import 경로 때문에 같은 결과를 보장하지 않으므로, 팀의 시험 실행 기준이 정해질 때까지 모듈 실행 방식을 사용한다.
 
 복합 요청 `search_detail_crowd`에 `select_first=true`를 주어 서울 축제를 검색하면 `search_festivals → get_festival → get_crowd` 순서로 호출됐다. 상세·혼잡에는 첫 검색 결과 `fst_000001`이 전달됐고, 결과는 `answered`였다. 첫 선택이 명시되지 않거나 검색 결과가 비어 있으면 후속 호출을 하지 않는다. 혼잡 미지원 시 앞서 확인한 축제 정보와 함께 `partial`로 종료한다.
 
@@ -308,7 +310,7 @@ W24 확인 순서는 다음과 같다.
 
 최신 `origin/ohyun`은 실제 DB 축제 ID를 공통 조회에 연결했지만 `get_crowd`는 여전히 모의 서비스를 사용한다. 실제 API 응답 화면에서 확인한 긴 축제 ID `fst_01M835BPX17Y44VEDJM1VMZ3N6`와 `is_mock:false` 검색·상세 형태를 **로컬에 구성한 응답**으로 `search_detail_crowd`를 실행했다. 같은 ID가 `get_festival`과 `get_crowd`에 그대로 전달됐고, 혼잡 응답을 `status:unsupported`, `is_mock:true`로 주면 최종 `outcome=partial`과 모의 데이터 안내가 나왔다. 이는 형식·상태 전이 시험이며 학원 API에 집 컴퓨터의 Agent가 직접 접속한 결과가 아니다.
 
-복합 요청에서 검색 성공 후 상세 도구가 한 번 시간 초과되고 재시도에 성공하는 경우도 확인했다. 세 번의 도구 호출 예산을 모두 사용하므로 혼잡 도구를 추가 호출하지 않고 `budget_exceeded`, `outcome=partial`로 끝나며 앞서 확인한 검색·상세 결과를 보존한다. 두 경우 모두 `backend/tests/agents/test_festival_graph.py`에 반복 실행 가능한 시험으로 추가했다.
+복합 요청에서 검색 성공 후 상세 도구가 한 번 시간 초과되고 재시도에 성공하는 경우도 확인했다. 기존 3회 상한에서는 혼잡 조회 전에 `partial`로 끝났으나, 태경님 검토를 반영한 **4회 상한에서는 혼잡 조회까지 진행해 `answered`로 끝난다.** 일시 오류가 두 번 발생해 네 번째 호출 뒤에도 재시도가 필요하면 `budget_exceeded`, `outcome=partial`로 종료하고 이미 확인한 검색·상세 결과를 보존한다. 두 경우 모두 `backend/tests/agents/test_festival_graph.py`에 반복 실행 가능한 시험으로 추가했다.
 
 ## 부록 B. 제출 전 확인할 결정
 

@@ -117,7 +117,7 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertIn("모의 데이터", result.answer)
         self.assertIn("지원하지 않습니다", result.answer)
 
-    def test_composite_retry_consumes_budget_and_preserves_partial_result(self):
+    def test_composite_single_retry_still_reaches_crowd(self):
         festival_id = "fst_000001"
         item = {"festival_id": festival_id, "name": "축제", "source": "tourapi", "last_synced_at": "2026-11-23T11:57:22+09:00"}
         calls = []
@@ -129,9 +129,28 @@ class FestivalGraphTests(unittest.TestCase):
                 return {"ok": False, "error": {"code": "TOOL_TIMEOUT", "retryable": True}}
             if name == "get_festival":
                 return {"ok": True, "data": {**item, "venue_name": "축제 장소"}}
-            self.fail("crowd must not run after the third tool call")
+            return {"ok": True, "data": {"festival_id": festival_id, "status": "ok", "coverage": {"scope": "seoul_only", "region_code": "SEOUL", "supported": True}, "areas": [{"area_name": "광화문", "congest_level": "보통", "observed_at": "2026-11-23T12:00:00+09:00"}]}}
         result = run_festival_graph(tool, FestivalRequest("search_detail_crowd", select_first=True))
-        self.assertEqual(calls, ["search_festivals", "get_festival", "get_festival"])
+        self.assertEqual(calls, ["search_festivals", "get_festival", "get_festival", "get_crowd"])
+        self.assertEqual(result.outcome, "answered")
+        self.assertIn("광화문", result.answer)
+        self.assertNotIn("budget_exceeded", result.transitions)
+
+    def test_composite_second_retry_exhausts_four_call_budget(self):
+        festival_id = "fst_000001"
+        item = {"festival_id": festival_id, "name": "축제", "source": "tourapi", "last_synced_at": "2026-11-23T11:57:22+09:00"}
+        calls = []
+        def tool(name, args):
+            calls.append(name)
+            if name == "search_festivals":
+                return {"ok": True, "data": {"items": [item]}}
+            if name == "get_festival" and calls.count("get_festival") == 1:
+                return {"ok": False, "error": {"code": "TOOL_TIMEOUT", "retryable": True}}
+            if name == "get_festival":
+                return {"ok": True, "data": {**item, "venue_name": "축제 장소"}}
+            return {"ok": False, "error": {"code": "TOOL_TIMEOUT", "retryable": True}}
+        result = run_festival_graph(tool, FestivalRequest("search_detail_crowd", select_first=True))
+        self.assertEqual(calls, ["search_festivals", "get_festival", "get_festival", "get_crowd"])
         self.assertEqual(result.outcome, "partial")
         self.assertIn("조회 제한", result.answer)
         self.assertIn("budget_exceeded", result.transitions)
