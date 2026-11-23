@@ -1,4 +1,4 @@
-"""Read-only Festival Agent search/detail check against a real festival API."""
+"""Read-only Festival Agent checks against a real festival API."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from agents.tools.festival_api import FestivalApiTools
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", required=True, help="Festival API root ending in /api/v1")
+    parser.add_argument("--crowd-festival-id", help="Optional Seoul festival ID for real crowd check")
     args = parser.parse_args()
     tool = FestivalApiTools(args.base_url)
 
@@ -36,7 +37,23 @@ def main() -> None:
     if detail.outcome != "answered" or detail.evidence[0]["festival_id"] != chosen_id:
         raise RuntimeError(f"Agent detail failed for {chosen_id}: {detail.answer}")
     print(f"detail: festival_id={chosen_id}, outcome={detail.outcome}, source={detail.evidence[0]['source']}")
-    print("Real DB search/detail check passed. Crowd was not checked.")
+    print("Real DB search/detail check passed.")
+
+    if args.crowd_festival_id:
+        crowd_id = args.crowd_festival_id
+        raw_crowd = tool("get_crowd", {"festival_id": crowd_id})
+        if not raw_crowd.get("ok") or raw_crowd.get("is_mock") or raw_crowd.get("data", {}).get("is_mock") is not False:
+            raise RuntimeError(f"Crowd did not return real provider data: {raw_crowd.get('error')}")
+        crowd = run_festival_graph(tool, FestivalRequest("crowd", festival_id=crowd_id))
+        if crowd.outcome not in {"answered", "unsupported", "unavailable"}:
+            raise RuntimeError(f"Unexpected crowd outcome: {crowd.outcome}")
+        is_estimate = raw_crowd["data"].get("is_estimate") is True
+        if is_estimate and crowd.outcome == "answered" and "최근 4주 같은 시간대 평균" not in crowd.answer:
+            raise RuntimeError("Replacement crowd value was not labeled as an average")
+        print(f"crowd: festival_id={crowd_id}, provider_status={raw_crowd['data'].get('status')}, "
+              f"agent_outcome={crowd.outcome}, is_estimate={is_estimate}")
+    else:
+        print("Crowd was not checked; pass --crowd-festival-id to verify a Seoul festival.")
 
 
 if __name__ == "__main__":

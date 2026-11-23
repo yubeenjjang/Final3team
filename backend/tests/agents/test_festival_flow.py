@@ -51,6 +51,14 @@ class FestivalFlowTests(unittest.TestCase):
         self.assertEqual(result.outcome, "unavailable")
         self.assertIn("지원 범위", result.answer)
 
+    def test_crowd_replacement_value_is_labeled_as_average(self):
+        data = {"festival_id": "fst_000001", "status": "ok", "coverage": {"scope": "seoul_only", "region_code": "SEOUL", "supported": True}, "source": "seoul_citydata", "is_estimate": True, "areas": [{"area_name": "광화문", "congest_level": "붐빔", "observed_at": "2026-11-23T15:00:00+09:00"}]}
+        result = FestivalAgent(lambda *_: {"ok": True, "data": data, "is_mock": False}).run(FestivalRequest("crowd", festival_id="fst_000001"))
+        self.assertEqual(result.outcome, "answered")
+        self.assertIn("최근 4주 같은 시간대 평균", result.answer)
+        self.assertEqual(result.evidence[0]["source"], "seoul_citydata")
+        self.assertTrue(result.evidence[0]["is_estimate"])
+
     def test_official_notices_include_source_and_effective_time(self):
         item = {"notice_id": "ntc_000001", "title": "세종대로 일부 차로 통제", "source": "seoul_topis", "published_at": "2026-11-20T09:00:00+09:00", "effective_from": "2026-11-20T18:00:00+09:00", "effective_to": "2026-12-31T23:00:00+09:00"}
         calls = []
