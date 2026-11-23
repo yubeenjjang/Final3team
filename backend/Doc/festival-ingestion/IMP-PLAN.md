@@ -7,7 +7,7 @@
 | 1 | Codex · gpt-6.2-sol · reasoning medium | I1~I8 | 고정 파일 준비(✅ 11/23) |
 | 1-실행 | Claude | 실제 수집 `--since 2026-01-01`(목록 9회 + 상세 약 1,740회 → 기능별 1,000 한도 안) → report 확인 | 1단계 시험 통과 |
 | 2 | Codex · gpt-6.2-sol · reasoning high (업서트·변경 이력·재실행 규칙) | I9~I11 | 1-실행 끝, Claude가 `sqlalchemy`·`psycopg[binary]`·`python-ulid`를 requirements에 넣고 캐시 준비 |
-| 2-실행 | Claude | 로컬 도커 `pgvector/pgvector:pg17` + 마이그레이션 001~009 → `-m db` 시험 → 실제 저장 2회(재실행 중복 0 확인) | 2단계 시험 통과 |
+| 2-실행 | Claude | **학원 노트북 DB**(`noldaga-db`, `pgvector/pgvector:pg17`, 001~009 적용 ✅ 11/23, 노트북 안 `127.0.0.1:5432`만, 집 PC는 SSH 터널) → `-m db` 시험 → 실제 저장 2회(재실행 중복 0 확인) | 2단계 시험 통과 |
 | 3 | Codex · gpt-6.2-sol · reasoning medium | I12 | 2-실행 끝 |
 | 3-실행 | Claude | `FESTIVAL_DATA=db`로 서버 → A02·A03 실제 응답 확인, 웹 화면(ohyun-web) 확인, 노트북 시연 최신화 | 3단계 시험 통과 |
 
@@ -19,15 +19,15 @@
 - 읽기만: `tests/ingestion/fixtures/*`(고치지 않음)
 
 **체크리스트**
-- [ ] I1 설정·키 숨김·재시도
-- [ ] I2 목록 전체 페이지·상세·오류 코드(KEY_ERROR 포함)
-- [ ] I3 출력 모양
-- [ ] I4 지역 코드(`12` 나누기 포함)
-- [ ] I5 날짜·좌표·이미지·상태·체크섬
-- [ ] I6 상세 칸 정리
-- [ ] I7 공개 판정
-- [ ] I8 수집 명령·보고서·한도 보호
-- [ ] `tests/ingestion` + `tests/api` 전부 통과
+- [x] I1 설정·키 숨김·재시도
+- [x] I2 목록 전체 페이지·상세·오류 코드(KEY_ERROR 포함)
+- [x] I3 출력 모양
+- [x] I4 지역 코드(`12` 나누기 포함)
+- [x] I5 날짜·좌표·이미지·상태·체크섬
+- [x] I6 상세 칸 정리
+- [x] I7 공개 판정
+- [x] I8 수집 명령·보고서·한도 보호
+- [x] `tests/ingestion` + `tests/api` 전부 통과
 - [ ] commit `feat(ingestion): TourAPI client, festival normalize/validate, offline collector`
 
 ## 2단계 — DB 저장 (I9~I11)
