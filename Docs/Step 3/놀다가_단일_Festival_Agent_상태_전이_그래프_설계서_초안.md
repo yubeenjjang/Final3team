@@ -356,6 +356,12 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 사용자가 학원망 API의 서울 진행 축제 검색(`page_size=1`)과 숭례문 파수의식 상세 응답을 제공했다. 두 응답 모두 `is_mock:false`, `source:"tourapi"`, `last_synced_at:"2026-11-23T11:57:22.397300+09:00"`이지만, **검색 첫 결과는 페인터즈 `fst_01M835BPX17Y44VEDJM1VMZ3N6`, 상세는 숭례문 파수의식 `fst_01M835BYKKNJ8CZP9RP09ST18D`로 ID가 다르다.** URL의 복사 이스케이프를 제외하고 Agent가 소비하는 필드를 추출해 재생했을 때 검색 단독과 상세 단독은 각각 `answered`였다. 두 응답을 하나의 `search_detail_crowd` 흐름으로 주면 검색→상세 2회 뒤 **ID 불일치를 감지해 `partial`로 종료**했고, 혼잡 도구는 호출하지 않았다. 이는 잘못된 축제의 상세·혼잡을 섞지 않는 전이 검증이며 검색→상세→혼잡 전체 성공으로 기록하지 않는다.
 
+### A-10. 동일 축제의 실제 응답 필드로 복합 전이 재생
+
+사용자가 `q=숭례문` 검색 결과도 제공했고, 첫 결과 ID `fst_01M835BYKKNJ8CZP9RP09ST18D`가 앞서 받은 상세·혼잡 응답과 일치했다. 세 응답 모두 `is_mock:false`였다. 복사된 URL 문자열의 잘못된 이스케이프와 Agent가 사용하지 않는 필드를 제외하고 **검색·상세·혼잡 응답에서 Agent가 소비하는 원문 값을 추출**해 `search_detail_crowd` 그래프에 순서대로 주입했다. `search_festivals(region=SEOUL, q=숭례문, page_size=1) → get_festival(같은 ID) → get_crowd(같은 ID)`로 3회 호출했고, `outcome=answered`, 근거 3건으로 종료했다. 축제 출처·갱신 시각과 숭례문 구역 혼잡·관측 시각·적용 범위가 답변에 포함됐다.
+
+이는 **실제 API에서 받은 세 응답의 핵심 필드와 복합 상태 전이의 호환 검증**이다. Agent가 학원 서버를 직접 호출한 실행은 아니므로 W24의 직접 HTTP 단독 E2E 완료로 기록하지 않는다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
