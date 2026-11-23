@@ -1,0 +1,47 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "292950",
+      "contenttypeid": "15",
+      "title": "고싸움놀이축제",
+      "createdtime": "20060207222316",
+      "modifiedtime": "20260702150555",
+      "tel": "062-374-3839",
+      "telname": "(사)국가무형문화재 광주칠석고싸움놀이보존회",
+      "homepage": "http://www.gossaum.com",
+      "firstimage": "https://tong.visitkorea.or.kr/cms/resource/48/4020848_image2_1.JPG",
+      "firstimage2": "https://tong.visitkorea.or.kr/cms/resource/48/4020848_image3_1.JPG",
+      "cpyrhtDivCd": "Type3",
+      "areacode": "",
+      "sigungucode": "",
+      "lDongRegnCd": "12",
+      "lDongSignguCd": "270",
+      "lclsSystm1": "EV",
+      "lclsSystm2": "EV01",
+      "lclsSystm3": "EV010200",
+      "cat1": "",
+      "cat2": "",
+      "cat3": "",
+      "addr1": "전남광주통합특별시 남구 고싸움로 2",
+      "addr2": "고싸움놀이전수교육관",
+      "zipcode": "61758",
+      "mapx": "126.8371157116",
+      "mapy": "35.0695892264",
+      "mlevel": "6",
+      "overview": "농경문화의 대표적인 민속놀이인 [고싸움놀이]의 가치 재발견과 고싸움놀이 특유의 남성적인 투지와  진취적인 기상을 바탕으로 소통과 화합,                     협동의 장을 마련한다. 설과 함께 민속명절인 정월 대보름에 다양한 민속놀이 재현과 모두 함께하는 대동 단심줄놀이, 옻돌마을 도깨비 불 돌기 등과 더불어 전통민속놀이를 가미한 대표적인 공연예술 한마당 축제이다. 우리지역을 대표하는 국가무형유산인 고싸움놀이를 축제의 공연예술 활성화와 전통민속놀이 계승발전과 지역문화 활성화에 기여하는 축제이다."
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}
