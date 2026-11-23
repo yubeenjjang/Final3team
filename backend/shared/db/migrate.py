@@ -1,4 +1,4 @@
-"""검증된 SQL 001~009를 순서대로 적용하고 해시를 기록합니다."""
+"""번호가 연속된 SQL 마이그레이션을 순서대로 적용하고 해시를 기록합니다."""
 
 import hashlib
 import os
@@ -13,32 +13,41 @@ LOCK_ID = 8726481
 
 
 def migration_files() -> list[tuple[int, Path, str]]:
-    """되돌리기 SQL은 제외하고 001~009 파일만 선택합니다."""
+    """되돌리기 SQL은 제외하고 001부터 빠짐없는 적용 파일만 선택합니다."""
     files = [path for path in SQL_DIR.glob("[0-9][0-9][0-9]_*.sql") if not path.name.endswith("_down.sql")]
     files.sort()
     numbers = [int(path.name[:3]) for path in files]
-    if numbers != list(range(1, 10)):
-        raise RuntimeError(f"예상한 001~009 SQL 파일이 아닙니다: {numbers}")
+    if not numbers or numbers != list(range(1, numbers[-1] + 1)):
+        raise RuntimeError(f"001부터 번호가 연속된 SQL 파일이 필요합니다: {numbers}")
     return [(number, path, hashlib.sha256(path.read_bytes()).hexdigest()) for number, path in zip(numbers, files)]
 
 
 def apply_migrations(dsn: str) -> list[str]:
     """한 파일씩 트랜잭션으로 적용하고, 기존 파일 변경은 거부합니다."""
     results = []
+    files = migration_files()
+    expected = {number: (path.name, checksum) for number, path, checksum in files}
     with psycopg.connect(dsn, autocommit=True) as connection:
-        for number, path, checksum in migration_files():
+        for number, path, checksum in files:
             with connection.transaction():
                 connection.execute("SELECT pg_advisory_xact_lock(%s)", (LOCK_ID,))
                 table_exists = connection.execute("SELECT to_regclass('migration_meta.schema_migrations')").fetchone()[0]
                 applied = {}
                 if table_exists:
-                    applied = dict(connection.execute("SELECT version, checksum FROM migration_meta.schema_migrations").fetchall())
+                    applied = {
+                        version: (filename, saved_checksum)
+                        for version, filename, saved_checksum in connection.execute(
+                            "SELECT version, filename, checksum FROM migration_meta.schema_migrations"
+                        ).fetchall()
+                    }
+                    # 적용 기록에 없는 파일이나 수정된 파일이 있으면 다음 SQL 실행 전에 멈춥니다.
+                    for version, recorded in applied.items():
+                        if expected.get(version) != recorded:
+                            raise RuntimeError(f"적용 이력과 SQL 파일이 다릅니다: {version:03d}")
                 elif number != 1:
                     raise RuntimeError("001 적용 이력 없이 다음 마이그레이션을 진행할 수 없습니다")
 
                 if number in applied:
-                    if applied[number] != checksum:
-                        raise RuntimeError(f"적용된 SQL 파일 내용이 달라졌습니다: {path.name}")
                     results.append(f"건너뜀: {path.name}")
                     continue
                 if any(version > number for version in applied):
