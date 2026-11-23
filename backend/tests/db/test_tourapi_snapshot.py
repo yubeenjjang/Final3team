@@ -3,7 +3,7 @@
 import unittest
 from datetime import date
 
-from backend.shared.db.tourapi_snapshot import load_snapshot, normalize
+from backend.api.ingestion.tourapi_snapshot import load_snapshot, normalize
 
 
 class SnapshotTests(unittest.TestCase):

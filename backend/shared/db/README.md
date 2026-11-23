@@ -23,4 +23,4 @@ async def list_festivals(db: AsyncSession = Depends(get_db)):
 
 축제 목록·상세의 공개 필드는 `festivals`에서 `noldaga_app`으로 조회할 수 있습니다. 다만 A03의 `source_ref`에 필요한 `festival_sources`는 DB 설계상 `noldaga_service` 전용입니다. **한 요청에서 두 역할을 섞지 않는 규칙**과 응답 계약을 함께 만족시키는 방법은 오현님과 정해야 합니다. 귀갓길 요청·결과 테이블도 서비스 계정 전용이므로, A05의 토큰 확인과 서비스 계정 접근은 기능 담당자가 한 흐름으로 설계해야 합니다. 현재 모의 라우터를 이 문서만 보고 실제 DB 라우터로 바꾸지 않습니다.
 
-`python -m backend.shared.db.tourapi_snapshot`은 2026-11-19 TourAPI 실호출 증빙 **16건(서울 10·부산 6)**을 미리보기만 합니다. 테스트 DB에 기록하려면 `APP_ENV=test`와 DB 서비스 계정 설정 후 `--apply`를 명시합니다. 이 도구는 최신 TourAPI 호출이나 자동 게시를 하지 않으며, 축제는 검토 대기 상태로 저장합니다. 운영 데이터 수집과 게시에는 공급원 키·검증 절차가 별도로 필요합니다.
+`python -m backend.api.ingestion.tourapi_snapshot`은 2026-11-19 TourAPI 실호출 증빙 **16건(서울 10·부산 6)**을 미리보기만 합니다. 테스트 DB에 기록하려면 `APP_ENV=test`와 DB 서비스 계정 설정 후 `--apply`를 명시합니다. 이 도구는 최신 TourAPI 호출이나 자동 게시를 하지 않으며, 축제는 검토 대기 상태로 저장합니다. 운영 데이터 수집과 게시에는 공급원 키·검증 절차가 별도로 필요합니다.

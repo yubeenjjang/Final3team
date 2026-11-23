@@ -13,9 +13,6 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from .session import service_db_session
-
-
 EVIDENCE = Path(__file__).resolve().parents[3] / "Docs" / "Step 2" / "evidence" / "responses"
 KST = ZoneInfo("Asia/Seoul")
 REGIONS = {"11": "SEOUL", "26": "BUSAN"}  # 원본으로 확인된 지역만 적재
@@ -235,6 +232,11 @@ def main() -> None:
         return
     if os.environ.get("APP_ENV") not in {"local", "test"}:
         parser.error("증빙 부분본 적재는 APP_ENV=local 또는 test에서만 허용합니다")
+    # API 서버의 backend/ 실행과 저장소 루트 CLI 실행을 모두 지원합니다.
+    if __package__ == "api.ingestion":
+        from shared.db.session import service_db_session
+    else:
+        from backend.shared.db.session import service_db_session
     with service_db_session() as session:
         result = ingest(session, records, rejected)
     print(result)
