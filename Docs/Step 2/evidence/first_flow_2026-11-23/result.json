@@ -1,0 +1,363 @@
+{
+  "started_at": "2026-11-23T15:40:43+09:00",
+  "destination": "서울역",
+  "real": {
+    "steps": [
+      {
+        "api": "A02",
+        "method": "GET",
+        "path": "/api/v1/festivals?status=ongoing,upcoming&region=SEOUL",
+        "http": 200,
+        "response_headers": {
+          "X-Request-ID_present": true,
+          "X-Request-ID": "req_aQxji3NH58CYEb7sau92OuD4LE",
+          "X-Mock_present": false,
+          "X-Mock": null
+        },
+        "elapsed_ms": 75.7,
+        "is_mock": false,
+        "total": 22,
+        "selected_festival": {
+          "festival_id": "fst_01M835C2V19VJPP5F8MSNBMCQ2",
+          "name": "DDP 건축투어",
+          "region_code": "SEOUL",
+          "venue_name": "동대문디자인플라자(DDP)",
+          "event_status": "ongoing",
+          "source": "tourapi"
+        }
+      },
+      {
+        "api": "A03",
+        "method": "GET",
+        "path": "/api/v1/festivals/fst_01M835C2V19VJPP5F8MSNBMCQ2",
+        "http": 200,
+        "response_headers": {
+          "X-Request-ID_present": true,
+          "X-Request-ID": "req_xeL22Y9tOOW6goKENTDGjRVpKt",
+          "X-Mock_present": false,
+          "X-Mock": null
+        },
+        "elapsed_ms": 32.4,
+        "is_mock": false,
+        "festival": {
+          "festival_id": "fst_01M835C2V19VJPP5F8MSNBMCQ2",
+          "name": "DDP 건축투어",
+          "region_code": "SEOUL",
+          "venue_name": "동대문디자인플라자(DDP)",
+          "event_status": "ongoing",
+          "source": "tourapi"
+        }
+      },
+      {
+        "api": "A04",
+        "method": "POST",
+        "path": "/api/v1/routes/return",
+        "http": 200,
+        "response_headers": {
+          "X-Request-ID_present": true,
+          "X-Request-ID": "req_zjRAM2Zl5VFjVuYVMqSxczhyjv",
+          "X-Mock_present": false,
+          "X-Mock": null
+        },
+        "elapsed_ms": 816.1,
+        "festival_id": "fst_01M835C2V19VJPP5F8MSNBMCQ2",
+        "is_mock": false,
+        "route_status": "ready",
+        "route_request_id": "rr_8FQy7cNXMOccfPSU",
+        "route_access_token": "***",
+        "completed_valid_route": true,
+        "provider": "tmap",
+        "provider_tier": "primary",
+        "route_count": 3,
+        "duration_minutes": [
+          22,
+          31,
+          28
+        ]
+      }
+    ]
+  },
+  "mock": {
+    "steps": [
+      {
+        "api": "A02",
+        "method": "GET",
+        "path": "/api/v1/festivals?status=ongoing,upcoming&region=SEOUL",
+        "http": 200,
+        "response_headers": {
+          "X-Request-ID_present": true,
+          "X-Request-ID": "req_JCtX6kyboDPMdZISZXZ8fCzAge",
+          "X-Mock_present": true,
+          "X-Mock": "true"
+        },
+        "elapsed_ms": 35.7,
+        "is_mock": true,
+        "total": 2,
+        "selected_festival": {
+          "festival_id": "fst_000001",
+          "name": "광화문 겨울빛 축제",
+          "region_code": "SEOUL",
+          "venue_name": "광화문광장",
+          "event_status": "ongoing",
+          "source": "tourapi"
+        }
+      },
+      {
+        "api": "A03",
+        "method": "GET",
+        "path": "/api/v1/festivals/fst_000001",
+        "http": 200,
+        "response_headers": {
+          "X-Request-ID_present": true,
+          "X-Request-ID": "req_m6FsJKfAzOUkfS7Ws20O0faseg",
+          "X-Mock_present": true,
+          "X-Mock": "true"
+        },
+        "elapsed_ms": 1.5,
+        "is_mock": true,
+        "festival": {
+          "festival_id": "fst_000001",
+          "name": "광화문 겨울빛 축제",
+          "region_code": "SEOUL",
+          "venue_name": "광화문광장",
+          "event_status": "ongoing",
+          "source": "tourapi"
+        }
+      },
+      {
+        "api": "모의 경로 사전 확인",
+        "method": "GET",
+        "path": "/api/v1/routes/return/rr_modeprobe",
+        "http": 401,
+        "response_headers": {
+          "X-Request-ID_present": true,
+          "X-Request-ID": "req_VX5kj6fQB4kmlcfxC6DSMYIIjj",
+          "X-Mock_present": true,
+          "X-Mock": "true"
+        },
+        "elapsed_ms": 3.6
+      }
+    ],
+    "scenarios": [
+      {
+        "scenario": "async_unavailable",
+        "steps": [
+          {
+            "api": "A04",
+            "method": "POST",
+            "path": "/api/v1/routes/return",
+            "http": 202,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_fSO7LT9dPDktHEenJCSWsFjlLI",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 1.7,
+            "festival_id": "fst_000001",
+            "is_mock": true,
+            "route_status": "queued",
+            "route_request_id": "rr_2hlxjpS8fLa2D9zG",
+            "status_url": "/api/v1/routes/return/rr_2hlxjpS8fLa2D9zG",
+            "route_access_token": "***",
+            "retry_after_s": 2,
+            "route_count": 0
+          },
+          {
+            "api": "A05",
+            "method": "GET",
+            "path": "/api/v1/routes/return/rr_2hlxjpS8fLa2D9zG",
+            "http": 200,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_rA90I4xJXdMaRV0fEdmQooqwvI",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 8.6,
+            "request_headers": {
+              "X-Route-Access-Token": "***"
+            },
+            "is_mock": true,
+            "route_status": "processing",
+            "route_request_id": "rr_2hlxjpS8fLa2D9zG",
+            "completed_valid_route": false,
+            "retry_after_s": 2,
+            "route_count": 0
+          },
+          {
+            "api": "A05",
+            "method": "GET",
+            "path": "/api/v1/routes/return/rr_2hlxjpS8fLa2D9zG",
+            "http": 200,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_aCyN2d6RNS45KD3rDqB8DDZvnG",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 11.1,
+            "request_headers": {
+              "X-Route-Access-Token": "***"
+            },
+            "is_mock": true,
+            "route_status": "unavailable",
+            "route_request_id": "rr_2hlxjpS8fLa2D9zG",
+            "completed_valid_route": false,
+            "route_count": 0,
+            "error": {
+              "code": "ROUTE_UPSTREAM_ERROR",
+              "retryable": true
+            }
+          }
+        ]
+      },
+      {
+        "scenario": "async_timeout",
+        "steps": [
+          {
+            "api": "A04",
+            "method": "POST",
+            "path": "/api/v1/routes/return",
+            "http": 202,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_Gh83BQqkb8zcOpYx3ZVwFUZxXd",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 3.4,
+            "festival_id": "fst_000001",
+            "is_mock": true,
+            "route_status": "queued",
+            "route_request_id": "rr_kvenfBkH80T2u9Jd",
+            "status_url": "/api/v1/routes/return/rr_kvenfBkH80T2u9Jd",
+            "route_access_token": "***",
+            "retry_after_s": 2,
+            "route_count": 0
+          },
+          {
+            "api": "A05",
+            "method": "GET",
+            "path": "/api/v1/routes/return/rr_kvenfBkH80T2u9Jd",
+            "http": 200,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_g1wnw9dXyRTChMdgxZcQBXwLy3",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 8.1,
+            "request_headers": {
+              "X-Route-Access-Token": "***"
+            },
+            "is_mock": true,
+            "route_status": "processing",
+            "route_request_id": "rr_kvenfBkH80T2u9Jd",
+            "completed_valid_route": false,
+            "retry_after_s": 2,
+            "route_count": 0
+          },
+          {
+            "api": "A05",
+            "method": "GET",
+            "path": "/api/v1/routes/return/rr_kvenfBkH80T2u9Jd",
+            "http": 200,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_8BEqwiEKOuZWKXy3tBQipQoEx7",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 9.5,
+            "request_headers": {
+              "X-Route-Access-Token": "***"
+            },
+            "is_mock": true,
+            "route_status": "timed_out",
+            "route_request_id": "rr_kvenfBkH80T2u9Jd",
+            "completed_valid_route": false,
+            "route_count": 0,
+            "error": {
+              "code": "ROUTE_TIMEOUT",
+              "retryable": true
+            }
+          }
+        ]
+      },
+      {
+        "scenario": "async_secondary_sync_only",
+        "steps": [
+          {
+            "api": "A04",
+            "method": "POST",
+            "path": "/api/v1/routes/return",
+            "http": 202,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_HFClw7yPDUxTqop3p9yABIZocX",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 2.9,
+            "festival_id": "fst_000001",
+            "is_mock": true,
+            "route_status": "queued",
+            "route_request_id": "rr_kARjhcFP8V5kx6Ej",
+            "status_url": "/api/v1/routes/return/rr_kARjhcFP8V5kx6Ej",
+            "route_access_token": "***",
+            "retry_after_s": 2,
+            "route_count": 0
+          },
+          {
+            "api": "A05",
+            "method": "GET",
+            "path": "/api/v1/routes/return/rr_kARjhcFP8V5kx6Ej",
+            "http": 200,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_628dGoF1yIVENOagT4dA99gZEP",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 10.1,
+            "request_headers": {
+              "X-Route-Access-Token": "***"
+            },
+            "is_mock": true,
+            "route_status": "processing",
+            "route_request_id": "rr_kARjhcFP8V5kx6Ej",
+            "completed_valid_route": false,
+            "retry_after_s": 2,
+            "route_count": 0
+          },
+          {
+            "api": "A05",
+            "method": "GET",
+            "path": "/api/v1/routes/return/rr_kARjhcFP8V5kx6Ej",
+            "http": 200,
+            "response_headers": {
+              "X-Request-ID_present": true,
+              "X-Request-ID": "req_VDWpw3gznZ9zTZTqI7nZ0Jfq7X",
+              "X-Mock_present": true,
+              "X-Mock": "true"
+            },
+            "elapsed_ms": 6.7,
+            "request_headers": {
+              "X-Route-Access-Token": "***"
+            },
+            "is_mock": true,
+            "route_status": "unavailable",
+            "route_request_id": "rr_kARjhcFP8V5kx6Ej",
+            "completed_valid_route": false,
+            "route_count": 0,
+            "error": {
+              "code": "ROUTE_SECONDARY_SYNC_ONLY",
+              "retryable": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
