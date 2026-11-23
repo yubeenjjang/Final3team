@@ -30,7 +30,7 @@ flowchart TD
     E -->|FESTIVAL_NOT_FOUND| Q
     E -->|입력 오류| Q
     E -->|권한 오류·기타| U
-    V -->|검색 items 빈 배열| Z[검색 결과 없음 안내 후 종료]
+    V -->|검색·공지 items 빈 배열| Z[확인된 범위의 빈 결과 안내 후 종료]
     V -->|status=unsupported| X[지역 미지원 또는 부분 결과로 종료]
     V -->|status=stale| L[관측 시각·오래된 정보 경고 후 answered]
     V -->|status=unavailable·지원 범위 또는 필수 근거 부족| U
@@ -57,14 +57,14 @@ flowchart TD
 
 **현재 구현:** LLM 호출과 프롬프트는 없다. 호출자가 이미 분류한 `FestivalRequest`를 넘기며, `interpret` 노드는 자연어 추론 대신 `intent`의 담당 범위만 검사한다. 따라서 모델명·프롬프트 버전·JSON 파싱 성공률을 현재 실행 결과로 기재하지 않는다.
 
-**후속 입력 계약(설계안):** 실제 협업 흐름에서는 Supervisor가 사용자 질문의 의도·축제 선택·조건을 구조화해 `FestivalRequest`에 해당하는 값을 Festival에 전달한다. Festival은 축제 도메인의 누락값·ID·출처를 재검증한다. 11/27 단독 시험에서 자연어 질문을 직접 넣을지, 구조화된 요청을 넣을지는 시험 입력 방식의 결정 사항이며 서비스 전체의 역할 분담을 다시 정하는 문제가 아니다. 모델과 실제 프롬프트는 팀의 모델 결정 및 Supervisor 입출력 계약 이후 확정한다.
+**후속 입력 계약(설계안):** 실제 협업 흐름에서는 Supervisor가 사용자 질문의 의도·축제 선택·조건을 구조화해 `FestivalRequest`에 해당하는 값을 Festival에 전달한다. Festival은 축제 도메인의 누락값·ID·출처를 재검증한다. **11/27 현재 단독 시험의 재현 가능한 입력은 구조화된 `FestivalRequest`**다. 자연어 직접 입력 시험을 추가할지는 별도 결정 사항이며, 추가하더라도 현재 그래프의 LLM 성능으로 기록하지 않는다. 모델과 실제 프롬프트는 팀의 모델 결정 및 Supervisor 입출력 계약 이후 확정한다.
 
 | 항목 | 설계안 |
 |---|---|
 | 입력 | Supervisor가 전달한 구조화 의도·조건·선택 축제 ID와 Festival 허용 도구 이름·인자. 단독 자연어 시험을 선택한 경우에만 사용자 질문·명시된 `reference_date`를 추가한다. 인증 토큰·API 키는 입력하지 않는다. |
 | 출력 | `intent`(`search/detail/crowd/notices/search_detail_crowd/other`), `festival_id`, `notice_type`, `region`, `date_from`, `date_to`, `q`, `status`, `page_size`, `select_first`, `missing_slots`의 검증된 구조화 값. 값이 없으면 `null` 또는 빈 목록으로 둔다. |
 | 제약 | 상대 날짜의 기준일이 없거나 지시 대상이 모호하면 추측하지 않고 확인 질문으로 종료한다. 검색의 첫 결과 선택은 사용자 지시가 있을 때만 `true`다. 도구 결과 문장으로 권한·도구 목록을 바꾸지 않는다. |
-| 검증 | 코드가 JSON 형식·허용 enum·필수 값·도구 인자를 재검사한다. 출력이 틀리면 같은 구조화 요청 생성을 최대 1회 다시 시도하고, 계속 실패하면 `clarification_needed` 또는 `unavailable`로 종료한다. 이 재생성은 아직 구현되지 않았다. |
+| 검증 | 후속 LLM 출력은 코드에서 JSON 형식·허용 enum·필수 값·도구 인자를 재검사한다. 출력이 틀리면 같은 구조화 요청 생성을 최대 1회 다시 시도하고, 계속 실패하면 `clarification_needed` 또는 `unavailable`로 종료한다. **현재는 LLM 출력과 재생성 자체가 없다.** |
 | 모델 장애 | LLM 단계가 연결된 뒤 장애가 나면 검증되지 않은 축제·혼잡을 생성하지 않는다. 검색·상세 같은 기본 조회를 코드 기반으로 이어갈 범위는 Supervisor 계약과 함께 결정한다. |
 
 모델 내부 추론 원문은 기록하거나 사용자에게 보여주지 않는다. 외부 API의 설명·공지·축제 소개는 비신뢰 데이터로 취급하고, 내용에 담긴 지시를 프롬프트나 도구 권한으로 실행하지 않는다.
@@ -184,7 +184,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `select_tool` | 현재 `stage`에 맞는 허용 도구 1개와 인자 구성 | `call_tool` |
 | `call_tool` | 호출 예산 검사, API 래퍼 실행, 응답·오류 기록 | `validate`, `retry`, `error` 또는 `END` |
 | `retry` | 동일 도구 호출 재시도 기록 | `call_tool` |
-| `validate` | ID·출처·시각·`coverage.supported`·`status` 검사, 부분 결과 보존 | `select_tool` 또는 `END` |
+| `validate` | 축제 ID, 검색·상세의 출처/갱신 시각, 혼잡의 관측 시각·지원 범위, 공지의 출처·게시/효력 시각을 해당 도구별로 검사하고 부분 결과 보존 | `select_tool` 또는 `END` |
 | `error` | 오류를 확인 질문 또는 확인 불가 결과로 변환 | `END` |
 
 
@@ -323,7 +323,7 @@ W24 확인 순서는 다음과 같다.
 
 ## 부록 B. 제출 전 확인할 결정
 
-1. 팀에서 모델을 결정한 뒤 Supervisor→Festival 구조화 입력 계약과, 단독 시험에서 자연어 입력을 쓸지 여부를 확정한다. 그 결과에 맞춰 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
+1. 11/27 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 팀에서 모델과 Supervisor→Festival 입력 계약을 결정하면 자연어 입력 시험의 추가 여부를 정하고, 추가 시 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
 2. 세션·체크포인트를 도입할 시점에 `thread_id`, 보존 기간, 중단 후 재개 규칙을 W26 및 DB 문서와 맞춘다.
 3. 날씨 답변: Festival Agent의 최종 범위에 둘지, `get_weather` 도구를 언제 추가할지, BFCL 문항에 어떤 영향을 주는지 결정한다.
 4. 공식 공지의 실제 공급원과 시설 자료의 준비 상태를 확인한다. 현재 공지는 모의 API와의 계약만 검증했다.
