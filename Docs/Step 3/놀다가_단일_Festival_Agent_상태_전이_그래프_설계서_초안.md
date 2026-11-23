@@ -340,6 +340,12 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 현재 집 컴퓨터에서는 위 학원 API의 축제 목록 조회가 5초 안에 연결되지 않아 이 시험을 실행하지 못했다. 맥북에서 Safari로 API를 확인하는 것만으로는 Windows의 Festival Agent 전체 E2E가 되지 않는다. `is_mock:false`와 `agent_outcome=answered`가 모두 확인돼야 실제 혼잡 조회 성공으로 기록한다. 평균 대체값이면 답변에 같은 요일·시간대 평균 표시가 있어야 한다.
 
+### A-8. 학원망 Safari 실제 혼잡 API 응답 확인 (2026-11-23)
+
+사용자가 학원망 맥북 Safari에서 `fst_01M835BYKKNJ8CZP9RP09ST18D`의 `/crowd` 응답 화면을 제공했다. 화면에 `is_mock:false`, `festival_id` 일치, `status:"ok"`, `coverage.scope:"seoul_only"`, `coverage.region_code:"SEOUL"`, `coverage.supported:true`, `source:"seoul_citydata"`, `observed_at:"2026-11-23T16:40:00+09:00"`이 보인다. 대표 `areas[0]`은 숭례문 구역의 혼잡 `보통`이며, `nearby_areas`에는 최대 세 구역이 표시되고 최상위 `is_estimate:false`다. 따라서 **해당 시점의 실제 혼잡 API 응답**은 확인했다.
+
+이 증거는 Safari에서 받은 **API 직접 조회 화면**이다. Festival Agent가 같은 응답을 받아 `answered`와 근거를 반환한 실행 로그는 아직 없으므로 W24 단독 E2E 완료로 기록하지 않는다. 관측 시각은 응답에 적힌 자료 기준 시각이며 현재 시각의 혼잡을 보장하는 표현으로 사용하지 않는다.
+
 ## 부록 B. 제출 전 확인할 결정
 
 1. 11/27 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 팀에서 모델과 Supervisor→Festival 입력 계약을 결정하면 자연어 입력 시험의 추가 여부를 정하고, 추가 시 3장의 프롬프트 버전·JSON 실패 처리 규칙을 구체화한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
