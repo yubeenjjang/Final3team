@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 from collections.abc import Callable, Mapping
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -14,6 +16,7 @@ from uuid import uuid4
 FESTIVAL_TOOLS = frozenset({"search_festivals", "get_festival", "get_crowd"})
 ROUTE_TOOLS = frozenset({"get_festival", "request_return_route", "get_route_request_status"})
 _STATUSES = frozenset({"upcoming", "ongoing", "ended", "cancelled"})
+_LOGGER = logging.getLogger(__name__)
 Transport = Callable[[Request, float], tuple[int, Mapping[str, str], Any]]
 
 
@@ -64,10 +67,31 @@ class ToolExecutor:
         trace_id: str | None = None,
         operation_id: str | None = None,
     ) -> dict[str, Any]:
+        result = self._execute(name, args, trace_id=trace_id, operation_id=operation_id)
+        error = result.get("error") or {}
+        # 실행 기록에는 고정된 메타데이터만 남깁니다. 인자·토큰·경로 응답은 기록하지 않습니다.
+        _LOGGER.info(
+            "agent_tool tool=%s trace_id=%s request_id=%s ok=%s error_code=%s",
+            name if name in self.allowed_tools else "not_allowed",
+            trace_id if isinstance(trace_id, str) and re.fullmatch(r"req_[A-Za-z0-9]{6,26}", trace_id) else None,
+            result.get("request_id"),
+            result["ok"],
+            error.get("code"),
+        )
+        return result
+
+    def _execute(
+        self,
+        name: str,
+        args: Mapping[str, Any],
+        *,
+        trace_id: str | None,
+        operation_id: str | None,
+    ) -> dict[str, Any]:
         # 에이전트가 임의 도구를 고르더라도 서버 실행 단계에서 다시 막습니다.
         if name not in self.allowed_tools:
             return self._failure("TOOL_NOT_ALLOWED", "허용되지 않은 도구입니다")
-        if trace_id is not None and (not trace_id.startswith("req_") or "\r" in trace_id or "\n" in trace_id):
+        if trace_id is not None and (not isinstance(trace_id, str) or not re.fullmatch(r"req_[A-Za-z0-9]{6,26}", trace_id)):
             return self._failure("VALIDATION_ERROR", "추적 ID가 올바르지 않습니다")
 
         headers = {"Accept": "application/json"}
