@@ -1,0 +1,35 @@
+{
+  "name": "get_facilities",
+  "description": "축제장 주변 시설(화장실·주차장·병원·응급실·지하철역·버스 정류장·자전거·택시 승강장·음식점·관광지) 위치를 한 종류씩 본다. 결과의 status가 unsupported·unverified면 그 이유를 그대로 안내한다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "festival_id": {
+        "type": "string",
+        "description": "축제 ID"
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "toilet",
+          "parking",
+          "locker",
+          "hospital",
+          "emergency",
+          "pharmacy",
+          "subway_station",
+          "bus_stop",
+          "bike_zone",
+          "taxi_stand",
+          "food",
+          "attraction"
+        ]
+      }
+    },
+    "required": [
+      "festival_id",
+      "category"
+    ],
+    "additionalProperties": false
+  }
+}

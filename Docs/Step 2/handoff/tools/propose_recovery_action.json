@@ -1,0 +1,62 @@
+{
+  "name": "propose_recovery_action",
+  "description": "허용된 복구 조치 하나를 선택·기각·보류·원복한 결정을 근거와 함께 기록한다. 실행은 하지 않는다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "incident_id": {
+        "type": "string"
+      },
+      "decision": {
+        "type": "string",
+        "enum": [
+          "select",
+          "reject",
+          "defer",
+          "rollback"
+        ]
+      },
+      "action": {
+        "type": "string",
+        "description": "list_allowed_actions 결과 안의 값만"
+      },
+      "reasons": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
+      "rejected_actions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "stop_condition": {
+        "type": "object"
+      },
+      "evidence_refs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      }
+    },
+    "required": [
+      "incident_id",
+      "decision",
+      "reasons",
+      "evidence_refs"
+    ]
+  }
+}

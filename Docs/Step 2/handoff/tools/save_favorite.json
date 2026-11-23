@@ -1,0 +1,17 @@
+{
+  "name": "save_favorite",
+  "description": "사용자가 원할 때 축제를 관심 목록에 저장한다. 로그인한 사용자 본인 것만 저장한다. 사용자 ID는 받지 않는다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "festival_id": {
+        "type": "string",
+        "description": "축제 ID"
+      }
+    },
+    "required": [
+      "festival_id"
+    ],
+    "additionalProperties": false
+  }
+}
