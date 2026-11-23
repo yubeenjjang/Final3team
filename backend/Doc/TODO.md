@@ -23,3 +23,11 @@
 | — | 실제 DB·Redis 연결, 실제 JWT 서명, TMAP·카카오 어댑터 | — | 나중 (W16~W36) |
 | — | 추천·친구·동행·채팅 API (A36~A80) | — | 나중 |
 | — | 다른 담당자 라우터(시설·데이터 공급원·운영) | — | 담당자 |
+
+## 6단계 (11/23 추가)
+| # | 할 일 | 요청의 말 | 구분 |
+|---|---|---|---|
+| T16 | 시나리오 `sync_secondary`: A04 200 `ready`, `provider:"kakao"`, `provider_tier:"secondary"`, 버스 혼잡 근거 `unsupported` | ⑬ | 꼭 |
+| T17 | 시나리오 `async_secondary_sync_only`: 202 → `processing` → `unavailable` + `ROUTE_SECONDARY_SYNC_ONLY`(retryable true) | ⑭ | 꼭 |
+| T18 | 시나리오 `async_no_result`(`ROUTE_NO_RESULT`, retryable false)·`async_quota_exceeded`(`ROUTE_QUOTA_EXCEEDED`, retryable false) | ⑮ | 꼭 |
+| T19 | 시험 + `MOCK_API.md` 시나리오 표 갱신(A04·A25 모두) | ⑯ | 꼭 |
