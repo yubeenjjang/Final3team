@@ -2978,7 +2978,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | `route_key` HMAC | ✅ 좌표 HMAC · 🟡 추가 입력 예정 | 17-3, DB 설계서 4절 | 권오현 / 검토 대기 | 11/23 |
 | 귀가 조회 토큰 확인 칸(011 `access_token_hash TEXT NOT NULL`, 원본 토큰은 DB에 저장하지 않음). 로그인·비로그인 모두 A05 토큰 해시 비교, **`user_id` 칸은 두지 않음** | 🟡 신유빈이 토큰 해시 추가·검증 방식에 동의. `user_id` 미추가·기존 행 처리 확인 대기 | DB 설계서 4·8절. 권오현이 귀가 결과 DB 연결 전에 구현 | 권오현 / 신유빈(토큰 해시 방식) | 11/23 |
 | 축제 실제 수집 코드 = `api/ingestion/festivals/`(권오현), `tourapi_snapshot.py`(신유빈)는 증빙 파일 검증용 | ✅ 합의(11/23 신유빈) | 17-1 | 권오현 / 신유빈 | 11/23 |
-| 연결 반납 때 `RESET ALL`(앞 사용자 정보 남지 않게) | 🟡 `yubeen` 브랜치에 구현(`6f767d9`), `ohyun` 미병합 · 독립 재검증 DB-09(한태경) 대기 | 코드 `backend/shared/db/connection.py`, 시험 `backend/tests/db/test_session.py` 6개(둘 다 `yubeen` 브랜치), DB 설계서 3절 ⑤ | 권오현(기록) / 신유빈 | 11/23 |
+| 연결 반납 때 `RESET ALL`(앞 사용자 정보 남지 않게) | 🟡 `yubeen` 브랜치에 구현(`6f767d9`), `ohyun` 미병합 · **독립 재검증 DB-09 통과(11/23 한태경, PG16 일회용 DB, 추가 시험 8개 + `test_session.py` 6개, 수정 전 방식으로 결함 재현 대조군 포함)** · 남은 것: PG17(pgvector:pg17)로 같은 시험 재실행, `ohyun` 연결 | 코드 `backend/shared/db/connection.py`, 시험 `backend/tests/db/test_session.py` 6개(둘 다 `yubeen` 브랜치), DB 설계서 3절 ⑤ | 권오현(기록) / 신유빈·한태경 | 11/23 |
 | TMAP 유료 전환(결정 항목 `TMAP_PAID_PLAN` — 환경변수 아님) | ⬜ 미결정 | 9-2절, 바꾸면 환경변수 `ROUTE_TMAP_DAILY_LIMIT`(기본 10) 조정 | 팀 / 검토 대기 | 11/26 예정 |
 | TourAPI 지역 코드 `12`(전남광주통합특별시) 나누기 | ⬜ 미결정(임시: 구→광주, 시·군→전남) | 0-1 지역 코드 | 권오현 → 팀 / 검토 대기 | 11/23 |
 | RAG 임베딩 모델·차원·검색 방식·재적재·앱 사용법 포함 여부 | ⬜ 미결정 | DB 설계서 2절, WBS W27 | 한다영·권오현 / 검토 대기 | 11/25 예정 |

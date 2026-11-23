@@ -541,7 +541,7 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | ② 사용자 설정 | 같은 트랜잭션 첫 문장으로 `SELECT set_config('app.user_id', :sub, true)`(= `SET LOCAL`). 비로그인은 **설정하지 않음**(→ `app_current_user()`가 NULL → 본인 데이터 0행, 쓰기 거부). 세 번째 인자 `true`가 '이 트랜잭션에서만'이라는 뜻 |
 | ③ 금지 | **`SET app.user_id`(LOCAL 없음)·`set_config(…, false)`는 쓰지 않음** — 연결에 남아 다음 요청(다른 사용자)으로 새어 나감(T22에서 실제로 확인). 코드 검사(grep)·리뷰 항목으로 막음 |
 | ④ 요청 끝 | 성공하면 `COMMIT`, 오류면 `ROLLBACK`. 둘 다 사용자 설정이 사라짐(T21h). 트랜잭션 밖에서 `noldaga_app`으로 쿼리하지 않음(자동 커밋 모드 금지) |
-| ⑤ 연결 반납 | `RESET ALL`로 세션에 남은 설정을 초기화합니다. `backend/shared/db/connection.py`에 구현됨(`yubeen` 브랜치, `6f767d9`). `ohyun` 축제 조회·수집과 연결 및 한태경의 독립 재검증 DB-09는 예정입니다 |
+| ⑤ 연결 반납 | `RESET ALL`로 세션에 남은 설정을 초기화합니다. `backend/shared/db/connection.py`에 구현됨(`yubeen` 브랜치, `6f767d9`). 한태경의 독립 재검증 DB-09는 **11/23 통과**(PG16 일회용 DB, 시험 14개, 결함 재현 대조군 포함 — 로컬 시험이며 AWS 아님). 남은 것: PG17 재실행, `ohyun` 축제 조회·수집과 연결 |
 | ⑥ 역할 분리 | 사용자 요청 = `noldaga_app`(RLS 적용) / 수집·감지·정책·워커 = `noldaga_service`(서버 안에서만). 한 요청 안에서 둘을 섞지 않음 |
 
 ### 3-1. 정책 SQL (부록 DDL 끝 — 실행·시험함)
