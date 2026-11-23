@@ -8,7 +8,7 @@
 | 1-실행 | Claude | 실제 수집 `--since 2026-01-01`(목록 9회 + 상세 약 1,740회 → 기능별 1,000 한도 안) → report 확인 | 1단계 시험 통과 |
 | 2 | Codex · gpt-6.2-sol · reasoning high (업서트·변경 이력·재실행 규칙) | I9~I11 | 1-실행 끝, Claude가 `sqlalchemy`·`psycopg[binary]`·`python-ulid`를 requirements에 넣고 캐시 준비 |
 | 2-실행 | Claude | **학원 노트북 DB**(`noldaga-db`, `pgvector/pgvector:pg17`, 001~009 적용 ✅ 11/23, 노트북 안 `127.0.0.1:5432`만, 집 PC는 SSH 터널) → `-m db` 시험 → 실제 저장 2회(재실행 중복 0 확인) | 2단계 시험 통과 |
-| 3 | Codex · gpt-6.2-sol · reasoning medium | I12 | 2-실행 끝 |
+| 3 | Codex · gpt-6.2-sol · reasoning medium | I12·I13 | 2-실행 끝 |
 | 3-실행 | Claude | `FESTIVAL_DATA=db`로 서버 → A02·A03 실제 응답 확인, 웹 화면(ohyun-web) 확인, 노트북 시연 최신화 | 3단계 시험 통과 |
 
 ## 1단계 — TourAPI 클라이언트 + 정규화·검사 + 수집 실행기(DB 없음)
@@ -56,8 +56,22 @@
 
 **2-실행 결과(11/23, 로컬 = 학원 노트북 DB, AWS 아님):** 일회용 DB `-m db` 4개 통과(Claude 수정 2곳: 시험 정리 `TRUNCATE`→`DELETE` — 수집 계정에 TRUNCATE 권한 없음이 맞음, DB에서 읽은 시각을 KST로). 1회차는 **오늘 상세 호출 한도(기능별 1,000) 보호**를 위해 1단계 결과 `festivals.jsonl`을 API 재호출 없이 저장 → inserted 870. 2회차 `collect --db` 실제 실행 → 목록 9회·**상세 0회**, inserted 0·updated 0. DB: festivals 870·published 869·pending 1·history 0·jobs 2건 success.
 
-## 3단계 — A02·A03 DB 조회 (I12)
-**만들 파일** — 3단계 시작 때 Claude가 확정해서 적는다.
+## 3단계 — A02·A03 DB 조회 (I12·I13)
+**준비(Claude, ✅ 11/23):** 마이그레이션 `Docs/Step 2/db/010_festival_sources_public.sql`(+down) — 일회용 DB 시험 T010a~e 통과, 학원 노트북 DB 적용(공개 축제 869건 조인 확인).
+
+**만들 파일(목록 밖 금지)**
+- 새로: `api/services/festival_store.py`(DB 조회 + 엔진 한 곳 + 응답 칸 변환)
+- 고침: `api/routers/festivals/catalog.py`(`FESTIVAL_DATA`에 따라 모의/DB, I13 여러 상태), `api/schemas/festivals.py`(I13 `status` 쉼표 값 — 기존 칸·이름 유지)
+- 새로: `tests/api/test_i13_multi_status.py`(mock), `tests/ingestion/test_i12_catalog_db.py`(`-m db`, 시험용 축제 3건을 `TEST_DB_URL`(service)로 넣고 `TEST_DB_APP_URL`(app)로 조회. 둘 다 없으면 건너뜀)
+- 읽기만: `Docs/Step 2/db/001_schema_v0.3.1.sql`의 `festivals`·`festival_sources` 블록과 558~562행(공개 정책), `010_festival_sources_public.sql`
+
+**체크리스트**
+- [ ] I12 모의/DB 고르기·응답 칸·공개 축제만·SQL 필터·KST 상태
+- [ ] I13 여러 상태
+- [ ] 일반 시험 전부 통과(DB 시험 건너뜀)
+- [ ] (Claude) 일회용 DB `-m db` 통과
+- [ ] (Claude) 학원 노트북 `FESTIVAL_DATA=db` 실행 → 맥 화면에서 실제 축제 확인
+- [ ] commit `feat(api): festivals A02/A03 read from DB (FESTIVAL_DATA=db), multi-status filter`
 
 ## 메모
 - (11/23) 지역 코드 `12`(전남광주통합특별시)를 구(200~399)=광주·나머지=전남으로 나눈 것은 **임시 규칙** — 팀 확인 필요(API 0-1 지역 코드에 통합 코드를 둘지).
