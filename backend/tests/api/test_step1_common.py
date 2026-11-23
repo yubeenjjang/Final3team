@@ -1,15 +1,36 @@
+import ast
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 _HEALTH = "/api/v1/health"
 _FESTIVALS = "/api/v1/festivals"
 _REQUEST_ID = re.compile(r"req_[0-9A-Za-z]{26}")
-_ALLOWED_URL = re.compile(
-    r"https://tong\.visitkorea\.or\.kr/.*|"
-    r"https?://localhost(?::[0-9]+)?(?:/.*)?"
-)
+_HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options", "request", "stream", "send"}
+_NETWORK_CALLS = {
+    "httpx": _HTTP_METHODS | {"Client", "AsyncClient", "HTTPTransport", "AsyncHTTPTransport"},
+    "httpx2": _HTTP_METHODS | {"Client", "AsyncClient", "HTTPTransport", "AsyncHTTPTransport"},
+    "requests": _HTTP_METHODS | {"Session", "session", "HTTPAdapter"},
+    "requests.api": _HTTP_METHODS | {"session"},
+    "requests.sessions": {"Session", "session"},
+    "requests.adapters": {"HTTPAdapter"},
+    "urllib.request": {"urlopen", "urlretrieve", "build_opener", "OpenerDirector"},
+    "aiohttp": {"ClientSession", "TCPConnector", "UnixConnector", "request"},
+    "aiohttp.client": {"ClientSession", "request"},
+    "aiohttp.connector": {"TCPConnector", "UnixConnector"},
+    "socket": {
+        "socket", "SocketType", "create_connection", "create_server", "fromfd",
+        "getaddrinfo", "gethostbyname", "gethostbyname_ex", "gethostbyaddr", "getnameinfo",
+    },
+}
+_REAL_API_MODULES = {
+    "providers/kakao.py", "providers/tmap.py", "providers/tourapi.py",
+    "providers/seoul_citydata.py", "providers/quota.py", "providers/route_base.py",
+    "services/real_routes.py", "services/seoul_crowd.py", "services/festival_store.py",
+}
 
 
 def test_R1_openapi_and_health(client: TestClient) -> None:
@@ -147,12 +168,86 @@ def test_R4_mock_marker(client: TestClient) -> None:
     assert missing.headers["X-Mock"] == "true"
 
 
+def _mock_api_sources(api_dir: Path) -> Iterator[Path]:
+    for source in api_dir.rglob("*.py"):
+        relative = source.relative_to(api_dir)
+        if relative.parts[0] == "ingestion":
+            continue  # CLI 수집과 증빙 적재
+        if relative.as_posix() in _REAL_API_MODULES:
+            continue  # DB·real 전용 구현과 공급원 어댑터. 모드 분기 라우터는 검사한다.
+        yield source
+
+
+def _call_path(expr: ast.expr) -> str:
+    if isinstance(expr, ast.Name):
+        return expr.id
+    if isinstance(expr, ast.Attribute):
+        return f"{_call_path(expr.value)}.{expr.attr}"
+    return ""
+
+
+def _network_calls(source: str) -> list[tuple[int, str]]:
+    tree = ast.parse(source)
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            aliases.update((entry.asname, entry.name) for entry in node.names if entry.asname)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            aliases.update(
+                (entry.asname or entry.name, f"{node.module}.{entry.name}") for entry in node.names
+            )
+    violations = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            root, _, rest = _call_path(node.func).partition(".")
+            path = ".".join(part for part in (aliases.get(root, root), rest) if part)
+            module, _, member = path.rpartition(".")
+            if member in _NETWORK_CALLS.get(module, ()):
+                violations.append((node.lineno, path))
+    return violations
+
+
 def test_R5_no_external_calls() -> None:
     api_dir = Path(__file__).resolve().parents[2] / "api"
-    for source in api_dir.rglob("*.py"):
-        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
-            for url in re.findall(r"""https?://[^\s"'`]*""", line):
-                assert _ALLOWED_URL.fullmatch(url), f"{source}:{number} 허용되지 않은 주소 {url}"
+    violations = [
+        f"{source.relative_to(api_dir)}:{line} {call}"
+        for source in _mock_api_sources(api_dir)
+        for line, call in _network_calls(source.read_text(encoding="utf-8"))
+    ]
+    assert not violations, f"모의 API에서 허용되지 않는 네트워크 호출 {violations}"
+
+
+@pytest.mark.parametrize("code", [
+    "import httpx\nhttpx.get(source_url)",
+    "import httpx2 as http\nhttp.AsyncClient()",
+    "from requests import Session as MakeSession\nMakeSession()",
+    "from urllib import request as req\nreq.urlopen(source_url)",
+    "import aiohttp\naiohttp.ClientSession()",
+    "from aiohttp.client import ClientSession\nClientSession()",
+    "import socket as net\nnet.create_connection(address)",
+])
+def test_R5_detects_network_calls_in_mock_code(code: str) -> None:
+    assert _network_calls(code)
+
+
+def test_R5_allows_urls_and_excludes_real_adapters(tmp_path: Path) -> None:
+    sources = {
+        "services/mock_example.py": (
+            'from urllib.parse import urlsplit\nimport httpx\n'
+            'source_url = "https://apis.data.go.kr/example"\nurlsplit(source_url)\n'
+        ),
+        "providers/tourapi.py": "import httpx\nhttpx.get(source_url)",
+        "providers/mock_example.py": "import httpx\nhttpx.get(source_url)",
+        "ingestion/tourapi_snapshot.py": 'source_url = "https://apis.data.go.kr/example"',
+    }
+    for name, code in sources.items():
+        source = tmp_path / name
+        source.parent.mkdir(exist_ok=True)
+        source.write_text(code, encoding="utf-8")
+    checked = {path.relative_to(tmp_path).as_posix() for path in _mock_api_sources(tmp_path)}
+    assert checked == {"services/mock_example.py", "providers/mock_example.py"}
+    assert not _network_calls(sources["services/mock_example.py"])
+    assert _network_calls(sources["providers/mock_example.py"])
 
 
 def test_R9_health_payload(client: TestClient) -> None:

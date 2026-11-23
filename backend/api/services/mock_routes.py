@@ -4,7 +4,7 @@ import string
 from datetime import datetime, timedelta, timezone
 
 from api.errors import ApiError
-from api.mocks.store import RouteRecord, festivals, route_lock, route_request_keys, route_requests
+from api.mocks.store import RouteRecord, route_lock, route_request_keys, route_requests
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import (
     Endpoint,
@@ -15,21 +15,34 @@ from api.schemas.routes import (
     RouteRequest,
     RouteStatus,
 )
+from api.services.festival_lookup import find_festival
 
 _ALPHABET = string.ascii_letters + string.digits
 _KST = timezone(timedelta(hours=9))
 _CONTROL_NOTICE = "공식 교통통제 반영 여부를 확인하지 못했어요."
+_SECONDARY_NOTICE = "2차 공급원(카카오맵) 결과예요. 이 결과는 저장하지 않아 다시 보려면 새로 조회해야 해요."
 _RETRY_AFTER_S = 2
 _FINAL_STATUSES: dict[str, RouteStatus] = {
     "async_ready": "ready",
     "sync_ready": "ready",
+    "sync_secondary": "unavailable",
     "async_unavailable": "unavailable",
     "async_timeout": "timed_out",
+    "async_secondary_sync_only": "unavailable",
+    "async_no_result": "unavailable",
+    "async_quota_exceeded": "unavailable",
     "overloaded": "rejected",
 }
-_FAILURES = {
-    "unavailable": ("ROUTE_UPSTREAM_ERROR", "경로 정보를 가져오지 못했어요."),
-    "timed_out": ("ROUTE_TIMEOUT", "경로를 찾는 시간이 초과됐어요."),
+_SECONDARY_FAILURE = ("ROUTE_SECONDARY_SYNC_ONLY", "잠시 뒤 다시 조회해 주세요.", True)
+_FAILURES: dict[str, tuple[str, str, bool]] = {
+    "async_unavailable": ("ROUTE_UPSTREAM_ERROR", "경로 정보를 가져오지 못했어요.", True),
+    "async_timeout": ("ROUTE_TIMEOUT", "경로를 찾는 시간이 초과됐어요.", True),
+    "sync_secondary": _SECONDARY_FAILURE,
+    "async_secondary_sync_only": _SECONDARY_FAILURE,
+    "async_no_result": ("ROUTE_NO_RESULT", "조건에 맞는 경로가 없어요.", False),
+    "async_quota_exceeded": (
+        "ROUTE_QUOTA_EXCEEDED", "오늘 조회 한도를 다 썼어요. 공식 교통 안내를 확인해 주세요.", False,
+    ),
 }
 
 Coordinates = tuple[float, float]
@@ -62,7 +75,7 @@ def _register_route(
     scenario: str,
 ) -> RouteRecord:
     with route_lock:
-        festival = festivals.get(request.festival_id)
+        festival = find_festival(request.festival_id)
         if festival is None:
             raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없어요.")
         _validate_endpoints(request, festival)
@@ -108,7 +121,7 @@ def create_route(
     record = _register_route(direction, request, body, scenario)
     if record.scenario == "overloaded":
         raise ApiError(503, "ROUTE_OVERLOADED", "경로 요청이 많아요. 잠시 후 다시 시도해 주세요.", True)
-    if record.scenario == "sync_ready":
+    if record.scenario in ("sync_ready", "sync_secondary"):
         return 200, _ready_payload(record)
     return 202, {
         "route_request_id": record.route_request_id,
@@ -164,9 +177,9 @@ def _status_payload(record: RouteRecord) -> dict[str, object]:
         body.update(_ready_payload(record))
     elif status in ("queued", "processing"):
         body["retry_after_s"] = _RETRY_AFTER_S
-    elif status in _FAILURES:
-        code, message = _FAILURES[status]
-        body["error"] = {"code": code, "message": message, "retryable": True}
+    elif status in ("unavailable", "timed_out"):
+        code, message, retryable = _FAILURES[record.scenario]
+        body["error"] = {"code": code, "message": message, "retryable": retryable}
         body["notices"] = [message]
     return body
 
@@ -190,12 +203,20 @@ def _coordinates(
     return fallback
 
 
-def _candidate(request: RouteRequest, festival: FestivalDetail) -> dict[str, object]:
+def _candidate(
+    request: RouteRequest, festival: FestivalDetail, *, secondary: bool
+) -> dict[str, object]:
     # 검색어 장소의 좌표는 외부 조회 없이 고정 좌표로 표시한다.
     start = _coordinates(request.origin, festival, (37.5547, 126.9707))
     end = _coordinates(request.destination, festival, (37.5641, 126.9839))
     first = tuple(round(a + (b - a) / 3, 6) for a, b in zip(start, end))
     second = tuple(round(b - (b - a) / 3, 6) for a, b in zip(start, end))
+    bus_crowding = {"status": "unverified", "reason": "모의 응답"}
+    if secondary:
+        bus_crowding = {
+            "status": "unsupported",
+            "reason": "2차 공급원은 버스 혼잡 근거를 주지 않아요(모의)",
+        }
     return {
         "candidate_id": "c1",
         "summary": "지하철 1회 환승(모의)",
@@ -212,12 +233,13 @@ def _candidate(request: RouteRequest, festival: FestivalDetail) -> dict[str, obj
         "service_running": True,
         "score": None,
         "area_evidence": {"crowd_areas": [], "traffic_incidents": []},
-        "mode_evidence": {"bus_crowding": {"status": "unverified", "reason": "모의 응답"}},
+        "mode_evidence": {"bus_crowding": bus_crowding},
     }
 
 
 def _ready_payload(record: RouteRecord) -> dict[str, object]:
     request, festival = record.request, record.festival
+    secondary = record.scenario == "sync_secondary"
     constraints = request.user_constraints
     constraint_status = {"control": "unverified"}
     if constraints.with_child:
@@ -236,15 +258,15 @@ def _ready_payload(record: RouteRecord) -> dict[str, object]:
         "destination": _format_endpoint(request.destination, festival),
         "travel_mode": request.travel_mode,
         "route_preference": request.route_preference,
-        "route_candidates": [_candidate(request, festival)],
-        "provider": "mock_adapter",
-        "provider_tier": "mock",
+        "route_candidates": [_candidate(request, festival, secondary=secondary)],
+        "provider": "kakao" if secondary else "mock_adapter",
+        "provider_tier": "secondary" if secondary else "mock",
         "queried_at": record.updated_at,
         "verification_status": "control_unverified",
         "completed_valid_route": True,
         "constraint_status": constraint_status,
         "coverage": {"scope": "national", "region_code": festival.region_code, "supported": True},
         "score_version": None,
-        "notices": [_CONTROL_NOTICE],
+        "notices": [_CONTROL_NOTICE, _SECONDARY_NOTICE] if secondary else [_CONTROL_NOTICE],
         "is_mock": True,
     }

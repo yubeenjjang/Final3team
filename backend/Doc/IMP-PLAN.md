@@ -8,6 +8,7 @@
 | 2 | Codex ② · gpt-6.2-sol · reasoning high | R10~R13 | 1단계 시험 통과 |
 | 3 | Codex ③ · gpt-6.2-sol · reasoning medium | R14~R16, R17 완성 | 2단계 시험 통과 (3단계 R15가 2단계 귀갓길 서비스를 씀) |
 | 5 | Codex ⑤ · gpt-6.2-sol · reasoning medium | R14 주소 수정, R17~R22 | 4단계 끝(11/22 추가) |
+| 6 | Codex ⑥ · gpt-6.2-sol · reasoning medium | R23~R26 | 5단계 끝(11/23 추가) |
 | 4 | Claude(검토 통괄) + agy · Gemini 4 Hydrogen High(읽기 전용 검토) | 전체 | 3단계 시험 통과 |
 
 ## 1단계 — 공통 뼈대 + 축제
@@ -93,3 +94,17 @@
 ## 메모 (구현 중 발견한 문서와의 차이)
 - A04가 `sync_ready`로 200을 줄 때 A05 조회 토큰을 함께 준다(API 설계문서 2절 200 표에는 없음 — 다음 개정 때 문서에 추가).
 - R15: 형식은 맞지만 축제가 없거나 좌표가 없어 경로를 못 만들면 작업을 `failed`로 확정(조회는 200).
+
+## 6단계 — 공급원 구분·오류 시나리오 (11/23 추가)
+**만들거나 고칠 파일(이 목록 밖은 손대지 않음)**
+- 고침: `api/services/mock_routes.py`(시나리오 4개 추가), 필요하면 `api/schemas/routes.py`(값 추가만)
+- 고침: `api/MOCK_API.md`(시나리오 표에 4줄 추가만)
+- 새로: `tests/api/test_step6_provider_scenarios.py`
+
+**체크리스트**
+- [x] R23 `sync_secondary` + 재조회 `ROUTE_SECONDARY_SYNC_ONLY`
+- [x] R24 `async_secondary_sync_only`
+- [x] R25 `async_no_result`·`async_quota_exceeded`
+- [x] R26 MOCK_API.md 표·새 시험
+- [x] 기존 시험 112개 + 새 시험 전부 통과
+- [x] commit `feat(api): mock step6 — secondary provider sync-only and route error scenarios`

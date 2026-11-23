@@ -34,7 +34,7 @@
 
 ### R5. 외부 호출 없음
 - `httpx`·`requests`·`urllib`로 외부 주소를 부르는 코드가 없다. API 키·환경변수를 읽지 않는다.
-- **확인:** 시험 `test_R5_no_external_calls` — `api/` 아래 `.py`에서 `http://`·`https://` 문자열이 들어간 줄은 허용 목록(이미지 주소 `https://tong.visitkorea.or.kr/`, `localhost`)만 있음.
+- **확인** `test_R5_no_external_calls`에서 모의 API 경로의 HTTP·소켓 라이브러리 호출을 검사한다. URL 문자열은 데이터로 허용한다. 실조회 전용 공급원 어댑터와 오프라인 적재는 모의 API 검사 범위에서 제외한다.
 
 ## 1. 축제 (1단계)
 
@@ -215,3 +215,30 @@ class VisitRouteRequest:  origin: Endpoint;                     destination: End
 ### R17. `backend/api/MOCK_API.md`
 - 실행·시험 명령, 주소 목록(A01·A02·A03·A04·A05·A25·A06(`POST /assistant/query`)·A06-1·A07·A09·A10·A11~A13·A32~A35), `X-Mock-Scenario` 값 표, 가상 축제 6건 표, "모든 값은 가상이며 `is_mock:true`" 안내, 화면·에이전트 팀이 쓰는 예시 `curl` 3개(축제 목록, 귀갓길 접수→조회, 챗봇 접수→조회).
 - **확인:** 파일이 있고 위 항목 제목이 모두 있음(시험 `test_R17_mock_doc`가 제목 문자열 확인).
+
+## 6. 공급원 구분·오류 시나리오 (6단계, 11/23 추가)
+기준: API 설계문서 v0.3.3 2-2 응답 표(`provider_tier` = `primary`·`secondary`·`mock`), 5절 공급원 전환(카카오 결과는 **A04 동기 응답에서만**), 10-2 오류 코드 표. **R11~R13의 기존 시나리오 5개와 그 응답·시험은 한 글자도 바꾸지 않는다.**
+
+### R23. 2차 공급원 동기 결과 `sync_secondary`
+- A04·A25 접수에 `X-Mock-Scenario: sync_secondary` → `sync_ready`와 **같은 200 `ready` 본문**, 다른 점만:
+  - `provider: "kakao"`, `provider_tier: "secondary"`
+  - 후보마다 `mode_evidence.bus_crowding = {status: "unsupported", reason: "2차 공급원은 버스 혼잡 근거를 주지 않아요(모의)"}`
+  - `notices`에 기존 문구 다음으로 `"2차 공급원(카카오맵) 결과예요. 이 결과는 저장하지 않아 다시 보려면 새로 조회해야 해요."` 추가
+- 이 요청을 A05/A25 조회로 다시 부르면: **`ready` 본문을 다시 주지 않고** `route_status:"unavailable"`, `completed_valid_route:false`, `error{code:"ROUTE_SECONDARY_SYNC_ONLY", retryable:true}`(카카오 결과는 저장·재전달 불가 — 5절). 접수 응답의 토큰은 그대로 유효.
+- **확인:** `sync_secondary` → 200, `provider=="kakao"`, `provider_tier=="secondary"`, `completed_valid_route is True`, 모든 후보 `bus_crowding.status=="unsupported"` · 같은 요청 A05 조회 → 200, `route_status=="unavailable"`, `error.code=="ROUTE_SECONDARY_SYNC_ONLY"`, 본문에 `route_candidates` 없음 · A25도 같음.
+
+### R24. 접수 뒤 2차 전달 불가 `async_secondary_sync_only`
+- 202 접수 → 조회 1회차 `processing` → 2회차부터 `unavailable` + `error{code:"ROUTE_SECONDARY_SYNC_ONLY", message:"잠시 뒤 다시 조회해 주세요.", retryable:true}` + `notices`.
+- **확인:** 2회차 `error.code=="ROUTE_SECONDARY_SYNC_ONLY"`, `retryable is True`, `completed_valid_route is False`.
+
+### R25. 경로 없음·한도 소진
+| `X-Mock-Scenario` | 흐름 | 최종 `error` |
+|---|---|---|
+| `async_no_result` | 202 → `processing` → `unavailable` | `ROUTE_NO_RESULT`, message `"조건에 맞는 경로가 없어요."`, **retryable false** |
+| `async_quota_exceeded` | 202 → `processing` → `unavailable` | `ROUTE_QUOTA_EXCEEDED`, message `"오늘 조회 한도를 다 썼어요. 공식 교통 안내를 확인해 주세요."`, **retryable false** |
+- **확인:** 각 2회차 코드·`retryable is False` · A25도 같은 시나리오 허용.
+
+### R26. 문서·시험
+- `api/MOCK_API.md`의 `X-Mock-Scenario` 첫 표에 R23~R25 네 줄 추가(기존 줄 유지).
+- 시험 파일 `tests/api/test_step6_provider_scenarios.py`, 시험 이름에 요구 번호(`test_R23_…`). 기존 시험 전부 그대로 통과.
+- **확인:** `uv run --offline --with-requirements api/requirements.txt pytest tests/api -q` 전부 통과.

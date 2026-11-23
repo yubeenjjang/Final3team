@@ -1,7 +1,9 @@
+import os
 from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
+from starlette.concurrency import run_in_threadpool
 
 from api.errors import ApiError
 from api.mocks.store import festivals
@@ -11,8 +13,13 @@ from api.schemas.festivals import (
     FestivalPage,
     FestivalQuery,
 )
+from api.services import festival_store
 
 router = APIRouter()
+
+
+def uses_festival_db() -> bool:
+    return os.environ.get("FESTIVAL_DATA") == "db"
 
 
 def _validate_period(date_from: date | None, date_to: date | None) -> None:
@@ -49,12 +56,16 @@ def _start_date_key(festival: FestivalDetail, descending: bool) -> tuple[bool, i
 @router.get("/festivals")
 async def list_festivals(query: Annotated[FestivalQuery, Query()]) -> FestivalPage:
     _validate_period(query.date_from, query.date_to)
+    if uses_festival_db():
+        return await run_in_threadpool(festival_store.list_festivals, query)
+
     term = query.q.casefold() if query.q is not None else ""
+    statuses = query.statuses
     matches = [
         festival
         for festival in festivals.values()
         if (query.region == "ALL" or festival.region_code == query.region)
-        and (query.status is None or festival.event_status == query.status)
+        and (not statuses or festival.event_status in statuses)
         and (term in festival.name.casefold() or term in (festival.venue_name or "").casefold())
         and _overlaps(festival, query.date_from, query.date_to)
     ]
@@ -77,7 +88,10 @@ async def list_festivals(query: Annotated[FestivalQuery, Query()]) -> FestivalPa
 async def get_festival(
     festival_id: Annotated[str, Path(pattern=FESTIVAL_ID_PATTERN)],
 ) -> FestivalDetail:
-    festival = festivals.get(festival_id)
+    if uses_festival_db():
+        festival = await run_in_threadpool(festival_store.get_festival, festival_id)
+    else:
+        festival = festivals.get(festival_id)
     if festival is None:
         raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
     return festival

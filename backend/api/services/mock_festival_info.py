@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from api.errors import ApiError
 from api.mocks.clock import MOCK_NOW
 from api.mocks.notices import NOTICES
-from api.mocks.store import festivals
 from api.schemas.festival_info import (
     CongestColor,
     CongestLevel,
@@ -20,6 +19,7 @@ from api.schemas.festival_info import (
     WeatherResponse,
 )
 from api.schemas.festivals import FestivalDetail, RegionCode
+from api.services.festival_lookup import find_festival
 
 _WEATHER_OBSERVED_AT = datetime.fromisoformat("2026-11-22T11:00:00+09:00")
 _WEATHER: dict[RegionCode, WeatherData] = {
@@ -78,7 +78,7 @@ _CROWD_AREAS = {
 
 
 def _find_festival(festival_id: str) -> FestivalDetail:
-    festival = festivals.get(festival_id)
+    festival = find_festival(festival_id)
     if festival is None:
         raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
     return festival

@@ -1,3 +1,4 @@
+import re
 import secrets
 import string
 from collections.abc import Awaitable, Callable
@@ -20,7 +21,10 @@ from api.routers import health
 from api.routers.accounts import auth
 from api.routers.assistant import chatbot
 from api.routers.festivals import catalog
+from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
+from api.services.real_routes import uses_real_routes
+from api.services.seoul_crowd import uses_real_crowd
 
 app = FastAPI(title="놀다가 API (mock)", version="0.1.0-mock")
 app.add_exception_handler(ApiError, handle_api_error)
@@ -59,7 +63,7 @@ async def add_response_headers(
         and "origin" in request.headers
         and "access-control-request-method" in request.headers
     ):
-        return error_response(
+        response = error_response(
             request,
             ApiError(400, "HTTP_ERROR", "허용되지 않은 교차 출처 요청입니다."),
             {
@@ -69,8 +73,27 @@ async def add_response_headers(
             },
         )
     response.headers["X-Request-ID"] = request_id
-    response.headers["X-Mock"] = "true"
+    if not _serves_real_data(request):
+        response.headers["X-Mock"] = "true"
+    elif "X-Mock" in response.headers and (
+        _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
+    ):
+        del response.headers["X-Mock"]
     return response
+
+
+_REAL_FESTIVAL_PATHS = re.compile(r"^/api/v1/festivals(/fst_[0-9A-Za-z]{6,26})?/?$")
+_REAL_ROUTE_PATHS = re.compile(r"^/api/v1/routes/(return|visit)(/[^/]+)?/?$")
+_REAL_CROWD_PATH = re.compile(r"^/api/v1/festivals/[^/]+/crowd/?$")
+
+
+def _serves_real_data(request: Request) -> bool:
+    path = request.url.path
+    return (
+        (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
+        or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
+        or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
+    )
 
 
 for module in (health, catalog, routes, chatbot, auth):

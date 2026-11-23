@@ -85,7 +85,7 @@ class CrowdForecast(BaseModel):
 class CrowdArea(BaseModel):
     area_code: str
     area_name: str
-    relation_type: Literal["contains"]
+    relation_type: Literal["contains", "adjacent"]
     congest_level: CongestLevel
     congest_color: CongestColor
     congest_message: str
@@ -96,4 +96,23 @@ class CrowdArea(BaseModel):
 
 
 class CrowdResponse(InfoResponse):
+    is_mock: bool = True
     areas: list[CrowdArea] = Field(default_factory=list)
+
+
+class NearbyCrowdArea(BaseModel):
+    area_code: str
+    area_name: str
+    distance_m: float
+    status: Literal["ok", "stale", "unavailable"]
+    data: CrowdArea | None = None
+    is_estimate: bool | None = None
+    error: SourceError | None = None
+
+
+class RealCrowdResponse(CrowdResponse):
+    is_mock: Literal[False] = False
+    nearby_areas: list[NearbyCrowdArea] = Field(default_factory=list)
+    is_estimate: bool | None = None
+    unsupported_reason: Literal["outside_seoul", "missing_coordinates", "no_nearby_areas"] | None = None
+    source_url: str
