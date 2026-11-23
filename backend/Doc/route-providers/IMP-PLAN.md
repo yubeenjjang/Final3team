@@ -28,12 +28,22 @@
 - 새로: `tests/routes/test_p9_real_routes.py`
 
 **체크리스트**
-- [ ] P9 켜기·응답 모양 유지
-- [ ] P10 순서(장소 검색·HMAC 키·캐시·병합·1차→2차·오류 코드)
-- [ ] P11 동기 3초/202·카카오 동기 전용·TMAP 60초 만료
-- [ ] P12 시험 전부 + 기존 시험 그대로
-- [ ] (Claude) 3-실행
+- [x] P9 켜기·응답 모양 유지
+- [x] P10 순서(장소 검색·HMAC 키·캐시·병합·1차→2차·오류 코드)
+- [x] P11 동기 3초/202·카카오 동기 전용·TMAP 60초 만료
+- [x] P12 시험 전부 + 기존 시험 그대로
+- [x] (Claude) 3-실행
 - [ ] commit `feat(routes): real return/visit routes — TMAP primary, Kakao sync-only fallback, cache, singleflight, HMAC route key`
+
+## 3-실행 결과 (11/23, 집 PC 로컬 서버 — AWS 아님, 응답 원본 저장 안 함)
+| 시각대 | 조건 | 공급원 호출 | 결과 |
+|---|---|---|---|
+| 13시대 | 모의 축제 fst_000001(광화문) → "서울역" | 장소 검색 1 · **TMAP 1** | 200 `tmap/primary` 0.5초, 후보 3개(첫: 버스 1회 20분·1,500원·운행 중), 경로선 `[위도, 경도]` 확인 |
+| | 같은 요청 다시(60초 안) | 장소 검색 1 · TMAP **0** | 200 0.1초 — **캐시 동작** |
+| | fst_000003(부산 광복로) → "부산역" | 장소 검색 1 · **TMAP 1** | 200 `tmap/primary` 0.4초, 후보 3개 |
+| | `ROUTE_TMAP_DAILY_LIMIT=0`으로 카카오 강제 | 장소 검색 1 · **카카오 대중교통 1** | 200 `kakao/secondary`, 후보 3개, 버스 혼잡 `unsupported`, 안내 3개 → A05 재조회 `unavailable`+`ROUTE_SECONDARY_SYNC_ONLY`, 본문 없음 |
+- 합계: **TMAP 2건(하루 10건 중)**, 카카오 대중교통 1건, 카카오 장소 검색 4건. 서버 로그에 키 없음. `X-Mock` 없음·`is_mock:false` 확인.
+- 남은 것: 카카오 경로선 좌표가 소수 8자리로 옴(TMAP은 6자리) — 화면에는 문제없음, 나중에 맞춤.
 
 ## 메모
 - (11/23) TMAP 무료 하루 10건(오류도 셈)·유료 전환은 11/26 결정 대기(`TMAP_PAID_PLAN`) → 한도는 환경변수.
