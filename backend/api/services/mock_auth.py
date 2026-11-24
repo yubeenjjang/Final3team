@@ -1,8 +1,10 @@
 import hashlib
 import secrets
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+from api.auth.tokens import unauthorized
 from api.errors import ApiError
 from api.mocks.store import (
     AccessSession,
@@ -38,6 +40,8 @@ def signup(request: SignupRequest) -> dict[str, object]:
             display_name=request.display_name,
             salt=salt,
             password_hash=_password_hash(request.password.get_secret_value(), salt),
+            birth_year=request.birth_year,
+            gender=request.gender,
         )
         users_by_email[request.email] = user
         user_nicknames.add(nickname)
@@ -78,6 +82,26 @@ def _retire_refresh(token: str, user_id: str) -> None:
     retired_refresh_tokens[token] = user_id
 
 
+def authenticated_access(authorization: str | None, now: datetime) -> tuple[str, AccessSession]:
+    # The caller holds auth_lock so authentication and the protected changes are atomic.
+    scheme, _, access_token = (authorization or "").partition(" ")
+    session = access_sessions.get(access_token)
+    if scheme.lower() != "bearer" or session is None or session.expires_at <= now:
+        raise unauthorized()
+    return access_token, session
+
+
+def update_nickname(email: str, user: MockUser, display_name: str) -> MockUser:
+    updated = replace(user, display_name=display_name)
+    users_by_email[email] = updated
+    user_nicknames.discard(user.display_name.casefold())
+    user_nicknames.add(display_name.casefold())
+    for token, session in refresh_sessions.items():
+        if session.user.user_id == user.user_id:
+            refresh_sessions[token] = replace(session, user=updated)
+    return updated
+
+
 def refresh(token: str) -> dict[str, object]:
     with auth_lock:
         owner = retired_refresh_tokens.get(token)
@@ -96,12 +120,8 @@ def refresh(token: str) -> dict[str, object]:
 
 
 def logout(authorization: str | None, refresh_token: str) -> None:
-    scheme, _, access_token = (authorization or "").partition(" ")
     with auth_lock:
-        session = access_sessions.get(access_token)
-        now = datetime.now(timezone.utc)
-        if scheme.lower() != "bearer" or session is None or session.expires_at <= now:
-            raise ApiError(401, "UNAUTHORIZED", "유효한 액세스 토큰을 보내 주세요.")
+        access_token, session = authenticated_access(authorization, datetime.now(timezone.utc))
         del access_sessions[access_token]
         refresh_session = refresh_sessions.get(refresh_token)
         if refresh_session is not None and refresh_session.user.user_id == session.user_id:

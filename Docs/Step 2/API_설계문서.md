@@ -1307,7 +1307,8 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A55~A56** | POST/PATCH | `/api/v1/admin/festivals`, `/{festival_id}` | admin | 축제 직접 등록·수정·게시, 변경 이력 (6-6) | FR-D12·O10 | 최종 — 권오현 |
 | **A57~A65** | — | `/api/v1/festivals/{id}/companion-posts`, `/api/v1/companion-posts`(+`/{id}`, `/applications`, `/meeting-place`, `/{action}`), `/api/v1/companion-applications/{id}/{action}` | 공개·user | **동행**: 모집 목록·작성·신청·승인(정원 잠금)·만남 장소·종료/취소 (6-4-4) | FR-COM01~11·18·19 | 최종 — 권오현 |
 | **A66~A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (6-4-5) | FR-COM09·15~17·20 | 최종 — 권오현 |
-| **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user·admin | **알림·신고·탈퇴**(6-4-6). 마이페이지는 비밀번호 변경·탈퇴·관심 축제(A11~A13) | FR-COM21~24 | 최종 — 권오현 |
+| **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user·admin | **알림·신고·탈퇴**(6-4-6). 마이페이지는 6-4-6절 | FR-COM21~24 | 최종 — 권오현 |
+| **A78·A79** | GET·PATCH / GET | `/api/v1/me/profile`, `/api/v1/me/companion-activity` | user | **본인 프로필·내 동행 내역**(6-4-6) | FR-COM22 | `ohyun-me` 구현 |
 | **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩과 대한민국 구석구석 점수를 60:40으로 합산해 정렬(6-2) | 11/24 신유빈 B안·권오현 확정(기획서 FR 추가 필요) | 최종 — 담당 신유빈 |
 | **A81** | GET | `/api/v1/festivals/{festival_id}/posts` | 없음 | **요즘 올라온 글**. 축제 상세에서 네이버 블로그·뉴스·카페의 최신 글 링크와 출처 표시(6-2) | 11/24 한태경 제안·권오현 채택 | 최종 — API 신유빈(W125)·화면 정예진(W127) |
 | **A40** | GET | `/api/v1/festivals/discover` | 없음 | 고정 시드 기반 전체 축제 둘러보기 | 〃 | 설계안 |
@@ -1341,7 +1342,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | 지연 위험 예측 | A17(6-2) | 후속 필드 설계. 구현 전 501 |
 | 인증·추천·친구 | A32~A35(1-1), A36~A41(6-4-2), A43~A50(6-4-3) | 필드 표. 204는 요청만 |
 | 방문 코스·공지·축제 관리 | A51~A56(6-6) | 필드 표, A51 결과는 A06-1 |
-| 동행·채팅·알림·신고·마이페이지·탈퇴 | A57~A77·A80(6-4-4~6-4-6), 마이페이지 관심 축제 A11~A13 | 필드 표, WS 메시지별 명세. 기존 설계가 200만 명시한 응답은 그 범위를 표시 |
+| 동행·채팅·알림·신고·마이페이지·탈퇴 | A57~A80(6-4-4~6-4-6), 마이페이지 관심 축제 A11~A13 | 필드 표, WS 메시지별 명세. 기존 설계가 200만 명시한 응답은 그 범위를 표시 |
 
 수업 가이드는 "최종 제출에는 구현하기로 확정한 API 전체의 명세"를 요구합니다. **v0.3.2에서 채운 것**(강사 11/19 피드백 2): 1차 필수 A06·A14·A16·A18·A21의 8칸 상세와 필드 표, A05 응답 필드 표, 필수 도구 6개(`search_festivals`·`get_festival`·`get_route_request_status`·`get_incident`·`get_route_metrics`·`list_allowed_actions`)의 JSON Schema와 성공·실패 출력(4-6). 그리고 A07~A13·A17·A22~A26·A28~A31 상세(6-2절)와 최종 범위 도구 5개 JSON Schema(4-6 ⑦~⑪)도 채웠습니다. **v0.3.3에서 채운 것**: 인증 A32~A35(1-1), 추천·핫한 축제·친구·동행·채팅·알림·신고·마이페이지·방문 코스·공지·축제 관리 A36~A80(6-2·6-4·6-6). **남은 것**: A17은 후속 기능이라 구현 전 501, 실제 코드·화면 연결은 구현 단계(6-5절 실행 범위 A~D).
 
@@ -1559,6 +1560,8 @@ Content-Type: application/json
 
 #### A11~A13. 관심 축제 (로그인 필요)
 
+`AUTH_PROVIDER=db`에서 로그인 계정의 RLS 세션으로 저장·조회·해제합니다. 승인·게시된 축제만 저장하고 목록·전체 건수에 포함합니다. `start_date` 정렬에서 날짜가 없는 축제는 뒤에 표시합니다. 기본은 모의 모드입니다.
+
 | # | 칸 | A11 `GET /api/v1/me/favorites` | A12 `PUT /api/v1/me/favorites/{festival_id}` | A13 `DELETE /api/v1/me/favorites/{festival_id}` |
 |---|---|---|---|---|
 | 1 | 목적 | 내 관심 축제 목록 | 관심 저장 | 관심 해제 |
@@ -1572,7 +1575,9 @@ Content-Type: application/json
 
 | A11 `items[]` | 타입 | DB |
 |---|---|---|
-| `festival_id`·`name`·`region_code`·`start_date`·`end_date`·`event_status`·`thumbnail_url` | string | `festivals` |
+| `festival_id`·`name`·`region_code`·`event_status` | string | `festivals`의 ID·제목·지역·상태 |
+| `start_date`·`end_date` | string(date) 또는 null | `festivals` |
+| `thumbnail_url` | string 또는 null | `festivals.thumbnail_url` |
 | `saved_at` | string | `favorites.created_at` |
 
 **A11 쿼리 필드 (FavoritesQuery)**
@@ -1590,7 +1595,7 @@ Content-Type: application/json
 | `festival_id` | path | string | A12·A13 예 | `^fst_[0-9A-Za-z]{6,26}$`, 저장·해제할 축제 ID |
 | `festival_id` | 응답 | string | A12 예 | 저장된 축제 ID |
 | `saved_at` | 응답 | string(date-time) | A12 예 | 최초 저장 시각, DB `favorites.created_at`에 대응 |
-| `is_mock` | 응답 | boolean | A12 예 | 현재 모의 응답은 `true` |
+| `is_mock` | 응답 | boolean | A12 예 | 모의 `true`, DB `false` |
 
 #### A17. 지연 위험 예측 `GET /api/v1/admin/route-metrics/risk` — **후속(FR-H19), 1차 구현 안 함**
 
@@ -1950,7 +1955,7 @@ Content-Type: application/json
 | 동행 모집·신청·승인·만남 장소·종료 | FR-COM01~11·18~19 | **A57~A65** | **상세 작성**(6-4-4, 정원 잠금 승인·재신청 규칙) | 11/20 | **DDL·시험 완료**(007 `companion_posts`·`companion_applications`·`meeting_places`, T36·T37) | W115 12/03–07, W117 12/09–10 (R03) | W128 |
 | 친구 검색·신청·삭제·차단 | FR-COM12~14 | **A43~A50** | **상세 작성**(6-4-3). 친구 추천은 범위 밖(후보) | 11/20 | **DDL·시험 완료**(005 `friend_requests`·`friendships`·`user_blocks`, 닉네임 중복 금지 009, T32~T33·T43) | W118 12/03–04 (R03) | W128 |
 | 채팅(동행방·1:1·단체)·채팅 탭 | FR-COM09·15~17·20 | **A66~A73 + WebSocket** | **상세 작성**(6-4-5) · 전송 방식 = WebSocket(11/20 협업 규칙) | 11/20 | **DDL·시험 완료**(007 `chat_rooms`·`chat_members`·`chat_messages`, T37·T38·T41) | W116 12/03–08 (R03 권오현 — 협업 규칙도 권오현), W119 12/09–10 (R03) | W128 |
-| 알림·신고·마이페이지 | FR-COM21~24 | **A74~A77·A80** · A11~A13 · 비밀번호 변경 | 마이페이지 범위 확정(11/24 팀 결정), 6-4-6 | 11/24 | **DDL·시험 완료**(007 `notifications`·`reports`·`chat_admin_access`, T39·T40) | W122 12/15–16 (R03) | W128 |
+| 알림·신고·마이페이지 | FR-COM21~24 | **A74~A80** · A11~A13 · A36·A37 · 비밀번호 변경 | 6-4-6(`ohyun-me`의 A78·A79 포함) | 11/24 | **DDL·시험 완료**(007 `notifications`·`reports`·`chat_admin_access`, T39·T40) | W122 12/15–16 (R03) | W128 |
 | 화면 | — | — | — | — | — | W120 12/11–14, W121 12/15–16, W126 12/07–08, W127 12/09–11 (R05 이수언) | — |
 
 **② 기술·운영 항목과 적용 시점**
@@ -2036,7 +2041,9 @@ Content-Type: application/json
 | **A40** `GET /api/v1/festivals/discover` | `region` · `page` · `seed`(선택) | `{items[], seed, page}` | 공개. 섞는 순서 = `hash(seed, festival_id)`. `seed` 없으면 서버가 `날짜+세션`으로 만들어 돌려줌 → 같은 seed면 페이지를 넘겨도 순서 고정(FR-REC11) | 422 |
 | **A41** `GET /api/v1/festivals/recent` | `region` · `page` | `{items[] {…, published_at}}` | 공개. `festivals.published_at` 최신순. 재수집해도 최초 공개일 유지(FR-REC13) | 422 |
 
-- 모든 목록은 승인·게시된 예정/진행 축제만(종료·취소·비공개 제외), 없는 축제를 만들지 않음. A36~A41 고정 경로는 `/festivals/{festival_id}`보다 먼저 등록(6절 라우터 규칙).
+- A36·A37은 `AUTH_PROVIDER=db`에서 본인의 `user_festival_preferences` 행을 읽고 저장하며, 기본은 모의 모드입니다. 미저장 상태는 빈 배열과 `updated_at:null`로 응답합니다. 건너뛰면 빈 배열을 저장하고, 중복 취향은 첫 선택 순서를 유지해 하나로 저장합니다.
+
+- A38~A41의 축제 목록은 승인·게시된 예정/진행 축제만(종료·취소·비공개 제외), 없는 축제를 만들지 않음. A36~A41 고정 경로는 `/festivals/{festival_id}`보다 먼저 등록(6절 라우터 규칙).
 
 **A36 조회·A37 저장 필드**
 
@@ -2350,9 +2357,9 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 - **전송 처리 순서(W116):** ① 멤버·차단·방 상태 확인 → ② 한 트랜잭션에서 `chat_rooms.last_seq + 1`로 순서 발급 + `chat_messages` 저장 → ③ commit 성공 뒤 `ack` → ④ Redis 최근 메시지 갱신·Pub/Sub 발행. 같은 `client_message_id` 재전송은 DB UNIQUE(T38b)로 **처음 저장된 메시지의 `ack`를 다시** 보냄(중복 저장 없음). Redis 실패는 전송 성공에 영향 없음(읽을 때 DB로).
 - 전송 제한: 사람당 초당 5개·방당 초당 20개(임시, 9-1). 사용자 대화는 AI·RAG에 넣지 않음(5.20).
 
-#### 6-4-6. 알림·신고·마이페이지·탈퇴 (A74~A77·A80)
+#### 6-4-6. 알림·신고·마이페이지·탈퇴 (A74~A80)
 
-**마이페이지 범위(11/24 팀 결정)** — 마이페이지 API는 비밀번호 변경·탈퇴·관심 축제만 제공. 운영 공지·이용약관은 고정 문서 링크(별도 API 없음). 관심 축제는 A11~A13, 탈퇴는 A80을 사용합니다. A78 프로필 조회·수정과 A79 내 동행 내역은 마이페이지 API 범위에서 제외합니다.
+**마이페이지 API** — 관심 축제(A11~A13), 축제 취향(A36·A37), 본인 프로필(A78), 내 동행 내역(A79), 탈퇴(A80)를 제공합니다. A78·A79는 `ohyun-me` 구현 범위에 포함하며 11/24 이전 명세의 경로와 응답을 사용합니다. `AUTH_PROVIDER=db`에서 실제 DB를 사용하며 기본은 모의 모드입니다. 모의 동행 내역은 빈 배열입니다. 운영 공지·이용약관은 고정 문서 링크를 사용합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
@@ -2360,7 +2367,9 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | **A75** `POST /api/v1/me/notifications/read` | `{ids[]}` 또는 `{all: true}` | 204 | 읽음 칸만 바꿈(T39a·b) | 401 |
 | **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 하루 1회(9-1 ⑧). 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
 | **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 그 시험은 **구현 예정**(W128 권한 검증, 12/17–18. T40c는 기록 삭제 차단만 확인, 18-2). 메시지 숨김은 `chat_messages.deleted_at`(+ Redis 최근 목록에서 삭제), 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
-| **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(04 문서 7-0 ② '계정·프로필'과 같은 목록): Refresh 토큰 전부 폐기 → 진행 중 동행 글 `cancelled`·신청 `cancelled` → 친구 관계·신청·차단 삭제 → 방 멤버 `left`(방장이면 가장 먼저 들어온 멤버가 방장, FR-COM17) → 관심 축제(`favorites`)·취향(`user_festival_preferences`)·알림 삭제 → 챗봇 질문·답변(`assistant_runs`) 즉시 삭제 → `profiles` 닉네임·출생연도·성별 NULL → `users`는 행을 지우지 않고(감사 기록 FK) **이메일을 `deleted+<user_id>@invalid`, 비밀번호 해시를 `'!'`(로그인 불가)로 덮어쓰고 `status='deleted'`**(DDL NOT NULL 유지, 시험 T42l). **커밋 뒤**: `revoked:{jti}` 등록, 열린 WebSocket 끊기, LangGraph 체크포인트(`thread_id`) 삭제 — 실패하면 워커가 재시도. 다른 사람에게는 "알 수 없음"으로 표시(`app_public_display_name`이 NULL). 메시지 본문은 방 보존 정책대로 지워짐(FR-COM24). 백업(7일)에서 복원하면 탈퇴 목록으로 다시 지움 | 401 / 403(비밀번호 불일치) |
+| **A78** `GET`·`PATCH /api/v1/me/profile` | PATCH `{display_name?}` (닉네임 변경 가능, 2~12자·중복 검사) | `{user_id, display_name, birth_year, gender, onboarding_status}` (출생연도·성별은 본인 화면용. 다른 사람에게는 **동행 신청 때 그 글 작성자에게만 나이·성별**이 보임 — A61) | user, 본인만. 이메일·전화번호·나이·성별은 다른 사람에게 보이지 않음(FR-COM22) | 401 / 409 `NICKNAME_TAKEN` / 422 |
+| **A79** `GET /api/v1/me/companion-activity` | `type`: `posts`·`applications` | 200 `{items[]}`, 조회 유형별 항목 필드는 아래 A79 표 | user, 본인 내역(작성 글 또는 보낸 신청), 생성 최신순 | 401 / 422 |
+| **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(DB 설계서 7-0 ②): Refresh 토큰·관심·취향·알림·친구 신청·관계·차단 행 삭제, 진행 중 동행 글·신청 취소, 채팅방 퇴장과 방장 승계, 챗봇 질문·답변·방문 코스 결과 삭제, 프로필 개인정보 NULL, 계정 이메일·비밀번호 해시 덮어쓰기와 `status='deleted'`. 같은 DB에 LangGraph 체크포인트 테이블이 있으면 본인 대화 상태도 함께 삭제. 커밋 뒤 현재 Access의 `jti`를 폐기하며 모든 기기의 Access는 계정 상태 검사에서 거부. 열린 WebSocket 종료는 채팅 연결 구현 시 연동. 메시지는 화면에서 작성자 ‘알 수 없음’으로 표시하고 본문은 방 보존 정책을 따름. 백업에서 복원하면 탈퇴 목록으로 다시 지움 | 401 / 403 `PASSWORD_MISMATCH` / 422 |
 
 **A74 알림 목록·A75 읽음 처리**
 
@@ -2419,6 +2428,48 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | `access_id` | GET 상세 | int (64비트) 또는 null | 예 | 이번 채팅 열람 기록의 ID(`chat_admin_access.access_id`, BIGSERIAL). 동행 글·사용자 신고는 `null` |
 | `report_id`·`status`·`handled_by`·`handled_at` | POST 처리 | object | 예 | 처리 결과. `handled_by`는 관리자 `user_id` |
 
+**A78 본인 프로필 조회·수정**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `display_name` | body | string | PATCH 선택 | 2~12자, 대소문자 무시 중복 검사(009) |
+| `user_id` | 응답 | string (UUID) | 예 | 본인 사용자 ID |
+| `display_name` | 응답 | string 또는 null | 예 | 본인 닉네임 |
+| `birth_year` | 응답 | int 또는 null | 예 | 본인 출생연도, 009 저장 범위 1900~2100(A32 가입은 1900~올해) |
+| `gender` | 응답 | string 또는 null | 예 | 본인 성별, `male`·`female` |
+| `onboarding_status` | 응답 | string | 예 | A36의 `pending`·`completed`·`skipped` |
+
+**A79 내 동행 내역 요청·유형별 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `type` | query | string | 예 | `posts`는 내가 작성한 모집 글, `applications`는 내가 보낸 동행 신청 |
+| `items` | 응답 | array<object> | 예 | A57·A61과 같은 목록 형식. 선택한 유형의 본인 내역을 아래 항목 구조로 반환 |
+
+**A79 type=posts 항목 (A57 글 필드와 companion_posts)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items[].post_id` | 응답 | string | 예 | 내 모집 글 ID |
+| `items[].festival_id` | 응답 | string | 예 | 모집 대상 축제 ID |
+| `items[].meet_at` | 응답 | string(date-time) | 예 | 만남 시각 |
+| `items[].capacity` | 응답 | int | 예 | 모집 정원(작성자 제외 1~10명) |
+| `items[].approved_count` | 응답 | int | 예 | 승인 인원, 0 이상 정원 이하 |
+| `items[].age_pref` | 응답 | string 또는 null | 예 | A58의 연령대 조건 |
+| `items[].gender_pref` | 응답 | string | 예 | A58의 성별 조건 |
+| `items[].memo` | 응답 | string 또는 null | 예 | 모집 안내, 500자 이하 |
+| `items[].status` | 응답 | string | 예 | `open`·`full`·`ended`·`cancelled` |
+
+**A79 type=applications 항목 (A60~A62와 companion_applications)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items[].application_id` | 응답 | string | 예 | 내 신청 ID |
+| `items[].post_id` | 응답 | string | 예 | 신청한 모집 글 ID |
+| `items[].message` | 응답 | string 또는 null | 예 | 내가 보낸 신청 메시지, 200자 이하 |
+| `items[].status` | 응답 | string | 예 | `pending`·`approved`·`rejected`·`cancelled` |
+| `items[].created_at` | 응답 | string(date-time) | 예 | 신청 시각 |
+
 **A80 탈퇴 요청 (204)**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
@@ -2447,7 +2498,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | 친구 추가·차단 | FR-COM12~14 | `friends/` (정예진) | A43~A50 (`community/friends.py`, 권오현) | — | `friend_requests`·`friendships`·`user_blocks`(005) | T32·T33, COM-TC | B ✅ / A ⬜ |
 | AI 방문 코스 | FR-P01·P03 | `assistant/` 방문 코스 (이수언) | A51 → A06-1 (`assistant/chatbot.py` 권오현) → Festival 에이전트(한다영) | `get_festival`·`get_facilities`·`get_official_notices`·`get_crowd` | `assistant_runs`(`run_kind`·`result`, 006) | T34 | B ✅ / A·D ⬜ |
 | 공지·축제 관리(관리자) | FR-O06·D05·D12·O10 | `admin/operations/`(이수언), `admin/festival-management/`(정예진) | A52~A56, A23·A24 | — | `official_notices`·`notice_events`(006)·`festival_change_history`·`festival_review_queue` | T35, T6·T15(이력 추가만) | B ✅ / A ⬜ |
-| 동행·채팅·알림·신고 | FR-COM01~11·15~24 | `companions/`, `chats/[roomId]/`, `notifications/`, `me/` (정예진) | A57~A77·A80 + WS (`community/companions.py`·`chat.py`·`notifications.py`, `realtime/chat_socket.py`, `accounts/users.py`, 권오현) | — | 9개 테이블(007) | T36~T41, COM-TC (W128) | B ✅ / A ⬜ |
+| 동행·채팅·알림·신고 | FR-COM01~11·15~24 | `companions/`, `chats/[roomId]/`, `notifications/`, `me/` (정예진) | A57~A80 + WS (`community/companions.py`·`chat.py`·`notifications.py`, `realtime/chat_socket.py`, `accounts/users.py`, 권오현) | — | 9개 테이블(007) | T36~T41, COM-TC (W128) | B ✅ / A ⬜ |
 
 **계약 담당과 인계(자료 02·08쪽)**
 
@@ -3922,3 +3973,4 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 A05·정리 명령의 TMAP 본문 삭제 시각을 요청에도 기록하고, 7일 백업 복원 검사 T25c 추가(0-A·5·17-3절). 11/24 로컬 SQL 결과는 17-3절에 기록했습니다. |
 | v0.4 | 2026-11-24 | STEP7 경로 키 v2(분석 #26), DB 연결 풀 과부하 503(DB-14), SK 회신 없이 적용하는 TMAP 정리 확정 기준 및 시험을 반영했습니다(2·6·17-3절). |
 | v0.5 | 2026-11-24 | API 3번 감사 반영. 누락된 API 필드와 조회 쿼리, 202 응답, SSE·WebSocket 이벤트를 명세하고 6절 작성 현황을 갱신했습니다. 이후 11/24 팀 결정에 따라 A79 유형별 목록은 최종 범위에서 제외했습니다(6-4-6절). |
+| v0.5 | 2026-11-24 | `ohyun-me`에서 A11~A13·A36·A37·A78~A80의 DB·모의 모드, A78·A79 필드 및 A80 보존 처리를 반영했습니다(6-2·6-4절). |

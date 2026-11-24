@@ -3,20 +3,17 @@ from datetime import date, datetime, timezone
 from api.errors import ApiError
 from api.mocks.store import (
     FavoriteRecord,
-    access_sessions,
     auth_lock,
     favorite_sequence,
     favorites_by_user,
 )
 from api.schemas.favorites import FavoriteItem, FavoriteSave, FavoritesPage, FavoritesQuery
 from api.services.festival_lookup import find_festival
+from api.services.mock_auth import authenticated_access
 
 
 def _user_id(authorization: str | None, now: datetime) -> str:
-    scheme, _, token = (authorization or "").partition(" ")
-    session = access_sessions.get(token)
-    if scheme.lower() != "bearer" or session is None or session.expires_at <= now:
-        raise ApiError(401, "UNAUTHORIZED", "유효한 액세스 토큰을 보내 주세요.")
+    _, session = authenticated_access(authorization, now)
     return session.user_id
 
 
