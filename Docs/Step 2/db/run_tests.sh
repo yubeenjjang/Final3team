@@ -195,6 +195,13 @@ echo "## 5-5. 018 축제 공개·좌표 출처 적용·되돌리기·재적용"
 "${PSQL_TX[@]}" -q < 018_festival_publication.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_018_festival_publication.sql
 
+echo "## 5-6. 019_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 019_chat.sql
+"${PSQL[@]}" -q -f - < tests_019_chat.sql
+"${PSQL_TX[@]}" -q < 019_chat_down.sql
+"${PSQL_TX[@]}" -q < 019_chat.sql
+"${PSQL[@]}" -q -f - < tests_019_chat.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
