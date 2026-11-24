@@ -76,17 +76,7 @@ echo "## 2-7. 009 마이그레이션(기능 상세 시나리오) 적용 → 되�
 echo "## 3. 시험 SQL (tests_v0.3.2.sql)"
 "${PSQL[@]}" < tests_v0.3.2.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /ALL SQL TESTS PASSED/p'
 
-echo "## 4. T25 백업에 TMAP 경로 내용이 들어가지 않는지 (04 문서 7-0 ④)"
-full=$(docker exec "$NAME" pg_dump -U postgres -d noldaga | grep -c TMAP_ROUTE_MARKER || true)
-excl=$(docker exec "$NAME" pg_dump -U postgres -d noldaga --exclude-table-data=route_results | grep -c TMAP_ROUTE_MARKER || true)
-echo "전체 백업에서 표식 ${full}건 (1 이상이어야 시험이 의미 있음) / route_results 데이터 제외 백업에서 ${excl}건"
-if [ "$full" -ge 1 ] && [ "$excl" -eq 0 ]; then echo "PASS T25 — 제외 백업에 TMAP 경로 내용 없음"; else echo "FAIL T25"; exit 1; fi
-"${PSQL[@]}" < tests_v0.3.2_after_backup.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /PASSED/p'
-
-echo "## 5. 실행 계획 (explain_v0.3.2.sql)"
-"${PSQL[@]}" -q < explain_v0.3.2.sql 2>&1 | grep -E '^--- |Scan|Rows Removed|Execution Time|Planning Time|Buffers' | sed 's/^ *//'
-
-echo "## 6. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
+echo "## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
 # 010에는 자체 BEGIN/COMMIT이 있고, 011은 -1로 적용한다.
 "${PSQL[@]}" -q -f - < 010_festival_sources_public.sql
 "${PSQL_TX[@]}" -q -v seed=true -v applied=false < tests_011_route_access_token.sql
@@ -97,6 +87,27 @@ echo "## 6. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적
 "${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_011_route_access_token.sql
 "${PSQL_TX[@]}" -q < 011_route_access_token.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_011_route_access_token.sql
+
+echo "## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증"
+"${PSQL[@]}" -q -v seed=true -v applied=false -v restored=false -f - < tests_012_route_backup_evidence.sql
+"${PSQL_TX[@]}" -q < 012_route_backup_evidence.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_012_route_backup_evidence.sql
+"${PSQL_TX[@]}" -q < 012_route_backup_evidence_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -v restored=false -f - < tests_012_route_backup_evidence.sql
+"${PSQL_TX[@]}" -q < 012_route_backup_evidence.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_012_route_backup_evidence.sql
+
+archive=/tmp/noldaga_long_term.dump
+restore_db=noldaga_backup_restore
+docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
+docker exec "$NAME" createdb -U postgres -T template0 "$restore_db"
+docker exec "$NAME" pg_restore -U postgres -d "$restore_db" --single-transaction "$archive"
+docker exec -i "$NAME" psql -U postgres -d "$restore_db" -v ON_ERROR_STOP=1 -X -q \
+  -v seed=false -v applied=false -v restored=true -f - < tests_012_route_backup_evidence.sql
+"${PSQL[@]}" < tests_v0.3.2_after_backup.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /PASSED/p'
+
+echo "## 6. 실행 계획 (explain_v0.3.2.sql)"
+"${PSQL[@]}" -q < explain_v0.3.2.sql 2>&1 | grep -E '^--- |Scan|Rows Removed|Execution Time|Planning Time|Buffers' | sed 's/^ *//'
 
 echo "## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)"
 } 2>&1 | tee "$LOG"
