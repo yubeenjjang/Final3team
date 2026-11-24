@@ -1,6 +1,13 @@
 import os
+import sys
+from pathlib import Path
 
 import pytest
+
+# API는 api.*를, 공통 DB 시험은 backend.*를 사용한다.
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+for path in (_BACKEND_DIR.parent, _BACKEND_DIR):
+    sys.path.insert(0, str(path))
 
 
 def pytest_configure(config: pytest.Config) -> None:

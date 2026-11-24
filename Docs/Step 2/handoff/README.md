@@ -8,7 +8,7 @@ cd backend
 uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --port 8000
 # 브라우저: http://localhost:8000/docs  (모든 API를 눌러 볼 수 있음)
 ```
-시험: `uv run --with-requirements api/requirements.txt pytest tests/api -q` → 112개 통과(11/22).
+11/22 모의 API 시험 112개 통과. 현재 팀 공통 시험은 저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다.
 
 웹 화면(1차)은 **브랜치 `ohyun-web`**에 있습니다(프론트 담당 정예진·이수언 님과 월요일 결정 D6 뒤 `main` 병합). 보려면 `git fetch && git checkout ohyun-web` → `cd frontend && npm install && cp .env.local.example .env.local`(카카오 키는 따로 받기) → `npm run dev` → `http://localhost:3000`. 자세한 건 `ohyun-web`의 `frontend/README.md`.
 
