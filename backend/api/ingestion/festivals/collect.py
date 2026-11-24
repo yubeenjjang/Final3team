@@ -13,8 +13,12 @@ import httpx2
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.ingestion.db import IngestionDBError, create_ingestion_engine
-from api.ingestion.festivals.normalize import KST, FestivalRecord, normalize_festival
+from api.ingestion.festivals.normalize import (
+    KST, FestivalRecord, normalize_festival, source_item_id, source_version,
+)
 from api.ingestion.festivals.store import ErrorEntry, FestivalStore, JobResult, ListingScope, StoredFestival
+from api.providers.kakao import KakaoClient
+from api.providers.route_base import ProviderError
 from api.providers.tourapi import TourApiClient, TourApiError
 
 DETAIL_CALL_LIMIT = 900
@@ -66,28 +70,25 @@ def _normalize_items(
     issues: Counter[str],
     errors: list[ErrorEntry],
     stored: Mapping[str, StoredFestival] | None = None,
+    geocode: Callable[[str], tuple[float, float] | None] | None = None,
 ) -> list[FestivalRecord]:
     records: list[FestivalRecord] = []
     for item in items:
-        record = None
-        previous = None
-        changed = True
-        if stored is not None:
-            record = normalize_festival(item, today=today, details_requested=False)
-            previous = stored.get(record.source_item_id)
-            changed = should_fetch_details(record.source_updated_at, previous)
+        content_id = source_item_id(item)
+        previous = stored.get(content_id) if stored is not None else None
+        changed = should_fetch_details(source_version(item), previous)
         quota_reached = any(
             client.calls.get(endpoint, 0) >= DETAIL_CALL_LIMIT for endpoint in DETAIL_ENDPOINTS
         )
         fetch_details = changed and not no_detail and not quota_reached
         common, intro = None, None
         if fetch_details:
-            content_id = record.source_item_id if record is not None else str(item.get("contentid") or "")
             common, intro = _fetch_details(client, content_id, errors)
         elif changed and quota_reached and not no_detail:
             issues["detail_skipped_quota"] += 1
-        if record is None or fetch_details:
-            record = normalize_festival(item, common, intro, today=today, details_requested=fetch_details)
+        record = normalize_festival(
+            item, common, intro, today=today, details_requested=fetch_details, geocode=geocode,
+        )
         if stored is not None and (common is None or intro is None):
             record = _reuse_details(record, previous, changed)
         records.append(record)
@@ -95,10 +96,19 @@ def _normalize_items(
     return records
 
 
+def _geocode_address(address: str, http_client: httpx2.Client | None) -> tuple[float, float] | None:
+    try:
+        return KakaoClient(http_client).search_address(address)
+    except ProviderError:
+        # 주소 보정 실패는 해당 축제의 검토 사유로만 남겨 목록 전체의 누락 대조를 유지한다.
+        return None
+
+
 def _record_json(record: FestivalRecord, client: TourApiClient) -> str:
     data = {
         name: client.redact(value) if isinstance(value, str) else value
         for name, value in asdict(record).items()
+        if name != "listing_updated_at"
     }
     return json.dumps(data, ensure_ascii=False, default=_isoformat)
 
@@ -159,10 +169,10 @@ def _collect(args: argparse.Namespace, http_client: httpx2.Client | None) -> int
                 items = client.search_festivals(args.since, args.until)[: args.limit]
                 stored = None
                 if store is not None:
-                    stored = store.load({str(item["contentid"]).strip() for item in items
-                                         if item.get("contentid") is not None})
+                    stored = store.load({source_item_id(item) for item in items} - {""})
                 records = _normalize_items(
-                    client, items, started_at.date(), args.no_detail, issues, errors, stored
+                    client, items, started_at.date(), args.no_detail, issues, errors, stored,
+                    geocode=lambda address: _geocode_address(address, http_client),
                 )
                 for record in records:
                     output.write(_record_json(record, client) + "\n")

@@ -30,7 +30,7 @@
 - [x] R7 A02 필터·정렬·페이지
 - [x] R8 A03 상세·이미지 규칙
 - [x] R9 A01
-- [x] 전체 시험 통과. 현재 공통 명령은 저장소 루트의 `python -m pytest backend/tests -q`.
+- [x] 전체 시험 통과. 현재 공통 명령은 저장소 루트의 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`.
 - [x] commit `feat(api): mock server step1 — common errors, request id, festivals A01-A03`
 
 ## 2단계 — 귀갓길·가는 길

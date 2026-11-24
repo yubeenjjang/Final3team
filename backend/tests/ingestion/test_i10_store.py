@@ -73,7 +73,7 @@ def test_I19_nonfestival_cannot_publish(record: FestivalRecord, category: str) -
 def test_I10_insert_rerun_update_history_and_hidden(db_engine: Engine, record: FestivalRecord) -> None:
     store = FestivalStore(db_engine)
     pending = replace(
-        record, source_item_id="2", latitude=None, longitude=None,
+        record, source_item_id="2", latitude=None, longitude=None, coords_source=None,
         publishable=False, review_status="pending",
     )
     first_id = store.start_job(NOW)

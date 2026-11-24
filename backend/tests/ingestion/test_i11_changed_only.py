@@ -134,7 +134,8 @@ def test_I19_reclassifies_legacy_rows_with_cached_details_and_is_idempotent(
     assert run_collector(tmp_path / "reclassified", handler, "--db", "--no-detail") == 0
     _, report = output_files(tmp_path / "reclassified")
     assert report["calls"] == {"searchFestival2": 1}
-    assert report["issues"]["not_festival_class"] == 5
+    assert report["issues"]["not_festival_class"] == 4
+    assert report["issues"]["class_unverified"] == 1
     assert (report["db"]["inserted"], report["db"]["updated"]) == (1, 5)
     job_id = report["db"]["job_id"]
 
@@ -164,8 +165,9 @@ def test_I19_reclassifies_legacy_rows_with_cached_details_and_is_idempotent(
             WHERE field = 'source_classification' ORDER BY source_item_id
         """)).all()
         assert reasons == [
-            (source_id, {"reason": "not_festival_class", "job_id": job_id}, "ingestion")
-            for source_id in ("2536122", "292950", "3379778")
+            ("2536122", {"reason": "not_festival_class", "job_id": job_id}, "ingestion"),
+            ("292950", {"reason": "class_unverified", "job_id": job_id}, "ingestion"),
+            ("3379778", {"reason": "not_festival_class", "job_id": job_id}, "ingestion"),
         ]
         assert connection.execute(text("""
             SELECT field, count(*) FROM festival_change_history

@@ -4,7 +4,7 @@
 - 모든 요구에는 **확인 방법**이 있다. 확인 방법은 `backend/tests/api/`의 pytest 시험으로 만든다(시험 이름에 요구 번호를 넣는다. 예: `test_R4_region_filter`).
 - 실행 환경: Python 3.14(안 되면 3.13), `uv`.
   - 서버는 `backend/`에서 `uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --port 8000`으로 실행한다. API 문서 주소는 `http://localhost:8000/docs`다.
-  - 시험은 저장소 루트에서 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
+  - 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행한다.
 - import는 `backend/`를 기준으로 `from api.… import …`.
 
 ## 0. 공통
@@ -72,8 +72,9 @@
 - **확인:** `fst_000001` → `image_copyright.type=="Type3"`, `modify_allowed is False`, `image_credit=="한국관광공사"` · `fst_000002` → `modify_allowed is True` · `fst_000005` → `image_url is None` 이고 `image_copyright is None` · `fst_999999` → 404 `FESTIVAL_NOT_FOUND` · `abc` → 422.
 
 ### R9. A01 `GET /api/v1/health`
-- 200 `{status:"ok", db:"mock", redis:"mock", version:"0.1.0-mock", is_mock:true}`.
-- **확인:** 위 값 그대로.
+- 모의 모드는 200 `{status:"ok", db:"mock", redis:"mock", version:"0.1.0-mock", is_mock:true}`.
+- DB를 사용하는 API 설정에서는 앱 계정으로 연결해 `SELECT 1`을 총 1초 안에 실행한다. 성공은 200에 `status: ok`, `db: ok`, 실패는 503에 `status: degraded`, `db: unavailable`이다. 두 응답 모두 `redis: not_configured`, `is_mock: false`와 앱 버전을 포함한다.
+- **확인:** 모의 모드 DB 호출 없음, 가짜 DB 연결·쿼리 성공과 실패, 연결·쿼리 시간 초과.
 
 ## 2. 귀갓길·가는 길 (2단계)
 

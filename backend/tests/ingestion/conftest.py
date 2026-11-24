@@ -7,6 +7,11 @@ from sqlalchemy import Engine, text
 from api.ingestion.db import create_ingestion_engine
 
 
+@pytest.fixture(autouse=True)
+def clear_geocoding_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("KAKAO_REST_API_KEY", raising=False)
+
+
 @pytest.fixture
 def db_engine() -> Iterator[Engine]:
     url = os.environ.get("TEST_DB_URL")

@@ -5,7 +5,7 @@
 저장된 공급원 응답과 합성 fixture만 사용합니다.
 
 ```bash
-uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q
+uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q
 ```
 
 ## Claude 실호출

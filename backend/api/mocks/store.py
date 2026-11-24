@@ -9,6 +9,7 @@ from api.mocks.festivals import FESTIVALS, MockFestival
 from api.schemas.assistant import AssistantRequest
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import RouteDirection, RouteRequest, RouteStatus
+from api.schemas.users import FestivalPreferences
 
 
 @dataclass
@@ -60,6 +61,8 @@ class MockUser:
     display_name: str
     salt: bytes = field(repr=False)
     password_hash: bytes = field(repr=False)
+    birth_year: int
+    gender: str
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,7 @@ class FavoriteRecord:
 
 
 favorites_by_user: dict[str, dict[str, FavoriteRecord]] = {}
+preferences_by_user: dict[str, FestivalPreferences] = {}
 favorite_sequence = count()
 
 
@@ -114,6 +118,7 @@ def reset_store() -> None:
         refresh_sessions.clear()
         retired_refresh_tokens.clear()
         favorites_by_user.clear()
+        preferences_by_user.clear()
 
 
 reset_store()

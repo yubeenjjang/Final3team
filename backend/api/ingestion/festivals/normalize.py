@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from html.parser import HTMLParser
@@ -9,8 +10,11 @@ from zoneinfo import ZoneInfo
 
 KST = ZoneInfo("Asia/Seoul")
 FESTIVAL_CATEGORY = "festival"
+FESTIVAL_CLASS = "EV01"
+CLASS_UNVERIFIED = "class_unverified"
 NOT_FESTIVAL_CLASS = "not_festival_class"
-TOURAPI_CATEGORIES = {"EV01": FESTIVAL_CATEGORY, "EV02": "performance", "EV03": "event"}
+COORDS_OUT_OF_RANGE = "coords_out_of_range"
+TOURAPI_CATEGORIES = {FESTIVAL_CLASS: FESTIVAL_CATEGORY, "EV02": "performance", "EV03": "event"}
 REGION_CODES = {
     "11": "SEOUL",
     "26": "BUSAN",
@@ -64,6 +68,7 @@ class FestivalRecord:
     address: str | None
     latitude: float | None
     longitude: float | None
+    coords_source: str | None
     region_code: str | None
     category: str
     source_class_level1: str | None
@@ -82,6 +87,7 @@ class FestivalRecord:
     publishable: bool
     issues: list[str]
     raw_checksum: str
+    listing_updated_at: datetime | None
 
 
 def _text(value: Any) -> str | None:
@@ -118,17 +124,14 @@ def _dates(item: dict[str, Any], issues: list[str]) -> tuple[date | None, date |
     return start, end
 
 
-def _coordinates(
-    item: dict[str, Any], issues: list[str]
-) -> tuple[float | None, float | None]:
+def _coordinates(latitude: Any, longitude: Any) -> tuple[float, float] | None:
     try:
-        lat, lng = float(item["mapy"]), float(item["mapx"])
+        lat, lng = float(latitude), float(longitude)
         if 33 <= lat <= 39 and 124 <= lng <= 132:
             return round(lat, 6), round(lng, 6)
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except (TypeError, ValueError, OverflowError):
         pass
-    issues.append("coords_out_of_range")
-    return None, None
+    return None
 
 
 def _images(
@@ -154,13 +157,18 @@ def _event_status(start: date | None, end: date | None, today: date) -> str:
     return "ongoing"
 
 
-def _updated_at(value: Any) -> datetime | None:
+def source_version(item: dict[str, Any]) -> datetime | None:
+    value = item.get("modifiedtime")
     if not isinstance(value, str) or not re.fullmatch(r"[0-9]{14}", value):
         return None
     try:
         return datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=KST)
     except ValueError:
         return None
+
+
+def source_item_id(item: dict[str, Any]) -> str:
+    return _text(item.get("contentid")) or ""
 
 
 class _DetailHTML(HTMLParser):
@@ -213,6 +221,7 @@ def normalize_festival(
     *,
     today: date,
     details_requested: bool = True,
+    geocode: Callable[[str], tuple[float, float] | None] | None = None,
 ) -> FestivalRecord:
     issues: list[str] = []
     title = _text(item.get("title"))
@@ -222,34 +231,49 @@ def normalize_festival(
     if region is None:
         issues.append("region_unknown")
     start, end = _dates(item, issues)
-    lat, lng = _coordinates(item, issues)
+    address_parts = [_text(item.get(field)) for field in ("addr1", "addr2")]
+    address = " ".join(part for part in address_parts if part) or None
+    coords = _coordinates(item.get("mapy"), item.get("mapx"))
+    coords_source = "tourapi" if coords else None
+    if coords is None:
+        issues.append(COORDS_OUT_OF_RANGE)
+        if address and geocode:
+            result = geocode(address)
+            coords = _coordinates(*result) if result is not None else None
+            if coords is not None:
+                coords_source = "geocoded"
+    lat, lng = coords if coords is not None else (None, None)
     image, thumbnail, copyright_type = _images(item, issues)
 
     class_level1 = _text(item.get("lclsSystm1"))
     class_level2 = _text(item.get("lclsSystm2"))
     class_code = _text(item.get("lclsSystm3"))
     category = TOURAPI_CATEGORIES.get(class_level2, "unknown")
-    if category != FESTIVAL_CATEGORY:
+    if class_level2 is None:
+        issues.append(CLASS_UNVERIFIED)
+    elif class_level2 != FESTIVAL_CLASS:
         issues.append(NOT_FESTIVAL_CLASS)
-    publishable = category == FESTIVAL_CATEGORY and all(
-        value is not None for value in (title, start, end, lat, lng, region)
+    publishable = (
+        class_level2 == FESTIVAL_CLASS
+        and (coords is not None or address is None)
+        and all(value is not None for value in (title, start, end, region))
     )
     if details_requested and (not common or not intro):
         issues.append("detail_missing")
     raw_json = json.dumps([item, common, intro], sort_keys=True, ensure_ascii=False)
     common = common or {}
     intro = intro or {}
-    address_parts = [_text(item.get(field)) for field in ("addr1", "addr2")]
-
+    updated_at = source_version(item)
     return FestivalRecord(
-        source_item_id=_text(item.get("contentid")) or "",
+        source_item_id=source_item_id(item),
         title=title,
         start_date=start,
         end_date=end,
         venue_name=_text(intro.get("eventplace")),
-        address=" ".join(part for part in address_parts if part) or None,
+        address=address,
         latitude=lat,
         longitude=lng,
+        coords_source=coords_source,
         region_code=region,
         category=category,
         source_class_level1=class_level1,
@@ -263,9 +287,10 @@ def normalize_festival(
         official_url=_official_url(_text(intro.get("eventhomepage")) or _text(common.get("homepage"))),
         organizer=_text(intro.get("sponsor1")),
         event_status=_event_status(start, end, today),
-        source_updated_at=_updated_at(item.get("modifiedtime")),
+        source_updated_at=updated_at,
         review_status="approved" if publishable else "pending",
         publishable=publishable,
         issues=issues,
         raw_checksum=hashlib.sha256(raw_json.encode()).hexdigest(),
+        listing_updated_at=updated_at,
     )

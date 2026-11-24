@@ -2,7 +2,7 @@
 
 - 기준: DB 스키마 설계서 v0.3.3(5절 `festivals`·`festival_sources`·`ingestion_jobs`·`festival_change_history`·`data_sources`), API 설계문서 v0.3.3(0-1 지역 코드, 2-4 A02·A03, 10절 TourAPI). **이 SPEC에 필요한 것을 옮겨 두었으니 구현 때 설계서 전체를 읽지 않는다.** 다른 점은 `IMP-PLAN.md` '메모'에 적는다.
 - 요구 번호는 `I1`~. 시험 이름에 번호를 넣는다(예: `test_I4_region_merged_gwangju`).
-- 저장소 루트 공통 시험은 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
+- 저장소 루트 공통 시험은 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행한다.
 - import 기준 `backend/` (`from api.providers.tourapi import …`).
 
 ## 0. 실제 데이터에서 확인한 것 (11/23 Claude 실호출, 2026-01-01 이후 시작 870건)
@@ -39,7 +39,7 @@
 
 ## 2. 정규화·검사 (1단계) — `api/ingestion/festivals/normalize.py`
 ### I3. 출력 모양 `FestivalRecord`(dataclass 또는 pydantic)
-`source_item_id`(contentid), `title`, `start_date`, `end_date`, `venue_name`, `address`, `latitude`, `longitude`, `region_code`, `category`, `source_class_level1`, `source_class_level2`, `source_class_code`, `summary`, `admission_fee_text`, `image_url`, `thumbnail_url`, `image_copyright_type`, `official_url`, `organizer`, `event_status`, `source_updated_at`, `review_status`, `publishable: bool`, `issues: list[str]`, `raw_checksum`.
+`source_item_id`(contentid), `title`, `start_date`, `end_date`, `venue_name`, `address`, `latitude`, `longitude`, `coords_source`, `region_code`, `category`, `source_class_level1`, `source_class_level2`, `source_class_code`, `summary`, `admission_fee_text`, `image_url`, `thumbnail_url`, `image_copyright_type`, `official_url`, `organizer`, `event_status`, `source_updated_at`, `review_status`, `publishable: bool`, `issues: list[str]`, `raw_checksum`.
 
 ### I4. 지역 코드 (`lDongRegnCd` → API 0-1 코드)
 | 값 | 코드 | 값 | 코드 | 값 | 코드 |
@@ -55,13 +55,14 @@
 
 ### I5. 값 규칙
 - 날짜 `YYYYMMDD` → `date`. 형식이 틀리면 None + issue `date_invalid`. 끝 < 시작이면 둘 다 None + `date_invalid`.
-- 좌표: `mapy`=위도, `mapx`=경도(**순서 주의**). 위도 33~39, 경도 124~132 밖이면 둘 다 None + issue `coords_out_of_range`. 소수 6자리 반올림.
+- `mapy`는 위도(33~39), `mapx`는 경도(124~132)입니다. 유효한 원본 좌표는 소수 6자리로 반올림하고 `coords_source='tourapi'`로 저장합니다.
+- 범위 밖·누락·잘못된 좌표는 `coords_out_of_range`를 남깁니다. 주소가 있으면 `KAKAO_REST_API_KEY`로 카카오 로컬 주소 검색을 호출합니다. 주소와 결과의 시·군이 같고 시·도 및 구도 주소에 명시돼 있으면 일치하며 결과 좌표가 범위 내일 때 `coords_source='geocoded'`로 저장합니다. 보정 실패·키 미설정은 좌표 NULL 및 검토 대기입니다. 주소가 없으면 좌표와 출처가 모두 NULL입니다.
 - 이미지: `firstimage`→`image_url`, `firstimage2`→`thumbnail_url`(빈 문자열은 None). `image_url`이 있으면 `image_copyright_type=cpyrhtDivCd`(Type1/Type3만, 그 밖이면 이미지 세 칸 None + issue `image_copyright_unknown`). 이미지 없으면 세 칸 None(issue 아님).
 - `event_status`(KST 오늘 기준 `today` 인자로 받음): 날짜 없음 → `needs_review` · 오늘 < 시작 → `upcoming` · 오늘 > 끝 → `ended` · 그 밖 `ongoing`.
 - `source_updated_at` = `modifiedtime`(`YYYYMMDDHHMMSS`, KST).
 - `category`와 원본 분류 코드는 I18 규칙을 따른다.
 - `raw_checksum` = 목록·상세 원본 3개를 키 정렬 JSON으로 합친 sha256(16진수).
-- **확인:** 각 규칙 1개씩 + 실제 고정 파일의 한국 밖 좌표 1건 → None·issue.
+- **확인:** 실제 목록 fixture의 한국 밖 좌표 및 합성 카카오 응답으로 동일 시·군 보정, 지역 불일치, 범위 밖 보정, 공급원 실패, 주소 없음, 동일 목록 재시도를 확인합니다.
 
 ### I6. 상세 칸
 - `summary` = `overview`에서 HTML 태그 제거·`<br>`→줄바꿈·연속 빈 줄 1개로, 앞뒤 공백 제거, 최대 2,000자.
@@ -73,9 +74,9 @@
 - **확인:** `<br>` 섞인 소개 정리 · `<a href="https://x">` → `https://x` · 빈 입장료 → None.
 
 ### I7. 공개 판정
-- `publishable = True` 이고 `review_status="approved"`: `category='festival'` · 제목 있음 · 날짜 있음 · 좌표 있음 · `region_code` 있음.
+- `publishable=True` 및 `review_status="approved"` 조건은 `source_class_level2='EV01'`, 제목·유효 기간·지역 코드, 그리고 유효 좌표 또는 주소 없음입니다.
 - 그 밖: `publishable=False`, `review_status="pending"`(지도·목록에 안 나옴, 관리자 검토 대기). 이유는 `issues`에.
-- **확인:** 정상 → approved · 좌표 밖 → pending + `coords_out_of_range` · 날짜 없음 → pending + `needs_review` 상태.
+- 좌표와 주소가 모두 없고 공개 조건을 충족하면 A02·A03에 표시합니다. 지도 마커는 제외하고 좌표가 필요한 A04는 400 `FESTIVAL_LOCATION_UNKNOWN`, A10 실제 모드는 200 `unsupported`입니다.
 
 ## 3. 수집 실행기 (1단계) — `api/ingestion/festivals/collect.py`
 ### I8. 명령
@@ -141,6 +142,9 @@
 ### I15. 동일 범위와 전체 완료
 - `collect --db`에서 목록의 모든 페이지가 정상 완료되고 저장이 성공한 경우에만 누락을 대조한다. 재시도가 성공하면 해당 페이지는 완료다. 끝내 실패한 페이지, 잘못된 페이지 번호·전체 건수·중복/누락 ID, 한도 초과, 중단, `--limit`, 상세/저장 오류가 있으면 누락 판단을 건너뛴다. `--no-detail`은 목록 전체가 정상 완료되면 사용할 수 있다.
 - 범위는 `searchFestival2` + `--since`·`--until`(생략도 구분) + 전국 조건으로 식별한다. 지역 등 조회 조건이 추가되면 범위 식별에도 포함한다. 같은 범위의 직전 성공 목록에 있던 ID만 비교하고, 저장된 시작일도 현재 날짜 범위 안이어야 한다. 범위 기록이 없는 기존 수집과 새 범위의 첫 수집은 기준만 마련한다.
+- 11/24 `--since 2026-01-01 --no-detail --db` 수집은 성공했습니다. `_mark_missing`은 같은 범위의 이전 성공 작업이 기록한 `error.listing.ids`와 현재 ID를 비교합니다. 무안 YD 페스티벌이 그 이전 목록에 없었거나 이전 목록이 기록되지 않았다면 차집합에 들어가지 않습니다. 저장 시작일이 범위 밖이어도 제외됩니다. 보관된 11/24 보고서에는 이전 목록과 해당 행의 시작일이 없어 어느 조건에 해당했는지는 확인할 수 없습니다.
+- 운영 시 `ingestion_jobs.error.listing.scope`·`ids`와 `festival_sources.source_item_id`, 저장된 시작일을 확인합니다. 같은 조건의 첫 전체 성공은 기준을 쌓고 이후 전체 성공에서 그 목록과 비교합니다. 기존 기준에 없던 축제는 원본과 저장 행을 대조해 관리자 검토로 처리하며, 미분류 공개 행은 I19의 기준을 적용합니다.
+
 ### I16. 누락 처리 및 이력
 - 누락된 공개 축제는 `review_status='pending'`, `published_at=NULL`로 저장한다. `event_status`는 유지한다. 관리자 숨김 및 기존 검토 상태는 유지한다.
 - DB 001~010을 사용한다. 대조 가능한 작업은 `ingestion_jobs.error` JSONB에 `errors`·`listing`(범위·ID 목록)을 저장한다. 기존 오류 배열과 NULL도 읽을 수 있다. `festival_change_history`에 공개 칸 변경과 `source_presence` 전이(`missing_from_source`, `job_id`)를 같은 트랜잭션으로 저장한다.
@@ -157,10 +161,11 @@
 
 ### I19. 공개 중단과 이력
 
-- 공연·행사·미분류는 `pending`, `published_at=NULL`로 저장하고 정규화 보고서에 `not_festival_class`를 집계한다. 기존 공개 행이 이 분류로 확인되면 공개 상태와 분류 변경 이력에 더해 `festival_change_history.field='source_classification'`의 `after_value`에 `reason='not_festival_class'`와 `job_id`를 같은 트랜잭션에 기록한다. 같은 결과로 재수집하면 이력이 추가되지 않는다.
+- 공연·행사·미분류는 `pending`, `published_at=NULL`로 저장합니다. 정규화 보고서 및 공개 상태가 바뀐 행의 `source_classification` 이력에는 분류 없음은 `class_unverified`, 알려진 공연·행사 및 그 밖의 원본 코드는 `not_festival_class`를 사용합니다. 수집 이력에는 `job_id`를 기록합니다.
+- 정상 완료된 최신 DB 수집에서 원본 중분류가 없고 기존에 승인·게시됐던 행은 이번 목록에 없어도 검토 대기로 내립니다. 018 적용 시 같은 조건의 기존 행을 먼저 내리며, 되돌리기에 필요한 게시 상태와 `class_unverified` 사유를 이력에 기록합니다. 동일 결과를 다시 저장해도 사유 이력을 중복 기록하지 않습니다.
 - 관리자가 설정한 `hidden`과 게시 시각을 유지한다. 이후 EV01로 확인된 행에는 I7의 정상 승인 규칙을 적용하며, I16으로 누락 처리된 행은 I17의 관리자 검토를 기다린다.
 
 ### I20. 공개 조회
 
-- A02·A03 DB 모드와 014의 `festivals_public` RLS는 동일한 공개 조건을 사용한다. 010의 `festival_sources_public`은 공개 축제 조인으로 같은 범위를 따른다. 모의 목록·상세에도 `category='festival'`을 적용한다.
+- A02·A03 DB 모드와 018의 `festivals_public` RLS는 `category='festival'`, `source_class_level2='EV01'`, 승인, 게시 시각 있음 조건을 모두 적용한다. 010의 `festival_sources_public`은 공개 축제 조인으로 같은 범위를 따른다. 모의 목록·상세에도 `category='festival'`을 적용한다.
 - 014는 기존 분류를 추정해서 채우지 않는다. 기존 TourAPI 행은 재수집한 범위에서 새 분류가 적용된다.
