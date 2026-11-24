@@ -12,8 +12,10 @@ import getpass
 import json
 import sys
 import time
+from datetime import datetime
 
 from agents.rag.evaluate_sample import AS_OF, DIMENSIONS, DOCUMENTS, MODEL, QUESTIONS, embed
+from agents.rag.ingest_pending import store_pending_document
 from agents.rag.search import search_festival_evidence
 
 
@@ -57,22 +59,30 @@ def main() -> int:
                 print("Refusing to use a database other than rag_scratch.", file=sys.stderr)
                 return 2
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            cur.execute("CREATE TEMP TABLE festivals (festival_id text PRIMARY KEY) ON COMMIT PRESERVE ROWS")
+            cur.execute("INSERT INTO festivals VALUES (%s)", (DOCUMENTS[0]["festival"],))
             cur.execute("""
                 CREATE TEMP TABLE rag_documents (
                     document_id text PRIMARY KEY,
                     festival_id text NOT NULL,
+                    title text NOT NULL DEFAULT 'sample',
+                    category text NOT NULL DEFAULT 'faq',
                     source_url text NOT NULL,
                     publisher text,
                     published_at timestamptz,
                     effective_from timestamptz,
+                    effective_to timestamptz,
+                    collected_at timestamptz NOT NULL DEFAULT now(),
                     approval_status text NOT NULL,
-                    effective_to timestamptz
+                    checksum text NOT NULL DEFAULT 'sample',
+                    UNIQUE (source_url, checksum)
                 ) ON COMMIT PRESERVE ROWS
             """)
             cur.execute(f"""
                 CREATE TEMP TABLE rag_chunks (
                     chunk_id text NOT NULL,
                     document_id text NOT NULL,
+                    chunk_index int NOT NULL,
                     content text NOT NULL,
                     embedding vector({DIMENSIONS}) NOT NULL,
                     embedding_model text NOT NULL,
@@ -99,20 +109,31 @@ def main() -> int:
                     (doc["id"], doc["festival"], doc["source_url"], doc["effective_to"]),
                 )
                 cur.execute(
-                    "INSERT INTO rag_chunks VALUES (%s, %s, %s, %s::vector, %s, %s)",
+                    "INSERT INTO rag_chunks VALUES (%s, %s, 0, %s, %s::vector, %s, %s)",
                     (f"{doc['id']}-C1", doc["id"], doc["text"], vector_literal(vectors[index]), MODEL, "sample-v1"),
                 )
 
-            # Duplicate a valid vector with pending status so approval filtering
-            # has a positive control even though its similarity is high.
-            cur.execute(
-                "INSERT INTO rag_documents (document_id, festival_id, source_url, approval_status, effective_to) VALUES ('D4_PENDING', %s, %s, 'pending', %s)",
-                (DOCUMENTS[0]["festival"], DOCUMENTS[0]["source_url"], DOCUMENTS[0]["effective_to"]),
+            # The pending ingestion path must be idempotent and invisible to search.
+            pending_args = dict(
+                festival_id=DOCUMENTS[0]["festival"],
+                title="서울빛초롱축제 시험 문서",
+                category="faq",
+                source_url=DOCUMENTS[0]["source_url"],
+                publisher="서울특별시",
+                published_at=None,
+                effective_from=None,
+                effective_to=datetime.fromisoformat(DOCUMENTS[0]["effective_to"]),
+                collected_at=AS_OF,
+                chunks=[DOCUMENTS[0]["text"]],
+                embeddings=[vectors[0]],
+                embedding_model=MODEL,
+                embedding_version="sample-v1",
             )
-            cur.execute(
-                "INSERT INTO rag_chunks VALUES ('D4-C1', 'D4_PENDING', %s, %s::vector, %s, %s)",
-                (DOCUMENTS[0]["text"], vector_literal(vectors[0]), MODEL, "sample-v1"),
-            )
+            pending_id, inserted = store_pending_document(connection, **pending_args)
+            duplicate_id, duplicate_inserted = store_pending_document(connection, **pending_args)
+            if not inserted or duplicate_inserted or duplicate_id != pending_id:
+                raise RuntimeError("Pending document insertion was not idempotent")
+            print("pending_ingestion: first_insert=True, duplicate_insert=False")
 
             passed = 0
             query_seconds = 0.0
@@ -131,7 +152,7 @@ def main() -> int:
                 valid = (
                     (expected is None or (ids and ids[0] == expected))
                     and (question_id != "Q07" or not rows)
-                    and "D4_PENDING" not in ids
+                    and pending_id not in ids
                     and all(row["festival_id"] == festival_id for row in rows)
                 )
                 print(f"{question_id}: ranked={[(row['document_id'], round(1 - row['cosine_distance'], 4)) for row in rows]}, filters_ok={valid}")
