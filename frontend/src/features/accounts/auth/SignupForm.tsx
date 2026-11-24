@@ -88,7 +88,7 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
           {([{ value: "female", label: "여성" }, { value: "male", label: "남성" }] as const).map(({ value, label }) => (
             <label key={value} className="cursor-pointer">
               <input name="gender" type="radio" value={value} required className="peer sr-only" />
-              <span className="flex min-h-10 items-center justify-center gap-1.5 rounded-chip border border-line-light bg-bg text-sm font-bold text-muted peer-checked:border-brand peer-checked:bg-surface-soft peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-accent">
+              <span className="flex min-h-10 items-center justify-center gap-1.5 rounded-chip border border-line-light bg-surface-muted/60 text-sm font-bold text-muted peer-checked:border-brand peer-checked:bg-surface-soft peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand">
                 <UserRound size={17} aria-hidden="true" /> {label}
               </span>
             </label>
@@ -98,7 +98,7 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
       <div>
         <FieldTitle htmlFor="signup-birth-year">출생연도</FieldTitle>
         <div className={fieldClass}>
-          <CalendarDays size={18} className="shrink-0 text-accent" aria-hidden="true" />
+          <CalendarDays size={18} className="shrink-0 text-brand" aria-hidden="true" />
           <div className="relative flex min-w-0 flex-1">
             <select id="signup-birth-year" name="birth_year" required defaultValue="" className="w-full appearance-none bg-transparent py-2 pr-7 text-sm outline-none invalid:text-muted">
               <option value="" disabled>출생연도를 선택해 주세요</option>

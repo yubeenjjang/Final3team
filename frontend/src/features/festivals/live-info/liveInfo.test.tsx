@@ -263,4 +263,84 @@ describe("F7 live info", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("F7 renders multiple nearby_areas lines under 주변 지역 혼잡 without percentages", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/crowd")) {
+        return new Response(
+          JSON.stringify({
+            is_mock: false,
+            festival_id: "fst_000001",
+            status: "ok",
+            coverage: { scope: "seoul_only", region_code: "SEOUL", supported: true },
+            source: "seoul_citydata",
+            areas: [],
+            nearby_areas: [
+              {
+                area_code: "POI009",
+                area_name: "광화문·덕수궁",
+                distance_m: 0,
+                status: "ok",
+                data: {
+                  area_code: "POI009",
+                  area_name: "광화문·덕수궁",
+                  relation_type: "contains",
+                  congest_level: "여유",
+                  congest_color: "green",
+                  congest_message: "여유",
+                  population_min: 10000,
+                  population_max: 12000,
+                  observed_at: "2026-11-24T14:00:00+09:00",
+                  forecast: [],
+                },
+              },
+              {
+                area_code: "POI130",
+                area_name: "시의회 앞",
+                distance_m: 280.4,
+                status: "ok",
+                data: {
+                  area_code: "POI130",
+                  area_name: "시의회 앞",
+                  relation_type: "adjacent",
+                  congest_level: "약간 붐빔",
+                  congest_color: "orange",
+                  congest_message: "약간 붐빔",
+                  population_min: 18000,
+                  population_max: 20000,
+                  observed_at: "2026-11-24T14:00:00+09:00",
+                  forecast: [],
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          is_mock: true,
+          festival_id: "fst_000001",
+          status: "ok",
+          coverage: { scope: "seoul_only", region_code: "SEOUL", supported: true },
+          source: "operator",
+          items: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<LiveInfoSection festivalId="fst_000001" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("주변 지역 혼잡")).toBeInTheDocument();
+      expect(screen.getByText("광화문·덕수궁")).toBeInTheDocument();
+      expect(screen.getByText("시의회 앞")).toBeInTheDocument();
+      expect(screen.getByText("여유")).toHaveClass("bg-crowd-green");
+      expect(screen.getByText("약간 붐빔")).toHaveClass("bg-crowd-orange");
+    });
+    expect(screen.getByTestId("live-info-crowd").textContent).not.toContain("%");
+  });
 });

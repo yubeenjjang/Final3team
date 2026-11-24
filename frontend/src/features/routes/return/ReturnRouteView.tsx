@@ -68,27 +68,29 @@ function createRouteRequestId() {
 function ReturnRouteHero({ ready }: { ready: boolean }) {
   return (
     <div className="relative isolate overflow-hidden px-4 pb-3 pt-4">
-      <div aria-hidden="true" className="pointer-events-none absolute -right-2 bottom-0 -z-10 h-full w-[39%] bg-gradient-to-l from-accent/15 via-surface-soft/80 to-transparent">
+      <div aria-hidden="true" className="pointer-events-none absolute -right-2 bottom-0 -z-10 h-full w-[42%] bg-gradient-to-l from-surface-soft via-surface-soft/60 to-transparent">
         {ready ? (
           <>
-            <FerrisWheel className="absolute right-5 top-2 size-11 text-accent/75" />
-            <Tent className="absolute bottom-1 right-14 size-10 fill-brand/15 text-brand" />
+            <FerrisWheel className="absolute right-4 top-2 size-12 text-ink/70" strokeWidth={1.3} />
+            <Tent className="absolute bottom-1 right-14 size-11 fill-brand/20 text-brand" strokeWidth={1.5} />
             <Sparkles className="absolute right-28 top-3 size-5 text-brand/75" />
           </>
         ) : (
           <>
-            <MoonStar className="absolute right-5 top-2 size-5 text-accent/75" />
-            <Building2 className="absolute bottom-1 right-14 size-11 fill-accent/15 text-accent/60" />
-            <BusFront className="absolute bottom-1 right-6 size-9 fill-bg text-accent" />
+            <MoonStar className="absolute right-5 top-2 size-5 text-brand/70" />
+            <Building2 className="absolute bottom-1 right-14 size-11 fill-brand/10 text-muted/65" strokeWidth={1.4} />
+            <BusFront className="absolute bottom-1 right-5 size-9 fill-surface text-brand" strokeWidth={1.6} />
           </>
         )}
       </div>
-      <h1 className="flex items-center gap-2 text-[26px] font-black leading-tight tracking-tight">
+      <h1 className="flex items-center gap-2 text-[26px] font-black leading-tight tracking-tight text-ink">
         {ready ? <House size={24} className="shrink-0 text-brand" aria-hidden="true" /> : null}
         <span>집으로 <span className="text-brand">가는 길</span></span>
         {ready ? null : <Heart size={20} className="shrink-0 fill-current text-brand" aria-hidden="true" />}
       </h1>
-      <p className="mt-1 text-xs font-medium text-muted">축제의 마지막 귀갓길까지 함께해요.</p>
+      <p className="mt-1 text-xs font-medium text-muted">
+        {ready ? "축제의 마지막, 안전하고 편리한 귀갓길을 찾아드려요." : "축제의 마지막 귀갓길까지 함께해요."}
+      </p>
     </div>
   );
 }
@@ -100,14 +102,14 @@ function FestivalMapPreview({ festival }: { festival: SelectedFestival | null })
       <KakaoMap
         center={center}
         markers={[{ ...center, title: festival.venue_name || festival.name }]}
-        className="h-28 w-full"
+        className="h-32 w-full shadow-sm"
       />
     );
   }
 
   return (
-    <div className="flex h-28 flex-col items-center justify-center gap-2 rounded-card border border-line-light bg-gradient-to-br from-accent/10 via-bg to-surface-soft px-4 text-center text-xs font-medium text-muted shadow-sm">
-      <MapPinned size={25} className="text-accent" aria-hidden="true" />
+    <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-card border border-line-light bg-gradient-to-br from-surface-soft/75 via-surface to-surface-muted/70 px-4 text-center text-xs font-medium text-muted shadow-sm">
+      <MapPinned size={24} className="text-brand" aria-hidden="true" />
       {festival ? "지도에 표시할 축제 위치가 없어요." : "축제를 선택하면 지도에서 위치를 볼 수 있어요."}
     </div>
   );
@@ -249,14 +251,14 @@ export function ReturnRouteView({ festivalId, routeId }: { festivalId?: string; 
             />
           ) : null}
           {pending ? (
-            <p role="status" className="flex items-center gap-2 rounded-card border border-accent/25 bg-accent/5 px-4 py-3 text-sm font-medium">
-              <LoaderCircle size={19} className="shrink-0 animate-spin text-accent motion-reduce:animate-none" aria-hidden="true" />
+            <p role="status" className="flex items-center gap-2.5 rounded-card border border-brand/25 bg-surface-soft/65 px-4 py-3 text-sm font-semibold text-ink shadow-sm">
+              <LoaderCircle size={19} className="shrink-0 animate-spin text-brand motion-reduce:animate-none" aria-hidden="true" />
               경로를 찾고 있어요. 아직 확정된 경로가 아니에요
             </p>
           ) : null}
           {state.kind === "failed" ? (
-            <div className="space-y-2 rounded-card border border-brand/35 bg-surface-soft px-4 py-3">
-              <p role="alert" className="text-sm font-bold">{state.message}</p>
+            <div className="space-y-2 rounded-card border border-brand/35 bg-surface-soft px-4 py-3.5 shadow-sm">
+              <p role="alert" className="text-sm font-bold text-ink">{state.message}</p>
               <RouteNotices notices={state.notices?.filter((notice) => notice.trim() !== state.message.trim())} />
               {state.retry ? (
                 <button
@@ -267,7 +269,7 @@ export function ReturnRouteView({ festivalId, routeId }: { festivalId?: string; 
                     if (state.retry === "input") showInput();
                     else if (typeof state.retry === "object") void retryLookup(state.retry);
                   }}
-                  className="rounded-chip bg-brand px-3 py-1.5 text-xs font-bold text-surface disabled:opacity-60"
+                  className="rounded-chip bg-brand px-3.5 py-1.5 text-xs font-bold text-surface shadow-sm disabled:opacity-60"
                 >
                   {state.retry === "input" ? "새 경로 찾기" : "다시 시도"}
                 </button>

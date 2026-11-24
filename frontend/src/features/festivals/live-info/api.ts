@@ -1,7 +1,25 @@
 import { apiGet } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
-export type CrowdResponse = components["schemas"]["CrowdResponse"];
+export type CrowdArea = components["schemas"]["CrowdArea"];
+
+export interface NearbyCrowdArea {
+  area_code: string;
+  area_name: string;
+  distance_m: number;
+  status: "ok" | "stale" | "unavailable";
+  data?: CrowdArea | null;
+  is_estimate?: boolean | null;
+  error?: components["schemas"]["SourceError"] | null;
+}
+
+export type CrowdResponse = components["schemas"]["CrowdResponse"] & {
+  nearby_areas?: NearbyCrowdArea[];
+  is_estimate?: boolean | null;
+  unsupported_reason?: string | null;
+  source_url?: string;
+};
+
 export type WeatherResponse = components["schemas"]["WeatherResponse"];
 export type NoticeResponse = components["schemas"]["NoticeResponse"];
 

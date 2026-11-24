@@ -9,9 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#FCFCFF",
+        bg: "#FFFFFF",
         surface: "#FFFFFF",
         "surface-soft": "#FEEEF2",
+        "surface-muted": "#F4F5F7",
+        "banner-dark": "#2D2E32",
         ink: "#0A101F",
         muted: "#6B7280",
         brand: "#F0145F",

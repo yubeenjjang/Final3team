@@ -15,7 +15,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     <SignupScreen footer={(
       <>
         이미 계정이 있나요?{" "}
-        <Link href={authLink("/auth/login", { next: redirect })} className="font-extrabold text-accent underline underline-offset-2">
+        <Link href={authLink("/auth/login", { next: redirect })} className="font-extrabold text-brand underline underline-offset-2">
           로그인
         </Link>
       </>
