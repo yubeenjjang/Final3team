@@ -64,7 +64,8 @@ def test_R23_secondary_result_is_only_available_on_submit(
     )
     assert ready["completed_valid_route"] is True
     assert ready["direction"] == url.rsplit("/", 1)[-1]
-    assert ready["route_access_token"].startswith("rrt_")
+    assert "route_access_token" not in ready
+    assert "route_access_token" not in mock
     assert len(ready["route_candidates"]) == 1
     for candidate in mock["route_candidates"]:
         candidate["mode_evidence"]["bus_crowding"] = {
@@ -74,7 +75,6 @@ def test_R23_secondary_result_is_only_available_on_submit(
     assert ready == {
         **mock,
         "route_request_id": ready["route_request_id"],
-        "route_access_token": ready["route_access_token"],
         "queried_at": ready["queried_at"],
         "provider": "kakao",
         "provider_tier": "secondary",
@@ -86,13 +86,7 @@ def test_R23_secondary_result_is_only_available_on_submit(
 
     status_url = f"{url}/{ready['route_request_id']}"
     assert client.get(status_url).status_code == 401
-    assert client.get(status_url, headers={_TOKEN_HEADER: mock["route_access_token"]}).status_code == 403
-    failed = _poll(client, status_url, ready["route_access_token"])
-    _assert_unavailable(
-        failed, ready["route_request_id"], _SECONDARY_CODE, _SECONDARY_MESSAGE, retryable=True,
-    )
     assert _success(client.post(url, json=body), 200) == ready
-    assert _poll(client, status_url, ready["route_access_token"]) == failed
 
 
 def _finish_async(

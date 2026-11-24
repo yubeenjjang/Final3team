@@ -143,6 +143,29 @@ echo "T015d PASS: 사전 검사에서 중복 1건 발견 및 적용 중단"
 "${PSQL_TX[@]}" -q < 015_friendships_request_unique.sql
 "${PSQL[@]}" -q -v applied=true -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
 
+echo "## 5-3. 016 1:1 방 부분 UNIQUE 사전 검사·적용·되돌리기·재적용"
+"${PSQL[@]}" -f - < precheck_016_direct_room_key_partial_unique.sql
+"${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
+if duplicate_check=$(
+  cat tests_016_direct_room_key_partial_unique.sql \
+    precheck_016_direct_room_key_partial_unique.sql 016_direct_room_key_partial_unique_down.sql |
+    "${PSQL[@]}" -qAt -v applied=true -v probe_down=true -f - 2>&1
+); then
+  echo "T016e FAIL: 중복 키가 있는 상태에서 전역 UNIQUE가 복원되었습니다"
+  exit 1
+fi
+if ! grep -Fqx '0|1' <<< "$duplicate_check" ||
+   ! grep -Fq 'could not create unique index "chat_rooms_direct_key_key"' <<< "$duplicate_check"; then
+  printf 'T016e FAIL: 사전 검사 또는 되돌리기 차단 실패\n%s\n' "$duplicate_check"
+  exit 1
+fi
+echo "T016e PASS: 사전 검사에서 되돌리기 충돌 1건 발견 및 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique_down.sql
+"${PSQL[@]}" -q -v applied=false -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
+"${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh

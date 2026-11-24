@@ -91,7 +91,7 @@ def test_R11_default_route_is_queued(client: TestClient) -> None:
     assert queued["retry_after_s"] == 2
 
 
-def test_R11_sync_ready_payload_and_lookup(client: TestClient) -> None:
+def test_R11_sync_ready_payload_is_complete(client: TestClient) -> None:
     ready = _success(
         client.post(
             _RETURN,
@@ -106,14 +106,12 @@ def test_R11_sync_ready_payload_and_lookup(client: TestClient) -> None:
         ),
         200,
     )
-    route_id, token = ready["route_request_id"], ready["route_access_token"]
+    route_id = ready["route_request_id"]
     queried_at = ready["queried_at"]
     candidates = ready.pop("route_candidates")
     assert datetime.fromisoformat(queried_at).utcoffset() == timedelta(hours=9)
-    assert re.fullmatch(r"rrt_[0-9A-Za-z]{24}", token)
     assert ready == {
         "route_request_id": route_id,
-        "route_access_token": token,
         "route_status": "ready",
         "direction": "return",
         "festival_id": "fst_000001",
@@ -165,8 +163,7 @@ def test_R11_sync_ready_payload_and_lookup(client: TestClient) -> None:
             assert 124 <= lng <= 132
     assert legs[0]["path"][0] == [37.5759, 126.9768]
     assert legs[-1]["path"][-1] == [37.5, 126.9]
-    lookup = _success(client.get(f"{_RETURN}/{route_id}", headers={_TOKEN_HEADER: token}), 200)
-    assert lookup == {**ready, "route_candidates": candidates, "updated_at": queried_at}
+    _error(client.get(f"{_RETURN}/{route_id}"), 401, "UNAUTHORIZED")
 
 
 def test_R11_route_validation_precedes_scenario(client: TestClient) -> None:
@@ -248,6 +245,7 @@ def test_R12_default_polling_stays_ready(client: TestClient) -> None:
     }
     ready = _poll(client, queued)
     assert ready["route_status"] == "ready"
+    assert "route_access_token" not in ready
     assert ready["completed_valid_route"] is True
     assert ready["destination"] == {"type": "place", "label": "서울역"}
     assert ready["travel_mode"] == "transit"

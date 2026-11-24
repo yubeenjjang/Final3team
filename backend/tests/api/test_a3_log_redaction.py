@@ -18,7 +18,7 @@ from api.main import app
 from api.providers.kakao import KakaoClient
 from api.providers.seoul_citydata import SeoulCityData
 from api.providers.tmap import TmapClient
-from api.services import real_routes, seoul_crowd
+from api.services import mock_routes, real_routes, seoul_crowd
 
 _RETURN = "/api/v1/routes/return"
 _CROWD = "/api/v1/festivals/fst_000001/crowd"
@@ -195,12 +195,17 @@ def test_a3_requests_keep_ids_and_status_without_raw_inputs(
                 "origin": _ORIGIN, "destination": destination,
             })
             assert result["route_status"] == "ready"
-            route_ids[name] = route_ids[f"{name}-lookup"] = result["route_request_id"]
-            token = tokens[f"{name} token"] = result["route_access_token"]
+            assert "route_access_token" not in result
+            route_id = result["route_request_id"]
+            route_ids[name] = route_ids[f"{name}-lookup"] = route_id
+            # Exercise the access logger with a valid synthetic token from the test store.
+            records = real_routes.get_service()._records if mode_name == "real" else mock_routes.route_requests
+            token = tokens[f"{name} token"] = records[route_id].access_token
             looked_up = await check(
-                "GET", f"{_RETURN}/{result['route_request_id']}", f"{name}-lookup", 200,
+                "GET", f"{_RETURN}/{route_id}", f"{name}-lookup", 200,
                 token=token, params={"unused_token": token, "unused_query": _SEARCH},
             )
+            assert "route_access_token" not in looked_up
             expected = "unavailable" if mode_name == "real" and name == "coords" else "ready"
             assert looked_up["route_status"] == expected
 

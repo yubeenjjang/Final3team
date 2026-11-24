@@ -22,10 +22,11 @@ RESULT_TTL = timedelta(hours=24)
 DEFAULT_PURGE_AFTER_HOURS = 23
 
 _STATUS = """
-    SELECT route_request_id, direction, festival_id, festival_lat, festival_lng, origin_type,
+    SELECT route_request_id, direction, rq.festival_id, f.region_code, festival_lat, festival_lng, origin_type,
            destination_type, travel_mode, route_preference, constraints, status, error_code,
            error_detail, submitted_at, started_at, completed_at, access_token_hash
-      FROM public.route_requests
+      FROM public.route_requests AS rq
+      LEFT JOIN public.festivals AS f ON f.festival_id = rq.festival_id
      WHERE route_request_id = :route_id AND direction = :direction AND request_body_hash IS NOT NULL
 """
 _EMPTY_VALIDITY_CHECK = "CASE WHEN source_type IN ('cache','alternate') THEN CAST('{}' AS jsonb) END"

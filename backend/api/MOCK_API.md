@@ -34,7 +34,7 @@ uv run --offline --with-requirements backend/api/requirements.txt python -m pyte
 
 ## A04 귀갓길 접수
 
-`POST /api/v1/routes/return`은 `request_id`, `festival_id`, `destination`을 받습니다. `origin`을 생략하면 축제 장소에서 출발합니다. 사용자 장소는 `query` 또는 `lat`과 `lng`로 지정합니다. 접수 응답은 202이며 `status_url`과 `route_access_token`을 반환합니다. `sync_ready`는 200으로 경로와 조회 토큰을 반환합니다. 같은 `request_id`와 본문으로 다시 접수하면 최초 응답을 재사용하며, 본문을 바꾸면 409를 반환합니다.
+`POST /api/v1/routes/return`은 `request_id`, `festival_id`, `destination`을 받습니다. `origin`을 생략하면 축제 장소에서 출발합니다. 사용자 장소는 `query` 또는 `lat`과 `lng`로 지정합니다. 접수 응답은 202이며 `status_url`과 `route_access_token`을 반환합니다. `sync_ready`는 200으로 경로를 반환하므로 바로 표시합니다. 같은 `request_id`와 본문으로 다시 접수하면 최초 응답을 재사용하며, 본문을 바꾸면 409를 반환합니다.
 
 ## A05 귀갓길 조회
 

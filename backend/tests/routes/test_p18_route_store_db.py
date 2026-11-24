@@ -135,6 +135,7 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
             assert client.get(url, headers=headers).json()["route_status"] == "processing"
             same = client.post(_RETURN, json=body)
             assert same.status_code == 202 and same.json()["route_request_id"] == route_id
+            assert token_hash(same.json()["route_access_token"]) == token_hash(token)
             assert client.post(_RETURN, json={**body, "travel_mode": "walk"}).status_code == 409
         finally:
             tmap.gate.set()
@@ -159,10 +160,12 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
         ready = client.get(url, headers=headers).json()
         assert ready["route_status"] == "ready" and ready["completed_valid_route"]
         assert ready["provider"] == "tmap"
+        assert ready["coverage"] == {"scope": "national", "region_code": "SEOUL", "supported": True}
+        assert "route_access_token" not in ready
         assert ready["destination"] == {"type": "place"}
         assert "path" not in ready["route_candidates"][0]["legs"][0]
-        replay = client.post(_RETURN, json=body).json()
-        assert replay["route_access_token"] == token and replay["route_request_id"] == route_id
+        replay = client.post(_RETURN, json=body)
+        assert replay.status_code == 200 and replay.json() == ready
 
         with route_engine.begin() as connection:
             # 결과만 과거로 옮겨 토큰이 유효할 때의 만료 응답을 검증한다.
@@ -199,14 +202,22 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
 
 def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, festival_id, monkeypatch):
     clock = Clock()
-    use_db(route_engine, app_engine, monkeypatch, clock, FakeProvider("tmap", clock), FakeProvider("kakao", clock))
-    monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
+    tmap = FakeProvider("tmap", clock, gate=Event())
+    use_db(route_engine, app_engine, monkeypatch, clock, tmap, FakeProvider("kakao", clock))
     with TestClient(app) as client:
-        submitted = client.post(_RETURN, json=body_for(festival_id))
-        assert submitted.status_code == 200
-        ready = submitted.json()
-        assert ready["route_status"] == "ready"
-        route_id = ready["route_request_id"]
+        try:
+            submitted = client.post(_RETURN, json=body_for(festival_id))
+            assert submitted.status_code == 202
+            queued = submitted.json()
+        finally:
+            tmap.gate.set()
+        route_id = queued["route_request_id"]
+        headers = {_TOKEN: queued["route_access_token"]}
+        deadline = time.monotonic() + 3
+        while (status := client.get(queued["status_url"], headers=headers).json()["route_status"]) == "processing":
+            assert time.monotonic() < deadline
+            time.sleep(0.02)
+        assert status == "ready"
 
         with route_engine.begin() as connection:
             # 백업에서 미정리 결과가 제외된 복원 상태를 재현한다.
@@ -218,7 +229,7 @@ def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, 
                 SELECT status, result_purged_at FROM public.route_requests WHERE route_request_id = :id
             """), {"id": route_id}).one() == ("ready", None)
 
-        response = client.get(f"{_RETURN}/{route_id}", headers={_TOKEN: ready["route_access_token"]})
+        response = client.get(queued["status_url"], headers=headers)
         assert response.status_code == 200
         restored = response.json()
         assert restored["route_status"] == "unavailable"
@@ -237,11 +248,15 @@ def test_P18_db_kakao_has_no_result_row(route_engine, app_engine, festival_id, m
            FakeProvider("kakao", clock))
     monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
     with TestClient(app) as client:
-        response = client.post(_RETURN, json=body_for(festival_id))
+        body = body_for(festival_id)
+        response = client.post(_RETURN, json=body)
         assert response.status_code == 200 and response.json()["provider"] == "kakao"
         route = response.json()
         route_id = route["route_request_id"]
-        status = client.get(f"{_RETURN}/{route_id}", headers={_TOKEN: route["route_access_token"]}).json()
+        assert "route_access_token" not in route
+        replay = client.post(_RETURN, json=body)
+        assert replay.status_code == 200
+        status = replay.json()
     assert status["error"]["code"] == "ROUTE_SECONDARY_SYNC_ONLY"
     assert "route_candidates" not in status
     with route_engine.connect() as connection:
@@ -260,17 +275,19 @@ def test_P18_db_sweeper_clears_cached_api_result_at_23h(route_engine, app_engine
     monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
     with TestClient(app) as client:
         for _ in range(2):
-            response = client.post(_RETURN, json=body_for(festival_id))
+            body = body_for(festival_id)
+            response = client.post(_RETURN, json=body)
             assert response.status_code == 200 and response.json()["provider"] == "tmap"
         cached = response.json()
+        assert "route_access_token" not in cached
         cached_id = cached["route_request_id"]
         with route_engine.begin() as connection:
-            # 결과만 과거로 옮겨 토큰이 유효한 상태에서 정리 응답을 확인한다.
+            # 결과만 과거로 옮겨 조회 권한이 유효한 상태에서 재전송 응답을 확인한다.
             connection.execute(text("""
                 UPDATE public.route_results SET queried_at = :old WHERE route_request_id = :id
             """), {"old": clock.now - timedelta(hours=23), "id": cached_id})
         assert store.purge_expired(clock.now) >= 1
-        status = client.get(f"{_RETURN}/{cached_id}", headers={_TOKEN: cached["route_access_token"]})
+        status = client.post(_RETURN, json=body)
         assert status.status_code == 200
         expired = status.json()
         assert expired["route_status"] == "unavailable"

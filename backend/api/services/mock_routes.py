@@ -257,7 +257,6 @@ def _ready_payload(record: RouteRecord) -> dict[str, object]:
     return {
         "route_request_id": record.route_request_id,
         "route_status": "ready",
-        "route_access_token": record.access_token,
         "direction": record.direction,
         "festival_id": festival.festival_id,
         "origin": _format_endpoint(request.origin, festival),

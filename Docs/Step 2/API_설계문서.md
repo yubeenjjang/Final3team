@@ -12,7 +12,7 @@
 | 짝 문서 | `Docs/Step 2/DB_스키마_설계서.md` v0.5 (같은 ID 형식·필드↔컬럼 대응은 16절) |
 | 기준 문서 | **기획서 최신본(11/19 05:18 신유빈 님 공유, v3.1 다음판 — [놀다가 기획서](../Step%201/놀다가_기획서.md) — 11/23 신유빈 님이 main 최종본으로 정리)** · 기획서 v3.1(11/19 정예진) · [WBS 128개](../Step%201/놀다가_WBS.md)(필수 118, W112~W128 신규), 결정대장 D-009~D-039(팀 회의·멘토 2차 회의·11/19 사용자 결정) + 11/20 결정(추천 취향에서 아기 동반 제외 — 반려견 동반만), 팀 자체 평가 30문항(한다영 브랜치 원본, 이하 BFCL, 채점은 이 문서 최신판 기준), 17개 시·도 데이터 조사, 강사 2차 의견(11/18)·일일 피드백(11/19), 수업 가이드 「API 설계 문서 작성법」(11/18) |
 | 진행 단계 | ☑ 초안 작성(11/19) → ☑ 팀 검토 완료(11/19 신유빈·정예진) → ☑ GitHub 정본 업로드(v0.3.1, 11/19 신유빈 `91b3337`) → ☑ v0.3.2 교체·증빙 업로드(11/20 12:32 신유빈 `41c66a5`) → ☑ v0.3.3 교체·`db/`·증빙 추가 업로드(11/20 16:24 신유빈 `e8aecb4`) → ☑ v0.3.3 9-2절(운영비) 추가 → ☑ **v0.4 작성(11/23, 강사 11/20 피드백 반영)** → ☑ v0.5 팀 결정 반영(11/24) → ☐ v0.5 GitHub 정본 교체(`ohyun` 병합) → ☐ 대시보드 링크(`Docs/Step 2/API_설계문서.md`)·제출 상태 **팀 확인 대기**. 문서에 '재제출본'이라 적은 것은 대시보드 제출·접수 완료가 아닙니다 |
-| v0.4 대조 기준 | `ohyun` `f24671e`의 코드·SQL과 11/24 로컬 시험 기록. 11/27 제출 기준 커밋: 신유빈 고정 예정(`main` 병합 후) |
+| v0.5 대조 기준 | 11/24 로컬 SQL·DB 시험 기준 커밋은 `ohyun` `3368c2e`. 11/27 제출 기준 커밋은 `main` 병합 뒤 신유빈이 고정 예정 |
 | 범위 | **핵심 기능**(전국 축제 탐색 + AI 안심 귀가 + 귀가 조회 장애 자동 복구, 2~7절) + **기획서 필수 추가 기능**(맞춤 추천·지금 핫한 축제·친구·동행·채팅·알림·신고·마이페이지·AI 방문 코스·공지·축제 관리, A36~A80 — 6-2·6-3~6-6절). 그 밖의 새 기능은 14절 '확장 지점' 규칙으로 붙입니다 |
 | 실제 호출 근거 | 서울 실시간 인구(11/16) + **11/19 한태경 님 실호출 10종**(TourAPI·기상청·TAGO·서울 지하철·주차장·TOPIS·문화행사 등, 10절). **길찾기 TMAP(1차)·카카오맵(2차)도 11/19 실호출 완료**(서울·부산 정상, 한태경). 두 공급원 원본은 24시간·저장 금지 규칙으로 지웠고, 증빙은 **호출 기록표(시각·좌표·HTTP 상태·결과 건수·오류 코드) + SK 콘솔 사용량 + 합성 예시**로 남깁니다(10절, 11/20 한태경 완료). 증빙 폴더: GitHub **`Docs/Step 2/evidence/`**(이하 `evidence/`, README·원본 54개·합성 예시 7개·키 없는 호출 스크립트) |
 
@@ -55,7 +55,7 @@
 | 2 | 공급원별 저장·캐시 규칙을 **실제 처리 코드**와 맞춤, 동기 전용(카카오)·비동기 구분, 합성 예시 ≠ 실제 증거 | 🟡 일부 | **17-3절**(코드·시험 대응, 현재 동작과 예정 구분), 5절 막차 규칙, 17-4(합성 예시와 실제 호출 기록 구분) | **11/24 로컬 확인** — P18 A05 TMAP 만료(`retryable=false`)·카카오 결과 미저장·23시간 정리와 파생 값 삭제, 24시간 정리 명령 `python -m api.jobs.purge_route_results` 완료. **남은 것(막힌 이유)** — Redis 라벨 연동: 공통 Redis 연결(`backend/shared/redis.py`, 신유빈 담당)이 아직 빈 파일이라 연결 뒤 시험 · 정리 명령의 시간당 실행·실패 감시: W64·W65 AWS 구성(신유빈) |
 | 3 | 위치·대화 정보 최소 전달·열람자·로그 항목 구분, 허용/차단 시험 | 🟡 일부 | **18절** | **완료** — A04·A05·장소 검색·A10 로그 시험, A04 메모리 만료 후 장소 원문 검사, 일회용 DB 신규 행 원문 검사(P18, 11/24 DB 16개 통과), AI 실행기 결과에 경로 본문·토큰이 남지 않는 시험(한태경 tk `b7fd21a`). **남은 것(막힌 이유)** — Redis 원문 만료 시험: 공통 Redis 연결(신유빈) 뒤 · 에이전트 도구 입력 제한 시험: 한다영(Festival Agent 도구 연결 범위) · A77 관리자 열람 범위·기록 서버 시험: 신고·관리자 API가 12월 구현 범위(동행·채팅 W115~W128 뒤) |
 | 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **완료(11/24)** — `yubeen`의 D1 공통 DB 연결(`service_db_session`·`RESET ALL`)을 `ohyun`에 병합하고 A04·A05를 연결, 일회용 DB 시험 16개와 한태경 실DB 연결·권한 시험 17개(tk `649d50b`) 통과. A42 수집 출처·점수 규칙 확정(6-2, 권오현 결정·신유빈 님께 통보). **남은 것** — 확정 정책의 구현·시험. 11/24 팀 결정 14건은 19절에 기록 |
-| 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보(11/24 로컬 시험 기준 `ohyun` `241b3ba`)·전체 | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.5 제출 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
+| 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보(11/24 SQL·DB 시험 기준 `ohyun` `3368c2e`)·전체 | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.5 제출 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
 
 ### 0-A-1. 강사 11/23 일지 피드백 중 백엔드 반영 (2026-11-24)
 
@@ -63,7 +63,7 @@
 |---|---|---|---|
 | 1 | 없는 축제 ID·일시 오류·혼잡 상태 처리 | 문서 대조 완료 | 4-5절의 Festival Agent 종료·재시도 표 |
 | 3 | 실제 축제 DB·혼잡 확인 범위와 첫 시연의 모의 값 | 증빙 정리 완료 | [API 연동 현황표 1-1절](handoff/API_연동_현황표.md) |
-| 4 | 7일 백업에서 TMAP 경로 본문 제외 및 삭제 증빙 보존(SK 회신 없이 적용하는 확정 기준) | T013a~d·T25a~c 11/24 로컬 통과(SQL PASS 189). AWS 적용·검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행(AWS 환경 신유빈 관리) | 5절·17-3절, [DB 설계서](DB_스키마_설계서.md) 7-0 ④, [11/24 SQL 로그](db/results_2026-11-24.log) |
+| 4 | 7일 백업에서 TMAP 경로 본문 제외 및 삭제 증빙 보존(SK 회신 없이 적용하는 확정 기준) | T013a~d·T25a~c 11/24 로컬 통과(`3368c2e`, 전체 집계는 17-3절). AWS 적용·검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행(AWS 환경 신유빈 관리) | 5절·17-3절, [DB 설계서](DB_스키마_설계서.md) 7-0 ④, [11/24 SQL 로그](db/results_2026-11-24.log) |
 
 ## 0. 설계 원칙 (모든 API 공통)
 
@@ -244,7 +244,7 @@
 | `area_evidence` 지역 선택 근거 | **어느 역·지역으로 갈지** (예: 삼각지역이 붐비니 이태원역) | 서울 실시간 인구 혼잡 구역(OA-21778), 교통 돌발(경찰청 전국·TOPIS 서울) | 혼잡 = 서울만, 돌발 = 전국 |
 | `mode_evidence` 교통수단 선택 근거 | **무엇을 탈지** (만석 버스 대신 지하철) | 서울 버스 차내 혼잡(서울시 버스 도착정보 15000314의 혼잡 필드). 경로 속 정류장은 TMAP `stationID`(6자리)와 서울 버스 `arsId`(5자리)가 **다른 체계**라서(11/19 실호출) **정류장 이름+거리**로 연결합니다(상·하행은 노선·방향으로 구분). 2차 카카오맵 응답에는 정류장 ID가 없어 이때는 `unsupported` | 서울만. 서울 밖이면 `unsupported`, 공급원 실호출 전이면 `unverified`(0-3절). **경로 응답의 필수 부분이 아님**(없어도 경로는 제공) |
 
-- **정류장 연결 규칙(11/19 한태경 님 확인):** TMAP `stationID`, 서울 버스 `arsId`(5자리), 카카오맵(정류장 ID 없음)은 ID 체계가 다릅니다. ① TMAP `stationID`와 `arsId`가 대응되면 ID로 연결(실호출로 확인 중) ② 안 되면 **거리(임시 30m 안) + 정류장 이름 + 노선·방향**이 모두 맞을 때만 연결 ③ 길 건너 같은 이름 정류장처럼 하나로 정해지지 않으면 연결하지 않고 `mode_evidence`를 `unverified`로 둡니다(잘못 붙이지 않음).
+- **정류장 연결 규칙(11/19 한태경 님 확인):** TMAP `stationID`, 서울 버스 `arsId`(5자리), 카카오맵(정류장 ID 없음)은 ID 체계가 다릅니다. ① TMAP `stationID`와 `arsId`가 대응되면 ID로 연결(실호출로 확인 중) ② 안 되면 **거리(30m 이내, 9-1 ⑧) + 정류장 이름 + 노선·방향**이 모두 맞을 때만 연결 ③ 길 건너 같은 이름 정류장처럼 하나로 정해지지 않으면 연결하지 않고 `mode_evidence`를 `unverified`로 둡니다(잘못 붙이지 않음).
 - 버스 차내 혼잡은 **지역이 붐빈다는 근거로 쓰지 않습니다**(버스 승객은 지나가는 사람). 처음부터 다 보여 주지 않고, 사용자가 경로를 고른 뒤 그 경로의 버스에만 보여 줍니다(D-025).
 
 **추천 기준과 점수 (D-025, 기획서 FR-R01~R05 '고급 5유형'과 같은 이름, 비율 미정, Should)**
@@ -277,6 +277,8 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | `departure` | body | string | 아니요 | — | `now`만(예약 출발은 후속) | 출발 시각 |
 
 **정상 응답 필드 명세 (200)** — 202는 아래 '처리 중 응답' 필드만 돌려줍니다
+
+동기 200의 `ready` 응답에 경로 후보가 담겨 있으므로 화면에 바로 표시합니다. `status_url`과 `route_access_token`은 202 응답에서만 반환하며, A05는 그때만 조회합니다.
 
 아래 경로 상세 필드는 `ready` 기준입니다. DB 모드에서 조회 토큰 만료 후 같은 `request_id`와 본문을 보내면 기존 `route_request_id`, `route_status=unavailable`, `completed_valid_route=false`, `error`(`code`, `message`, `retryable`), `updated_at`, `is_mock`, `notices`를 반환합니다.
 
@@ -1352,7 +1354,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 
 **공통 오류 코드**
 
-오류 본문은 1절의 공통 형식을 따릅니다. SQLAlchemy 연결 풀 대기 시간 초과(DB-14)는 다음과 같이 응답합니다. `request_id`는 응답 헤더 `X-Request-ID`와 같습니다.
+오류 본문은 0절의 공통 형식을 따릅니다. SQLAlchemy 연결 풀 대기 시간 초과(DB-14)는 다음과 같이 응답합니다. `request_id`는 응답 헤더 `X-Request-ID`와 같습니다.
 
 ```http
 HTTP/1.1 503 Service Unavailable
@@ -1750,7 +1752,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `radius_m`: 500~10000, 기본 2000 / `type`: 선택 `accident`·`construction`·`event`·`control` |
 | 공급원 | 경찰청 교통돌발(UTIC, 전국, XML) + 서울 TOPIS(서울 보강, XML) |
-| 규칙 | 경찰청은 지역 필터 없이 **전국 전체가 와서 서버가 반경으로 거름**(11/19: 전국 118건). 날짜가 "2026년 11월 19일 16시 22분" 문자열이라 어댑터가 ISO 시각으로 바꿈. TOPIS 좌표 `grs80tm_x/y`는 GRS80 TM → 위경도 변환. 두 공급원에 같은 사건이 있으면 위치 100m·시간 겹침으로 하나로 합침(임시). 캐시 1분. 경로 근거(`area_evidence.traffic_incidents`)도 이 데이터를 씀 |
+| 규칙 | 경찰청은 지역 필터 없이 **전국 전체가 와서 서버가 반경으로 거름**(11/19: 전국 118건). 날짜가 "2026년 11월 19일 16시 22분" 문자열이라 어댑터가 ISO 시각으로 바꿈. TOPIS 좌표 `grs80tm_x/y`는 GRS80 TM → 위경도 변환. 두 공급원에 같은 사건이 있으면 거리 100m 이내이고 발생 시간이 겹치면 하나로 합침(9-1 ⑧). 캐시 1분. 경로 근거(`area_evidence.traffic_incidents`)도 이 데이터를 씀 |
 
 **A28 쿼리 필드**
 
@@ -1807,6 +1809,8 @@ Content-Type: application/json
 | `region` | query | string | 아니요 | 시·도 코드(0-1절), 기본 `ALL` |
 | `limit` | query | int | 아니요 | 1~20, 기본 10 |
 
+응답의 `items[].sources` 값 `naver_search`·`visitkorea`는 각각 DB의 `data_sources.source_id` 값 `trend_naver_search`·`trend_visitkorea`에 대응합니다.
+
 **수집 규칙**
 
 | 항목 | 내용 |
@@ -1827,6 +1831,9 @@ Content-Type: application/json
 
 | 응답 필드 | 타입 | 빈값 | 설명 |
 |---|---|---|---|
+| `crawled_at` | string | null 가능 | 표시한 목록에 반영된 출처의 마지막 성공 수집 시각 중 가장 최근 값. 성공 이력이 없으면 `null` |
+| `source` | string | null 가능 | 목록에 반영된 출처. 한 곳이면 `naver_search` 또는 `visitkorea`, 두 곳이면 `combined`, 성공 이력이 없으면 `null` |
+| `status` | string | 불가 | `ok`는 현재 유효한 출처로 계산, `stale`은 이전 성공 목록 표시, `unavailable`은 성공 이력 없음 |
 | `partial_sources` | boolean | 불가 | 응답 전체에 한 출처만 유효하면 `true`. 이때 화면 안내는 '일부 출처만 반영' |
 | `items[].rank` | int | 불가 | 응답 안 순서(1부터) |
 | `items[].festival_id`·`name`·`region_code`·`start_date`·`end_date`·`thumbnail_url`·`image_credit` | — | thumbnail null 가능 | `festivals` |
@@ -2315,8 +2322,8 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 |---|---|---|---|---|
 | **A74** `GET /api/v1/me/notifications` | `unread_only`·`page` | `{items[] {notification_id, type, ref_type, ref_id, created_at, read_at}, unread_count}` | user, 본인 것만(RLS, T39c). **앱 안 알림만**(외부 푸시는 범위 밖, FR-COM21). 화면은 WebSocket 연결 중이면 `notification` 이벤트로도 받음 | 401 |
 | **A75** `POST /api/v1/me/notifications/read` | `{ids[]}` 또는 `{all: true}` | 204 | 읽음 칸만 바꿈(T39a·b) | 401 |
-| **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상 하루 1회(임시). 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
-| **A77** `GET`·`POST /api/v1/admin/reports` | GET `status`·`page` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 그 시험은 **구현 예정**(W128 권한 검증, 12/17–18. T40c는 기록 삭제 차단만 확인, 18-2). 메시지 숨김은 `chat_messages.deleted_at`(+ Redis 최근 목록에서 삭제), 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
+| **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 하루 1회(9-1 ⑧). 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
+| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 그 시험은 **구현 예정**(W128 권한 검증, 12/17–18. T40c는 기록 삭제 차단만 확인, 18-2). 메시지 숨김은 `chat_messages.deleted_at`(+ Redis 최근 목록에서 삭제), 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
 | **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(04 문서 7-0 ② '계정·프로필'과 같은 목록): Refresh 토큰 전부 폐기 → 진행 중 동행 글 `cancelled`·신청 `cancelled` → 친구 관계·신청·차단 삭제 → 방 멤버 `left`(방장이면 가장 먼저 들어온 멤버가 방장, FR-COM17) → 관심 축제(`favorites`)·취향(`user_festival_preferences`)·알림 삭제 → 챗봇 질문·답변(`assistant_runs`) 즉시 삭제 → `profiles` 닉네임·출생연도·성별 NULL → `users`는 행을 지우지 않고(감사 기록 FK) **이메일을 `deleted+<user_id>@invalid`, 비밀번호 해시를 `'!'`(로그인 불가)로 덮어쓰고 `status='deleted'`**(DDL NOT NULL 유지, 시험 T42l). **커밋 뒤**: `revoked:{jti}` 등록, 열린 WebSocket 끊기, LangGraph 체크포인트(`thread_id`) 삭제 — 실패하면 워커가 재시도. 다른 사람에게는 "알 수 없음"으로 표시(`app_public_display_name`이 NULL). 메시지 본문은 방 보존 정책대로 지워짐(FR-COM24). 백업(7일)에서 복원하면 탈퇴 목록으로 다시 지움 | 401 / 403(비밀번호 불일치) |
 
 **A74 알림 목록·A75 읽음 처리**
@@ -2345,8 +2352,9 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | `reason` | body | string | A76 예 | `spam`·`abuse`·`harassment`·`fraud`·`privacy`·`other` |
 | `detail` | body | string | A76 선택 | 신고 상세, 500자 이하 |
 | `report_id` | 응답 | string | A76 예 | 생성한 신고 ID(`rpt_…`) |
-| `status` | query | string | A77 GET 선택 | `received`·`reviewing`·`actioned`·`dismissed` |
-| `page` | query | int | A77 GET 선택 | 조회할 페이지 번호 |
+| `status` | query | string | A77 GET 목록 선택 | `received`·`reviewing`·`actioned`·`dismissed` |
+| `page` | query | int | A77 GET 목록 선택 | 조회할 페이지 번호 |
+| `report_id` | query | string | A77 GET 상세 필수 | `^rpt_[0-9A-Za-z]{6,26}$`, 상세 조회할 신고 ID |
 | `report_id` | body | string | A77 POST 예 | `^rpt_[0-9A-Za-z]{6,26}$`, 처리할 신고 ID |
 | `action` | body | string | A77 POST 예 | `dismiss`·`hide_message`·`hide_post`·`close_room`·`block_user` |
 | `note` | body | string | A77 POST 예 | 관리자 처리 메모 |
@@ -2363,15 +2371,17 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | `message_id` | 응답 | int (64비트) | 메시지 신고 열람 | 신고된 메시지 한 건의 ID |
 | `body` | 응답 | string 또는 null | 메시지 신고 열람 | 신고된 메시지 한 건의 본문 |
 
-A77 응답 본문(200, 11/24 확정)은 위 데이터를 아래처럼 묶습니다. 조회할 때마다 `chat_admin_access`에 열람 기록(관리자·방·신고·사유)이 먼저 남습니다.
+A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`는 목록에 적용하고, `report_id`로 상세 한 건을 조회합니다. 채팅 신고 상세를 열람할 때마다 `chat_admin_access`에 관리자·방·신고·사유를 먼저 기록합니다.
 
-| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+| 필드 | 응답 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `report` | 응답(GET) | object | 예 | `report_id`·`target_type`(`room`·`message`)·`reason`·`status`(`received`·`reviewing`·`actioned`·`dismissed`, 007 `reports.status`)·`created_at` |
-| `room` | 응답(GET) | object | 예 | `room_id`·`room_type`·`name`·`status` (위 표) |
-| `message` | 응답(GET) | object 또는 null | 메시지 신고만 | `message_id`·`seq`·`sender_id`·`body`·`created_at` — 신고된 **한 건만**. 채팅방 신고는 `null`(원문 비공개) |
-| `access_id` | 응답(GET) | string | 예 | 이번 조회로 남은 열람 기록 ID |
-| `report_id`·`status`·`handled_by`·`handled_at` | 응답(POST 처리) | object | 예 | 처리 결과. `handled_by`는 관리자 `user_id` |
+| `items` | GET 목록 | array<object> | 예 | 신고 요약 목록. 각 항목은 아래 `report` 필드를 사용. 0건이면 빈 배열 |
+| `page` | GET 목록 | int | 예 | 반환한 페이지 번호 |
+| `report` | GET 상세 | object | 예 | `report_id`·`target_type`(`companion_post`·`chat_message`·`chat_room`·`user`)·`target_id`·`reason`·`status`(`received`·`reviewing`·`actioned`·`dismissed`)·`created_at` |
+| `room` | GET 상세 | object 또는 null | 예 | 채팅 신고에는 `room_id`·`room_type`·`name`·`status`. 동행 글·사용자 신고는 `null` |
+| `message` | GET 상세 | object 또는 null | 예 | `chat_message`의 신고된 한 건만 `message_id`·`seq`·`sender_id`·`body`·`created_at`을 반환. 나머지는 `null` |
+| `access_id` | GET 상세 | int (64비트) 또는 null | 예 | 이번 채팅 열람 기록의 ID(`chat_admin_access.access_id`, BIGSERIAL). 동행 글·사용자 신고는 `null` |
+| `report_id`·`status`·`handled_by`·`handled_at` | POST 처리 | object | 예 | 처리 결과. `handled_by`는 관리자 `user_id` |
 
 **A80 탈퇴 요청 (204)**
 
@@ -3170,6 +3180,15 @@ BFCL 30문항의 원본은 한다영 브랜치에 있으며, 채점에는 API �
 
 W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니다.
 
+**⑧ 연결·중복 판정·집계 기준**
+
+| 항목 | 값 | 쓰는 곳 | 이유 | 상태 | 담당 |
+|---|---|---|---|---|---|
+| 정류장 연결 거리 | 30m 이내 | A04·A25 경로의 버스 정류장 연결(2-1절) | ID로 연결할 수 없을 때 이름과 노선·방향도 일치하는 후보만 연결 | 확정(11/24) | 권오현 |
+| 교통 돌발 병합 거리 | 100m 이내 | A28 경찰청·TOPIS 돌발 병합(6-2절) | 인접하고 발생 시간이 겹치는 같은 사건을 한 건으로 집계 | 확정(11/24) | 권오현 |
+| 같은 대상 신고 제한 | 신고자당 하루 1회 | A76 신고 등록(6-4-6절) | 같은 신고자가 동일 대상에 반복 신고하는 것을 방지 | 확정(11/24) | 권오현 |
+| `window_at` 시간창 | 10초 | A16·`route_query_metrics` 지표 집계(DB 설계서 6절) | 같은 10초 구간의 운용·부하 지표를 묶어 비교 | 확정(11/24) | 권오현 |
+
 **중복 실행 방지 키가 작업보다 먼저 만료되지 않는지 대조**
 
 | 키 / 보관 위치 | 키 수명 | 지켜야 할 작업의 최대 시간 | 판정 |
@@ -3674,9 +3693,9 @@ TMAP 정리는 013까지 적용한 DB에 연결해 `backend/`에서 `python -m a
 
 팀 공통 시험은 저장소 루트의 `python -m pytest backend/tests -q`입니다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
 
-11/24 기준 커밋은 `ohyun`의 `241b3ba`입니다. 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `Docs/Step 2/db/run_tests.sh` PASS 표기 189건(001~015 적용, 011~014 되돌리기·재적용, T25a~c 복원 포함)을 확인했습니다. 001~014 적용 후 저장소 루트의 `python -m pytest backend/tests -m db -q`는 P18을 포함해 16개 통과했습니다. 오프라인 전체 `python -m pytest backend/tests -q`는 424개 통과·20개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](db/results_2026-11-24.log)
+11/24 SQL·DB 시험 기준 커밋은 `ohyun` `3368c2e`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~015를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 189줄(개별 시험 PASS 184건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 424개 통과·20개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](db/results_2026-11-24.log)
 
-장소 원문 검사 추가 후 오프라인 전체는 424개 통과·20개 건너뜀입니다. 메모리 검사는 통과했고, 신규 DB 행 검사는 이 실행에서 `TEST_DB_URL`이 없어 건너뛰었습니다(18-2절).
+장소 원문 검사는 오프라인에서 메모리 시험을 통과했습니다. 신규 DB 행 검사는 오프라인에서 `TEST_DB_URL`이 없어 건너뛰었고, 11/24 로컬 `-m db` 실행에서는 통과했습니다(전체 16개, 18-2절).
 
 | 규칙(5절·9절) | 현재 동작(코드 기준, 11/24) | 시험 함수 | 구현 예정(언제·누가) |
 |---|---|---|---|
@@ -3777,7 +3796,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | A04·A05·장소 검색·A10 서버 로그에 출발·도착 좌표(소수 4자리 이상)·장소 검색어·조회 토큰·키 원문 없음. 요청 ID와 HTTP/처리 상태는 기록 | ✅ 모의·실제 모드(가짜 전송) | `backend/tests/api/test_a3_log_redaction.py`. Python 로깅과 Uvicorn HTTP/1.1 접근·ASGI 추적 로그를 오프라인으로 캡처. 500 응답과 원문을 고의로 기록한 대조 시험도 통과 |
 | 다른 요청의 토큰으로 경로 조회 → 403 | ✅ | `backend/tests/api/test_step2_routes.py`의 `test_R12_lookup_validates_id_and_token_without_advancing_state` |
 | 게시 시각이 있어도 검토 대기 축제는 A02·A03에서 제외 | ✅ 수집 DB 시험 | `backend/tests/ingestion/test_i12_catalog_db.py`. 010 권한 시험 T010a~e는 별도이며 [수집 구현 계획 3단계 첫 문단](../../backend/Doc/festival-ingestion/IMP-PLAN.md#3단계--a02a03-db-조회-i12i13)에 통과 기록만 있음(DB 설계서 10-A-3) |
-| A04 DB의 `route_requests`·`route_results` 행에 출발·도착 좌표(소수 4자리 이상)·장소 검색어가 없음 | 🟡 시험 추가, `TEST_DB_URL` 설정 시 실행 | `backend/tests/routes/test_p18_route_store_db.py`의 `test_a3_db_route_rows_exclude_raw_places_before_and_after_purge`. 정리 전후 두 테이블의 전체 행과 장소 해시 칸 검사 |
+| A04 DB의 `route_requests`·`route_results` 행에 출발·도착 좌표(소수 4자리 이상)·장소 검색어가 없음 | ✅ 11/24 `-m db` 통과(전체 16개) · 오프라인에서는 `TEST_DB_URL` 미설정으로 건너뜀 | `backend/tests/routes/test_p18_route_store_db.py`의 `test_a3_db_route_rows_exclude_raw_places_before_and_after_purge`. 정리 전후 두 테이블의 전체 행과 장소 해시 칸 검사 |
 | 에이전트 도구 입력에 채팅 원문·좌표가 없음 | ⬜ 예정 | 한다영 W24·W25(11/27) 도구 스키마 시험 |
 | A04 TMAP 캐시 만료 뒤 메모리 저장소에 출발·도착 좌표·장소 검색어가 없음 | ✅ 오프라인 통과 | `backend/tests/routes/test_p9_real_routes.py`의 `test_a3_memory_expiry_removes_raw_places_from_all_cached_requests`. `ROUTE_STORE=memory`에서 공유 캐시·요청 기록과 재전송 검사 |
 | 만료·삭제 뒤 Redis에 장소 원문이 없음 | ⬜ 연결 후 시험 | 권오현, Redis 장소 라벨 연동 후 |
@@ -3788,7 +3807,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 결정 | 상태 | 반영된 곳 (API·도구·시험) | 작성 / 검토 | 날짜 |
 |---|---|---|---|---|
-| D1 DB 접근: SQLAlchemy 2 + psycopg 3, 계정 2개, 트랜잭션마다 `SET LOCAL`, 로그인 요청은 `user_db_session(user_id)` | 🟡 합의 · `yubeen` 브랜치에 구현, `ohyun` 미병합 | `backend/shared/db/session.py`(신유빈, `yubeen` 브랜치 `83220c9`). 지금 `ohyun`의 수집·축제 조회 코드는 자체 연결을 씀 → 병합 뒤 이 연결로 교체. DB 시험 T21~T23(SQL 시험) | 권오현 / 신유빈 | 11/23 |
+| D1 DB 접근: SQLAlchemy 2 + psycopg 3, 계정 2개, 트랜잭션마다 `SET LOCAL`, 로그인 요청은 `user_db_session(user_id)` | ✅ 11/24 `ohyun` 병합·PG17 실DB 연결·권한 시험 17개 통과(tk `649d50b`) | `backend/shared/db/session.py`(신유빈, `83220c9`)의 `service_db_session`을 A04·A05에 연결. 수집·축제 조회는 별도 연결 사용. SQL T21~T23, DB 설계서 10-A절 | 권오현 / 신유빈 | 11/24 |
 | 관심 저장 도구 호출 주체 = Supervisor | ✅ 문서 | 4절 표(변경 없음), 인계 문서 수정 | 권오현 / 검토 대기 | 11/23 |
 | 에이전트 실패 → 규칙 정책(B1) → 안 되면 확인 불가 | 🟡 구현 전 | 7절, 상태 전이 설계(W25) | 한다영·권오현 / 검토 대기 | 11/23 |
 | 카카오 결과 동기 전용 | ✅ 코드·시험 | 17-3 | 권오현 / 검토 대기 | 11/23 |
@@ -3798,7 +3817,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | `route_key` v2 HMAC | ✅ 조건·통제 버전·공급원 반영 및 기존 요청 조회 호환 | 17-3, DB 설계서 4절 | 권오현 / 검토 대기 | 11/24 |
 | 귀가 조회 토큰 확인 칸(011 `access_token_hash TEXT NOT NULL`, 원본 토큰은 DB에 저장하지 않음). 로그인·비로그인 모두 A05 토큰 해시 비교, **`user_id` 칸은 두지 않음** | ✅ 신유빈 11/24 10:29 확정. API DB 환경변수는 `.env.example` 기준. 011 이전 요청은 보존하고 토큰 재발급 없이 새 요청으로 조회. 권오현이 정리 명령을 제공하고 신유빈이 W64·W65에서 시간당 실행·실패 감시 | DB 설계서 4·7-0·8절과 API 17-3절. 011과 A04·A05 로컬 DB 시험 11/24 통과. 기존 요청은 보존하고 토큰 조회 대상에서 제외. [STEP4 SPEC](../../backend/Doc/route-providers/SPEC.md#7-step4-db-저장-강사-db-피드백-4) | 권오현 / 신유빈 | 11/24 |
 | 축제 실제 수집 코드 = `api/ingestion/festivals/`(권오현), `tourapi_snapshot.py`(신유빈)는 증빙 파일 검증용 | ✅ 합의(11/23 신유빈) | 17-1 | 권오현 / 신유빈 | 11/23 |
-| 연결 반납 때 `RESET ALL`(앞 사용자 정보 남지 않게) | 🟡 `yubeen` 브랜치에 구현(`6f767d9`), `ohyun` 미병합 · **독립 재검증 DB-09 통과(11/23 한태경, PG16 일회용 DB, 추가 시험 8개 + `test_session.py` 6개, 수정 전 방식으로 결함 재현 대조군 포함)** · 남은 것: PG17(pgvector:pg17)로 같은 시험 재실행, `ohyun` 연결 | 코드 `backend/shared/db/connection.py`, 시험 `backend/tests/db/test_session.py` 6개(둘 다 `yubeen` 브랜치), DB 설계서 3절 ⑤ | 권오현(기록) / 신유빈·한태경 | 11/23 |
+| 연결 반납 때 `RESET ALL`(앞 사용자 정보 남지 않게) | ✅ 11/24 `ohyun` 병합·PG17 실DB 연결·권한 시험 17개 통과. 11/23 별도 DB-09 세션 누출 회귀 시험 통과 | `backend/shared/db/connection.py`(`6f767d9`), `backend/tests/db/test_session.py` 6개, DB 설계서 3절 ⑤·10-A절 | 권오현(기록) / 신유빈·한태경 | 11/24 |
 | TourAPI 지역 코드 `12`(전남광주통합특별시) 나누기 | ⬜ 미결정(임시: 구→광주, 시·군→전남) | 0-1 지역 코드 | 권오현 → 팀 / 검토 대기 | 11/23 |
 | RAG 임베딩 모델·차원·검색 방식·재적재·앱 사용법 포함 여부 | ✅ 결정(11/24): `text-embedding-3-small`·`dimensions=1024`, HNSW 코사인·필터 먼저, 청크 500자·50자 겹침, 모델 변경 시 전체 재적재, 문서 범위 축제 공식 안내문 | DB 설계서 2절, WBS W27 | 한다영(초안)·권오현(결정) | 11/24 · 확인 결과는 샘플 검색 뒤 2절에 기록 |
 
@@ -3839,8 +3858,8 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.3.3 | 2026-11-20 | **팀 답변 반영(11/20 오후)**: A42 `GET /api/v1/festivals/trending` 지금 핫한 축제(크롤링·LLM 없음·규칙 연결, 6-2, 6-1 크롤링 제외 범위 수정, 13절 공급원), A36 취향 값 5개, 6-3 결정 반영(추천 신유빈·채팅 WebSocket·동행 3일/친구 30일·채팅 열람 참여자·관리자·권한 기준안), 목적지 라벨을 DB에서 빼 Redis 24시간(`ROUTE_LABEL_TTL_H`)·장소 해시 HMAC, `TREND_CRAWL_SCHEDULE`, 태경님 남은 확인 일정(11/20·11/24·11/25), 증빙 파일명 실제와 맞춤(`합성예시_kakao-transit_*`), GitHub 업로드 상태(v0.3.2 `41c66a5`)  **추천·친구 상세(6-4)**: 축제 → 취향 5개 분류(규칙 후보 → LLM 검증 → 근거 문장이 원문에 그대로 있는지 코드 확인), 점수 `rec-0.1`, A36~A41 상세, **친구 API A43~A50**(친구 코드 검색·신청·수락·차단, 친구 추천은 범위 밖), DB 005 연결, 오류 코드 4개, `TAG_LLM_DAILY_MAX`  **강사 11/20 자료 「설계서 한 줄을 실제 동작으로 연결하기」 반영**: 6-5 기능 연결표(요구사항→화면→API→도구→DB→시험, 실행 범위 A~D 표시, 계약 담당·인계), A06-1 모의 응답 3가지(진행 중·완료·실패)  **기획서 필수 기능 전체 대조(15-1 추적표, Must 131개 모두 위치 연결)**: 빠져 있던 **A51 AI 방문 코스**(FR-P01·P03, 코스 검증 규칙)·**A52~A54 공식 공지 등록·수정·승인**(FR-O06·D05)·**A55~A56 축제 직접 등록·수정**(FR-D12·O10) 추가(6-6), DB 006 연결, 오류 코드 2개  **동행·채팅·알림·신고 상세(6-4-4~6-4-6)**: A57~A65 동행(정원 잠금 승인·재신청 규칙·만남 장소 권한·자동 종료), A66~A73 채팅 + WebSocket 메시지 형식(DB 저장 뒤 ACK, `client_message_id` 중복 방지, 방별 순서, 입장 뒤 메시지만, 초대 수락 전 차단, 방장 승계), A74~A80 알림·신고(관리자 열람 기록)·마이페이지·탈퇴, DB 007 연결, 9-1 채팅 제한값, 오류 코드, 15-1 추적표 FR-COM 전부 ✅ **제출 전 교차 검토 반영(15:00~16:30)**: Claude·Codex·agy 지적 중 문서 19건 — 범위·검토 기록·6절 범위표 옛 문장, 1절 권한표, **인증 A32~A35 상세(1-1)**, 2차 공급원 전환 기준(10-3 표 기준·동기 3초), 운행 종료 후보 제외, A06-1 `route_access_token`·`run_kind`·`result`, 에이전트 입출력 파일 경로 금지, 채팅 Redis 거르기·구독 해제·`notification` 이벤트·경로 등록 순서, A77 글 숨김, A80 탈퇴 목록·덮어쓰기, 12절 Supabase 문장, 14절 크롤링, 10-1·11절 완료 항목. **한태경 11/20 15:03**: 공식 한도(9-1 ⑤), TMAP 유료 전환 제약·오류 포함 셈, 카카오 공식 답변(저장 불가·타사 지도 표시 가능), 서울 정류장 OA-15067, 이미지 CSS 크기 조절, 15:48 최종 정리(`service`·`lane` 판단, SK 문의 11/20 발송, OA-15067 확인 완료, 관광공사 문의 안 함). **추천**: 취향 `pet_or_baby` → `pet`(아기 동반 제외, 반려견은 별도 칸 없이 취향 값 하나 — 기획서 11/20 15:32 main과 같음). **9-2절 추가(16:30)**: 경로 1회 비용·예상 운영비 계산식·빈칸 담당(강사 요청). **16:45**: 한태경 단가 확인(TMAP 0.88원 부가세 포함, 카카오 초과 11원·장소 검색 2원·지도 0.1원), 증빙 스크립트 카카오 저장 제거 ✅. 제출 뒤 처리 11-1절 **기능 상세 시나리오 반영(17:30, 신유빈 초안 + 사용자 결정)**: A04 `origin`(출발 위치 변경)·A25 `destination`(도착 변경), A32 닉네임·출생연도·성별 필수, A43 닉네임 정확히 일치 검색(친구 코드 삭제)·A78 닉네임 변경, A61 신청자 나이·성별(작성자만), A76 `chat_room` 신고, 앱 사용법 RAG — DB 009. 크롤링(A42)은 유지. **17:31 변경분 교차 검토(Claude·Codex·agy) 반영**: 닉네임 검색 차단 관계 제외, 3절 `Endpoint` 입력 모델, 9-2 카카오 최대 154,000원/일·유료 가정 표시, A61 나이(출생연도 대신), A77 `close_room`, `NICKNAME_TAKEN` 공통 오류, 나머지 11-1 #15 |
 | v0.4 | 2026-11-23 | **STEP4 귀가 DB 저장(강사 DB 4)**. 011·A04/A05 요청 상태·TMAP 요약 저장, 서비스 계정 토큰 확인·10분 만료, 카카오 동기 전용과 TMAP 정리 구현(17-3·19절). |
 | v0.4 | 2026-11-23 | **강사 API 3 백엔드 로그 시험**. A04·A05·장소 검색·A10의 원문 차단과 요청 ID·상태 기록을 모의·실제 모드(가짜 전송)에서 검증하고 0-A·18절 갱신. |
-| v0.4 | 2026-11-24 | `ohyun` `f24671e` 기준 로컬 011·012·P18·T25a·b 시험 결과를 반영하고 A04 메모리 원문 정리와 메모리·DB 원문 검사 추가, Redis 연결 후 시험을 0-A·18절에 기록. |
+| v0.4 | 2026-11-24 | 로컬 011·012·P18·T25a·b 시험 결과를 반영하고 A04 메모리 원문 정리와 메모리·DB 원문 검사 추가, Redis 연결 후 시험을 0-A·18절에 기록. |
 | v0.4 | 2026-11-24 | DB 모드 A05 만료 문구를 새 경로 요청 안내로 변경. 012 복원 후 `ready` 요청의 결과 행이 없으면 `ROUTE_RESULT_EXPIRED`(`retryable=false`)로 응답하는 동작을 명시하고 회귀 시험 추가(2-2·6절 공통 오류표·17-3절). |
-| v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 A05·정리 명령의 TMAP 본문 삭제 시각을 요청에도 기록하고, 7일 백업 복원 검사 T25c 추가(0-A·5·17-3절). SQL 재실행 대기. |
+| v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 A05·정리 명령의 TMAP 본문 삭제 시각을 요청에도 기록하고, 7일 백업 복원 검사 T25c 추가(0-A·5·17-3절). 11/24 로컬 SQL 결과는 17-3절에 기록했습니다. |
 | v0.4 | 2026-11-24 | STEP7 경로 키 v2(분석 #26), DB 연결 풀 과부하 503(DB-14), SK 회신 없이 적용하는 TMAP 정리 확정 기준 및 시험을 반영했습니다(2·6·17-3절). |
-| v0.5 | 2026-11-24 | API 3번 감사 반영. 누락된 API 필드와 조회 쿼리, 202 응답, SSE·WebSocket 이벤트 및 A79 유형별 목록을 명세하고 6절 작성 현황을 갱신했습니다. |
+| v0.5 | 2026-11-24 | API 3번 감사 반영. 누락된 API 필드와 조회 쿼리, 202 응답, SSE·WebSocket 이벤트를 명세하고 6절 작성 현황을 갱신했습니다. 이후 11/24 팀 결정에 따라 A79 유형별 목록은 최종 범위에서 제외했습니다(6-4-6절). |

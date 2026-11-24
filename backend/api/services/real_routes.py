@@ -192,7 +192,7 @@ class RealRouteService:
         failure = record.failure
         if failure is not None and failure.http_status != 200:
             raise ApiError(failure.http_status, failure.code, failure.message, failure.retryable)
-        return 200, {**self._status_payload(record), "route_access_token": record.access_token}
+        return 200, self._status_payload(record)
 
     async def get_route_response(
         self, direction: RouteDirection, route_id: str, access_token: str | None,
@@ -556,9 +556,9 @@ class RealRouteService:
             return 200, self._state_payload(route_id, "unavailable", self._now(), _ACCESS_EXPIRED)
         if failure is not None and failure.http_status != 200:
             raise ApiError(failure.http_status, failure.code, failure.message, failure.retryable)
-        payload["route_access_token"] = token
         if payload["route_status"] in ("queued", "processing"):
             payload["status_url"] = f"/api/v1/routes/{direction}/{route_id}"
+            payload["route_access_token"] = token
             return 202, payload
         return 200, payload
 
@@ -593,7 +593,8 @@ class RealRouteService:
                 "queried_at": as_kst(result["queried_at"]).isoformat(),
                 "verification_status": "control_unverified",
                 "constraint_status": self._constraint_status(request["constraints"]),
-                "coverage": {"scope": "national", "supported": True}, "score_version": None,
+                "coverage": {"scope": "national", "region_code": request["region_code"], "supported": True},
+                "score_version": None,
                 "notices": [_CONTROL_NOTICE, *result["evidence"].get("notices", [])],
             })
         return failure, payload
@@ -652,7 +653,6 @@ class RealRouteService:
         return {
             "route_request_id": record.route_id,
             "route_status": "ready",
-            "route_access_token": record.access_token,
             "direction": record.direction,
             "festival_id": festival.festival_id,
             "origin": _format_endpoint(request.origin, festival),
