@@ -8,6 +8,7 @@
 | STEP4 DB 저장 | Codex | P16~P19 (강사 DB 피드백 4) | 009·010과 A04·A05 동작 확인 |
 | STEP5 공통 DB 연결 | Codex | P20·P21 (공통 서비스 세션·공통 시험 명령) | `origin/yubeen` 병합 확인 |
 | STEP6 TMAP 정리 명령 | 권오현 / 신유빈 | P22 정리 명령·시험 / 시간당 실행·실패 감시(W64·W65) | 11/24 10:29 합의 · 운영 DB 011 적용 |
+| STEP7 귀가 경로 후속 | 권오현 | P23 키 v2 · P24 풀 대기 초과 · P25 TMAP 파생 값 정리 | STEP6 정리 명령 |
 | 3-실행 | Claude | 실제 호출: **TMAP 3건 이내**(한태경 님 같은 날 사용 여부 먼저 확인)·카카오 대중교통 3건·장소 검색 3건 → 응답은 모양만 확인 후 **바로 삭제**(TMAP 24시간·카카오 저장 금지), 결과는 호출 기록 표로만. 노트북 시연에 `ROUTE_PROVIDER=real` 적용 여부는 오현 님이 결정 | 2단계 시험 통과 |
 
 ## 1단계 — 공통 형식·TMAP·카카오 어댑터·한도
@@ -107,9 +108,17 @@
 - 실행은 `backend/`에서 `python -m api.jobs.purge_route_results`, 저장소 루트에서 `PYTHONPATH=backend python -m api.jobs.purge_route_results`다. `--dry-run`은 대상 건수만 출력한다. 코드 `0`은 완료(0건 포함), `1`은 실행 실패, `2`는 인자 오류, `3`은 중복 실행이다. [운영 절차](codex/STEP6.md)
 - 11/27 제출 기준 커밋: 신유빈 고정 예정(`main` 병합 후)
 
+## STEP7 귀가 경로 후속
+
+- [x] P23 `api/services/real_routes.py`의 v2 키로 TMAP 캐시·병합을 분리하고 카카오 동기 전환에 공급원별 키를 적용했다. 기존 요청의 ID·본문 해시로 멱등 재전송을 검증한다.
+- [x] P24 `api/main.py`·`api/errors.py`에 공통 503을 연결하고 `api/repositories/route_store.py`에서 DB 풀 대기 시간 초과를 전달한다.
+- [x] P25 같은 저장소의 A05·CLI 정리 SQL에서 후보와 파생 값을 비우고 최초 삭제 시각을 보존한다. PostgreSQL 제약에 맞춰 결과 해시는 빈 문자열로 덮어쓴다.
+- [x] 귀가 단위·DB 표시 회귀 시험, API·DB 설계서 및 [STEP7 적용 기록](codex/STEP7.md)을 작성했다.
+
 ## 변경 이력
 
 - 2026-11-24 — `f24671e` 기준 011·012·P18·T25a·b 로컬 결과를 반영하고 A04 메모리 만료와 DB 저장 행의 장소 원문 검사 추가. 신규 DB 시험은 `TEST_DB_URL` 설정 시 실행하고 Redis는 연결 후 시험한다.
+- 2026-11-24 — STEP7 경로 키 v2, DB-14 공통 503, SK 회신 없이 적용하는 TMAP 정리 확정 기준을 반영했다.
 
 ## 메모
 - (11/23) TMAP 무료 하루 10건(오류도 셈)·유료 전환은 11/26 결정 대기(`TMAP_PAID_PLAN`) → 한도는 환경변수.

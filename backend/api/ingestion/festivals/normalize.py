@@ -8,6 +8,9 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 KST = ZoneInfo("Asia/Seoul")
+FESTIVAL_CATEGORY = "festival"
+NOT_FESTIVAL_CLASS = "not_festival_class"
+TOURAPI_CATEGORIES = {"EV01": FESTIVAL_CATEGORY, "EV02": "performance", "EV03": "event"}
 REGION_CODES = {
     "11": "SEOUL",
     "26": "BUSAN",
@@ -63,6 +66,9 @@ class FestivalRecord:
     longitude: float | None
     region_code: str | None
     category: str
+    source_class_level1: str | None
+    source_class_level2: str | None
+    source_class_code: str | None
     summary: str | None
     admission_fee_text: str | None
     image_url: str | None
@@ -219,7 +225,15 @@ def normalize_festival(
     lat, lng = _coordinates(item, issues)
     image, thumbnail, copyright_type = _images(item, issues)
 
-    publishable = all(value is not None for value in (title, start, end, lat, lng, region))
+    class_level1 = _text(item.get("lclsSystm1"))
+    class_level2 = _text(item.get("lclsSystm2"))
+    class_code = _text(item.get("lclsSystm3"))
+    category = TOURAPI_CATEGORIES.get(class_level2, "unknown")
+    if category != FESTIVAL_CATEGORY:
+        issues.append(NOT_FESTIVAL_CLASS)
+    publishable = category == FESTIVAL_CATEGORY and all(
+        value is not None for value in (title, start, end, lat, lng, region)
+    )
     if details_requested and (not common or not intro):
         issues.append("detail_missing")
     raw_json = json.dumps([item, common, intro], sort_keys=True, ensure_ascii=False)
@@ -237,7 +251,10 @@ def normalize_festival(
         latitude=lat,
         longitude=lng,
         region_code=region,
-        category="festival",
+        category=category,
+        source_class_level1=class_level1,
+        source_class_level2=class_level2,
+        source_class_code=class_code,
         summary=_summary(common.get("overview")),
         admission_fee_text=_detail_text(intro.get("usetimefestival")),
         image_url=image,

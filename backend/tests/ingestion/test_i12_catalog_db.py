@@ -35,10 +35,11 @@ def catalog_client(
     now = datetime.now(KST)
     today = now.date()
     rows = [
-        ("fst_I12001", "봄맞이 50% 축제", "SEOUL", "중앙 광장", -1, 1, "ended", "approved"),
-        ("fst_I12002", "가을 축제", "BUSAN", "바다 공원", 2, 4, "ongoing", "approved"),
-        ("fst_I12003", "여름_축제", "SEOUL", "시민 공원", 2, 4, "cancelled", "approved"),
-        ("fst_I12004", "검토 중 축제", "SEOUL", "북쪽 광장", 0, 1, "ongoing", "pending"),
+        ("fst_I12001", "봄맞이 50% 축제", "SEOUL", "중앙 광장", -1, 1, "ended", "approved", "festival"),
+        ("fst_I12002", "가을 축제", "BUSAN", "바다 공원", 2, 4, "ongoing", "approved", "festival"),
+        ("fst_I12003", "여름_축제", "SEOUL", "시민 공원", 2, 4, "cancelled", "approved", "festival"),
+        ("fst_I12004", "검토 중 축제", "SEOUL", "북쪽 광장", 0, 1, "ongoing", "pending", "festival"),
+        ("fst_I12005", "박람회", "SEOUL", "북쪽 광장", 0, 1, "ongoing", "approved", "event"),
     ]
     with db_engine.begin() as connection:
         connection.execute(text("""
@@ -53,18 +54,18 @@ def catalog_client(
         connection.execute(text("""
             INSERT INTO festivals (
                 festival_id, title, region_code, venue_name, start_date, end_date,
-                event_status, review_status, published_at, last_synced_at,
+                event_status, review_status, category, published_at, last_synced_at,
                 latitude, longitude, summary, admission_fee_text, official_url, address
             ) VALUES (
                 :id, :title, :region, :venue, :start_date, :end_date,
-                :status, :review, :now, :now,
+                :status, :review, :category, :now, :now,
                 37.5, 127.1, '축제 소개', '무료', 'https://example.invalid', '축제 주소'
             )
         """), [
             dict(id=festival_id, title=title, region=region, venue=venue, status=status,
-                 review=review, now=now, start_date=today + timedelta(days=start),
+                 review=review, category=category, now=now, start_date=today + timedelta(days=start),
                  end_date=today + timedelta(days=end))
-            for festival_id, title, region, venue, start, end, status, review in rows
+            for festival_id, title, region, venue, start, end, status, review, category in rows
         ])
         connection.execute(text("""
             INSERT INTO festival_sources (festival_id, source_id, source_item_id, fetched_at, raw_checksum)
@@ -134,7 +135,7 @@ def test_I12_catalog_detail_reads_tourapi_source(catalog_client: TestClient) -> 
     assert detail["source"] == "tourapi"
     assert detail["source_ref"] == "1234567"
 
-    for festival_id in ("fst_I12004", "fst_missing"):
+    for festival_id in ("fst_I12004", "fst_I12005", "fst_missing"):
         response = catalog_client.get(f"{_URL}/{festival_id}")
         assert response.status_code == 404
         assert response.json()["error"]["code"] == "FESTIVAL_NOT_FOUND"

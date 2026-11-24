@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-24 10:56:24 KST
+# 놀다가 DB 시험 결과 — 2026-11-24 12:45:29 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -197,6 +197,10 @@ psql:<stdin>:97: NOTICE:  PASS T013d: 013 되돌리기 뒤 결과 삭제 시각�
 psql:<stdin>:40: NOTICE:  PASS T013a: 기존 삭제 시각 이관 및 미정리·결과 없는 요청의 NULL 유지
 psql:<stdin>:58: NOTICE:  PASS T013b: 서비스 계정의 정리 트랜잭션에서 두 삭제 시각 일치
 psql:<stdin>:81: NOTICE:  PASS T013c: RLS 유지, 일반 계정의 삭제 시각 읽기·수정 거부
+## 5-1. 014 축제 분류·공개 RLS 적용·되돌리기·재적용
+T014 PASSED
+T014 PASSED
+T014 PASSED
 psql:<stdin>:37: NOTICE:  PASS T25a: 복원된 route_results에 공급원 원본·후보 등 데이터 0행
 psql:<stdin>:37: NOTICE:  PASS T25b: 복원 뒤 공급원·조회 시각·요청 상태·오류 코드 보존
 psql:<stdin>:25: NOTICE:  PASS T25c: 복원 뒤 실제 삭제 시각 보존, 미정리·결과 없는 요청은 NULL
@@ -205,19 +209,19 @@ AFTER-BACKUP TESTS PASSED
 PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
 ## 6. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
-Buffers: shared hit=296
-->  Seq Scan on festivals (actual time=0.075..1.262 rows=26 loops=1)
+Buffers: shared hit=297
+->  Seq Scan on festivals (actual time=0.073..1.259 rows=26 loops=1)
 Rows Removed by Filter: 19977
-Buffers: shared hit=296
+Buffers: shared hit=297
 Buffers: shared hit=95
-Planning Time: 0.152 ms
-Execution Time: 1.278 ms
+Planning Time: 0.141 ms
+Execution Time: 1.276 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
 Buffers: shared hit=35
-->  Bitmap Heap Scan on festivals (actual time=0.067..0.085 rows=26 loops=1)
+->  Bitmap Heap Scan on festivals (actual time=0.047..0.059 rows=26 loops=1)
 Buffers: shared hit=35
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.062..0.063 rows=26 loops=1)
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.041..0.041 rows=26 loops=1)
 Buffers: shared hit=9
-Planning Time: 0.099 ms
-Execution Time: 0.099 ms
+Planning Time: 0.072 ms
+Execution Time: 0.088 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)

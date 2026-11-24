@@ -6,7 +6,7 @@ from fastapi import APIRouter, Path, Query
 from starlette.concurrency import run_in_threadpool
 
 from api.errors import ApiError
-from api.mocks.store import festivals
+from api.mocks.store import get_public_mock_festival, public_mock_festivals
 from api.schemas.festivals import (
     FESTIVAL_ID_PATTERN,
     FestivalDetail,
@@ -63,7 +63,7 @@ async def list_festivals(query: Annotated[FestivalQuery, Query()]) -> FestivalPa
     statuses = query.statuses
     matches = [
         festival
-        for festival in festivals.values()
+        for festival in public_mock_festivals()
         if (query.region == "ALL" or festival.region_code == query.region)
         and (not statuses or festival.event_status in statuses)
         and (term in festival.name.casefold() or term in (festival.venue_name or "").casefold())
@@ -91,7 +91,7 @@ async def get_festival(
     if uses_festival_db():
         festival = await run_in_threadpool(festival_store.get_festival, festival_id)
     else:
-        festival = festivals.get(festival_id)
+        festival = get_public_mock_festival(festival_id)
     if festival is None:
         raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
     return festival

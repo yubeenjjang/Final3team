@@ -6,12 +6,14 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import TimeoutError as DBPoolTimeout
 from starlette.exceptions import HTTPException
 
 from api.errors import (
     ApiError,
     error_response,
     handle_api_error,
+    handle_db_pool_timeout,
     handle_http_error,
     handle_unexpected_error,
     handle_validation_error,
@@ -29,6 +31,7 @@ from api.services.seoul_crowd import uses_real_crowd
 
 app = FastAPI(title="놀다가 API (mock)", version="0.1.0-mock")
 app.add_exception_handler(ApiError, handle_api_error)
+app.add_exception_handler(DBPoolTimeout, handle_db_pool_timeout)
 app.add_exception_handler(RequestValidationError, handle_validation_error)
 app.add_exception_handler(HTTPException, handle_http_error)
 app.add_exception_handler(Exception, handle_unexpected_error)
@@ -86,6 +89,8 @@ async def add_response_headers(
             },
         )
     response.headers["X-Request-ID"] = request_id
+    if "Retry-After" in response.headers and "access-control-expose-headers" in response.headers:
+        response.headers["Access-Control-Expose-Headers"] += ", Retry-After"
     if not _serves_real_data(request):
         response.headers["X-Mock"] = "true"
     elif "X-Mock" in response.headers and (

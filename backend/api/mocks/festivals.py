@@ -1,5 +1,8 @@
 from datetime import date
 
+from pydantic import Field
+
+from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY
 from api.schemas.festivals import (
     CopyrightType,
     FestivalDetail,
@@ -10,6 +13,10 @@ from api.schemas.festivals import (
 
 _IMAGE_BASE = "https://tong.visitkorea.or.kr/cms/resource/mock"
 _IMAGE_CREDIT = "한국관광공사"
+
+
+class MockFestival(FestivalDetail):
+    category: str = Field(default=FESTIVAL_CATEGORY, exclude=True)
 
 
 def _festival(
@@ -24,7 +31,7 @@ def _festival(
     event_status: FestivalStatus,
     copyright_type: CopyrightType | None = None,
     fee_text: str | None = None,
-) -> FestivalDetail:
+) -> MockFestival:
     festival_id = f"fst_{source_ref}"
     image_path = f"{_IMAGE_BASE}/{festival_id}"
     image_copyright = None
@@ -34,7 +41,7 @@ def _festival(
             credit=_IMAGE_CREDIT,
             modify_allowed=copyright_type == "Type1",
         )
-    return FestivalDetail(
+    return MockFestival(
         festival_id=festival_id,
         name=name,
         region_code=region_code,
@@ -63,7 +70,7 @@ FESTIVALS = (
         date(2026, 11, 20), date(2026, 12, 31), "ongoing", "Type3", "무료",
     ),
     _festival(
-        "000002", "한강 겨울 야시장", "SEOUL", "여의도 한강공원", 37.5284, 126.9327,
+        "000002", "한강 겨울 별빛 축제", "SEOUL", "여의도 한강공원", 37.5284, 126.9327,
         date(2026, 12, 5), date(2026, 12, 7), "upcoming", "Type1",
     ),
     _festival(

@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import re
 from collections.abc import Iterator
 from datetime import date, timedelta
 from pathlib import Path
@@ -57,9 +58,9 @@ def festival_id(route_engine: Engine) -> Iterator[str]:
     festival_id = f"fst_{uuid4().hex[:20]}"
     with route_engine.begin() as connection:
         connection.execute(text("""
-            INSERT INTO public.festivals (festival_id, title, venue_name, region_code,
+            INSERT INTO public.festivals (festival_id, title, venue_name, region_code, category,
                                          latitude, longitude, published_at, review_status, start_date, end_date)
-            VALUES (:id, :id, '합성 축제장', 'SEOUL', 37.500000, 127.000000, now(), 'approved', :today, :today)
+            VALUES (:id, :id, '합성 축제장', 'SEOUL', 'festival', 37.500000, 127.000000, now(), 'approved', :today, :today)
         """), {"id": festival_id, "today": date.today()})
     try:
         yield festival_id
@@ -145,7 +146,8 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
                 FROM public.route_requests WHERE route_request_id = :id
             """), {"id": route_id}).one()
         assert initial.access_token_hash == token_hash(token)
-        assert all(len(value) == 64 for value in initial)
+        assert all(len(value) == 64 for value in initial[:3])
+        assert re.fullmatch(r"(pending|v2):[0-9a-f]{64}", initial.route_key)
         assert len(tmap.queries) == 1
         # 백그라운드 종료를 기다린다. 실제 시각 대신 시험 시계를 사용한다.
         deadline = time.monotonic() + 3
@@ -277,10 +279,10 @@ def test_P18_db_sweeper_clears_cached_api_result_at_23h(route_engine, app_engine
         assert "route_candidates" not in expired
     with route_engine.connect() as connection:
         row = connection.execute(text("""
-            SELECT source_type, candidates, evidence, validity_check, purged_at
+            SELECT source_type, candidates, evidence, validity_check, route_hash, purged_at
             FROM public.route_results WHERE route_request_id = :id
         """), {"id": cached_id}).one()
-    assert row == ("cache", None, {}, {}, clock.now)
+    assert row == ("cache", None, {}, {}, "", clock.now)
 
 
 def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festival_id, monkeypatch):
@@ -302,10 +304,10 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
             connection.execute(text("""
                 INSERT INTO public.route_results (
                     route_request_id, provider, provider_tier, provider_ref, candidates, evidence,
-                    route_hash, source_type, validity_check, queried_at, validation_status, is_mock
+                    route_hash, score_version, source_type, validity_check, queried_at, validation_status, is_mock
                 ) VALUES (
                     :id, :provider, :tier, 'synthetic-ref', CAST(:candidates AS jsonb), '{"fixture": true}',
-                    :digest, :source, '{"fixture": true}', :queried_at, 'control_unverified', false
+                    :digest, 'synthetic-score', :source, '{"fixture": true}', :queried_at, 'control_unverified', false
                 )
             """), {
                 "id": route_id, "provider": provider, "digest": digest, "queried_at": queried_at,
@@ -328,7 +330,8 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
     def result_state(route_id):
         with route_engine.connect() as connection:
             return connection.execute(text("""
-                SELECT candidates, evidence, provider_ref, validity_check, purged_at, result_purged_at
+                SELECT candidates, evidence, provider_ref, validity_check, route_hash, score_version,
+                       purged_at, result_purged_at
                 FROM public.route_results JOIN public.route_requests USING (route_request_id)
                 WHERE route_request_id = :id
             """), {"id": route_id}).one()
@@ -342,8 +345,8 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
     assert store.purge_expired(clock.now) == count
     assert store.purge_expired(clock.now) == 0
     assert store.purge_expired(clock.now, dry_run=True) == 0
-    assert result_state(expired_id) == (None, {}, None, {}, clock.now, clock.now)
-    assert result_state(older_id) == (None, {}, None, {}, clock.now, clock.now)
+    assert result_state(expired_id) == (None, {}, None, {}, "", None, clock.now, clock.now)
+    assert result_state(older_id) == (None, {}, None, {}, "", None, clock.now, clock.now)
     assert result_state(fresh_id) == fresh_before
     assert result_state(kakao_id) == kakao_before
 

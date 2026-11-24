@@ -1,3 +1,4 @@
+import json
 import re
 import sqlite3
 from contextlib import closing, nullcontext
@@ -26,7 +27,8 @@ def test_purge_counts_or_updates_with_same_cutoff(dry_run):
     lock, sweep = session.execute.call_args_list
     assert "pg_try_advisory_xact_lock" in str(lock.args[0])
     sql, params = sweep.args
-    assert "provider = 'tmap' AND purged_at IS NULL AND queried_at <= :cutoff" in str(sql)
+    assert "provider = 'tmap'" in str(sql)
+    assert "purged_at IS NULL AND queried_at <= :cutoff" in str(sql)
     assert params["cutoff"] == now - timedelta(hours=23)
     if dry_run:
         assert str(sql).startswith("SELECT count(*)")
@@ -44,19 +46,65 @@ def test_purge_counts_or_updates_with_same_cutoff(dry_run):
 def test_purge_dry_run_selects_results_at_23h_boundary(age, expected):
     now = Clock().now
     with closing(sqlite3.connect(":memory:")) as db:
-        db.execute("ATTACH DATABASE ':memory:' AS public")
-        db.execute("CREATE TABLE public.route_results (provider TEXT, purged_at TEXT, queried_at TEXT)")
-        db.execute("INSERT INTO public.route_results VALUES ('tmap', NULL, ?)",
+        store = _sqlite_store(db)
+        db.execute("INSERT INTO public.route_results (provider, queried_at) VALUES ('tmap', ?)",
                    ((now - age).isoformat(timespec="microseconds"),))
-        def execute(statement, params=None):
-            if params is None:  # PostgreSQL advisory lock
-                return SimpleNamespace(scalar_one=lambda: True)
-            cutoff = params["cutoff"].isoformat(timespec="microseconds")
-            count, = db.execute(str(statement), {"cutoff": cutoff}).fetchone()
-            return SimpleNamespace(scalar_one=lambda: count)
+        assert store.purge_expired(now, dry_run=True) == expected
 
-        session = SimpleNamespace(execute=execute)
-        assert RouteStore(lambda: nullcontext(session)).purge_expired(now, dry_run=True) == expected
+
+def _sqlite_store(db):
+    db.executescript("""
+        ATTACH DATABASE ':memory:' AS public;
+        CREATE TABLE public.route_results (
+            id TEXT, provider TEXT, queried_at TEXT, purged_at TEXT,
+            candidates TEXT, evidence TEXT DEFAULT '{}', provider_ref TEXT,
+            route_hash TEXT DEFAULT '', score_version TEXT, cache_key TEXT,
+            source_type TEXT, validity_check TEXT
+        );
+    """)
+
+    def execute(statement, params=None):
+        if params is None:  # PostgreSQL advisory lock
+            return SimpleNamespace(scalar_one=lambda: True)
+        values = {name: value.isoformat(timespec="microseconds") for name, value in params.items()}
+        sql = str(statement).replace("CAST('{}' AS jsonb)", "CAST('{}' AS text)")
+        cursor = db.execute(sql, values)
+        return SimpleNamespace(scalar_one=lambda: cursor.fetchone()[0], rowcount=cursor.rowcount)
+
+    return RouteStore(lambda: nullcontext(SimpleNamespace(execute=execute)))
+
+
+def test_P25_purge_clears_tmap_derived_fields_and_keeps_original_deletion_time():
+    now = Clock().now
+    cutoff = (now - timedelta(hours=23)).isoformat(timespec="microseconds")
+    recent = (now - timedelta(hours=22)).isoformat(timespec="microseconds")
+    previous_purge = (now - timedelta(hours=1)).isoformat(timespec="microseconds")
+    candidates = json.dumps([{"duration_min": 16, "fare_krw": 1550, "transfers": 1, "summary": "합성 경로"}])
+    with closing(sqlite3.connect(":memory:")) as db:
+        store = _sqlite_store(db)
+        db.executemany("""
+            INSERT INTO public.route_results VALUES
+                (?, ?, ?, ?, ?, '{"source":true}', 'ref', 'derived-hash', 'score-v1', 'key', 'cache', '{"ok":true}')
+        """, [
+            ("expired", "tmap", cutoff, None, candidates),
+            ("legacy", "tmap", cutoff, previous_purge, None),
+            ("recent", "tmap", recent, None, candidates),
+            ("kakao", "kakao", cutoff, None, None),
+        ])
+        db.execute("""
+            UPDATE public.route_results
+            SET evidence = '{}', provider_ref = NULL, validity_check = '{}'
+            WHERE id = 'legacy'
+        """)
+        assert store.purge_expired(now, dry_run=True) == 2
+        assert store.purge_expired(now) == 2
+        assert store.purge_expired(now) == 0
+        rows = {row[0]: row[1:] for row in db.execute("SELECT * FROM public.route_results")}
+        cleared = (None, "{}", None, "", None, None, "cache", "{}")
+        assert rows["expired"] == ("tmap", cutoff, now.isoformat(timespec="microseconds"), *cleared)
+        assert rows["legacy"] == ("tmap", cutoff, previous_purge, *cleared)
+        assert rows["recent"][3] == candidates
+        assert rows["kakao"][6] == "derived-hash"
 
 
 def test_purge_does_not_run_while_lock_is_held():

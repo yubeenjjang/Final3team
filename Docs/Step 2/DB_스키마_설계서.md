@@ -519,8 +519,8 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | 테이블 | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | `users`, `refresh_tokens` | service만 | service(가입·로그인) | service | service |
-| `festivals` | `noldaga_app`: 게시 시각이 있고 `review_status <> 'hidden'`인 행(008). A02·A03은 승인 행만(7-2절) / admin: 전체(service 경유) | service(수집·admin 승인) | service | 금지(게시 상태로 숨김) |
-| `festival_sources` | `noldaga_app`(010): 008 축제 RLS로 보이는 행의 `festival_id`·`source_id`·`source_item_id`·`source_url`만(A03 `source_ref`). `raw_checksum`·`fetched_at`·`last_job_id`는 앱 계정에 비공개. service·admin(service 경유)은 전체 | service | service | 금지 |
+| `festivals` | `noldaga_app`: `category='festival' AND review_status='approved' AND published_at IS NOT NULL`인 행(014, A02·A03과 동일) / admin: 전체(service 경유) | service(수집·admin 승인) | service | 금지(게시 상태로 숨김) |
+| `festival_sources` | `noldaga_app`(010): 014 축제 RLS로 보이는 행의 `festival_id`·`source_id`·`source_item_id`·`source_url`만(A03 `source_ref`). `raw_checksum`·`fetched_at`·`last_job_id`는 앱 계정에 비공개. service·admin(service 경유)은 전체 | service | service | 금지 |
 | `ingestion_jobs`, `festival_change_history` | service·admin(service 경유) | service | service | 금지 |
 | `festival_review_queue` | admin(service 경유) | service | admin 승인·반려(service 경유) | 금지 |
 | `profiles` | **본인만** | service(가입 시) | 본인(**`display_name` 컬럼만**), admin의 역할 변경은 service 경유 | service |
@@ -609,8 +609,8 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 | `route:req` 만료·Redis 장애 | 상태는 PostgreSQL `route_requests`에서 읽음(느려질 뿐 틀리지 않음) |
 | Redis 장애로 `revoked:{jti}` 확인 불가 | 보호 API 중 **읽기는 그대로 처리**, **쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`**. 공개 API는 영향 없음(API 설계서 1-1절, 권오현 W18 시험 예정) |
 
-- **`route_key` 현재 동작(코드 기준, 11/23):** `backend/api/services/real_routes.py`의 HMAC-SHA256 입력은 방향(return/visit), 출발·도착 좌표(소수 4자리), `travel_mode`, `route_preference`, 5분 시간 구간입니다. `ROUTE_KEY_SECRET`이 비어 있으면 프로세스 시작 때 만든 임의 키를 씁니다. 확인 시험은 `backend/tests/routes/test_p9_real_routes.py`의 `test_P10_cache_key_uses_hmac_and_rounded_coordinates`입니다.
-- **구현 예정:** 정규화한 `user_constraints`·통제 버전·공급원은 현재 키에 없으므로 이 값만 다르면 같은 키를 쓸 수 있습니다. 권오현이 조건 반영과 복구 조치(W48, 12/04) 전에 키에 추가합니다(API 설계서 17-3절).
+- **`route_key` v2(분석 #26)**. 정규화한 방향·축제 ID·출발/도착 유형과 좌표(소수 4자리)·이동수단·추천 기준·이동 제약·출발 기준과 5분 구간·통제 공지 버전(현재 `none`)·공급원에 HMAC-SHA256을 적용해 `v2:`를 붙입니다. `TEXT` 컬럼을 그대로 사용합니다. 메모리 모드에 한해 `ROUTE_KEY_SECRET`이 없으면 시작할 때 임의 키를 씁니다. P23에서 키 분리와 같음, 좌표 원문 부재를 확인합니다.
+- 기존 무접두사 키는 DB에 보존합니다. 새 캐시·병합·복구 후보에는 완전히 일치하는 v2 키만 씁니다. 해석 전 `pending:` 키도 재사용에서 제외합니다. A05와 멱등 조회는 기존 요청 ID·본문 해시·조회 토큰 검증을 사용합니다(API 17-3절).
 - 캐시가 처음부터 항상 켜진 것은 "기본 성능 설계"이고, 오토힐링은 `policy:route:active`에 **감지 뒤 켜진 기록**이 있어야 설명됩니다 (강사 11/17·11/18 의견).
 
 ---
@@ -688,7 +688,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | candidates | JSONB / `provider='kakao'`면 항상 NULL, 나머지는 NOT NULL — 단 `purged_at`이 있으면 NULL 허용(CHECK) | 경로 후보·점수(필드는 실호출 후 확정, 03 문서 10-2). **STEP4는 카카오 결과 행을 만들지 않고 요청 상태와 오류 코드만 남김** |
 | | **evidence** | JSONB / DEFAULT '{}' | `{area_evidence: 혼잡 구역·교통 돌발, mode_evidence: 버스 차내 혼잡(서울만)}` (D-024·D-033) |
 | | score_version | TEXT / NULL | 점수 비율 버전(D-025, 미정이면 NULL) |
-| | route_hash | TEXT / NOT NULL | 결과 동일성 확인 |
+| | route_hash | TEXT / NOT NULL | 보관 중 결과 동일성 확인. TMAP 정리 때 빈 문자열로 덮어씀(7-0) |
 | | source_type | TEXT / CHECK IN ('fresh','cache','shared','alternate') | 새 조회·캐시·병합 공유·대체 공급원 |
 | | cache_key | TEXT / FK route_cache_entries NULL | 캐시로 제공했으면 |
 | | **validity_check** | JSONB / `source_type`이 cache·alternate면 NOT NULL(CHECK) | 캐시·대체 경로 유효성 검사 결과(조건·시각·`valid_until`·통제 버전 일치 여부와 이유) (강사 일일 피드백 4) |
@@ -821,7 +821,8 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | venue_name / address | TEXT / NULL | 장소·주소 |
 | | latitude / longitude | NUMERIC(9,6) / NULL, 대한민국 범위 CHECK | 없으면 지도 마커 제외·검색은 유지, 귀가 요청은 400 `FESTIVAL_LOCATION_UNKNOWN` |
 | | region_code | TEXT / NOT NULL | 03 문서 0-1절 코드(`SEOUL` 등) |
-| | category | TEXT / NULL | 공통 분류 |
+| | category | TEXT / NULL | TourAPI `lclsSystm2` 대응. `EV01` → `festival`(공개 대상), `EV02` → `performance`, `EV03` → `event`, 미분류 → `unknown` |
+| | source_class_level1 / source_class_level2 / source_class_code (014) | TEXT / NULL | TourAPI `searchFestival2`의 `lclsSystm1` / `lclsSystm2` / `lclsSystm3` 원본 코드. 빈 값이면 NULL |
 | | summary | TEXT / NULL | 간단한 소개 (D-015) |
 | | admission_fee_text | TEXT / NULL | 입장료 원문(예: "무료") (D-015) |
 | | description / image_url / official_url / organizer | TEXT / NULL | 선택값. `image_url` = TourAPI `firstimage`(대표 이미지 **주소만**, 파일 복사 안 함, D-031) |
@@ -1005,7 +1006,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 
 | 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것(이력) | 근거 | 상태 | 담당·확정 |
 |---|---|---|---|---|---|---|---|
-| TMAP 경로 내용 | `route_results.candidates`·`evidence`·`provider_ref`·`validity_check` | 시간당 정기 실행은 조회 후 기본 23시간 이상 된 본문을 정리(정상 실행 시 최대 24시간 보관). 유효 토큰 A05 조회의 정리 기준은 24시간 | `candidates`·`provider_ref` → NULL, `evidence` → `{}`, `validity_check` → 캐시·대체 결과는 `{}`, 그 외는 NULL | 결과 메타데이터와 `route_results.purged_at`. 같은 트랜잭션에서 `route_requests.result_purged_at`을 기록해 백업에 보존 | TMAP 약관 "저장 후 24시간 넘게 사용 불가"(11/19 한태경) | 외부 고정 | 권오현(명령) · 신유빈(W64·W65) |
+| TMAP 경로 내용 및 파생 값 | `route_results` | 조회 후 기본 23시간부터 시간당 정리(정상 실행 시 최대 24시간). 유효 토큰 A05의 정리 기준은 24시간 | 총 소요 시간·요금·환승 수·요약 등 `candidates`, `provider_ref`·`score_version`·`cache_key` → NULL, `evidence` → `{}`, `route_hash` → 빈 문자열, `validity_check` → 캐시·대체는 `{}`, 그 외는 NULL. 이전에 정리한 행도 잔여 값을 비움 | 요청·조회·처리 시작·완료 시각, 자체 측정 처리 시간, 처리 상태·오류 코드·공급원 및 최초 `route_results.purged_at`과 `route_requests.result_purged_at` | TMAP 약관 24시간 제한(11/19 한태경), 2-2 | **SK 회신 없이 적용하는 확정 기준** | 권오현(명령) · 신유빈(W64·W65) |
 | 카카오맵 경로 내용 | **어디에도 저장 안 함** — DB·Redis·큐·로그·대화 상태·챗봇 답변 모두 | 0 | — | STEP4는 `route_requests`의 상태와 오류 코드만 기록 | 카카오 공식 답변(데브톡 6/29, 11/20 한태경) "실시간 호출만·저장 불가" | 외부 고정 | 권오현 |
 | 경로 캐시 | Redis `route:cache` | 60초 | 키 자동 삭제 | `route_cache_entries`(메타·`valid_until`) | TMAP 24시간 안, 카카오는 캐시 안 함 | 임시(9-1 ④) | 신유빈 · W96 12/04 |
 | 경로 캐시 메타 | `route_cache_entries` | 30일 | 행 삭제 | 없음(지표는 `route_query_metrics`) | `route_requests`와 같게 | 임시 | 권오현 · W16 11/20 |
@@ -1046,7 +1047,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | 사건·진단·복구 기록 | `incident_logs`·`incident_events`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`·`agent_runs` | 프로젝트 종료까지 | 수정·삭제 금지(트리거 6개, T6) | 전부 | Auto-Healing 결과서 근거. **개인정보 칸 없음**(11/20 확인: 사용자 ID·장소·질문 원문 칸이 없고, 행위자는 `detector`·`recovery_agent` 같은 역할 이름. `agent_runs` 입출력 원문은 30일 지나면 파일만 삭제) | 설계 고정 | 신유빈 |
 | 지금 핫한 축제 크롤링 결과 | `festival_trends`(004) | 30일 | 행 삭제 | 없음 | 축제 이름·순위·언급 수·주소만(본문·작성자 저장 안 함) | 임시 | 신유빈 |
 | 부하 시험 | `load_simulations`, 시험 구간 `route_query_metrics` | 프로젝트 종료까지 | — | 전부(결과 JSON에 `LIMITS_VERSION`) | 같은 조건 재시험(강사 2차 의견 5) | 설계 고정 | 신유빈 |
-| 운영 중 지표 | `route_query_metrics`(`phase='live'`) | 30일 | 행 삭제 | 사건에 연결된 구간은 사건 기록으로 남음 | 그래프는 최근 24시간만 씀 | 임시 | 신유빈 · W96 12/04 |
+| 운영 중 지표 | `route_query_metrics`(`phase='live'`) | 30일 | 행 삭제 | 사건에 연결된 구간은 사건 기록으로 남음 | 그래프는 최근 24시간만 씀. 건수·성공 여부·서비스 응답 시간 등 자체 측정값만 사용하며 TMAP 경로 소요 시간·요금·환승 수·요약은 기록 금지 | 임시 | 신유빈 · W96 12/04 |
 | Redis 단기 키(토큰·잠금·상태·한도·켜진 조치) | `revoked:*`·`route:token`·`route:req`·`rl:*`·`quota:*`·`policy:route:active` 등 | 03 문서 9-1 ⑥ | 키 자동 삭제 | DB가 원본(상태는 `route_requests`, 조치는 `recovery_attempts`) | 9-1 | 9-1 따름 | 9-1 담당 |
 
 **④ 로그·백업 — 지운 데이터가 여기서 다시 살아나지 않게**
@@ -1119,7 +1120,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 데이터 | 사용자 본인 | 다른 사용자 | 관리자 | 에이전트(LLM 포함) | 삭제·탈퇴·차단 뒤 | DB 행 접근 제한(RLS) ↔ 서버 검사 |
 |---|---|---|---|---|---|---|
 | 귀가 요청·결과(`route_requests`·`route_results`) | A05 요청 토큰으로 자기 요청만(로그인 여부 공통) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 장소 HMAC 해시와 TMAP 요약 최대 24시간 보관(7-0). 30일 뒤 행 삭제와 운영 정리 연동은 예정 | 메모리 모드는 메모리 토큰 비교. DB 모드(011)는 서비스 계정으로 토큰 해시 비교(11/24 로컬 P18 통과) |
-| 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만 | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 관리자 숨김(`hidden`)은 수집이 다시 공개하지 않음 | DB 008 RLS: `published_at IS NOT NULL AND review_status <> 'hidden'`(010 조인도 이 범위). 서버 A02·A03: `published_at IS NOT NULL AND review_status = 'approved'`. 게시 시각이 있는 `pending` 행은 DB 조건을 통과하지만 서버에서 제외됨. 수집 DB 시험 I12와 010 기록은 10-A절 |
+| 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만(TourAPI `lclsSystm2=EV01`) | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 재수집에서 비축제로 확인되면 검토 대기로 전환하고 게시 시각을 비움. 관리자 숨김 상태와 게시 시각은 보존 | 014 RLS와 서버 A02·A03은 `category='festival' AND review_status='approved' AND published_at IS NOT NULL`을 적용. 010 원본 참조 정책은 같은 범위의 축제 행과 조인 |
 | 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지 1건만**. 방 신고는 방 정보·신고 사유로 처리. 메시지를 보여 주기 전에 `chat_admin_access`에 열람 이유를 기록(A77) | 넘기지 않음 | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 ‘알 수 없음’ | RLS: 방 멤버 함수(007). 관리자 열람 범위의 서버 검사·기록 시험은 A77 구현과 W128(12/17–18 권한 검증)에서 진행. T40c는 기록 삭제 차단 시험 |
 | 가입 정보(출생연도·성별) | 본인 | 동행 글 작성자가 **대기·승인된 신청자만**(`app_applicant_profile`, 009) | 운영 필요 시 | 넘기지 않음 | 탈퇴 시 NULL(A80) | 함수 안 조건 = 서버 조건 |
 | 차단 관계 | 자기가 차단한 목록 | 서로 검색·신청 불가(닉네임 검색 양쪽 제외, 009) | 신고 처리 때 | 넘기지 않음 | 차단 해제 전까지 유지 | `app_find_user_by_nickname`(009) |
@@ -1138,7 +1139,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 
 | 항목 | 현재 상태 | 확인 담당 | 확인 시점 |
 |---|---|---|---|
-| TourAPI 실제 필드 → `festivals`·`festival_sources` 대응표 | ✅ **11/19 한태경 실호출로 확정**(03 문서 10절 표: `contentid`·`title`·`eventstartdate`·`mapx/mapy`·`lDongRegnCd`·`eventplace`·`usetimefestival`·`sponsor1`). 소개(`summary`)는 `detailCommon2`로 확인 필요 | 한태경 | 11/20 |
+| TourAPI 실제 필드 → `festivals`·`festival_sources` 대응표 | 03 문서 10절 표 참조. 014는 `lclsSystm1`·`lclsSystm2`·`lclsSystm3`를 `festivals`에 보관하며 `lclsSystm2=EV01`만 공개 대상으로 분류 | 한태경·권오현 | 11/24 |
 | TMAP(1차)·카카오맵(2차) 응답 → `route_results.candidates` 구조, TMAP `stationID` ↔ 서울 버스 `arsId`, TMAP 응답 저장 조건 | ✅ **11/19 실호출 완료**(서울·부산, 한태경): TMAP 정류장 목록 키 `stations`·`stationID` 6자리 / 카카오는 정류장 이름만 / 서울 버스 `arsId` 5자리 → **같은 값 아님, 이름+거리로 연결**. 원본은 24시간·저장 금지 규칙으로 삭제, 합성 예시로 `candidates` 구조 확정 예정 | 권오현·한태경 | 11/20 |
 | 지하철·버스·주차·돌발·날씨·자전거 응답 → `realtime_snapshots.payload` | **11/19 일부 확인**(서울 지하철·시영주차장·TOPIS·기상청·TAGO 부산). 주차장 응답에 위경도 없음 → `facilities`(주차장 위치)와 주차장 코드로 연결, TOPIS 좌표는 GRS80 TM → 위경도 변환, 서울 버스는 TAGO 대신 서울시 버스도착정보 | 권오현·한태경 | 11/20~ |
 | 버스 차내 혼잡 공급원 | 후보: 서울시 버스 도착정보 혼잡·재차 인원 필드(서울만, D-033) | 권오현 | 키 발급 후 |
@@ -1219,8 +1220,9 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 4 | `db/tests_011_route_access_token.sql` | 기존 행 보존·해시 제약·일반 계정 차단·되돌리기·재적용(T011a~d) |
 | 5 | `db/tests_012_route_backup_evidence.sql` · `db/backup_long_term.sh` | 012 이관·신규 기록·되돌리기·재적용, 7일 백업을 빈 DB에 복원해 경로 내용 제외와 증빙 보존 확인(T25a·b). **11/24 로컬 통과** |
 | 5 | `db/tests_013_route_purge_evidence.sql` | 013 이관·트리거·권한·되돌리기·재적용(T013a~d), 복원 뒤 삭제 시각 보존(T25c). **재실행 대기** |
+| 5-1 | `db/tests_014_tourapi_festival_class.sql` | 014 분류 저장 컬럼·공개 축제 RLS·010 원본 참조 범위·되돌리기·재적용(T014a~e). **재실행 대기** |
 | 6 | `db/explain_v0.3.2.sql` | 축제 검색 인덱스 전후 실행 계획(데이터 생성 SQL 포함) |
-| — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~013 적용 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
+| — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~014 적용 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
 | — | `backend/tests/routes/test_p18_route_store_db.py` | `TEST_DB_APP_URL`의 `noldaga_app`으로 축제 조회, `TEST_DB_URL`로 시험 데이터 준비·경로 저장. 접수→상태→TMAP 저장·조회·만료, 토큰 만료 후 A04 재전송, 카카오 미저장, A05·정기 정리의 삭제 시각 일치. 011 시험에는 소유자 권한 또는 `TEST_DB_MIGRATION_URL` 필요. **11/24 기존 P18 4개 로컬 통과**. 신규 DB 행 원문·삭제 시각 검사는 013 적용 일회용 DB에서 실행 |
 | — | `db/run_tests_009_existing.sh` · `db/tests_009_existing_data.sql` | 기존 데이터로 사전 검사→적용→실패 시 취소→되돌리기·다시 적용(T44~T48) |
 | — | `db/results_2026-11-20.log` · `db/results_2026-11-23.log` | 11/20 기본 SQL·백업 PASS 149건. 11/23 밤 PASS 156건(기본 149건 + T011a~d 4건 + 재적용 T011a~c 3건) |
@@ -1286,6 +1288,8 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 - 시험 데이터는 모두 가짜(`@test.local`)이고 시험 컨테이너는 끝나면 지웁니다.
 
 ---
+
+- DB-14 사용자 풀은 기본 연결 5개와 추가 연결 10개를 사용합니다. SQLAlchemy가 30초 동안 연결을 얻지 못해 대기 시간 초과를 발생시키면 API는 503 `SERVICE_BUSY`, `retryable=true`, `Retry-After: 1`로 응답합니다. P24 단위 시험은 풀 시간 초과를 모의합니다(API 6절).
 
 ## 10-A. 11/23~24 추가 실행 확인 (강사 11/20 DB 피드백 1·3·4)
 
@@ -2544,6 +2548,7 @@ ALTER TABLE rag_documents
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.4 | 2026-11-24 | 014에 TourAPI 분류 코드 저장을 추가하고, `lclsSystm2=EV01` 축제만 공개하도록 A02·A03과 RLS 조건을 통일했습니다. 비축제로 바뀐 공개 행의 검토 대기 전환과 수집 작업 이력을 반영했습니다. |
 | v0.1 | 2026-11-17 | 첫 초안 (ERD, RLS, Redis, 1차 테이블 DDL 일부) |
 | v0.2 | 2026-11-18 | **기획서 v2.8**: Supabase PostgreSQL 확정 반영, Supabase Auth 제안. **정합성 항목**: 시뮬레이션 1회 : 사건 N건으로 ERD 수정, 사건 상태 이력 `incident_events` 추가(현재 상태와 불변 이력 분리), 감사 테이블 추가 전용 트리거, 남은 DDL 4개(`agent_runs`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`) 작성. **11/18 회의**: `route_requests.direction`(가는 길), `festivals.summary`·`admission_fee_text`, `facilities` 12종, `route_results.evidence`, `data_sources`·`realtime_snapshots`(지하철·버스·주차·돌발·날씨·방문 예측) 일반화, Redis `quota:odsay`·`ext:*`. **BFCL 맞춤**: `failure_domain` 값 `route_upstream`·`crowd_upstream`. **범위 D-020·D-022**: `data_sources.enabled_region_codes`(전국 데이터는 전국, 지역별 데이터는 서울부터 켜고 지역을 늘림). **강사 2차 의견**: `load_simulations`에 요청 수·반복 묶음·실행 번호·결과/보고서 위치, 복구 성공률·소요 시간 계산식 |
 | v0.3 | 2026-11-19 | **TMAP 24시간 사용 제한 반영**: `route_results.purged_at`, 24시간 안 경로 내용 삭제 규칙, 시험 T20. **팀 검토 반영(11/19 신유빈·정예진)**: `route_preference` 값을 기획서 FR-R01~R05로(`less_crowded`·`min_walk`), 택시 승강장 범위(전국 공급원 없으면 서울), `trace_id` 미도입 명시, 최신 기획서 대조, 신규 13개 테이블 후보(7-1, v0.4). **D-038: 길찾기 1차 TMAP·2차 카카오맵** — `provider` 값 `tmap`·`kakao`·`mock_adapter`, 카카오맵 응답은 내용 저장·캐시·공유 금지(CHECK), Redis 한도에 비용 상한. **D-037: Supabase → AWS 위 Docker PostgreSQL 17 + pgvector, 자체 JWT 인증** — `users`·`refresh_tokens` 추가, 접속 역할 `noldaga_app`(RLS)·`noldaga_service`(우회), `app_current_user()`, 30개 테이블 모두 RLS + 공개·본인·운영자 정책, 컬럼 권한(프로필 이름·후기 본문만 수정). **AI 교차 검토 20건 반영**: 복구 시도 결과는 `pending`일 때 1회만 채움(트리거), 사건은 `status`·`closed_at`만 수정·삭제 금지(트리거), 캐시 테이블에 `festival_id`, 시험 멱등 키, `NULLS NOT DISTINCT`, 공지 제목·내용, RAG 문서 제목·4칸 표, 인덱스 보강(장소 이름·사건별), 자전거 실시간 보류, 대화 세션 ID 분리, API↔DB 이름 차이 전체, 기획서 5.4 대조. **수업 가이드 체크리스트·강사 피드백·D-033~D-036 반영**, 운영과 같은 이미지로 DDL 실행·시험 20개 통과, `EXPLAIN ANALYZE`(모의 2만 건), ERD 선 43 = 관계 표 43, 모든 테이블 `created_at`. 03 v0.3 맞춤: `route_preference`, `provider`·`provider_tier`, 근거 분리, `validity_check`, `phase`, `fault`, `idempotency_key`, `fallback_provider_switch`, `stop_reason`, `responder_type` |
@@ -2556,3 +2561,4 @@ ALTER TABLE rag_documents
 | v0.4 | 2026-11-24 | `ohyun` `f24671e` 기준 011·012 및 T25a·b 로컬 SQL·복원 결과(PASS 표기 164건)와 P18 포함 DB pytest 12개 통과를 기록하고 0-A 및 보존·시험 표를 갱신. |
 | v0.4 | 2026-11-24 | 012 복원 후 `ready` 요청의 결과 행이 없으면 A05가 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 새 경로 요청 안내를 반환하는 동작을 명시하고 P18 회귀 시험 추가(7-0 ④·10절 012 항목). |
 | v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 TMAP 본문 삭제 시각을 요청에 이관·동기화하고 T25c 백업 복원 검사 추가(7-0 ④·8·10절). SQL 재실행 대기. |
+| v0.4 | 2026-11-24 | STEP7 경로 키 v2와 기존 행 호환, DB-14 풀 대기 초과 응답, SK 회신 없이 적용하는 TMAP 파생 값 정리·보존표를 반영했습니다(4·7-0·10절). |
