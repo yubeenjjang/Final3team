@@ -57,6 +57,14 @@
 | 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **남은 것** — 신유빈 님 동의 4건 외 검토자 확인, `yubeen`의 D1 공통 DB 연결·`RESET ALL` 병합 및 연결 시험 |
 | 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보·전체(개인 경로 6곳 → 저장소 경로 또는 공유본 안내) | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.4 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
 
+### 0-A-1. 강사 11/23 일지 피드백 중 백엔드 반영 (2026-11-24)
+
+| # | 피드백 | 상태 | 반영 위치·근거 |
+|---|---|---|---|
+| 1 | 없는 축제 ID·일시 오류·혼잡 상태 처리 | 문서 대조 완료 | 4-5절의 Festival Agent 종료·재시도 표 |
+| 3 | 실제 축제 DB·혼잡 확인 범위와 첫 시연의 모의 값 | 증빙 정리 완료 | [API 연동 현황표 1-1절](handoff/API_연동_현황표.md) |
+| 4 | SK 회신 전 7일 백업에서 TMAP 경로 본문 제외 | 백업 기준·SQL 반영, **재실행 대기** | 5절·17-3절, [DB 설계서](DB_스키마_설계서.md) 7-0 ④, T25a·b 복원 검증 |
+
 ## 0. 설계 원칙 (모든 API 공통)
 
 | 원칙 | 내용 | 근거 |
@@ -654,10 +662,21 @@ class AssistantQueryRequest(BaseModel):                         # A06 (7-6)
 | `ROUTE_UPSTREAM_ERROR`·`RATE_LIMITED` | true | `Retry-After` 뒤 1회. 그래도 실패면 '확인 불가 + 공식 안내'로 답함 |
 | `ROUTE_QUOTA_EXCEEDED`·`ROUTE_PROVIDER_UNVERIFIED` | false | 재시도 없이 '확인 불가'로 답함 |
 | `VALIDATION_ERROR`·`ROUTE_INVALID` | false | 재시도 없이 **사용자에게 다시 물음**(목적지 등) |
-| `FESTIVAL_NOT_FOUND`·`INCIDENT_NOT_FOUND` | false | 재시도 없이 검색 단계로 되돌아감 |
+| `FESTIVAL_NOT_FOUND` | false | 재시도 없이 축제 재선택을 안내하고 `clarification_needed`로 종료 |
+| `INCIDENT_NOT_FOUND` | false | 재시도 없이 사건 검색 단계로 되돌아감 |
 | `FORBIDDEN`·`ACTION_NOT_ALLOWED` | false | 멈추고 이유를 안내. 다른 방법으로 우회하지 않음 |
 | `EVIDENCE_REQUIRED` | false | Diagnosis 단계로 되돌려 근거를 다시 모음 |
 | `REGION_UNSUPPORTED` | false | 실패가 아님 — '이 지역은 미지원'으로 그대로 안내 |
+
+**Festival Agent 대조(11/24).** `origin/dayoung`의 단일 Festival Agent 상태 전이 그래프 설계서 8~9절과 도구 래퍼·그래프를 기준으로 합니다. HTTP/본문 값은 API 응답이고, `outcome`은 Agent 종료 상태입니다.
+
+| 사례 | API 응답·차이 | Festival Agent 처리 |
+|---|---|---|
+| 없는 축제 ID | A03·A10 HTTP 404, `FESTIVAL_NOT_FOUND`, `retryable=false` | 축제 재선택 안내 후 `clarification_needed`. 복합 조회에서 앞 단계 답변이 있으면 재선택 안내와 함께 `partial` |
+| 일시 오류·시간 초과 | HTTP 오류나 전송 시간 초과에서 도구가 `ok:false`와 `retryable:true`를 반환할 수 있음 | 같은 단계 최대 1회 재시도. 전체 4회·기본 30초 예산 안에서 수행하며, 최종 실패 시 `unavailable` 또는 앞 단계 답변을 담은 `partial` |
+| 혼잡 미지원 | A10 HTTP 200, `status:"unsupported"`. 서울 밖·좌표 누락·승인 매핑 없음·반경 내 구역 없음은 A10의 `unsupported_reason` 참조 | 같은 도구 추가 호출 없이 미지원 안내. 단독은 `unsupported`, 앞 단계 답변이 있는 복합 조회는 `partial`. Agent 설계서 9절의 좌표 누락 예시와 달리 현 A10은 좌표 누락도 `unsupported`로 반환 |
+| 혼잡 관측이 오래됨 | A10 HTTP 200, `status:"stale"`, `observed_at` 유지. 실제 모드에는 A10의 45분 기준을 적용 | 같은 도구 추가 호출 없이 관측 시각과 오래된 정보라는 경고를 제시하고 `answered`. 출처·시각·지원 범위 검증 실패 시 확인 불가 처리 |
+| 혼잡 자료를 얻지 못함 | A10 HTTP 200, `status:"unavailable"`. 본문의 `error.retryable`은 공급원 오류 정보이며 래퍼의 `ok`는 `true` | 본문 상태를 처리해 같은 도구 추가 호출 없이 확인 불가 안내. 단독은 `unavailable`, 앞 단계 답변이 있는 복합 조회는 `partial` |
 
 **도구 실행 전 서버가 확인하는 4가지(S26):** ① 이 에이전트에 허용된 도구인가(에이전트별 허용 목록) ② 요청한 사용자의 권한(사용자가 못 하는 일은 에이전트도 못 함) ③ 대상이 그 사용자가 볼 수 있는 자원인가(`save_favorite`는 세션 사용자 본인만) ④ 복구 조치는 allowlist·근거 ID·상한을 정책 코드(`policy_gate`)가 검사.
 
@@ -1135,7 +1154,7 @@ Route Query Service → 1차 TMAP 대중교통 어댑터 (제한 5초, 출발·�
 - **좌표 순서:** TMAP 경로선(`passShape.linestring`, `steps[].linestring`)은 **`"경도,위도 경도,위도"`** 순서이고 카카오맵 지도는 `LatLng(위도, 경도)`입니다. 어댑터가 **내부 형식 `[위도, 경도]`로 바꿔서** 돌려주므로 화면은 순서를 신경 쓰지 않습니다(좌표계는 둘 다 WGS84라 변환은 필요 없음). TMAP으로 받은 경로는 카카오 길찾기 화면(`landingURL`)을 쓸 수 없어서 **경로선·정류장 마커·안내 문구를 화면이 직접 그립니다**.
 - **막차:** TMAP 응답의 `service`(1 운행 중 / 0 운행 종료)로 `service_running`을 정합니다. **구간마다 대표 노선 `service`와 대체 노선 `lane[].service` 중 하나라도 1이면 그 구간은 운행 중**으로 보고, 응답 `legs[].line`에 확인된 운행 중 노선 이름(lane 포함, 예: '수도권1호선(급행)')을 보여 줍니다(11/20 한태경 재확인: 광화문→서울역 17시 경로2의 대표 노선 `수도권1호선`=0, 같은 구간 lane `수도권1호선(급행)`=1 — 시간대 문제가 아니라 재현됨). 모두 0인 구간이 있으면 `notices`에 '운행이 끝난 구간이 있어요'를 넣습니다. **그런 구간이 있는 후보는 유효 경로로 세지 않습니다** — 남은 후보가 없으면 `route_status=unavailable`, `ROUTE_NO_RESULT`('지금은 대중교통으로 갈 수 없어요'), `completed_valid_route=false`. 운행 정보가 없는 공급원(카카오)은 `service_running: null`로 두고 '막차 확인 불가'를 표시합니다.
   - **코드 반영(11/23, W36 일부):** TMAP 후보가 모두 운행 종료로 제외되면 카카오로 전환하지 않고 HTTP 200, `unavailable`, `ROUTE_NO_RESULT`, `retryable=false`로 반환합니다. TMAP 운행 정보가 누락되거나 해석할 수 없으면 종료가 확인된 구간이 없는 후보를 유지하고 `service_running=null`로 표시합니다. 대체 노선 키·노선명의 원본 필드는 [SPEC P13](../../backend/Doc/route-providers/SPEC.md#p13-tmap-후보-판정)에 확인 필요로 기록했습니다.
-- **TMAP 약관 — 받은 데이터는 저장 후 24시간 넘게 쓸 수 없음:** 서버 메모리 캐시는 60초입니다(`valid_until`). 011 DB 모드는 TMAP 요약에 **24시간 안에 지우는** 정책을 적용합니다(DB 설계서 7-0절). Redis 연결과 주기 정리 실행 주체는 확인 중입니다. 원본 JSON 근거 파일도 24시간 안에 필드만 확인하고 지우며, 강사님 제출용 근거는 **키·좌표를 바꾼 합성 예시와 메타데이터**로 남깁니다.
+- **TMAP 약관 — 받은 데이터는 저장 후 24시간 넘게 쓸 수 없음:** 서버 메모리 캐시는 60초입니다(`valid_until`). 011 DB 모드는 TMAP 요약을 24시간 안에 지우는 정책을 적용합니다. SK 회신 전 7일 논리 백업은 012 적용 후 [백업 실행기](db/backup_long_term.sh)로 만들며, 공급원 원본·후보 상세를 담을 수 있는 `route_results`의 데이터 전체를 제외합니다. `route_requests`에는 결과의 조회 시각·공급원과 요청 상태·오류 코드를 보존합니다(17-3절, DB 설계서 7-0 ④). Redis 연결과 주기 정리 실행 주체는 확인 중입니다. 원본 JSON 근거 파일도 24시간 안에 필드만 확인하고 지우며, 제출용 근거는 합성 예시와 메타데이터로 남깁니다.
 - **카카오맵 결과는 A04의 동기 응답(3초 안)에서만 전달합니다.** 카카오 개발자 답변상 임시 캐싱도 허용되지 않아, 이미 202로 접수한 요청의 결과를 나중에 A05로 돌려줄 수 없습니다. 그래서 202 이후 1차(TMAP)가 실패하면 A05는 `route_status=unavailable`, 오류 `ROUTE_SECONDARY_SYNC_ONLY`('다시 조회해 주세요')로 답하고 사용자가 새로 요청하면 2차를 동기로 부릅니다. **이 문제가 풀리기 전에는 2차 공급원을 쓴 비동기 복구를 '복구 완료'로 세지 않습니다**(11/19 정예진 님 피드백).
 - **카카오맵 응답은 저장·캐시하지 않습니다** — **카카오 공식 답변(데브톡 6/29, 11/20 한태경 확인): 다른 회사 지도 위 표시는 가능, 단 실시간 호출만·저장 불가.** 그래서 Redis 60초 캐시에도 카카오 결과는 넣지 않습니다(04 문서 7-0 ①). 011 DB 모드에서는 `route_requests`의 상태와 오류 코드만 기록하고 `route_results` 행은 만들지 않습니다(DB 설계서 6-1). 카카오 장소 검색 결과(이름·좌표)도 같은 규칙 — 목적지 라벨 `route:label`에는 **사용자가 입력한 문자열만** 넣습니다.
 - TMAP 1차를 고른 이유(D-038): 정류장 ID·좌표(버스 혼잡 연결), 출발·도착 도보 포함, 출발 시각 지정(`searchDttm`), 초과 단가 0.88원/건. 카카오맵은 하루 1,000건 무료라 2차·개발 초기 검증에 씁니다.
@@ -1371,7 +1390,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | 실제/모의 | 기본 `mock`은 저장된 모의 자료와 `X-Mock`을 사용합니다. `CROWD_PROVIDER=real`은 `is_mock:false`를 반환하며 승인된 매핑만 서울시 `citydata_ppltn`에 요청합니다. |
 | 반경 | 승인된 공식 구역 경계까지 최단거리를 잽니다. 구역 안과 경계 위는 0m입니다. 1km 이내에서 가까운 순으로 최대 3곳을 선택하며, 동률이면 구역 코드순입니다. |
 | 미지원 | 서울 밖·좌표 없음·승인 매핑 없음·반경 내 승인 구역 없음은 각각 `outside_seoul`·`missing_coordinates`·`no_approved_mapping`·`no_nearby_areas`를 `unsupported_reason`에 넣고 `status:"unsupported"`를 반환합니다. |
-| 구역 실패 | 일부가 실패하면 `nearby_areas`에 실패 상태와 오류를 남기고 관측값이 있는 구역을 제공합니다. 모두 실패하면 200 `unavailable` 및 `SOURCE_RESULT_ERROR`입니다. HTTP 200 본문 오류, 요청 구역 불일치, 형식 오류, 공급원 대체 평균도 조회 실패로 처리합니다. |
+| 구역 실패 | 일부가 실패하면 `nearby_areas`에 실패 상태와 오류를 남기고 관측값이 있는 구역을 제공합니다. 모두 실패하면 200 `unavailable`입니다. 오류가 같으면 해당 오류를, 다르면 `SOURCE_RESULT_ERROR`를 반환합니다. HTTP 200 본문 오류, 요청 구역 불일치, 형식 오류, 공급원 대체 평균도 조회 실패로 처리합니다. Agent 종료 상태는 4-5절을 따릅니다. |
 | 호출 제한 | 기본값은 구역별 3초 제한, 60초 메모리 캐시, KST 일일 예산 `CROWD_SEOUL_DAILY_LIMIT` 1,000회, 기준 시각에서 45분 초과 시 `stale`입니다. 같은 구역의 요청은 병합하고 실패는 캐시하지 않습니다. 운영값은 확인이 필요합니다. |
 
 기존 `areas[0]`과 최상위 `observed_at`은 조회에 성공한 가장 가까운 구역 값입니다. 성공 구역이 없으면 `areas:[]`, `observed_at:null`입니다. 최상위 `status`는 지원 여부 및 전체 조회 결과를 반영하고, 성공 시에는 `areas[0]`의 `ok` 또는 `stale`을 따릅니다.
@@ -2572,7 +2591,7 @@ HTTP 202
 | # | 내용 | 담당 | 언제 |
 |---|---|---|---|
 | 1 | `route_requests` 30일 정리 순서(`route_results` → 공유 행 → 원본) 또는 FK `ON DELETE` 규칙 + 시험 | 권오현 | W54 · 12/16 |
-| 2 | 시험 보강: T20c(23시간 지난 TMAP 행으로 정리 확인), T38f(방·메시지 따로 셈), T25(`pg_dump` 실패 감지), 동시 승인·선점은 두 연결로(W128) | 권오현·한태경 | W65 · 12/07–10 |
+| 2 | 시험 보강: T20c(23시간 지난 TMAP 행으로 정리 확인), T38f(방·메시지 따로 셈), 동시 승인·선점은 두 연결로(W128). T25a·b는 덤프 실패 시 중단과 복원 검증을 실행기에 반영, **재실행 대기** | 권오현·한태경 | W65 · 12/07–10 |
 | 3 | 기존 데이터가 있는 DB에서 마이그레이션 시험(003 이미지 행, 004 되돌리기 범위), 파일별 트랜잭션 적용 | 권오현·신유빈 | W65 · 12/07–10 |
 | 4 | `route_key`(좌표 포함)도 서버 비밀키 HMAC으로, 사건 연결 행에 남길 칸 정리 | 권오현 | W16 구현 때 · 11/27 |
 | 5 | 챗봇 작업: 주체 확인 뒤 멱등 판정, 큐 등록 실패한 `queued`·`retrying` 정리, 비로그인 대화 권한 이어 가기 | 한다영·권오현 | W27 · 11/27 |
@@ -2887,6 +2906,7 @@ HTTP 202
 | 규칙(5절·9절) | 현재 동작(코드 기준, 11/23) | 시험 함수 | 구현 예정(언제·누가) |
 |---|---|---|---|
 | TMAP 결과 캐시, 만료 뒤 A05는 `ROUTE_RESULT_EXPIRED` | `memory`는 60초 캐시 만료 뒤 **`retryable=true`**. `db`는 후보 요약을 저장하며 24시간 조회 정리 또는 주기 정리 뒤 **`retryable=false`** | `test_P11_expiry_removes_shared_tmap_body_for_all_ids`, P18 DB 시험 재실행 대기 | 주기 정리 실행 주체 확인 필요(신유빈) |
+| SK 회신 전 7일 백업 | 012가 결과의 `provider`·`queried_at`을 요청 행에 복사합니다. [백업 실행기](db/backup_long_term.sh)는 `route_results` 데이터 전체를 제외하고 요청의 상태·오류 코드를 보존합니다. 결과 행 없이 끝난 요청은 요청 시각·상태·오류 코드만 남습니다. 복원 뒤 토큰이 유효한 A05도 결과 행이 없으면 `ROUTE_RESULT_EXPIRED`로 종료합니다. | [T25a·b](db/tests_012_route_backup_evidence.sql) 백업 복원 시험 **재실행 대기** | AWS 백업 작업에 적용·검증(W65, 신유빈) |
 | **카카오 결과는 A04 동기(3초 안) 응답에서만**, 메모리에도 본문 안 남김 | 동기 대기 3초 안에만 전달, 재조회는 `ROUTE_SECONDARY_SYNC_ONLY`. 202 뒤 1차 실패면 카카오를 부르지 않음. DB 결과 행 없음 | `test_P11_secondary_response_is_only_available_on_sync_post`, `test_P11_secondary_in_flight_at_202_is_never_replayed`, `test_P11_slow_primary_returns_202_then_finishes_in_background` | — |
 | 같은 조건 요청 병합(singleflight) | 처리 중인 같은 `route_key`를 기다림 | `test_P10_five_concurrent_requests_share_one_tmap_call` | — |
 | 전체 처리 10초 제한 | 넘으면 `timed_out`, 병합 대기도 풀림 | `test_P11_overall_deadline_times_out_and_releases_flight` | — |
@@ -3010,6 +3030,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.4 | 2026-11-24 | 강사 11/23 일지 피드백 1·3·4 반영. 축제 재선택 종료와 혼잡·일시 오류 전이를 대조하고 실제 DB·혼잡 증빙 범위와 TMAP 7일 백업 제외 기준을 연결했습니다. |
 | v0.1 | 2026-11-17 | 첫 초안 (A01~A24, 도구 13개, 부록 A) |
 | v0.2 | 2026-11-18 | **11/18 회의 반영**: A25~A30 추가(가는 길·지하철/버스 도착·공영주차장·교통 돌발·방문 집중 예측·데이터 지원 범위), A08 지도 표시 1차 10종(물품보관함·약국 보류, D-021), A03 입장료·소개, 경로 `evidence`(혼잡 구역·교통 돌발·버스 혼잡), 제외 항목 6-1절, 외부 공급원 13절, 지역 코드 0-1절·`coverage`·`REGION_UNSUPPORTED`, ODsay 일일 한도. **BFCL 맞춤**: `failure_domain` 값을 `route_upstream`·`crowd_upstream`으로 통일, 지역 값 `SEOUL`/`ALL`, 평가용 ID 설명, 부록 A 삭제(BFCL 문서가 기준). **기획서 v2.8 맞춤**: Supabase PostgreSQL 확정, Supabase Auth 제안. **강사 2차 의견**: 부하 시험 `cache_state`·`repeat_group`·`run_index`, 시뮬레이션 1회 : 사건 N건, 고유 키에서 병합 기각. 12절 예진님 6가지 결정 사항 제안 추가. **회의록 대조(11/18)**: 물품보관함·약국 보류(D-021), ODsay 결정 확인(사용자), 버스(TAGO)는 1차 서울만. **서비스 범위 D-020(멘토)·D-022(팀)**: 0-2절 — 전국에 있는 데이터는 전국, 지역별로만 있는 데이터는 서울만, 설정으로 지역 확대 |
 | v0.3 | 2026-11-19 | **11/19 한태경 님 TMAP↔카카오맵 확인 반영**: 좌표 순서 변환, 정류장 연결 규칙, `service_running`(막차), TMAP 데이터 24시간 사용 제한. **기준**: 강사 일일 피드백(11/19) 5개, 멘토 2차 회의, 결정 D-033~D-039, 수업 가이드 「API 설계 문서 작성법」, 기획서 최신본(11/19). **공통**: 머리말(정본·진행 단계·검토 기록·서버 주소·`/docs`), 경로 `/api/v1`, ID 형식 통일(`trace_id` 미도입), 422(형식)와 400/403/409(서버 판단) 경계. **DB·인증(D-037)**: AWS Docker PostgreSQL, 자체 JWT, 인증 API A32~A35. **길찾기(D-038·D-039)**: 1차 TMAP · 2차 카카오맵(ODsay 제외), 카카오 결과는 저장·캐시 안 함·동기 전달만(`ROUTE_SECONDARY_SYNC_ONLY`), 공급원별 한도·비용 상한, 같은 좌표 비교 호출 계획, TMAP 정류장 ID로 버스 혼잡 연결. **상세 명세**: A04·A05·A19 8칸 + 필드 표, A02·A03·A15·A20 필드 표, A31 추가. **경로**: 근거를 지역 선택·교통수단 선택으로 분리, 추천 기준 5유형(기획서 FR-R01~R05와 같은 이름). **범위**: 버스 차내 혼잡 서울만(D-033), 자전거 존·택시 승강장 전국 공급원 없으면 서울(D-036), '확인 불가' 표시 규칙. **도구**: 공통 출력(`ok`·`retryable`)·실패 뒤 처리·description·JSON Schema 2개, BFCL 대조표. **복구 시험**: 세 구간 × 세 대응 방식, 재검증·종료 기준. **실호출 근거**: 11/19 한태경 님 10종(10절). **신규 기능**: A36~A41 목록(상세 v0.4). **검토**: AI 교차 검토 25건, 신유빈 님 검토(11/19), 정예진 님 피드백 6건 반영 |
