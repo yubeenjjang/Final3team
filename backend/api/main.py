@@ -117,6 +117,7 @@ async def add_response_headers(
 
 
 _REAL_FESTIVAL_PATHS = re.compile(r"^/api/v1/festivals(/fst_[0-9A-Za-z]{6,26})?/?$")
+_HEALTH_PATH = re.compile(r"^/api/v1/health/?$")
 _REAL_ROUTE_PATHS = re.compile(r"^/api/v1/routes/(return|visit)(/[^/]+)?/?$")
 _REAL_CROWD_PATH = re.compile(r"^/api/v1/festivals/[^/]+/crowd/?$")
 _FESTIVAL_INFO_PATH = re.compile(r"^/api/v1/festivals/[^/]+/(notices|weather|transit|visit-forecast)/?$")
@@ -126,7 +127,8 @@ def _serves_real_data(request: Request) -> bool:
     path = request.url.path
     info_path = _FESTIVAL_INFO_PATH.match(path)
     return (
-        (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
+        (bool(_HEALTH_PATH.match(path)) and health.uses_health_db())
+        or (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
         or (uses_auth_db() and auth_endpoint(path) is not None)

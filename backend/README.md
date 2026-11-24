@@ -23,12 +23,12 @@ FastAPI 서버와 AI Agent 작업을 만드는 폴더입니다.
 | `shared/db/` | DB 연결, 작업 상태 저장, 모델과 구조 변경 파일 |
 | `tests/` | API·Agent·실시간·복구·통합·부하 시험 |
 
-`api/requirements.txt`와 `agents/requirements.txt`는 각각 필요한 Python 패키지를 기록합니다.
+`api/requirements.txt`와 `agents/requirements.txt`는 각각 실행에 필요한 Python 패키지를 기록합니다. `requirements-dev.txt`에는 시험에 필요한 pytest를 둡니다.
 일부 `.py` 파일은 초기 뼈대이며, 기능별 실행 방법은 구현하면서 추가합니다.
 
 ## 공통 시험
 
-저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용합니다. `db`가 표시된 시험은 일회용 PostgreSQL의 `TEST_DB_URL`을 설정한 경우에 실행합니다.
+저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. `db`가 표시된 시험은 일회용 PostgreSQL의 `TEST_DB_URL`을 설정한 경우에 실행합니다.
 
 ## 로컬 DB 설정
 

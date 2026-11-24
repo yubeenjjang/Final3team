@@ -2,7 +2,7 @@
 
 - 기준: DB 스키마 설계서 v0.3.3(5절 `festivals`·`festival_sources`·`ingestion_jobs`·`festival_change_history`·`data_sources`), API 설계문서 v0.3.3(0-1 지역 코드, 2-4 A02·A03, 10절 TourAPI). **이 SPEC에 필요한 것을 옮겨 두었으니 구현 때 설계서 전체를 읽지 않는다.** 다른 점은 `IMP-PLAN.md` '메모'에 적는다.
 - 요구 번호는 `I1`~. 시험 이름에 번호를 넣는다(예: `test_I4_region_merged_gwangju`).
-- 저장소 루트 공통 시험은 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
+- 저장소 루트 공통 시험은 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행한다.
 - import 기준 `backend/` (`from api.providers.tourapi import …`).
 
 ## 0. 실제 데이터에서 확인한 것 (11/23 Claude 실호출, 2026-01-01 이후 시작 870건)
