@@ -17,7 +17,7 @@ from api.auth import service, state
 from api.auth.tokens import AccessClaims, read_access_token, unauthorized, uses_auth_db
 from api.errors import ApiError
 from api.mocks.store import auth_lock
-from api.request_logs import ADMIN_REPORTS_PATH, ADMIN_REVIEW_PATH
+from api.request_logs import ADMIN_REPORTS_PATH, ADMIN_REVIEW_PATH, admin_notice_endpoint
 from api.services.mock_auth import authenticated_access
 from shared.db.session import user_db_session
 
@@ -89,6 +89,8 @@ async def get_current_user(
     auth: AuthenticatedSession, request: Request, authorization: Authorization = None,
 ) -> CurrentUser | None:
     setting = _MOCK_OPERATOR_TOKENS.get(request.url.path.rstrip("/"))
+    if setting is None and admin_notice_endpoint(request.url.path) is not None:
+        setting = _MOCK_OPERATOR_TOKENS[ADMIN_REVIEW_PATH]
     if not uses_auth_db() and setting is not None:
         return await run_in_threadpool(_mock_operator, authorization, setting)
     return auth[0] if auth else None

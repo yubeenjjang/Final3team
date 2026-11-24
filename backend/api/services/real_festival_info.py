@@ -21,6 +21,7 @@ from api.schemas.festival_info import (
 )
 from api.schemas.festivals import FestivalDetail
 from api.services.festival_lookup import find_festival
+from api.services.notice_lookup import uses_notice_db
 
 ModeName = Literal["notices", "weather", "transit", "traffic-incidents", "visit-forecast"]
 _PROVIDER_ENVS: dict[ModeName, str] = {
@@ -34,6 +35,8 @@ _NO_FORECAST = "이 축제 장소의 예측 자료가 없어요"
 
 
 def uses_real_info(name: str) -> bool:
+    if name == "notices":
+        return uses_notice_db()
     env = _PROVIDER_ENVS.get(name)
     return env is not None and os.environ.get(env, "mock") == "real"
 

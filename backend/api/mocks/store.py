@@ -23,6 +23,7 @@ class RouteRecord:
     scenario: str
     status: RouteStatus
     updated_at: str
+    control_version: str
 
 
 festivals: dict[str, MockFestival] = {}

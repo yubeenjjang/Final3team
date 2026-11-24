@@ -31,6 +31,10 @@ from api.repositories.route_store import RouteStore, stored_candidates, token_ha
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import Endpoint, FestivalEndpoint, RouteDirection, RouteRequest, RouteStatus
 from api.services.festival_lookup import find_festival
+from api.services.notice_lookup import control_reader
+from api.services.notices import (
+    CONTROL_CHANGED_CODE, CONTROL_CHANGED_MESSAGE, NO_CONTROL_VERSION, ControlReader, ControlSnapshot,
+)
 from api.services.mock_routes import (
     _CONTROL_NOTICE,
     _FAILURES,
@@ -68,6 +72,7 @@ _ACCESS_EXPIRED = _Failure("ROUTE_ACCESS_EXPIRED", "경로 조회 시간이 지�
 _DB_UNAVAILABLE = _Failure(
     "ROUTE_STORE_UNAVAILABLE", "귀가 요청 저장소에 연결할 수 없어요.", True, http_status=503,
 )
+_CONTROL_CHANGED = _Failure(CONTROL_CHANGED_CODE, CONTROL_CHANGED_MESSAGE, True)
 _DB_BUSY = _Failure(SERVICE_BUSY_CODE, SERVICE_BUSY_MESSAGE, True, http_status=503)
 _PROVIDER_FAILURES: dict[ErrorKind, _Failure] = {
     "too_close": _Failure("ROUTE_NO_RESULT", "걸어서 갈 수 있는 거리예요"),
@@ -108,6 +113,7 @@ class _RouteRecord:
     direction: RouteDirection
     request: RouteRequest | None = field(repr=False)
     request_key: str = field(repr=False)
+    festival_id: str
     body_hash: str = field(repr=False)
     depart_at: datetime
     updated_at: datetime
@@ -120,6 +126,7 @@ class _RouteRecord:
     failure: _Failure | None = None
     route_key: str | None = None
     source_type: str = "fresh"
+    control: ControlSnapshot = field(default_factory=ControlSnapshot)
 
 
 _RouteOutcome = _CachedRoute | ProviderResult | _Failure
@@ -139,7 +146,7 @@ class RealRouteService:
         quota: _Quota | None = None,
         now: Callable[[], datetime] | None = None,
         store: RouteStore | None = None,
-        control_version: str | None = None,
+        controls: ControlReader | None = None,
     ) -> None:
         self._tmap = tmap
         self._kakao = kakao
@@ -150,7 +157,7 @@ class RealRouteService:
             raise ApiError(503, "ROUTE_STORE_UNAVAILABLE", "귀가 저장소 설정을 확인해 주세요.", True)
         self._secret = secret.encode() if secret else _STARTUP_SECRET
         self._store = store
-        self._control_version = control_version or "none"
+        self._controls = controls
         self._records: dict[str, _RouteRecord] = {}
         self._request_keys: dict[str, _RouteRecord] = {}
         self._cache: dict[str, _CachedRoute] = {}
@@ -164,11 +171,14 @@ class RealRouteService:
         if self._store is not None:
             return await self._create_db_route(direction, request, request_key, body_hash)
 
+        control = await asyncio.to_thread(self._control_snapshot, request.festival_id)
         record = self._request_keys.get(request_key)
         if record is None:
-            record = self._register(direction, request, request_key, body_hash)
+            record = self._register(direction, request, request_key, body_hash, control)
         elif not hmac.compare_digest(record.body_hash, body_hash):
             raise ApiError(409, "IDEMPOTENCY_CONFLICT", "이미 다른 본문에 사용한 요청 ID입니다.")
+        elif record.control.version != control.version:
+            return 200, self._control_changed(record.route_id, request.festival_id, control)
         return await self._submit_registered(record, request)
 
     async def _submit_registered(
@@ -188,6 +198,9 @@ class RealRouteService:
             return 202, self._accepted_payload(record)
         result = secondary or self._record_result(record)
         if result is not None:
+            control = await asyncio.to_thread(self._control_snapshot, request.festival_id)
+            if record.control.version != control.version:
+                return 200, self._control_changed(record.route_id, request.festival_id, control)
             return 200, self._ready_payload(record, request, result)
         failure = record.failure
         if failure is not None and failure.http_status != 200:
@@ -199,32 +212,59 @@ class RealRouteService:
     ) -> dict[str, object]:
         if self._store is not None:
             return await asyncio.to_thread(self.get_route, direction, route_id, access_token)
-        return self.get_route(direction, route_id, access_token)
+        record = self._authorized_record(direction, route_id, access_token)
+        control = await asyncio.to_thread(self._control_snapshot, record.festival_id)
+        return self._memory_status(record, control)
 
     def get_route(
         self, direction: RouteDirection, route_id: str, access_token: str | None
     ) -> dict[str, object]:
+        if self._store is not None:
+            if not access_token:
+                raise ApiError(401, "UNAUTHORIZED", "경로 조회 토큰을 보내 주세요.")
+            return self._db_status(direction, route_id, access_token)[1]
+        record = self._authorized_record(direction, route_id, access_token)
+        return self._memory_status(record, self._control_snapshot(record.festival_id))
+
+    def _memory_status(self, record: _RouteRecord, control: ControlSnapshot) -> dict[str, object]:
+        if record.control.version != control.version:
+            return self._control_changed(record.route_id, record.festival_id, control)
+        return self._status_payload(record)
+
+    def _authorized_record(
+        self, direction: RouteDirection, route_id: str, access_token: str | None,
+    ) -> _RouteRecord:
         if not access_token:
             raise ApiError(401, "UNAUTHORIZED", "경로 조회 토큰을 보내 주세요.")
-        if self._store is not None:
-            return self._db_status(direction, route_id, access_token)[1]
         record = self._records.get(route_id)
         if record is None or record.direction != direction:
             raise ApiError(404, "ROUTE_REQUEST_NOT_FOUND", "경로 요청을 찾을 수 없어요.")
         if not secrets.compare_digest(access_token.encode(), record.access_token.encode()):
             raise ApiError(403, "FORBIDDEN", "이 경로를 조회할 수 없는 토큰입니다.")
-        return self._status_payload(record)
+        return record
+
+    def _control_snapshot(self, festival_id: str) -> ControlSnapshot:
+        return (self._controls or control_reader()).snapshot(festival_id)
+
+    def _control_changed(
+        self, route_id: str, festival_id: str, control: ControlSnapshot,
+    ) -> dict[str, object]:
+        payload = self._state_payload(route_id, "unavailable", self._now(), _CONTROL_CHANGED)
+        payload["notices"] = control.apply_to([CONTROL_CHANGED_MESSAGE], festival_id)
+        return payload
 
     def _now(self) -> datetime:
         return as_kst(self._clock())
 
     def _register(
         self, direction: RouteDirection, request: RouteRequest, request_key: str, body_hash: str,
+        control: ControlSnapshot,
     ) -> _RouteRecord:
         route_id = _new_id("rr_")
         while route_id in self._records:
             route_id = _new_id("rr_")
         record = self._new_record(direction, request, request_key, body_hash, route_id, _random_id("rrt_", 24))
+        record.control = control
         self._records[route_id] = record
         self._request_keys[record.request_key] = record
         record.task = asyncio.create_task(self._process(record))
@@ -242,6 +282,7 @@ class RealRouteService:
             direction=direction,
             request=request,
             request_key=request_key,
+            festival_id=request.festival_id,
             body_hash=body_hash,
             depart_at=now,
             updated_at=now,
@@ -263,6 +304,7 @@ class RealRouteService:
         route_id = _new_id("rr_")
         record = self._new_record(direction, request, request_key, body_hash, route_id, self._db_token(route_id))
         record.festival = festival
+        record.control = await asyncio.to_thread(self._control_snapshot, request.festival_id)
         origin_type, origin_hash = self._place_fields(request.origin)
         destination_type, destination_hash = self._place_fields(request.destination)
         created = await asyncio.to_thread(self._store.register, {
@@ -407,7 +449,7 @@ class RealRouteService:
             "user_constraints": request.user_constraints.model_dump(),
             "departure": request.departure,
             "departure_bucket": int(record.depart_at.timestamp()) // 300,
-            "control_version": self._control_version,
+            "control_version": record.control.version,
             "provider": provider,
         }
         normalized = json.dumps(conditions, sort_keys=True, separators=(",", ":"))
@@ -526,11 +568,14 @@ class RealRouteService:
                 error_detail=None, result={
                     "queried_at": datetime.fromisoformat(result.queried_at),
                     "candidates": candidates,
-                    "evidence": json.dumps({"notices": result.notices}, ensure_ascii=False),
+                    "evidence": json.dumps({
+                        "notices": result.notices, "control_version": record.control.version,
+                    }, ensure_ascii=False),
                     "route_hash": self._private_hash("result", candidates),
                     "source_type": record.source_type,
-                    "validity_check": json.dumps({"route_key_matched": True})
-                    if record.source_type == "cache" else None,
+                    "validity_check": json.dumps({
+                        "route_key_matched": True, "control_version": record.control.version,
+                    }) if record.source_type == "cache" else None,
                 },
             )
             return
@@ -583,6 +628,10 @@ class RealRouteService:
 
         payload = self._state_payload(route_id, status, updated_at, failure)
         if result is not None and failure is None:
+            control = self._control_snapshot(request["festival_id"])
+            evidence = result["evidence"]
+            if evidence.get("control_version", NO_CONTROL_VERSION) != control.version:
+                return _CONTROL_CHANGED, self._control_changed(route_id, request["festival_id"], control)
             # 새 프로세스도 민감한 요청 원문 없이 저장된 경로 요약을 응답할 수 있다.
             payload.update({
                 "direction": direction, "festival_id": request["festival_id"],
@@ -595,7 +644,7 @@ class RealRouteService:
                 "constraint_status": self._constraint_status(request["constraints"]),
                 "coverage": {"scope": "national", "region_code": request["region_code"], "supported": True},
                 "score_version": None,
-                "notices": [_CONTROL_NOTICE, *result["evidence"].get("notices", [])],
+                "notices": control.apply_to([_CONTROL_NOTICE, *evidence.get("notices", [])], request["festival_id"]),
             })
         return failure, payload
 
@@ -668,7 +717,7 @@ class RealRouteService:
             "constraint_status": self._constraint_status(request.user_constraints.model_dump()),
             "coverage": {"scope": "national", "region_code": festival.region_code, "supported": True},
             "score_version": None,
-            "notices": [_CONTROL_NOTICE, *result.notices],
+            "notices": record.control.apply_to([_CONTROL_NOTICE, *result.notices], festival.festival_id),
             "is_mock": False,
         }
 

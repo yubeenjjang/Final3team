@@ -238,6 +238,12 @@ echo "## 5-9. 022_notify 신고 처리 메모·조회 인덱스 적용·되돌�
 "${PSQL[@]}" -q -v applied=false -f - < tests_022_notify.sql
 "${PSQL_TX[@]}" -q < 022_notify.sql
 "${PSQL[@]}" -q -v applied=true -f - < tests_022_notify.sql
+echo "## 5-9. 022_notice 공식 공지 통제 버전 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_notice.sql
+"${PSQL[@]}" -q -f - < tests_022_notice.sql
+"${PSQL_TX[@]}" -q < 022_notice_down.sql
+"${PSQL_TX[@]}" -q < 022_notice.sql
+"${PSQL[@]}" -q -f - < tests_022_notice.sql
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore

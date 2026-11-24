@@ -20,13 +20,13 @@ from api.errors import (
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
 from api.request_logs import (
-    ADMIN_REVIEW_PATH, REPORT_PATHS, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
+    ADMIN_REVIEW_PATH, REPORT_PATHS, admin_notice_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
     me_endpoint, private_endpoint, request_logger,
 )
 from api.realtime import chat_socket
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
-from api.routers.admin import festival_review, reports as admin_reports
+from api.routers.admin import festival_review, notices, reports as admin_reports
 from api.routers.assistant import chatbot
 from api.routers.community import chat, companions, friends, notifications, reports
 from api.routers.festivals import catalog, info
@@ -139,7 +139,7 @@ def _auth_data_endpoint(path: str) -> str | None:
     normalized = path.rstrip("/")
     if normalized in REPORT_PATHS or normalized == ADMIN_REVIEW_PATH:
         return normalized
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return admin_notice_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 def _serves_real_data(request: Request) -> bool:
@@ -159,6 +159,6 @@ for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
 for module in (
     info, favorites, users, friends, companions, chat, notifications, chat_socket, festival_review, reports,
-    admin_reports,
+    admin_reports, notices,
 ):
     app.include_router(module.router, prefix="/api/v1")

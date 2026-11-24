@@ -165,7 +165,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | **DB 쪽 2차 안전장치** | API 서버는 요청마다 DB에 사용자 ID를 넘기고(`SET LOCAL app.user_id`), DB는 접속 역할·컬럼 권한·RLS로 본인 것만 보이게 막습니다(04 문서 3절) |
 | **로그인 없이 쓰는 API** | 축제 목록·상세·공지·시설·지도 표시·날씨·교통·혼잡 조회, 귀가·가는 길 경로 조회·상태 조회, 챗봇 질문 |
 | **로그인 필요** (`user`) | 관심 축제 저장·해제·목록, 후기(Should), 취향(A36·A37), 친구(A43~A50), 동행 글 작성·신청(A58~A65), 채팅(A66~A73), 알림(A74·A75), 신고(A76), 비밀번호 변경·탈퇴(A80) — 6절 '권한' 칸이 `user`인 API 전부 |
-| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A52~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
+| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A55~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
 | **비로그인 경로 요청 보호** | 상태 조회는 로그인 여부와 관계없이 `route_request_id` + 요청 시 발급한 `route_access_token`(로그인 JWT와 별개)으로 본인만 조회. 짧은 수명 적용은 DB·Redis 연결 때 구현(2-2절). IP·세션 단위 요청 수 제한 |
 
 
@@ -241,6 +241,8 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | 7 | **오류 응답** | 아래 '오류 응답 표' |
 | 8 | **실행 규칙** | **동기 대기 3초**(넘으면 그때까지의 상태로 202 반환, 처리는 계속) · **전체 처리 제한 10초**(넘으면 `route_status=timed_out` — 202 뒤에는 A05로 확인, 3초 안에 판정되면 504) (모두 임시) · 길찾기 어댑터 1회 호출 상한 TMAP 5초·카카오 3초(9-1절) · 1차 공급원 실패 때 **2차 공급원으로 1회** — **어떤 응답을 실패로 보고 넘길지는 10-3 표가 유일한 기준**(시간 초과·429·5xx·403 키 오류·TMAP `result.status` 12~14 등). 단 카카오(2차)는 **동기 3초 안에 끝날 때만** 결과를 줄 수 있으므로, 1차가 3초 안에 실패하지 않으면(예: 5초 시간 초과) 202 뒤 `ROUTE_SECONDARY_SYNC_ONLY`로 끝냄(5절) · 우리 요청 잘못(400/404/409/422)은 재시도 없음 · 같은 `request_id`는 처음 만든 `route_request_id`를 돌려줌(멱등) · 9절 |
 
+**구현 상태 (ohyun-notice)** — A04/A25의 v2 키는 축제와 공통 공지의 통제 버전을 사용합니다. 버전이 달라진 기존 경로는 같은 요청 ID로 `unavailable`·`ROUTE_CONTROL_CHANGED`를 반환합니다. 활성 통제 공지 제목과 A07 경로를 `notices[]`에 표시하고 `control_unverified` 상태를 유지합니다.
+
 **처리 순서:** ① 축제 존재·좌표 확인 → ② 목적지 확인(좌표 또는 카카오 장소 검색) → ③ 경로 키(`route_key`) 계산 → ④ 켜져 있는 복구 조치(동일 요청 병합 등) 적용 → ⑤ **길찾기 어댑터 호출: 1차 TMAP 대중교통 → 실패 시 2차 카카오맵 대중교통**(개발·시험은 모의, D-038) → ⑥ 결과 검증(출처·수단·시각·확인 가능한 통제) → ⑦ 경로 근거 붙이기 → ⑧ 추천 기준으로 점수 매겨 정렬 → ⑨ 기록(`route_requests`·`route_results`·지표)
 
 **경로 근거(evidence) — 두 가지로 나눕니다 (D-024·D-033)**
@@ -304,7 +306,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | `coverage` | object | 불가 | 0절 공통 형식 |
 | `score_version` | string | null | 점수 비율 버전 |
 | `is_mock` | boolean | 불가 | 모의 응답이면 true |
-| `notices[]` | array | 빈 배열 | 확인 못 한 것 안내 |
+| `notices[]` | array | 빈 배열 | 활성 공식 교통통제 제목·A07 경로와 통제 반영 여부 안내 |
 | `festival_id` · `travel_mode` | string | 불가 | 요청 값 그대로 |
 | `completed_valid_route` | boolean | 불가 | 검증된 경로가 실제로 담겼으면 true(`ready`일 때만) |
 
@@ -1305,7 +1307,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A39** | GET | `/api/v1/festivals/popular` | 없음 | 실제 참여 지표(상세 조회·관심 추가) 기반 인기 | 〃 | 설계안 |
 | **A43~A50** | — | `/api/v1/users/search`, `/api/v1/friend-requests`(+`/{id}/{action}`), `/api/v1/me/friend-requests`, `/api/v1/me/friends`(+`/{user_id}`), `/api/v1/me/blocks/{user_id}` | user | **친구 검색(닉네임 정확히 일치, 친구 코드 없음)·신청·수락·거절·취소·목록·삭제·차단·차단 해제** (6-4-3) | FR-COM12~14 | 최종 — 담당 권오현 |
 | **A51** | POST | `/api/v1/assistant/visit-course` (결과는 A06-1) | 없음(선택 로그인) | **AI 방문 코스**: 동행 유형·시간에 맞춘 축제 안 코스, 코드가 실존·운영 시각·동선 검증 (6-6) | FR-P01·P03 | 최종 — 권오현(API)·한다영(에이전트) |
-| **A52~A54** | POST/PATCH/POST | `/api/v1/admin/notices`, `/{notice_id}`, `/{notice_id}/review` | admin | 공식 공지 등록·수정·승인/반려, 이력 추가만 (6-6) | FR-O06·D05 | 최종(적용 시) — 신유빈 |
+| **A52~A54** | POST/PATCH/POST | `/api/v1/admin/notices`, `/{notice_id}`, `/{notice_id}/review`·`/{notice_id}/end` | operator·admin | 공식 공지 등록·수정·승인·반려·종료, 이력 추가만 (6-6) | FR-O06·D05 | 구현 |
 | **A55~A56** | POST/PATCH | `/api/v1/admin/festivals`, `/{festival_id}` | admin | 축제 직접 등록·수정·게시, 변경 이력 (6-6) | FR-D12·O10 | 최종 — 권오현 |
 | **A57~A65** | — | `/api/v1/festivals/{id}/companion-posts`, `/api/v1/companion-posts`(+`/{id}`, `/applications`, `/meeting-place`, `/{action}`), `/api/v1/companion-applications/{id}/{action}` | 공개·user | **동행**: 모집 목록·작성·신청·승인(정원 잠금)·만남 장소·종료/취소 (6-4-4) | FR-COM01~11·18·19 | 최종 — 권오현 |
 | **A66~A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (6-4-5) | FR-COM09·15~17·20 | 최종 — 권오현 |
@@ -1403,7 +1405,7 @@ Content-Type: application/json
 | `COURSE_OUT_OF_PERIOD` | 400 | 방문 코스 시작 시각이 축제 기간 밖 (A51) |
 | `DUPLICATE_FESTIVAL` | 409 | 같은 이름·기간·장소 축제가 이미 있음 → 검토 대기열로 (A55) |
 | `NOT_IMPLEMENTED` | 501 | 아직 구현하지 않은 후속 기능 (A17) |
-| `QUEUE_ITEM_NOT_FOUND` / `ALREADY_REVIEWED` | 404 / 409 | 없는 검토 항목 / 이미 처리한 검토 항목 (A24) |
+| `QUEUE_ITEM_NOT_FOUND` / `ALREADY_REVIEWED` | 404 / 409 | 없는 검토 항목 / 이미 처리한 검토 항목 (A24·A54) |
 | `ALREADY_FRIENDS` / `REQUEST_PENDING` / `BLOCKED` / `REQUEST_NOT_PENDING` | 409 | 친구 API(A44·A46): 이미 친구 / 대기 중 신청 있음 / 차단 관계 / 이미 처리된 신청 |
 | `ROUTE_NO_RESULT` | 200 (A04·A05의 `error`, `route_status=unavailable`) | 공급원이 "경로 없음"으로 답함(TMAP `result.status` 11~14, 카카오 `NO_RESULTS` 등 — 10-3)이거나 TMAP 후보가 모두 운행 종료로 제외됨(5절). `retryable=false` |
 | `INCIDENT_NOT_FOUND` / `INCIDENT_CLOSED` | 404 / 409 | 없는 사건 / 이미 닫힌 사건에 결정 기록 (A19) |
@@ -1412,6 +1414,10 @@ Content-Type: application/json
 | `SIMULATION_NOT_FOUND` | 404 | 없는 `simulation_id` (A16·A21·A31) |
 | `RUN_NOT_FOUND` | 404 | 없는 챗봇 작업 `run_id` (A06-1·A06-2) |
 | `ROUTE_RESULT_EXPIRED` | 200 (A05의 `error`) | **메모리 모드** 60초 캐시 만료, `retryable=true`, “경로가 만료됐어요. 다시 조회해 주세요.” **DB 모드** TMAP 결과 정리 또는 복원 후 `ready` 요청의 결과 행 없음, `retryable=false`, “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.” (2-2) |
+| `NOTICE_NOT_FOUND` | 404 | 없는 공식 공지 ID |
+| `NOTICE_NOT_APPROVED` / `ALREADY_ENDED` | 409 | 수동 종료를 요청한 공지가 승인 대기·반려 상태이거나 이미 종료됨 |
+| `NOTICE_STORE_UNAVAILABLE` | 503 | 공지 저장소에 연결할 수 없음. 재시도 가능 |
+| `ROUTE_CONTROL_CHANGED` | 200 (A04·A05·A25 상태의 `error`) | 생성 뒤 통제 버전이 바뀐 경로. 기존 요청 ID를 반환하고 새 요청 ID로 조회를 안내 |
 | `ROUTE_ACCESS_EXPIRED` | 200 (A04·A25 POST의 `error`) | DB 모드에서 접수 10분 이후 동일 요청 재전송. 기존 `route_request_id`를 반환, `retryable=false`(2절) |
 | `TOOL_TIMEOUT` | — (도구 출력) | 도구 호출 제한 시간 초과 (4-5) |
 | `ROUTE_SECONDARY_SYNC_ONLY` | 200 (A05의 `error`) | 2차(카카오맵) 결과는 저장할 수 없어 비동기로 전달 불가 → 새로 요청 (5절) |
@@ -1461,7 +1467,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `type`: 선택, `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure` / `active_only`: bool, 기본 true(지금 효력 있는 것만) |
 | 출처 | 운영자가 등록·승인한 공지 + 서울 TOPIS 통제(10번, 서울만) |
-| 구현 상태 | 기본 모의. `NOTICES_PROVIDER=real`은 006 공지 스키마의 `official_notices`에서 승인된 축제 공지를 조회합니다. |
+| 구현 상태 | 기본 모의는 예시 공지와 메모리 등록 공지를 함께 조회합니다. `AUTH_PROVIDER=db` 또는 `NOTICES_PROVIDER=real`은 DB에서 승인된 해당 축제·공통 공지를 조회합니다. 시작 시각은 포함하고 종료 시각은 제외합니다. |
 | 규칙 | `approval_status='approved'`만 보여 줌(미승인은 경로 차단에도 안 씀). 축제 공지가 없어도 `status:"ok"`, `items:[]` — "확인할 수 있는 공지 자료가 없어요" |
 
 **A07 쿼리 필드**
@@ -2613,35 +2619,37 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
-| **A52** `POST /api/v1/admin/notices` | `{festival_id?, type(5종, A07), title(1~200), content, effective_from, effective_to, source_url?}` | 201 `{notice_id, approval_status:"pending"}` | admin. 등록만으로는 **공개·경로 차단에 쓰지 않음**(승인 전 `pending`, RLS로 공개 조회 안 됨 — T35e). `notice_events`에 `create` 1줄 | 401 / 403 / 404(축제) / 422 |
-| **A53** `PATCH /api/v1/admin/notices/{notice_id}` | 바꿀 칸만 | 200 `{notice_id, approval_status}` | admin. 승인된 공지를 고치면 **다시 `pending`**(재승인 필요). 바뀌기 전·후 값을 `notice_events`(`update`)에 | 401 / 403 / 404 / 422 |
-| **A54** `POST /api/v1/admin/notices/{notice_id}/review` | `{decision: "approve"·"reject", reason}` (반려는 이유 필수 — DB도 거부, T35b) | 200 `{notice_id, approval_status, control_version}` | admin, **등록한 사람과 다른 관리자 권장**(2인 확인, 팀 인원상 필수는 아님). 승인되면 `control_version`이 바뀌어 그 축제의 경로 캐시를 무효화(04 문서 7절) → 귀가 경로가 통제를 반영(FR-R06·R09) | 401 / 403 / 404 / 409 `ALREADY_REVIEWED` |
+| **A52** `POST /api/v1/admin/notices` | `{festival_id?, type(5종, A07), title(1~200), content, effective_from, effective_to, source_url}` | 201 `{notice_id, approval_status:"pending"}` | operator·admin. 등록만으로는 **공개·경로 차단에 쓰지 않음**(승인 전 `pending`, RLS로 공개 조회 안 됨 — T35e). `notice_events`에 `create` 1줄 | 401 / 403 / 404(축제) / 422 |
+| **A53** `PATCH /api/v1/admin/notices/{notice_id}` | 바꿀 칸만 | 200 `{notice_id, approval_status}` | operator·admin. 승인·반려 공지를 고치면 **다시 `pending`**(재승인 필요). 바뀌기 전·후 값을 `notice_events`(`update`)에 | 401 / 403 / 404 / 422 |
+| **A54** `POST /api/v1/admin/notices/{notice_id}/review` | `{decision: "approve"·"reject", reason}` (반려는 이유 필수 — DB도 거부, T35b) | 200 `{notice_id, approval_status, control_version}` | operator·admin. **등록한 사람과 다른 검토자 권장**(2인 확인, 팀 인원상 필수는 아님). 승인되면 `control_version`이 바뀌어 그 축제의 경로 캐시를 무효화(04 문서 7절) → 귀가 경로가 통제를 반영(FR-R06·R09) | 401 / 403 / 404 / 409 `ALREADY_REVIEWED` / 422 |
+| **수동 종료** `POST /api/v1/admin/notices/{notice_id}/end` | 본문 생략 또는 `{reason?}` | 200 `{notice_id, approval_status, control_version}` | operator·admin. 승인된 공지의 효력을 즉시 종료하고 `end` 이력을 남깁니다. 승인 상태를 유지하며 A07은 `active_only=false`에서 종료 공지를 반환합니다. | 401 / 403 / 404 / 409 `NOTICE_NOT_APPROVED`·`ALREADY_ENDED` / 422 |
 
 **A52 공지 등록·A53 수정·A54 승인/반려 요청**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `notice_id` | path | string | A53·A54 예 | 수정하거나 검토할 공지 ID |
+| `notice_id` | path | string | A53·A54·수동 종료 예 | 수정·검토·종료할 공지 ID |
 | `festival_id` | body | string | A52·A53 선택 | 관련 축제 ID, 공통 공지는 생략 가능 |
 | `type` | body | string | A52 예·A53 선택 | `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure` |
 | `title` | body | string | A52 예·A53 선택 | 제목 1~200자 |
 | `content` | body | string | A52 예·A53 선택 | 공지 내용 |
-| `effective_from` | body | string(date-time) | A52 예·A53 선택 | 효력 시작 시각 |
-| `effective_to` | body | string(date-time) | A52 예·A53 선택 | 효력 종료 시각 |
-| `source_url` | body | string | A52·A53 선택 | 출처 URL |
+| `effective_from` | body | string(date-time) | A52 예·A53 선택 | 시간대가 포함된 효력 시작 시각 |
+| `effective_to` | body | string(date-time) | A52 예·A53 선택 | 시간대가 포함된 효력 종료 시각, 시작보다 뒤 |
+| `source_url` | body | string | A52 예·A53 선택 | HTTP(S) 출처 URL |
 | `decision` | body | string | A54 예 | `approve`·`reject` |
-| `reason` | body | string | A54 반려 시 예 | 검토 사유, `notice_events.reason` 300자 이하 |
+| `reason` | body | string | A54 반려 시 예 | 검토 또는 수동 종료 사유, `notice_events.reason` 300자 이하 |
 
-**A52 등록(201)·A53 수정(200)·A54 검토(200) 응답**
+**A52 등록(201)·A53 수정(200)·A54 검토 및 수동 종료(200) 응답**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `notice_id` | 응답 | string | 예 | 등록·수정·검토한 공지 ID |
 | `approval_status` | 응답 | string | 예 | `pending`·`approved`·`rejected`. 등록과 승인 공지 수정 후 `pending`, 검토 후 `approved` 또는 `rejected` |
-| `control_version` | 응답 | string 또는 null | A54 예 | 승인 시 갱신하는 경로 통제 버전 |
+| `control_version` | 응답 | string 또는 null | A54·수동 종료 예 | 승인·종료 시 갱신하는 경로 통제 버전, 반려는 null |
 
 - 이력(`notice_events`)은 추가만 가능하고 수정·삭제할 수 없습니다(트리거, T35c). AI가 공지를 구조화하는 기능(FR-D04·O07)은 Should라 범위 밖 — 들어오면 같은 승인 흐름을 탑니다.
-- 담당: `admin/operations.py` 쪽 운영 기능이라 신유빈(협업 규칙) — 공지 화면은 `admin/operations/`(이수언).
+
+**구현 상태 (ohyun-notice)** — `admin/notices.py`의 운영자·관리자 API가 006·022를 사용합니다. 승인, 승인 공지 재검토, 수동 종료, 효력 시작·종료에 맞춰 축제별 버전을 변경합니다. 공통 공지는 모든 축제에서 조회하고 버전에 반영합니다. [공식 공지 구현 문서](../../backend/Doc/notice/SPEC.md)
 
 #### A55~A56. 축제 직접 등록·수정 (FR-D12·O10 관리자 보완·승인)
 
@@ -3832,7 +3840,7 @@ TMAP 정리는 013까지 적용한 DB에 연결해 `backend/`에서 `python -m a
 | 같은 조건 요청 병합(singleflight) | 처리 중인 같은 TMAP `route_key`를 기다림. 카카오 전환은 요청별 동기 대기 시간 안에 처리 | `test_P10_five_concurrent_requests_share_one_tmap_call` | — |
 | 전체 처리 10초 제한 | 넘으면 `timed_out`, 병합 대기도 풀림 | `test_P11_overall_deadline_times_out_and_releases_flight` | — |
 | 하루 한도(TMAP 10·카카오 1,000), 부르기 **전에** 셈, 다 쓰면 그 공급원 중지 | `api/providers/quota.py`, 환경변수 `ROUTE_TMAP_DAILY_LIMIT`·`ROUTE_KAKAO_DAILY_LIMIT`·`ROUTE_KAKAO_LOCAL_DAILY_LIMIT`(9-1 '현재 코드 기준') | `test_p8_quota.py`(한도·날짜·동시성), `test_P10_quota_skips_route_provider_calls` | 센 횟수를 Redis `quota:*`로 — W36, 권오현 |
-| `route_key`에 원문 좌표 없음(HMAC) | `v2:` + HMAC-SHA256. 방향, 축제 ID, 출발·도착 유형과 해석된 좌표(소수 4자리), 이동수단, 추천 기준, 기본값을 채운 `user_constraints`, `departure`와 5분 구간, 통제 공지 버전(현재 `none`), 공급원(`tmap`·`kakao`)을 정규화해 입력으로 사용합니다. `ROUTE_KEY_SECRET`이 없으면 메모리 모드에 한해 시작할 때 임의 키를 씁니다. | `test_P10_cache_key_uses_hmac_and_rounded_coordinates`, P23 | Redis 연동 시에도 v2 완전 일치를 적용 |
+| `route_key`에 원문 좌표 없음(HMAC) | `v2:` + HMAC-SHA256. 방향, 축제 ID, 출발·도착 유형과 해석된 좌표(소수 4자리), 이동수단, 추천 기준, 기본값을 채운 `user_constraints`, `departure`와 5분 구간, 해당 축제의 통제 공지 버전, 공급원(`tmap`·`kakao`)을 정규화해 입력으로 사용합니다. `ROUTE_KEY_SECRET`이 없으면 메모리 모드에 한해 시작할 때 임의 키를 씁니다. | `test_P10_cache_key_uses_hmac_and_rounded_coordinates`, P23 | Redis 연동 시에도 v2 완전 일치를 적용 |
 | 장소 검색어·좌표(18-1) | `memory`는 TMAP 결과 60초 만료 때 공유 요청의 원문도 지우고, 카카오·실패 요청은 처리 끝에 원문을 정리. 요청 ID·본문 HMAC으로 재전송을 확인. `db`는 장소·본문 HMAC을 기록하며 A05는 정류장 좌표·경로선·사용자 장소 원문이 빠진 요약을 반환 | P16 단위 시험, P18 로컬 DB 통과, 18-2절 원문 검사 | Redis 라벨과 사용자 장소 표시 연동은 후속 |
 | A05 조회 토큰 10분 만료(401) | `db`는 서비스 계정으로 요청을 읽고 해시를 비교하며, 토큰은 접수 10분 뒤 만료. `memory`는 기존 토큰 규칙 적용 | P16 단위 시험, P18 로컬 DB 통과 | DB 환경변수 이름 확정(신유빈 11/24) |
 | A04 동일 요청 재전송(멱등) | DB 모드에서 조회 토큰 만료 후에도 기존 `route_request_id`를 유지하고 `200 unavailable`·`ROUTE_ACCESS_EXPIRED` 반환 | P17 단위 시험, P18 로컬 DB 통과 | — |
@@ -3974,6 +3982,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.5 | 2026-11-24 | A74·A75 이벤트 연결, A76 신고 접수·일일 한도, A77 운영자 열람 기록과 조치를 구현했습니다(6-4-6·18-2). |
 | v0.5 | 2026-11-24 | A43~A50의 DB·mock 동작, 닉네임 검색 한도, 신청·차단 트랜잭션과 채팅 차단 해제 연동 지점을 구현했습니다(6-4-3). |
 | v0.5 | 2026-11-24 | A24의 검토 필터·사유 필수·승인·거절·숨김, 운영자 권한과 서비스 계정 처리 명세를 구현과 맞췄습니다(6-2절). |
+| v0.5 | 2026-11-24 | A52~A54 공식 공지 관리·수동 종료, A07 승인 공개, A04/A25 통제 버전과 안내를 연결했습니다. |
 | v0.5 | 2026-11-24 | A57~A65 동행 API 구현 상태, 글 수정과 수동 마감, 72시간 내용 보존을 반영했습니다(6-4-4절). |
 | v0.5 | 2026-11-24 | A66~A75와 채팅 WebSocket 구현. 방별 순번 이력·읽음, 30초 표·커밋 후 ACK·재연결 복원, 앱 알림을 연결했습니다. |
 | v0.5 | 2026-11-24 | 한태경 님 W64 Docker 검토를 반영해 A01에 앱 계정의 1초 DB 점검과 503 상태 응답을 추가하고 pytest를 시험 전용 의존성으로 옮겼습니다. |

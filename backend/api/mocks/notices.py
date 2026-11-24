@@ -1,6 +1,17 @@
+from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
+from threading import Lock
+from uuid import UUID
 
-from api.schemas.festival_info import Notice
+from api.schemas.festival_info import Notice, NoticeType
+from api.schemas.notices import NoticeCreate, NoticeUpdate
+from api.services.festival_lookup import find_festival
+from api.services.notices import (
+    Action, ControlSnapshot, NoticeRecord, active_at, apply_change, control_version,
+    festival_not_found, new_record, notice_not_found, now_kst,
+)
+
 
 NOTICES = {
     "fst_000001": (
@@ -37,3 +48,90 @@ NOTICES = {
         ),
     ),
 }
+
+
+class MemoryNoticeStore:
+    def __init__(self, clock: Callable[[], datetime] = now_kst) -> None:
+        self._clock = clock
+        self._lock = Lock()
+        self._records: dict[str, NoticeRecord] = {}
+        self._changes: dict[str, list[tuple[str | None, datetime]]] = {}
+        self.events: list[tuple[Action, UUID, NoticeRecord | None, NoticeRecord, str | None]] = []
+
+    def create(self, notice_id: str, payload: NoticeCreate, actor: UUID) -> NoticeRecord:
+        record = new_record(notice_id, payload)
+        self._check_festival(record.festival_id)
+        with self._lock:
+            self._records[notice_id] = record
+            self.events.append(("create", actor, None, record, None))
+        return record
+
+    def change(
+        self, notice_id: str, action: Action, actor: UUID,
+        *, patch: NoticeUpdate | None = None, reason: str | None = None,
+    ) -> NoticeRecord:
+        with self._lock:
+            before = self._records.get(notice_id)
+            if before is None:
+                raise notice_not_found()
+            now = self._clock()
+            after = apply_change(before, action, now, patch)
+            if before.festival_id != after.festival_id:
+                self._check_festival(after.festival_id)
+
+            previously_approved = before.approval_status == "approved"
+            if previously_approved or action == "approve":
+                scope = before.festival_id if previously_approved else after.festival_id
+                changes = [(key, when) for key, when in self._changes.get(notice_id, ()) if when <= now]
+                changes.append((scope, now))
+                if action == "approve":
+                    changes.extend(
+                        (scope, when) for when in (after.effective_from, after.effective_end)
+                        if when is not None and when > now
+                    )
+                self._changes[notice_id] = changes
+            if action in ("approve", "end"):
+                after = replace(after, control_version=self._version(after.festival_id, now))
+            self._records[notice_id] = after
+            self.events.append((action, actor, before, after, reason))
+            return after
+
+    @staticmethod
+    def _check_festival(festival_id: str | None) -> None:
+        if festival_id is not None and find_festival(festival_id) is None:
+            raise festival_not_found()
+
+    def _public(
+        self, festival_id: str, notice_type: NoticeType | None, active_only: bool, now: datetime,
+    ) -> list[NoticeRecord]:
+        return [
+            record for record in self._records.values()
+            if record.festival_id in (None, festival_id)
+            and record.approval_status == "approved"
+            and (notice_type is None or record.type == notice_type)
+            and (not active_only or active_at(record.effective_from, record.effective_end, now))
+        ]
+
+    def approved(self, festival_id: str, notice_type: NoticeType | None, active_only: bool) -> list[Notice]:
+        with self._lock:
+            return [record.public() for record in self._public(festival_id, notice_type, active_only, self._clock())]
+
+    def _version(self, festival_id: str | None, now: datetime) -> str:
+        return control_version(sum(
+            key in (None, festival_id) and when <= now
+            for changes in self._changes.values() for key, when in changes
+        ))
+
+    def snapshot(self, festival_id: str, now: datetime | None = None) -> ControlSnapshot:
+        with self._lock:
+            now = now if now is not None else self._clock()
+            active = sorted(
+                self._public(festival_id, None, True, now),
+                key=lambda record: (record.effective_from or now, record.notice_id), reverse=True,
+            )
+            return ControlSnapshot(
+                self._version(festival_id, now), tuple(record.title for record in active if record.type != "operation"),
+            )
+
+
+memory_store = MemoryNoticeStore()

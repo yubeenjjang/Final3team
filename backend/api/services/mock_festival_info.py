@@ -4,6 +4,8 @@ from api.errors import ApiError
 from api.mocks.clock import MOCK_NOW
 from api.mocks.notices import NOTICES
 from api.providers.traffic_incidents import Incident, IncidentReading, nearby_incidents
+from api.mocks import notices as mock_notices
+from api.services.notices import active_at
 from api.schemas.festival_info import (
     CongestColor,
     CongestLevel,
@@ -143,16 +145,14 @@ def get_notices(
     )
     if _can_supply_data(response, scenario):
         response.observed_at = MOCK_NOW
+        fixtures = [
+            notice for notice in mock_notices.NOTICES.get(festival_id, ())
+            if (notice_type is None or notice.type == notice_type)
+            and (not active_only or active_at(notice.effective_from, notice.effective_to, MOCK_NOW))
+        ]
+        managed = mock_notices.memory_store.approved(festival_id, notice_type, active_only)
         response.items = sorted(
-            (
-                notice
-                for notice in NOTICES.get(festival_id, ())
-                if (notice_type is None or notice.type == notice_type)
-                and (not active_only or (
-                    (notice.effective_from is None or notice.effective_from <= MOCK_NOW)
-                    and (notice.effective_to is None or notice.effective_to >= MOCK_NOW)
-                ))
-            ),
+            [*fixtures, *managed],
             key=lambda notice: notice.effective_from or datetime.min.replace(tzinfo=MOCK_NOW.tzinfo),
             reverse=True,
         )
