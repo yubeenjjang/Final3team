@@ -28,8 +28,8 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
 |---|---|---|
-| 축제 검색·상세 | TourAPI 적재 DB의 실제 응답을 수동 확인하고, 그 응답 필드를 Agent에 재생했다. 학원 서버 직접 Agent 호출은 남았다. | 직접 연결이 검증된 경우에만 실제 DB 조회로 표시한다. |
-| 서울 주변 혼잡 | 서울시 API의 `is_mock:false` 응답을 Safari에서 확인하고 필드를 Agent에 재생했다. Agent의 직접 HTTP 연결 시험은 남았다. | 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. 실제 API 응답을 확인한 사실과 실제 연동 시연을 구분한다. |
+| 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 학원망에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
+| 서울 주변 혼잡 | 서울시 API의 `is_mock:false` 응답을 Safari에서 확인하고 필드를 Agent에 재생했다. 11/24 직접 HTTP 호출은 `is_mock:false`였지만 `unsupported`로 끝나 실제 혼잡값 제공 성공은 아니다(A-11). | 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. 실제 API 응답을 확인한 사실과 실제 혼잡값 제공 시연을 구분한다. |
 | 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
 
 서버 응답의 `is_mock` 값을 유지해 답변에 반영한다. 시연 환경의 자료 모드는 실제 실행 직전에 다시 확인한다.
@@ -369,7 +369,7 @@ W24 확인 순서는 다음과 같다.
 
 `origin/ohyun`의 `380d178`에 서울 공식 관측구역 121곳을 이용한 혼잡 API 구현이 올라왔다. `CROWD_PROVIDER=real`일 때 응답은 `is_mock:false`, `nearby_areas`에 1km 내 최대 3곳, 기존 `areas[0]`에 대표 구역을 제공한다. 따라서 Festival Agent의 현재 `areas[0]` 읽기 방식은 유지할 수 있다. 다만 실시간 관측이 없는 경우 `is_estimate=true`로 최근 4주 같은 요일·시간대 평균값이 반환되므로, 이 값을 실시간으로 오해하지 않도록 답변·근거에 구분 표시를 추가했다.
 
-이 대조는 **브랜치 코드와 고정 응답 형태에 대한 검토**다. 실제 축제 DB와 서울시 API를 동시에 사용하는 Festival Agent의 실행 결과는 아니며, 학원 네트워크에서 W24 단독 E2E로 확인해야 한다.
+이 대조는 **브랜치 코드와 고정 응답 형태에 대한 검토**다. 이후 학원망 직접 실행에서는 실제 DB 검색·상세는 통과했으나 혼잡은 `unsupported`였다(A-11). 실제 혼잡값 `answered`까지의 연결 확인은 남았다.
 
 대체값 표시 시험과 새 실제 모드 응답 형태의 그래프 시험을 추가해 Festival Agent 단독·그래프 시험 **28개를 다시 실행해 모두 통과**했다. `origin/ohyun`의 5개 호환 시험 통과 기록은 해당 브랜치의 검증 결과이며, 이 문서의 실제 공급원 연동 결과로 합산하지 않는다.
 
@@ -402,6 +402,14 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 사용자가 `q=숭례문` 검색 결과도 제공했고, 첫 결과 ID `fst_01M835BYKKNJ8CZP9RP09ST18D`가 앞서 받은 상세·혼잡 응답과 일치했다. 세 응답 모두 `is_mock:false`였다. 복사된 URL 문자열의 잘못된 이스케이프와 Agent가 사용하지 않는 필드를 제외하고 **검색·상세·혼잡 응답에서 Agent가 소비하는 원문 값을 추출**해 `search_detail_crowd` 그래프에 순서대로 주입했다. `search_festivals(region=SEOUL, q=숭례문, page_size=1) → get_festival(같은 ID) → get_crowd(같은 ID)`로 3회 호출했고, `outcome=answered`, 근거 3건으로 종료했다. 축제 출처·갱신 시각과 숭례문 구역 혼잡·관측 시각·적용 범위가 답변에 포함됐다.
 
 이는 **실제 API에서 받은 세 응답의 핵심 필드와 복합 상태 전이의 호환 검증**이다. Agent가 학원 서버를 직접 호출한 실행은 아니므로 W24의 직접 HTTP 단독 E2E 완료로 기록하지 않는다.
+
+### A-11. 학원망 맥북에서 Festival Agent 직접 HTTP 실행 (2026-11-24)
+
+사용자가 맥북의 임시 폴더에 `dayoung` 브랜치를 받아 `python -m agents.check_festival_live --base-url http://192.100.200.242:3000/api/v1 --crowd-festival-id fst_01M835BYKKNJ8CZP9RP09ST18D`를 직접 실행한 터미널 기록을 제공했다. 실행기는 각 API 응답의 `is_mock:false`를 검사한 뒤 Agent를 실행한다. 출력은 `ongoing: total=28, agent_evidence=10`, `upcoming: total=31, agent_evidence=10`, `detail: festival_id=fst_01M835BPX17Y44VEDJM1VMZ3N6, outcome=answered, source=tourapi`, `Real DB search/detail check passed.`였다. 따라서 **실제 축제 DB 검색·상세에 대한 Agent 직접 HTTP 연결은 통과**했다.
+
+같은 실행의 혼잡 출력은 `festival_id=fst_01M835BYKKNJ8CZP9RP09ST18D, provider_status=unsupported, agent_outcome=unsupported, is_estimate=False`였다. 실행기는 혼잡 응답도 `is_mock:false`인지 검사했으므로 이는 모의 값이 아닌 **실제 API의 미지원 판정**이다. Agent가 이를 `unsupported`로 안내하는 분기는 확인됐지만, 실제 혼잡 수준을 `answered`로 제공하는 W24 사례는 아직 통과하지 않았다. `check_festival_live.py`는 `unsupported`에서도 정상 종료하므로 프로세스 종료만으로 혼잡값 제공 성공이라 판단하지 않는다.
+
+`origin/ohyun`의 `61301f9` 기준 `backend/api/data/seoul_crowd_mapping.json`에는 승인된 후보 연결이 0개다. 이것이 현재 서버의 `unsupported` 원인인지는 서버의 배포 버전·매핑 설정을 확인해야 한다. 전날 같은 축제의 서울시 혼잡 API `status:ok` 응답을 확인한 기록(A-8)과 오늘 결과가 달라졌으므로, 승인 연결 상태와 서버 설정을 확인한 뒤 같은 명령으로 재시험한다. 다른 축제 ID를 임의로 바꿔 성공 사례로 기록하지 않는다.
 
 ## 부록 B. 제출 전 확인할 결정
 
