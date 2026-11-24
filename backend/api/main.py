@@ -28,6 +28,7 @@ from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
 from api.services.real_routes import uses_real_routes
 from api.services.seoul_crowd import uses_real_crowd
+from ulid import ULID
 
 app = FastAPI(title="놀다가 API (mock)", version="0.1.0-mock")
 app.add_exception_handler(ApiError, handle_api_error)
@@ -57,8 +58,7 @@ async def add_response_headers(
 ) -> Response:
     request_id = request.headers.get("X-Request-ID", "")
     if not 1 <= len(request_id) <= 64:
-        alphabet = string.ascii_letters + string.digits
-        request_id = "req_" + "".join(secrets.choice(alphabet) for _ in range(26))
+        request_id = "req_" + str(ULID())
     request.state.request_id = request_id
     endpoint = private_endpoint(request.url.path)
     try:

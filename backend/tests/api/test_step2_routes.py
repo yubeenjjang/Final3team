@@ -84,7 +84,7 @@ def test_R11_default_route_is_queued(client: TestClient) -> None:
         "route_request_id", "route_status", "status_url", "route_access_token",
         "retry_after_s", "is_mock",
     }
-    assert re.fullmatch(r"rr_[0-9A-Za-z]{16}", queued["route_request_id"])
+    assert re.fullmatch(r"rr_[0-9A-HJKMNP-TV-Z]{26}", queued["route_request_id"])
     assert re.fullmatch(r"rrt_[0-9A-Za-z]{24}", queued["route_access_token"])
     assert queued["status_url"] == f"{_RETURN}/{queued['route_request_id']}"
     assert queued["route_status"] == "queued"

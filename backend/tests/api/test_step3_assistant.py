@@ -28,8 +28,8 @@ def _poll(client: TestClient, run: dict) -> dict:
 
 def test_R14_accepted_and_idempotent(client: TestClient) -> None:
     run = _start(client)
-    assert re.fullmatch(r"run_[0-9A-Za-z]{16}", run["run_id"])
-    assert re.fullmatch(r"cv_[0-9A-Za-z]{16}", run["conversation_id"])
+    assert re.fullmatch(r"run_[0-9A-HJKMNP-TV-Z]{26}", run["run_id"])
+    assert re.fullmatch(r"cv_[0-9A-HJKMNP-TV-Z]{26}", run["conversation_id"])
     assert re.fullmatch(r"rat_[0-9A-Za-z]{24}", run["run_access_token"])
     assert run["run_status"] == "queued"
     assert run["status_url"] == f"{RUNS}/{run['run_id']}"

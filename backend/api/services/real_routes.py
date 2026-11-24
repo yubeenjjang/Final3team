@@ -36,7 +36,7 @@ from api.services.mock_routes import (
     _FAILURES,
     _RETRY_AFTER_S,
     _format_endpoint,
-    _random_id,
+    _new_id, _random_id,
 )
 
 _SYNC_WAIT_S = 3
@@ -221,9 +221,9 @@ class RealRouteService:
     def _register(
         self, direction: RouteDirection, request: RouteRequest, request_key: str, body_hash: str,
     ) -> _RouteRecord:
-        route_id = _random_id("rr_", 16)
+        route_id = _new_id("rr_")
         while route_id in self._records:
-            route_id = _random_id("rr_", 16)
+            route_id = _new_id("rr_")
         record = self._new_record(direction, request, request_key, body_hash, route_id, _random_id("rrt_", 24))
         self._records[route_id] = record
         self._request_keys[record.request_key] = record
@@ -260,7 +260,7 @@ class RealRouteService:
         festival = await asyncio.to_thread(find_festival, request.festival_id)
         self._validate_festival(request, festival)
         assert festival is not None
-        route_id = _random_id("rr_", 16)
+        route_id = _new_id("rr_")
         record = self._new_record(direction, request, request_key, body_hash, route_id, self._db_token(route_id))
         record.festival = festival
         origin_type, origin_hash = self._place_fields(request.origin)

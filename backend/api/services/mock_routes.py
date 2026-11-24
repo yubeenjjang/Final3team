@@ -16,6 +16,7 @@ from api.schemas.routes import (
     RouteStatus,
 )
 from api.services.festival_lookup import find_festival
+from ulid import ULID
 
 _ALPHABET = string.ascii_letters + string.digits
 _KST = timezone(timedelta(hours=9))
@@ -56,6 +57,11 @@ def _random_id(prefix: str, length: int) -> str:
     return prefix + "".join(secrets.choice(_ALPHABET) for _ in range(length))
 
 
+def _new_id(prefix: str) -> str:
+    """자원 ID: 접두사_ + ULID(26자). 토큰에는 쓰지 않는다(시간 기반이라 추측 가능)."""
+    return prefix + str(ULID())
+
+
 def _validate_endpoints(request: RouteRequest, festival: FestivalDetail) -> None:
     endpoints = (request.origin, request.destination)
     uses_festival = any(isinstance(endpoint, FestivalEndpoint) for endpoint in endpoints)
@@ -93,9 +99,9 @@ def _register_route(
         if final_status is None:
             raise ApiError(422, "VALIDATION_ERROR", "X-Mock-Scenario 값을 확인해 주세요.")
 
-        route_id = _random_id("rr_", 16)
+        route_id = _new_id("rr_")
         while route_id in route_requests:
-            route_id = _random_id("rr_", 16)
+            route_id = _new_id("rr_")
         record = RouteRecord(
             route_request_id=route_id,
             access_token=_random_id("rrt_", 24),
@@ -135,7 +141,7 @@ def create_route(
 
 def create_ready_route(festival_id: str, destination_query: str) -> tuple[str, str]:
     request = ReturnRouteRequest(
-        request_id=_random_id("req_", 26),
+        request_id=_new_id("req_"),
         festival_id=festival_id,
         destination=PlaceEndpoint(query=destination_query),
     )
