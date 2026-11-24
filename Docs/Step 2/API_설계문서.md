@@ -118,6 +118,8 @@
 
 **기준: 전국에 있는 데이터는 전국으로, 지역별로만 있는 데이터는 서울만** 씁니다.
 
+축제 검색·상세는 축제만 제공합니다. TourAPI는 `lclsSystm2=EV01`만 공개 대상으로 삼습니다. 공연(`EV02`), 박람회·마켓·전시 등 행사(`EV03`), 미분류 항목은 수집 후 검토 대기로 보관합니다.
+
 | 구분 | 1차 범위 | 데이터·API |
 |---|---|---|
 | **전국 공통 데이터** (정적·실시간 모두) | **전국** | 축제 검색·상세(A02·A03, TourAPI·전국문화축제표준데이터), 지도·장소 검색(카카오), 지도 시설 위치(A08), 날씨(A09, 기상청), 버스 도착(A26 버스: **서울 밖은 TAGO, 서울은 서울시 버스도착정보** — 11/19 실호출에서 TAGO 서울 0건), 교통 돌발(A28 경찰청), 길찾기 귀가·가는 길(A04·A05·A25: **1차 TMAP, 2차 카카오맵**, D-038), 방문 집중 예측·지역 수요(A29), 주변 상권(카카오 로컬), **자전거 존·택시 승강장(11/19 전국 공급원 확인 → 전국, D-036)** |
@@ -412,6 +414,8 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 ### 2-3. 축제 검색: `GET /api/v1/festivals` (A02) — 필드 명세
 
+공개 조건은 `category='festival' AND review_status='approved' AND published_at IS NOT NULL`입니다. TourAPI에서는 `lclsSystm2=EV01`이 축제에 해당합니다. `items`와 `total` 모두 이 범위에서 계산합니다.
+
 | 필드 | 위치 | 타입 | 필수 | 기본값 | 제약 | 설명 |
 |---|---|---|---|---|---|---|
 | `region` | query | string | 아니요 | `ALL` | 0-1절 지역 코드 | 시·도 |
@@ -425,6 +429,8 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 응답(200): `{ "items": [ { "festival_id", "name", "region_code", "venue_name", "lat", "lng", "start_date", "end_date", "event_status", "thumbnail_url", "image_credit", "source", "last_synced_at" } ], "total": 37, "page": 1, "page_size": 20 }` — `thumbnail_url`은 TourAPI `firstimage2`(작은 크기), 없으면 null(화면 기본 이미지), `image_credit`은 출처 문구(아래 2-4 이미지 규칙) — 요청마다 외부 API를 부르지 않고 수집된 DB에서 답합니다. 오류: 422 `VALIDATION_ERROR`.
 
 ### 2-4. 축제 상세: `GET /api/v1/festivals/{festival_id}` (A03) — 필드 명세
+
+A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 404 `FESTIVAL_NOT_FOUND`로 응답합니다.
 
 | 필드 | 타입 | 빈값 | 설명 |
 |---|---|---|---|
@@ -2497,6 +2503,8 @@ HTTP 202
 | `start_date` / `end_date` | `eventstartdate` / `eventenddate` (YYYYMMDD) | `festivals.start_date` / `end_date` | ✅ |
 | `lat` / `lng` | `mapy` / `mapx` | `festivals.latitude` / `longitude` | ✅ |
 | `region_code` | `lDongRegnCd`(서울 11 → `SEOUL`, 부산 26 → `BUSAN`) | `festivals.region_code` | ✅ 2개 확인, 나머지 15개 시·도 대응은 참고문서로 채움 |
+| 공개 분류(서버 내부) | `searchFestival2.lclsSystm2` | `festivals.category` | `EV01` → `festival`(공개 대상), `EV02` → `performance`, `EV03` → `event`, 빈 값·미등록 → `unknown` |
+| 원본 분류(서버 내부) | `lclsSystm1` / `lclsSystm2` / `lclsSystm3` | `festivals.source_class_level1` / `source_class_level2` / `source_class_code`(014) | 빈 원본 코드는 NULL, 옛 `cat1`~`cat3`는 분류에 사용하지 않음 |
 | `venue_name` | `eventplace`(detailIntro2) | `festivals.venue_name` | ✅ |
 | `fee_text` | `usetimefestival`(detailIntro2) | `festivals.admission_fee_text` | ✅ (유료 형식 미확인) |
 | 주최 | `sponsor1` | `festivals.organizer` | ✅ |
@@ -2856,6 +2864,7 @@ HTTP 202
 | `validity_check` (캐시·대체 경로) | `route_results.validity_check` | 7-5 |
 | `stop_reason` · `rollback_reason` | `recovery_attempts.stop_reason` · `rollback_reason` | 7-5 |
 | A02·A03 축제 필드(`name`·`venue_name`·`lat`·`lng`·`overview`·`fee_text`·`homepage_url`·`image_url`·`thumbnail_url`·`image_copyright.type`) | `festivals.title`·`venue_name`·`latitude`·`longitude`·`summary`·`admission_fee_text`·`official_url`·`image_url`·`thumbnail_url`·`image_copyright_type`(003) | **이름 다름** — API 이름이 기준, DB는 위 컬럼 |
+| A02·A03 공개 조건 | `festivals.category='festival' AND review_status='approved' AND published_at IS NOT NULL` | TourAPI `lclsSystm2=EV01`만 공개 대상으로 분류(014) |
 | A06 `run_id`·`run_status`·`answer` / 사용한 도구 | `assistant_runs`(04 문서 마이그레이션 002, 7-6) / `agent_runs.run_id`·`tool_calls` | |
 | A16 지표 필드 | `route_query_metrics` 같은 이름 (`phase` 포함) | |
 | `provider` · `provider_tier` · `queried_at` | `route_results.provider` · `provider_tier` · `queried_at` | |
@@ -3040,6 +3049,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.4 | 2026-11-24 | 축제 범위 확정. TourAPI `lclsSystm2=EV01`만 A02·A03에서 공개 대상으로 삼고 원본 분류 대응표를 추가했습니다. |
 | v0.4 | 2026-11-24 | 강사 11/23 일지 피드백 1·3·4 반영. 축제 재선택 종료와 혼잡·일시 오류 전이를 대조하고 실제 DB·혼잡 증빙 범위와 TMAP 7일 백업 제외 기준을 연결했습니다. |
 | v0.1 | 2026-11-17 | 첫 초안 (A01~A24, 도구 13개, 부록 A) |
 | v0.2 | 2026-11-18 | **11/18 회의 반영**: A25~A30 추가(가는 길·지하철/버스 도착·공영주차장·교통 돌발·방문 집중 예측·데이터 지원 범위), A08 지도 표시 1차 10종(물품보관함·약국 보류, D-021), A03 입장료·소개, 경로 `evidence`(혼잡 구역·교통 돌발·버스 혼잡), 제외 항목 6-1절, 외부 공급원 13절, 지역 코드 0-1절·`coverage`·`REGION_UNSUPPORTED`, ODsay 일일 한도. **BFCL 맞춤**: `failure_domain` 값을 `route_upstream`·`crowd_upstream`으로 통일, 지역 값 `SEOUL`/`ALL`, 평가용 ID 설명, 부록 A 삭제(BFCL 문서가 기준). **기획서 v2.8 맞춤**: Supabase PostgreSQL 확정, Supabase Auth 제안. **강사 2차 의견**: 부하 시험 `cache_state`·`repeat_group`·`run_index`, 시뮬레이션 1회 : 사건 N건, 고유 키에서 병합 기각. 12절 예진님 6가지 결정 사항 제안 추가. **회의록 대조(11/18)**: 물품보관함·약국 보류(D-021), ODsay 결정 확인(사용자), 버스(TAGO)는 1차 서울만. **서비스 범위 D-020(멘토)·D-022(팀)**: 0-2절 — 전국에 있는 데이터는 전국, 지역별로만 있는 데이터는 서울만, 설정으로 지역 확대 |

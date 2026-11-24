@@ -105,6 +105,14 @@ echo "## 5. 012·013 적용·되돌리기·재적용 및 T25 7일 백업 복원 
 "${PSQL_TX[@]}" -q < 013_route_purge_evidence.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_013_route_purge_evidence.sql
 
+echo "## 5-1. 014 축제 분류·공개 RLS 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 014_tourapi_festival_class.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_014_tourapi_festival_class.sql
+"${PSQL_TX[@]}" -q < 014_tourapi_festival_class_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_014_tourapi_festival_class.sql
+"${PSQL_TX[@]}" -q < 014_tourapi_festival_class.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_014_tourapi_festival_class.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh

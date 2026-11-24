@@ -112,3 +112,12 @@
 - 001~011 적용 후 `tests/ingestion` DB 시험 8개 통과. I10/I11 저장·변경분 수집 4개, I12 공개 목록·상세 조회 2개, I15~I17 목록 누락·재등장 2개.
 - 수집·시험 데이터 설정에는 `noldaga_service`, 공개 목록·상세 조회에는 `noldaga_app`을 사용했다. 전체 백엔드 DB 시험은 9개 통과, 3개 실패였으며 실패는 귀가 경로 시험에서 발생했다.
 - 2026-11-24 변경 기록 — `ohyun` `f24671e` 기준 집 PC 일회용 `pgvector/pgvector:pg17`에 001~012 적용 후 저장소 루트 `python -m pytest backend/tests -m db -q` 12개 통과(수집·축제 조회 8개, P18 4개). [귀가 경로 구현 계획](../route-providers/IMP-PLAN.md#step4-db-저장)
+
+## 5단계 — TourAPI 분류와 축제만 공개 (I18~I20)
+
+- 수집 `api/ingestion/festivals/normalize.py`, `store.py`에서 목록 분류를 저장하고 공개 중단 이력을 남긴다.
+- `api/services/festival_store.py`, 카탈로그·축제 찾기, 모의 축제 데이터에 같은 분류 필터를 적용한다. 014·되돌리기 SQL과 SQL 시험을 `Docs/Step 2/db/run_tests.sh`에 연결한다.
+- 고정 파일 기반 정규화·재수집, A02·A03 공개 필터, DB 상태·이력 시험을 작성한다. 정본 설계 문서 2종과 `codex/STEP5.md`를 갱신한다.
+- [x] 오프라인 전체 백엔드 시험 414개 및 하위 시험 2개 통과, 20개 건너뜀
+- [ ] 일회용 DB의 SQL 및 DB 연결 시험 재실행 대기
+- [ ] Claude가 마이그레이션 적용 및 기존 범위 재수집

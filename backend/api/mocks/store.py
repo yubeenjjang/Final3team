@@ -1,9 +1,11 @@
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import count
 from threading import Lock
 
-from api.mocks.festivals import FESTIVALS
+from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY
+from api.mocks.festivals import FESTIVALS, MockFestival
 from api.schemas.assistant import AssistantRequest
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import RouteDirection, RouteRequest, RouteStatus
@@ -22,7 +24,18 @@ class RouteRecord:
     updated_at: str
 
 
-festivals: dict[str, FestivalDetail] = {}
+festivals: dict[str, MockFestival] = {}
+
+
+def public_mock_festivals() -> Iterator[MockFestival]:
+    return (festival for festival in festivals.values() if festival.category == FESTIVAL_CATEGORY)
+
+
+def get_public_mock_festival(festival_id: str) -> MockFestival | None:
+    festival = festivals.get(festival_id)
+    return festival if festival is not None and festival.category == FESTIVAL_CATEGORY else None
+
+
 route_requests: dict[str, RouteRecord] = {}
 route_request_keys: dict[tuple[RouteDirection, str], str] = {}
 route_lock = Lock()

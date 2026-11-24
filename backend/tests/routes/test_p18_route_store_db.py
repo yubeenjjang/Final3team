@@ -57,9 +57,9 @@ def festival_id(route_engine: Engine) -> Iterator[str]:
     festival_id = f"fst_{uuid4().hex[:20]}"
     with route_engine.begin() as connection:
         connection.execute(text("""
-            INSERT INTO public.festivals (festival_id, title, venue_name, region_code,
+            INSERT INTO public.festivals (festival_id, title, venue_name, region_code, category,
                                          latitude, longitude, published_at, review_status, start_date, end_date)
-            VALUES (:id, :id, '합성 축제장', 'SEOUL', 37.500000, 127.000000, now(), 'approved', :today, :today)
+            VALUES (:id, :id, '합성 축제장', 'SEOUL', 'festival', 37.500000, 127.000000, now(), 'approved', :today, :today)
         """), {"id": festival_id, "today": date.today()})
     try:
         yield festival_id

@@ -39,7 +39,7 @@
 
 ## 2. 정규화·검사 (1단계) — `api/ingestion/festivals/normalize.py`
 ### I3. 출력 모양 `FestivalRecord`(dataclass 또는 pydantic)
-`source_item_id`(contentid), `title`, `start_date`, `end_date`, `venue_name`, `address`, `latitude`, `longitude`, `region_code`, `category`, `summary`, `admission_fee_text`, `image_url`, `thumbnail_url`, `image_copyright_type`, `official_url`, `organizer`, `event_status`, `source_updated_at`, `review_status`, `publishable: bool`, `issues: list[str]`, `raw_checksum`.
+`source_item_id`(contentid), `title`, `start_date`, `end_date`, `venue_name`, `address`, `latitude`, `longitude`, `region_code`, `category`, `source_class_level1`, `source_class_level2`, `source_class_code`, `summary`, `admission_fee_text`, `image_url`, `thumbnail_url`, `image_copyright_type`, `official_url`, `organizer`, `event_status`, `source_updated_at`, `review_status`, `publishable: bool`, `issues: list[str]`, `raw_checksum`.
 
 ### I4. 지역 코드 (`lDongRegnCd` → API 0-1 코드)
 | 값 | 코드 | 값 | 코드 | 값 | 코드 |
@@ -59,7 +59,7 @@
 - 이미지: `firstimage`→`image_url`, `firstimage2`→`thumbnail_url`(빈 문자열은 None). `image_url`이 있으면 `image_copyright_type=cpyrhtDivCd`(Type1/Type3만, 그 밖이면 이미지 세 칸 None + issue `image_copyright_unknown`). 이미지 없으면 세 칸 None(issue 아님).
 - `event_status`(KST 오늘 기준 `today` 인자로 받음): 날짜 없음 → `needs_review` · 오늘 < 시작 → `upcoming` · 오늘 > 끝 → `ended` · 그 밖 `ongoing`.
 - `source_updated_at` = `modifiedtime`(`YYYYMMDDHHMMSS`, KST).
-- `category = "festival"`.
+- `category`와 원본 분류 코드는 I18 규칙을 따른다.
 - `raw_checksum` = 목록·상세 원본 3개를 키 정렬 JSON으로 합친 sha256(16진수).
 - **확인:** 각 규칙 1개씩 + 실제 고정 파일의 한국 밖 좌표 1건 → None·issue.
 
@@ -73,7 +73,7 @@
 - **확인:** `<br>` 섞인 소개 정리 · `<a href="https://x">` → `https://x` · 빈 입장료 → None.
 
 ### I7. 공개 판정
-- `publishable = True` 이고 `review_status="approved"`: 제목 있음 · 날짜 있음 · 좌표 있음 · `region_code` 있음.
+- `publishable = True` 이고 `review_status="approved"`: `category='festival'` · 제목 있음 · 날짜 있음 · 좌표 있음 · `region_code` 있음.
 - 그 밖: `publishable=False`, `review_status="pending"`(지도·목록에 안 나옴, 관리자 검토 대기). 이유는 `issues`에.
 - **확인:** 정상 → approved · 좌표 밖 → pending + `coords_out_of_range` · 날짜 없음 → pending + `needs_review` 상태.
 
@@ -96,7 +96,7 @@
 1. 시작: `data_sources`에 `tourapi` 행이 없으면 넣음 → `ingestion_jobs`(`job_id="ij_"+ULID`, status `running`).
 2. 축제마다 `festival_sources`(`source_id='tourapi'`, `source_item_id=contentid`)로 찾기:
    - 없으면: `festivals` 새 행(`festival_id="fst_"+ULID`), `festival_sources` 새 행 → inserted
-   - 있고 `raw_checksum` 같으면: `last_synced_at`·`fetched_at`·`last_job_id`만 갱신 → 변경 없음
+   - 있고 `raw_checksum`과 분류가 같으면: `last_synced_at`·`fetched_at`·`last_job_id` 갱신 → 변경 없음. 분류와 공개 상태 보정은 I18·I19에 따른다.
    - 있고 체크섬 다르면: 바뀐 칸만 UPDATE + 칸마다 `festival_change_history`(`actor='ingestion'`, before/after JSONB) → updated
    - 공개 판정: `approved`면 `published_at`이 비어 있을 때만 지금 시각, `pending`이면 `published_at=NULL`. **관리자가 `hidden`으로 바꾼 축제는 수집이 다시 공개하지 않는다.**
 3. 끝: `ingestion_jobs` 건수(scanned·inserted·updated·rejected)·`ended_at`·status(`success` / 오류 있으면 `partial` / 목록 실패면 `failed`)·`error`(JSONB, 키 없음).
@@ -109,7 +109,7 @@
 ## 5. A02·A03 실제 조회 (3단계) — `api/routers/festivals/catalog.py` + `api/services/festival_store.py`
 ### I12. 데이터 출처 고르기
 - 환경변수 **`FESTIVAL_DATA=mock|db`**(기본 `mock`). `db`면 DB에서, `mock`이면 지금 모의 그대로. **주소·쿼리 규칙·응답 칸은 R7·R8과 같다.**
-- `db`일 때: 사용자 요청용 계정(`DB_USER_USERNAME`·`DB_USER_PASSWORD`), 요청마다 트랜잭션, 비회원은 `app.user_id`를 설정하지 않음(D1). 공개 축제만(`review_status='approved' AND published_at IS NOT NULL`).
+- `db`일 때: 사용자 요청용 계정(`DB_USER_USERNAME`·`DB_USER_PASSWORD`), 요청마다 트랜잭션, 비회원은 `app.user_id`를 설정하지 않음(D1). `category='festival' AND review_status='approved' AND published_at IS NOT NULL`인 축제만 공개한다.
 - 응답 칸 대응: `name←title`, `lat/lng←latitude/longitude`, `overview←summary`, `fee_text←admission_fee_text`, `homepage_url←official_url`, `source="tourapi"`, `source_ref←festival_sources.source_item_id`, `image_credit`·`image_copyright`는 R6 규칙(이미지 있으면 "한국관광공사"). `is_mock: false`, 헤더 `X-Mock` 없음.
 - `event_status`는 **조회 시점 KST 오늘로 다시 계산**(저장 값이 어제 기준일 수 있음).
 - **DB 연결:** `api/services/festival_store.py`에서 `DB_HOST`·`DB_PORT`·`DB_NAME`·`DB_USER_USERNAME`(기본 `noldaga_app`)·`DB_USER_PASSWORD`로 엔진을 생성한다(`hide_parameters=True`). 요청마다 `with engine.begin()`으로 트랜잭션을 연다.
@@ -147,3 +147,20 @@
 ### I17. 재등장
 - 다시 목록에 나타나면 `reappeared_in_source`와 작업 ID를 이력에 한 번 남긴다. 검토 대기 상태는 상세·체크섬이 바뀐 뒤에도 유지한다. 목록 복귀만으로는 실제 개최 여부를 확인할 수 없으므로 공개 복귀는 관리자 검토로 결정한다.
 - **확인:** DB 없는 목록 완료/실패·한도 시험과 `db` 시험으로 동일 범위 누락, 다른 범위 유지, 이력·재등장·재실행을 확인한다.
+
+## 9. TourAPI 축제 분류 (5단계, 11/24 사용자 결정)
+
+### I18. 목록 분류와 원본 저장
+
+- `searchFestival2`의 `lclsSystm1`·`lclsSystm2`·`lclsSystm3`를 공백을 정리한 원본 코드로 보관한다. 빈 값은 NULL로 저장한다. 중분류 `lclsSystm2`에 따라 `EV01 → festival`, `EV02 → performance`, `EV03 → event`, 빈 값과 미등록 코드 → `unknown`으로 정규화한다. 상세 응답 캐시나 옛 `cat1`~`cat3`보다 현재 목록이 기준이다.
+- `festival_sources`에 원본 분류 칸이 없어 014로 `festivals.source_class_level1`, `source_class_level2`, `source_class_code`(모두 TEXT)를 추가한다. 목록 코드와 `category`는 상세 재수집과 체크섬 변경 여부에 관계없이 대조한다.
+
+### I19. 공개 중단과 이력
+
+- 공연·행사·미분류는 `pending`, `published_at=NULL`로 저장하고 정규화 보고서에 `not_festival_class`를 집계한다. 기존 공개 행이 이 분류로 확인되면 공개 상태와 분류 변경 이력에 더해 `festival_change_history.field='source_classification'`의 `after_value`에 `reason='not_festival_class'`와 `job_id`를 같은 트랜잭션에 기록한다. 같은 결과로 재수집하면 이력이 추가되지 않는다.
+- 관리자가 설정한 `hidden`과 게시 시각을 유지한다. 이후 EV01로 확인된 행에는 I7의 정상 승인 규칙을 적용하며, I16으로 누락 처리된 행은 I17의 관리자 검토를 기다린다.
+
+### I20. 공개 조회
+
+- A02·A03 DB 모드와 014의 `festivals_public` RLS는 동일한 공개 조건을 사용한다. 010의 `festival_sources_public`은 공개 축제 조인으로 같은 범위를 따른다. 모의 목록·상세에도 `category='festival'`을 적용한다.
+- 014는 기존 분류를 추정해서 채우지 않는다. 기존 TourAPI 행은 재수집한 범위에서 새 분류가 적용된다.
