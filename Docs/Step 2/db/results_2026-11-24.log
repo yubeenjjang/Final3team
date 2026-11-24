@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-24 09:25:08 KST
+# 놀다가 DB 시험 결과 — 2026-11-24 10:28:55 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -174,30 +174,7 @@ PASS T43i 축제 장소인데 장소 해시가 있음 — 거부됨: new row for
 PASS T43j 채팅방 신고(S07) — 1 행 바뀜
 ALL SQL TESTS PASSED
 PASS T43k 앱 사용법 문서에 앱 버전 없음 — 거부됨: new row for relation "rag_documents" violates check constraint "rag_documents_app_guide_check"
-## 4. T25 백업에 TMAP 경로 내용이 들어가지 않는지 (04 문서 7-0 ④)
-전체 백업에서 표식 1건 (1 이상이어야 시험이 의미 있음) / route_results 데이터 제외 백업에서 0건
-PASS T25 — 제외 백업에 TMAP 경로 내용 없음
-PASS T20b TMAP 경로 내용을 purged_at과 함께 지움 — 1 행 바뀜
-AFTER-BACKUP TESTS PASSED
-PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
-## 5. 실행 계획 (explain_v0.3.2.sql)
---- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
-Buffers: shared hit=296
-->  Seq Scan on festivals (actual time=0.078..1.300 rows=26 loops=1)
-Rows Removed by Filter: 19976
-Buffers: shared hit=296
-Buffers: shared hit=95
-Planning Time: 0.143 ms
-Execution Time: 1.317 ms
---- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
-Buffers: shared hit=35
-->  Bitmap Heap Scan on festivals (actual time=0.046..0.060 rows=26 loops=1)
-Buffers: shared hit=35
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.041..0.041 rows=26 loops=1)
-Buffers: shared hit=9
-Planning Time: 0.054 ms
-Execution Time: 0.074 ms
-## 6. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용
+## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용
                      6
 
 psql:<stdin>:30: NOTICE:  PASS T011a: 칸·색인과 기존 요청·결과 보존
@@ -207,4 +184,32 @@ psql:<stdin>:78: NOTICE:  PASS T011d: 되돌리기와 기존 요청·결과 보�
 psql:<stdin>:30: NOTICE:  PASS T011a: 칸·색인과 기존 요청·결과 보존
 psql:<stdin>:47: NOTICE:  PASS T011b: 서비스 계정·토큰 해시 제약
 psql:<stdin>:63: NOTICE:  PASS T011c: 일반 계정 조회 거부
+## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증
+psql:<stdin>:53: NOTICE:  PASS T012a: 기존 증빙 이관 및 원본 DB 본문 유지
+psql:<stdin>:73: NOTICE:  PASS T012b: 서비스 계정의 신규 결과 증빙 동기화
+psql:<stdin>:89: NOTICE:  PASS T012c: 증빙 칸·트리거 제거, 원래 경로 결과 유지
+psql:<stdin>:53: NOTICE:  PASS T012a: 기존 증빙 이관 및 원본 DB 본문 유지
+psql:<stdin>:73: NOTICE:  PASS T012b: 서비스 계정의 신규 결과 증빙 동기화
+psql:<stdin>:37: NOTICE:  PASS T25a: 복원된 route_results에 공급원 원본·후보 등 데이터 0행
+psql:<stdin>:37: NOTICE:  PASS T25b: 복원 뒤 공급원·조회 시각·요청 상태·오류 코드 보존
+PASS T20b TMAP 경로 내용을 purged_at과 함께 지움 — 1 행 바뀜
+AFTER-BACKUP TESTS PASSED
+PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
+## 6. 실행 계획 (explain_v0.3.2.sql)
+--- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
+Buffers: shared hit=296
+->  Seq Scan on festivals (actual time=0.071..1.315 rows=26 loops=1)
+Rows Removed by Filter: 19977
+Buffers: shared hit=296
+Buffers: shared hit=95
+Planning Time: 0.152 ms
+Execution Time: 1.333 ms
+--- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
+Buffers: shared hit=35
+->  Bitmap Heap Scan on festivals (actual time=0.049..0.071 rows=26 loops=1)
+Buffers: shared hit=35
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.042..0.043 rows=26 loops=1)
+Buffers: shared hit=9
+Planning Time: 0.077 ms
+Execution Time: 0.111 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)

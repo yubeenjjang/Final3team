@@ -11,6 +11,7 @@ from api.providers.route_base import ProviderResult
 from api.repositories.route_store import TOKEN_TTL, RouteStore, stored_candidates, token_hash
 from api.schemas.routes import ReturnRouteRequest
 from api.services import real_routes
+from shared.db import session as db_sessions
 from tests.routes.test_p9_real_routes import Clock, FakeProvider
 
 
@@ -110,6 +111,20 @@ def test_P16_store_flag_defaults_to_memory(monkeypatch):
         assert error.value.status == 503
     finally:
         real_routes.get_service.cache_clear()
+
+
+def test_P20_shared_service_settings_error_returns_503(monkeypatch):
+    def missing_settings():
+        raise ValueError("합성 DB 설정 오류")
+
+    monkeypatch.setattr(db_sessions, "_service_engine", missing_settings)
+
+    with pytest.raises(ApiError) as error:
+        RouteStore().lookup("return", "rr_SYNTHETIC", "synthetic-token", Clock().now)
+
+    assert error.value.status == 503
+    assert error.value.code == "ROUTE_STORE_UNAVAILABLE"
+    assert error.value.__suppress_context__
 
 
 @pytest.mark.parametrize("tmap_available", [True, False])

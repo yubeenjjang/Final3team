@@ -84,4 +84,4 @@
 
 - `CROWD_PROVIDER` 기본값은 `mock`입니다. 기존 내장 고정 자료와 응답 키, `X-Mock-Scenario`의 `source_error`·`stale`을 유지합니다.
 - `real`에서 승인 조건을 통과한 구역만 서버의 `SEOUL_OPEN_API_KEY`로 호출합니다. 실제 모드 A10은 `is_mock:false`이고 `X-Mock`이 없습니다. 공식 HTTP 전송 허용 여부는 **사용자 확인 필요**입니다. 승인 구역과 전송 조건이 확인된 뒤 운영에서 `real`로 전환합니다.
-- `tests/crowd/`의 저장된 고정 파일·가짜 HTTP·가짜 시각으로 검증하고 `backend/`에서 전체 `python -m pytest`를 실행합니다.
+- `tests/crowd/`의 저장된 고정 파일·가짜 HTTP·가짜 시각으로 검증하고 저장소 루트에서 `python -m pytest backend/tests -q`를 실행합니다.

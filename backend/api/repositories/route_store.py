@@ -13,10 +13,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.errors import ApiError
-from api.ingestion.db import IngestionDBError
 from api.providers.route_base import ProviderResult
-from api.repositories.route_db import service_db_session
 from api.schemas.routes import RouteDirection
+from shared.db.session import service_db_session
 
 TOKEN_TTL = timedelta(minutes=10)
 RESULT_TTL = timedelta(hours=24)
@@ -83,7 +82,7 @@ class RouteStore:
         try:
             with self._session() as session:
                 yield session
-        except (SQLAlchemyError, IngestionDBError):
+        except (SQLAlchemyError, ValueError):
             raise ApiError(503, "ROUTE_STORE_UNAVAILABLE", "귀가 요청 저장소에 연결할 수 없어요.", True) from None
 
     def register(self, values: dict[str, Any]) -> bool:

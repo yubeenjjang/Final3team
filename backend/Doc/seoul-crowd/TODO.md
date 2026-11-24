@@ -17,4 +17,4 @@
 
 11/23 반경 방식의 오프라인 시험 기록은 전체 320개 통과, PostgreSQL 시험 6개 건너뜀입니다. `origin/dayoung` 호환 시험은 5개를 통과했습니다.
 
-11/24 `ohyun` 작업 트리에서 `uv run --offline --with-requirements api/requirements.txt python -m pytest`로 전체 382개를 수집했습니다. 370개 통과(혼잡 43개 포함), 일회용 PostgreSQL이 필요한 12개는 건너뛰었습니다. 서울시 호출은 고정 파일과 가짜 전송으로 검증했습니다.
+11/24 `ohyun` 작업 트리에서 382개를 수집했습니다. 370개 통과(혼잡 43개 포함), 일회용 PostgreSQL이 필요한 12개는 건너뛰었습니다. 서울시 호출은 고정 파일과 가짜 전송으로 검증했습니다. 현재 팀 공통 시험은 저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다.

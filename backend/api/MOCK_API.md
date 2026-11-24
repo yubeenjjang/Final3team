@@ -14,8 +14,10 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 
 ## 시험
 
+저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다. uv 환경에서는 다음 명령을 사용합니다.
+
 ```sh
-uv run --offline --with-requirements api/requirements.txt pytest tests/api -q
+uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q
 ```
 
 ## A01 서버 상태

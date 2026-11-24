@@ -2,9 +2,9 @@
 
 - 기준: `Docs/Step 2/API_설계문서.md` v0.3.3. **이 SPEC에 필요한 계약을 옮겨 두었으니 구현할 때 API 설계문서 전체를 읽지 않는다.** 문서와 이 SPEC이 다르면 이 SPEC을 따르고, 다른 곳을 `Doc/IMP-PLAN.md`의 '메모'에 적는다.
 - 모든 요구에는 **확인 방법**이 있다. 확인 방법은 `backend/tests/api/`의 pytest 시험으로 만든다(시험 이름에 요구 번호를 넣는다. 예: `test_R4_region_filter`).
-- 실행 환경: Python 3.14(안 되면 3.13), `uv`. 명령은 `backend/` 폴더에서 실행한다.
-  - 서버: `uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --port 8000` → `http://localhost:8000/docs`
-  - 시험: `uv run --with-requirements api/requirements.txt pytest tests/api -q`
+- 실행 환경: Python 3.14(안 되면 3.13), `uv`.
+  - 서버는 `backend/`에서 `uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --port 8000`으로 실행한다. API 문서 주소는 `http://localhost:8000/docs`다.
+  - 시험은 저장소 루트에서 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
 - import는 `backend/`를 기준으로 `from api.… import …`.
 
 ## 0. 공통
@@ -241,4 +241,4 @@ class VisitRouteRequest:  origin: Endpoint;                     destination: End
 ### R26. 문서·시험
 - `api/MOCK_API.md`의 `X-Mock-Scenario` 첫 표에 R23~R25 네 줄 추가(기존 줄 유지).
 - 시험 파일 `tests/api/test_step6_provider_scenarios.py`, 시험 이름에 요구 번호(`test_R23_…`). 기존 시험 전부 그대로 통과.
-- **확인:** `uv run --offline --with-requirements api/requirements.txt pytest tests/api -q` 전부 통과.
+- **확인**은 저장소 루트 공통 시험 명령으로 전체를 실행한다.

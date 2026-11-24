@@ -111,3 +111,4 @@
 
 - 001~011 적용 후 `tests/ingestion` DB 시험 8개 통과. I10/I11 저장·변경분 수집 4개, I12 공개 목록·상세 조회 2개, I15~I17 목록 누락·재등장 2개.
 - 수집·시험 데이터 설정에는 `noldaga_service`, 공개 목록·상세 조회에는 `noldaga_app`을 사용했다. 전체 백엔드 DB 시험은 9개 통과, 3개 실패였으며 실패는 귀가 경로 시험에서 발생했다.
+- 2026-11-24 변경 기록 — `ohyun` `f24671e` 기준 집 PC 일회용 `pgvector/pgvector:pg17`에 001~012 적용 후 저장소 루트 `python -m pytest backend/tests -m db -q` 12개 통과(수집·축제 조회 8개, P18 4개). [귀가 경로 구현 계획](../route-providers/IMP-PLAN.md#step4-db-저장)

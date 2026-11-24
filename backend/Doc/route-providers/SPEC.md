@@ -2,7 +2,7 @@
 
 - 기준: API 설계문서 v0.3.3(2-2 A04·A05, 5절, 9절, 10-2, 10-3). **이 SPEC에 필요한 것을 옮겼으니 설계서 전체를 읽지 않는다.** 다른 점은 `IMP-PLAN.md` '메모'에.
 - 요구 번호 `P1`~. 시험 이름에 번호(`test_P4_tmap_reverses_coordinates`).
-- 시험: `uv run --offline --with-requirements api/requirements.txt pytest tests/routes tests/ingestion tests/api -q`
+- 저장소 루트 공통 시험은 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
 - 고정 파일: `tests/routes/fixtures/`(Claude가 `Docs/Step 2/evidence/responses/합성예시_*`에서 복사, **합성 데이터 — 실제 경로 아님**). Codex는 고치지 않는다.
 
 ## 0. 원본 모양 (합성 고정 파일로 확인)
@@ -135,7 +135,7 @@
 - `ROUTE_KEY_SECRET`은 DB 모드의 모든 API 인스턴스에서 공통으로 설정한다. DB에서는 방향과 클라이언트 요청 ID, 본문, 사용자 장소를 목적별 HMAC으로 저장한다. 같은 방향·ID·본문은 기존 응답, 같은 방향·ID 및 다른 본문은 409다. 토큰은 서버가 발급한 `route_request_id`와 서버 키로 재현하므로 DB에 원문이 필요 없다.
 - A05는 서비스 계정으로 요청 ID의 토큰 SHA-256을 읽고 상수 시간으로 비교한다. 누락·접수 10분 뒤 만료는 401, 다른 토큰은 403, 없는 요청은 404다. 만료 뒤 새 `request_id`로 접수한다. DB 연결 오류는 503 `ROUTE_STORE_UNAVAILABLE`이다.
 - A04·A25 POST는 토큰 만료 뒤 같은 ID·본문을 받으면 기존 `route_request_id`와 200 `unavailable`·`ROUTE_ACCESS_EXPIRED`(`retryable=false`)를 반환한다. 응답에는 조회 토큰·후보·폴링 URL을 담지 않는다. 같은 ID의 다른 본문은 409다.
-- **확인 필요(신유빈) — API 컨테이너가 서비스 계정 접속 정보를 받는 방식.** 임시 연결층 `api/repositories/route_db.py`는 수집 엔진 생성 방식과 동일한 `DB_HOST`·`DB_PORT`·`DB_NAME`·`DB_SERVICE_PASSWORD`를 사용한다. **유빈님 shared/db 병합 뒤 교체**하며, 그때 `service_db_session()`로 바꾼다. 축제 조회는 기존 사용자 계정 경로를 사용한다.
+- STEP5에서는 귀가 요청·결과의 DB 트랜잭션에 공통 `service_db_session()`을 사용한다. 축제 조회는 기존 사용자 계정 경로를 사용한다.
 
 ### P18. 공급원별 저장·정리와 시험
 - TMAP 후보의 안내 필드만 DB에 저장한다. 사용자 장소 검색어·원문 좌표·토큰, 공급원 원본 응답, TMAP 경로선·정류장 좌표는 저장하지 않는다. 공개 축제 좌표는 009의 제약에 맞춰 저장한다. 동기 A04는 기존 경로선을 포함하고, DB A05와 POST 재조회는 저장된 요약을 반환한다.
@@ -146,3 +146,15 @@
 
 ### P19. 문서
 - API 설계서 17-3·19절, DB 설계서 0-A·8·10절, 양쪽 v0.4 이력과 API 연동 현황표를 갱신한다. 진행 상태는 **구현 완료·DB 시험 대기**로 기록한다.
+
+## 8. STEP5 공통 DB 연결과 시험 명령
+
+### P20. 서비스 세션
+
+- A04 접수·상태 변경·결과 저장과 A05 요청 조회·토큰 해시 비교·결과 조회 및 정리는 공통 `shared.db.session.service_db_session()`으로 처리한다. A05는 해시 검증 뒤 결과에 접근한다. 커밋·롤백과 풀 반납 시 `RESET ALL`은 공통 연결층이 담당한다. 설정·연결 오류는 기존 503 `ROUTE_STORE_UNAVAILABLE`로 응답한다.
+- **확인 필요(유빈님) — API 컨테이너의 서비스 계정 접속 정보 주입 방식.** 공통 `load_db_settings()`는 `DB_HOST`, `DB_NAME`, `DB_USER_USERNAME`, `DB_USER_PASSWORD`, `DB_SERVICE_USERNAME`, `DB_SERVICE_PASSWORD`를 읽고 `DB_PORT` 기본값은 5432다. API에 주입할 설정과 권한을 확인한다. 축제 조회의 접속 설정은 기존 방식대로 사용한다.
+
+### P21. 마이그레이션 파일 선택과 시험
+
+- **확인 필요(유빈님) — 공통 마이그레이션의 사전 검사 제외.** 현재 `migration_files()`가 `009_precheck.sql`과 `009_scenario_v1.sql`을 함께 읽어 009 중복으로 중단한다. 파일 선택에서 `009_precheck.sql`을 제외해 검증하면 011·012가 순서대로 선택되고 되돌리기 파일은 제외된다. 공통 실행기로 실제 적용하기 전 010의 명시적 트랜잭션과 실행기 트랜잭션 경계도 확인한다.
+- 루트에서 공통 명령으로 백엔드 전체를 시험하고, `backend/`에서도 `python -m pytest tests -q`가 수집·실행되어야 한다. 일회용 PostgreSQL이 필요한 경로 통합 시험은 `db` 표시를 사용하고 `TEST_DB_URL`이 설정된 경우에만 실행한다.

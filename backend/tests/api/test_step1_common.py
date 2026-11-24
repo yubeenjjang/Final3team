@@ -271,6 +271,6 @@ def test_R17_mock_doc() -> None:
     assert "모든 값은 가상" in content
     assert "`is_mock: true`" in content
     assert "uvicorn api.main:app --reload --port 8000" in content
-    assert "pytest tests/api -q" in content
+    assert "python -m pytest backend/tests -q" in content
     for sequence in range(1, 7):
         assert f"| `fst_{sequence:06d}` |" in content
