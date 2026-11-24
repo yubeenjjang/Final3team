@@ -195,6 +195,29 @@ echo "## 5-5. 018 축제 공개·좌표 출처 적용·되돌리기·재적용"
 "${PSQL_TX[@]}" -q < 018_festival_publication.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_018_festival_publication.sql
 
+echo "## 5-6. 019_admin-review 축제 검토 사유 이관·되돌리기·재적용"
+"${PSQL[@]}" -q -v seed=true -v applied=false -f - < tests_019_admin-review.sql
+"${PSQL_TX[@]}" -q < 019_admin-review.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_019_admin-review.sql
+if review_down_check=$(
+  {
+    echo "UPDATE public.festival_review_queue SET approval_status = 'rejected' WHERE festival_id = 'fst_T19004';"
+    cat 019_admin-review_down.sql
+  } | "${PSQL_TX[@]}" -q 2>&1
+); then
+  echo "T019d FAIL: 새 사유로 처리한 결정이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -q '019_admin-review: 새 사유로 처리된 검토 이력' <<< "$review_down_check"; then
+  printf 'T019d FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$review_down_check"
+  exit 1
+fi
+echo "T019d PASS: 새 사유로 처리한 결정이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 019_admin-review_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_019_admin-review.sql
+"${PSQL_TX[@]}" -q < 019_admin-review.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_019_admin-review.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh

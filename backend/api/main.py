@@ -19,9 +19,10 @@ from api.errors import (
 )
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
-from api.request_logs import auth_endpoint, friends_endpoint, me_endpoint, private_endpoint, request_logger
+from api.request_logs import ADMIN_REVIEW_PATH, auth_endpoint, friends_endpoint, me_endpoint, private_endpoint, request_logger
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
+from api.routers.admin import festival_review
 from api.routers.assistant import chatbot
 from api.routers.community import friends
 from api.routers.festivals import catalog, info
@@ -124,6 +125,8 @@ _FESTIVAL_INFO_PATH = re.compile(r"^/api/v1/festivals/[^/]+/(notices|weather|tra
 
 
 def _auth_data_endpoint(path: str) -> str | None:
+    if path.rstrip("/") == ADMIN_REVIEW_PATH:
+        return ADMIN_REVIEW_PATH
     return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path)
 
 
@@ -142,5 +145,5 @@ def _serves_real_data(request: Request) -> bool:
 
 for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
-for module in (info, favorites, users, friends):
+for module in (info, favorites, users, friends, festival_review):
     app.include_router(module.router, prefix="/api/v1")
