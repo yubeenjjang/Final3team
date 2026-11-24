@@ -26,6 +26,8 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 
 ## 2. 상태·노드·전이(개념)
 
+**그림 1. Festival Agent 개념 상태 전이.** 그림의 설명 상자는 실제 LangGraph 노드 이름이 아니며, 바로 아래 2-1 표에서 노드에 대응한다.
+
 ```mermaid
 flowchart TD
     START([START]) --> I[구조화 요청의 범위 판정]
@@ -217,6 +219,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `call_tool` | 호출 전·후 시간 또는 총 4회 예산 초과 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록 |
 | `call_tool` | `response.ok=true` | `validate` | — |
 | `call_tool` | 오류가 재시도 가능, `attempts<2`, 총 호출 수 `<4` | `retry` | 같은 단계 최대 1회 재시도 |
+| `call_tool` | 재시도 가능 오류이나 총 4회 호출 예산 소진 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록, 추가 호출 없음 |
 | `call_tool` | 그 밖의 오류 | `error` | 같은 도구 추가 호출 없음 |
 | `retry` | 항상 | `call_tool` | 다음 호출에서도 시간·횟수 검사 |
 | `validate` | 단일 조회 완료·빈 결과·미지원·근거 실패 | `END` | 결과별 `outcome` 반환 |
@@ -236,21 +239,21 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 혼잡 HTTP 200 `status:"stale"` | 재시도 없이 `validate → END` | 관측 시각·오래된 자료 경고를 포함한 `answered` |
 | 혼잡 HTTP 200 `status:"unavailable"` | 재시도 없이 `validate → END` | `unavailable` · 현재 혼잡을 확인할 수 없다고 안내 |
 
-위 계약에서 `ok:false`의 재시도 여부는 **도구 오류의 `retryable`**로, `ok:true`인 혼잡의 이용 가능 여부는 **본문 `status`**로 판단한다. `FESTIVAL_NOT_FOUND`를 검색 단계로 자동 복귀시키지 않는 결정은 API 설계 문서의 해당 문구와 맞춰야 하며, API 문서 담당자가 수정 중이다.
+위 계약에서 `ok:false`의 재시도 여부는 **도구 오류의 `retryable`**로, `ok:true`인 혼잡의 이용 가능 여부는 **본문 `status`**로 판단한다. `FESTIVAL_NOT_FOUND`는 재시도 없이 재선택 안내 후 종료하는 것으로 오현님 API 문서·인계 문구와 일치 완료했다(오현님 `b529ef4` 보고 기준).
 
 ## 9. 종료 조건
 
 | 상황 | 처리·종료 |
 |---|---|
 | 필수 축제 ID·복합 요청 선택 지시가 없음 | 확인 질문 후 `clarification_needed`. 도구 호출 없음. 상대 날짜의 기준일 확인은 자연어 연결 단계에서 처리한다. |
-| 없는 축제 ID | 사용자에게 재선택 요청. 자동 검색 복귀는 후속 검토 사항. |
+| 없는 축제 ID | 재시도 없이 사용자에게 재선택 요청 후 종료. |
 | 서울 밖 또는 미매핑 혼잡 | `unsupported`를 정상적인 결과 상태로 처리. 다른 지역 혼잡으로 채우지 않음. |
 | 검색 결과 0건 | `ok:true`와 `items:[]`를 정상 처리하고 조건에 맞는 결과가 없다고 안내. 임의 축제 생성 금지. |
 | 공식 공지 결과 0건 | 정상 빈 결과로 처리하되 전체 현장 공지가 없다고 단정하지 않는다. 모의 응답은 모의임을 표시한다. |
 | 혼잡 `stale` | `observed_at`과 오래된 정보 경고를 함께 제시하고 현재 혼잡이라고 단정하지 않음. |
 | 혼잡 대체값 `is_estimate=true` | 최근 4주 같은 요일·시간대 평균임을 답변과 근거에 표시한다. 실시간 관측으로 표현하지 않는다. |
 | 혼잡 `unavailable` | 공급원 오류·좌표 누락 등 이유를 확인 가능한 범위에서 안내하고 현재 혼잡값을 만들지 않음. |
-| 일시적 도구 오류·시간 초과 | `retryable=true`일 때만 **최대 1회** 재시도. 전체 실행 시간·도구 호출 상한을 초과하면 `unavailable`. |
+| 일시적 도구 오류·시간 초과 | `retryable=true`일 때만 **최대 1회** 재시도. 전체 실행 시간·도구 호출 상한을 초과하면 `unavailable`, 앞 단계에서 확인한 결과가 있으면 `partial`. |
 | 입력 오류·권한 오류 | 입력 오류는 되묻고, 권한 오류는 우회 호출 없이 종료. |
 | 출처·시각·지원 범위 검증 실패 | 확인 불가를 명시하고 종료. 혼잡 `ok`·`stale`에는 `coverage.supported=true`가 필요하다. 모의 결과는 실제 현장 정보로 표시하지 않음. |
 | Festival 범위 밖 질문 | `handoff_required`. 단독 실행에서 다른 에이전트를 직접 호출하지 않음. |
@@ -402,7 +405,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 | 확인 지점 | 현재 근거 | 검토할 질문 |
 |---|---|---|
 | 그래프 전이·종료 | 2장·8장·9장, `backend/agents/festival_graph.py` | 모든 분기가 `END`에 도달하고, 검색→상세→혼잡의 ID가 계속 같은가? |
-| 오류·호출 예산 | 5-2절·9장, 단독·그래프 시험 30개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
+| 오류·호출 예산 | 5-2절·9장, 11/24 공통 명령 기준 시험 33개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
 | 실제·모의 근거 경계 | A-7~A-10 | 실제 API 직접 조회, 실제 응답 필드 재생, Agent의 학원 서버 직접 HTTP E2E를 구분했는가? |
 | 기능 범위 | 1-1절·3장 | 현재 네 도구와 후속 시설·코스·RAG·Supervisor 계약을 구현 완료로 혼동하지 않는가? |
 
@@ -410,7 +413,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ## 부록 D. 11/27 공통 시험 실행 기준
 
-- **기준:** `dayoung` 브랜치의 `b88161d` 이상. `origin/main`의 2026-11-23 WBS 갱신 `ce5fcad`를 병합한 뒤의 시험 코드다. 팀 병합 기준 커밋은 실제 병합 후 다시 기록한다.
+- **시험 코드 기준:** `dayoung` 브랜치의 `64d2093`. `origin/main`의 2026-11-23 WBS 갱신 `ce5fcad`를 병합한 뒤의 시험 코드다. 이후 RAG 자료 커밋은 Festival Agent 실행 계약을 바꾸지 않았다. 팀 병합 기준 커밋은 실제 병합 후 다시 기록한다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
 - **기대 결과:** 2026-11-24 현재 `Ran 33 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다.
