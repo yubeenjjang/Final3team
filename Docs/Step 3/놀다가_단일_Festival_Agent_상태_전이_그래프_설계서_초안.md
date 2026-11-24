@@ -24,6 +24,8 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 
 현재 단독 입력 계약은 `FestivalRequest(intent, festival_id, 검색 조건, notice_type)`이고, 최종 출력은 `FestivalResult(outcome, answer, evidence, transitions, used_tools, handoff_target)`이다. `tool_results`는 그래프의 한 실행 동안 `response`에 보관하며 별도 영속 상태가 아니다. **Supervisor가 이 입력을 실제로 생성하는 세부 형식은 아직 확정되지 않았다.** 이 표는 W22의 확장 계약 초안이며 후속 기능을 현재 구현 완료로 세지 않는다.
 
+**최신 기획서 범위 확인(2026-11-24):** 추천 상황 카드 5종(가족·친구·연인·반려견·혼자)은 후속 취향·코스 연결 범위다. A42 `지금 핫한 축제`의 외부 순위 사전 수집은 추천 목록용이며, 이 단일 Festival Agent의 도구나 공식 안내 RAG 입력으로 추가하지 않는다. 상황 카드의 반려견 동반 가능 여부도 검증된 공식 정보가 있을 때만 확정한다.
+
 ### 1-2. 실제 자료와 모의 자료의 시연 경계
 
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
