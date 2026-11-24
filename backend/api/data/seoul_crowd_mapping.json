@@ -74,7 +74,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-24",
+          "approval_note": "W89 시연 대표 매핑(주변 지역 혼잡). 행사장 좌표가 공식 구역 내부(contains)"
         }
       ],
       "nearest_excluded_area": null
@@ -1945,7 +1948,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-24",
+          "approval_note": "W89 시연 대표 매핑(주변 지역 혼잡). 행사장 좌표가 공식 구역 내부(contains)"
         },
         {
           "area_code": "POI130",
@@ -1956,7 +1962,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-24",
+          "approval_note": "W89 시연 대표 매핑(주변 지역 혼잡). 행사장 좌표가 공식 구역 내부(contains)"
         },
         {
           "area_code": "POI003",
@@ -1967,7 +1976,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-24",
+          "approval_note": "W89 시연 대표 매핑(주변 지역 혼잡). 행사장 좌표가 공식 구역 내부(contains)"
         }
       ],
       "nearest_excluded_area": null
