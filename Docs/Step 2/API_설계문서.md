@@ -1347,21 +1347,23 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 
 #### A01. 상태 확인 `GET /api/v1/health`
 
-조회 파라미터와 본문 없이 호출합니다. 현재 라우터는 `HealthResponse`로 200을 반환합니다. 서버·DB·Redis를 점검해 하나라도 실패하면 503으로 알리는 동작은 상태 확인 설계에 해당합니다.
+조회 파라미터와 본문 없이 호출합니다. `FESTIVAL_DATA=db`, `AUTH_PROVIDER=db`, `ROUTE_PROVIDER=real`과 `ROUTE_STORE=db`의 조합, `NOTICES_PROVIDER=real`, `TRANSIT_PROVIDER=real`, `VISIT_FORECAST_PROVIDER=real`과 `VISIT_FORECAST_STORE=db`의 조합 중 하나라도 적용되면 DB를 확인합니다. 앱 계정으로 연결해 `SELECT 1`을 실행하며 연결·쿼리의 전체 제한은 1초입니다. Redis는 공통 연결이 준비될 때까지 `not_configured`입니다.
 
-**A01 모의 정상 응답 (200)**
+**A01 상태 응답 (200·503)**
 
-| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
-|---|---|---|---|---|
-| `status` | 응답 | string | 예 | `ok`, API 상태 |
-| `db` | 응답 | string | 예 | `mock`, 모의 DB 상태 |
-| `redis` | 응답 | string | 예 | `mock`, 모의 Redis 상태 |
-| `version` | 응답 | string | 예 | FastAPI 앱 버전 |
-| `is_mock` | 응답 | boolean | 예 | `true` |
+| 필드 | 타입 | 필수 | 모의(200) | DB 확인 성공(200) | DB 확인 실패(503) |
+|---|---|---|---|---|---|
+| `status` | string | 예 | `ok` | `ok` | `degraded` |
+| `db` | string | 예 | `mock` | `ok` | `unavailable` |
+| `redis` | string | 예 | `mock` | `not_configured` | `not_configured` |
+| `version` | string | 예 | FastAPI 앱 버전 | FastAPI 앱 버전 | FastAPI 앱 버전 |
+| `is_mock` | boolean | 예 | `true` | `false` | `false` |
+
+모의 응답에는 `X-Mock: true`가 붙습니다. DB 설정 오류, 연결·쿼리 오류, 제한 시간 초과는 표의 503 상태 응답으로 알립니다.
 
 **공통 오류 코드**
 
-오류 본문은 0절의 공통 형식을 따릅니다. SQLAlchemy 연결 풀 대기 시간 초과(DB-14)는 다음과 같이 응답합니다. `request_id`는 응답 헤더 `X-Request-ID`와 같습니다.
+공통 오류 본문은 0절의 형식을 따릅니다. 연결 풀을 쓰는 API에서 SQLAlchemy 풀 대기 시간 초과(DB-14)가 발생하면 다음과 같이 응답합니다. `request_id`는 응답 헤더 `X-Request-ID`와 같습니다.
 
 ```http
 HTTP/1.1 503 Service Unavailable
@@ -3742,7 +3744,7 @@ TMAP 정리는 013까지 적용한 DB에 연결해 `backend/`에서 `python -m a
 
 새 캐시·병합과 복구 후보의 일치 판단에는 v2 키를 사용합니다. 기존 무접두사 키와 처리 전 `pending:` 키는 재사용 대상으로 보지 않습니다. 기존 DB 행의 A05 조회와 POST 멱등 재전송은 경로 ID·토큰·요청 ID 및 본문 HMAC으로 처리하므로 키 재계산 없이 이어집니다. 같은 방향의 요청 ID로 다른 본문을 보내면 409를 반환합니다.
 
-팀 공통 시험은 저장소 루트의 `python -m pytest backend/tests -q`입니다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
+팀 공통 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
 
 11/24 SQL·DB 시험 기준 커밋은 `ohyun` `f689dee`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~017를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 213줄(개별 시험 PASS 208건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 424개 통과·20개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](db/results_2026-11-24.log)
 
@@ -3897,6 +3899,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | 한태경 님 W64 Docker 검토를 반영해 A01에 앱 계정의 1초 DB 점검과 503 상태 응답을 추가하고 pytest를 시험 전용 의존성으로 옮겼습니다. |
 | v0.5 | 2026-11-24 | A32~A35 PostgreSQL 인증과 DB-19 RLS 연결을 구현하고 토큰 수명·폐기·로그인 한도·로그 차단을 코드와 시험에 연결했습니다. |
 | v0.5 | 2026-11-24 | A07 승인 공지 DB 조회, A09 기상청 실황·예보, A26 서울 지하철·전국 버스, A29 관광공사 예측·수요의 실제 모드와 오프라인 검증을 추가했습니다. |
 | v0.5 | 2026-11-24 | DB 연결 대기 초과 오류를 `DB_POOL_TIMEOUT`(503, retryable, Retry-After 1, 신유빈 제안)으로 변경. |

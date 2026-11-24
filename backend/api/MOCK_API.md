@@ -14,15 +14,15 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 
 ## 시험
 
-저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다. uv 환경에서는 다음 명령을 사용합니다.
+저장소 루트에서 다음 명령을 실행합니다.
 
 ```sh
-uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q
+uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q
 ```
 
 ## A01 서버 상태
 
-`GET /api/v1/health`는 서버와 모의 DB·Redis 상태, API 버전을 반환합니다.
+`GET /api/v1/health`는 기본 설정에서 서버와 모의 DB·Redis 상태, API 버전을 반환합니다. DB를 사용하는 API 설정에서는 앱 계정으로 1초 안에 `SELECT 1`을 확인하고, 실패하면 503을 반환합니다. 공통 Redis 연결 전까지 이 설정의 `redis` 값은 `not_configured`입니다.
 
 ## A02 축제 목록
 

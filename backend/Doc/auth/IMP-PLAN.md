@@ -8,7 +8,7 @@
 저장소 루트에서 실행합니다.
 
 ```bash
-uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q
+uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q
 ```
 
 `test_auth_db_mode.py`에서 해시·JWT·입력 검증·중복·잘못된 자격 증명·갱신·폐기·한도·인증 상태 장애를 확인합니다. `test_a3_log_redaction.py`의 인증 시험은 Uvicorn의 HTTP 파서와 액세스·ASGI 로그를 거쳐 원문 노출을 검사합니다.

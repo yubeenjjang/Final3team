@@ -6,4 +6,4 @@
 - [고정 파일](../../../tests/crowd/fixtures/)에는 실제 공급원 예시에서 A10 사용 필드를 남겼습니다. 관측값과 대체값의 차이를 유지합니다.
 - [공식 구역 경계](../../../api/data/seoul_areas.json)를 사용합니다. [연결 초안](../../../api/data/seoul_crowd_mapping.json)은 1단계 참고 자료입니다.
 - 실제 모드 문구는 ‘주변 지역 혼잡’으로 시작하고 집계 장소, 기준 시각, 출처를 담습니다. 도구·화면과 의견이 필요한 점은 구현 완료 보고에 적습니다.
-- 저장소 루트 공통 시험은 `python -m pytest backend/tests -q`로 실행합니다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용합니다. 실행 결과와 명세와의 차이를 보고합니다. 커밋과 푸시는 다음 사용자 요청에 따릅니다.
+- 저장소 루트 공통 시험은 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. 실행 결과와 명세와의 차이를 보고합니다. 커밋과 푸시는 다음 사용자 요청에 따릅니다.

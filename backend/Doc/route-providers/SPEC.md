@@ -2,7 +2,7 @@
 
 - 기준: API 설계문서 v0.3.3(2-2 A04·A05, 5절, 9절, 10-2, 10-3). **이 SPEC에 필요한 것을 옮겼으니 설계서 전체를 읽지 않는다.** 다른 점은 `IMP-PLAN.md` '메모'에.
 - 요구 번호 `P1`~. 시험 이름에 번호(`test_P4_tmap_reverses_coordinates`).
-- 저장소 루트 공통 시험은 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
+- 저장소 루트 공통 시험은 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행한다.
 - 고정 파일: `tests/routes/fixtures/`(Claude가 `Docs/Step 2/evidence/responses/합성예시_*`에서 복사, **합성 데이터 — 실제 경로 아님**). Codex는 고치지 않는다.
 
 ## 0. 원본 모양 (합성 고정 파일로 확인)
@@ -157,7 +157,7 @@
 ### P21. 마이그레이션 파일 선택과 시험
 
 - **확인 필요(유빈님) — 공통 마이그레이션의 사전 검사 제외.** 현재 `migration_files()`가 `009_precheck.sql`과 `009_scenario_v1.sql`을 함께 읽어 009 중복으로 중단한다. 파일 선택에서 `009_precheck.sql`을 제외해 검증하면 011·012가 순서대로 선택되고 되돌리기 파일은 제외된다. 공통 실행기로 실제 적용하기 전 010의 명시적 트랜잭션과 실행기 트랜잭션 경계도 확인한다.
-- 루트에서 공통 명령으로 백엔드 전체를 시험하고, `backend/`에서도 `python -m pytest tests -q`가 수집·실행되어야 한다. 일회용 PostgreSQL이 필요한 경로 통합 시험은 `db` 표시를 사용하고 `TEST_DB_URL`이 설정된 경우에만 실행한다.
+- 루트에서 공통 명령으로 백엔드 전체를 시험하고, `backend/`에서도 `uv run --with-requirements api/requirements.txt --with-requirements requirements-dev.txt python -m pytest tests -q`가 수집·실행되어야 한다. 일회용 PostgreSQL이 필요한 경로 통합 시험은 `db` 표시를 사용하고 `TEST_DB_URL`이 설정된 경우에만 실행한다.
 
 ## 9. STEP6 TMAP 결과 정리 명령
 

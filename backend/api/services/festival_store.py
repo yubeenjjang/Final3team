@@ -1,4 +1,5 @@
 import os
+from collections.abc import Mapping
 from datetime import date, datetime
 from functools import lru_cache
 
@@ -28,24 +29,28 @@ _SOURCE_REF = (
 )
 
 
-def get_festival_engine() -> Engine:
-    password = os.environ.get("DB_USER_PASSWORD")
+def get_app_db_url(environ: Mapping[str, str]) -> URL:
+    password = environ.get("DB_USER_PASSWORD")
     if not password:
         raise RuntimeError("DB_USER_PASSWORD를 설정해 주세요.")
     try:
-        port = int(os.environ.get("DB_PORT", "5432"))
+        port = int(environ.get("DB_PORT", "5432"))
     except ValueError:
         raise RuntimeError("DB_PORT는 숫자여야 합니다.") from None
     if not 1 <= port <= 65535:
         raise RuntimeError("DB_PORT는 1부터 65535 사이여야 합니다.")
-    return _create_engine(URL.create(
+    return URL.create(
         "postgresql+psycopg",
-        username=os.environ.get("DB_USER_USERNAME", "noldaga_app"),
+        username=environ.get("DB_USER_USERNAME", "noldaga_app"),
         password=password,
-        host=os.environ.get("DB_HOST", "127.0.0.1"),
+        host=environ.get("DB_HOST", "127.0.0.1"),
         port=port,
-        database=os.environ.get("DB_NAME", "noldaga"),
-    ))
+        database=environ.get("DB_NAME", "noldaga"),
+    )
+
+
+def get_festival_engine() -> Engine:
+    return _create_engine(get_app_db_url(os.environ))
 
 
 @lru_cache(maxsize=1)

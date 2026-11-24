@@ -20,6 +20,6 @@
 
 정기 작업에서 65분 동안 `status=ok`가 없으면 누락 경보를 보낸다. 실행 실패·잠금 로그에는 상태, 처리 건수 필드, 소요 시간만 남긴다.
 
-저장소 루트에서 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`로 시험한다. 001~013을 적용한 일회용 PostgreSQL의 `TEST_DB_URL`을 설정하면 `db` 표시 시험에서 23시간 경계, 정리 직후 유효 토큰의 A05 만료 응답, 삭제 시각 일치, 카카오 제외, 건수 조회, 재실행, 별도 연결의 잠금 충돌을 검증한다. DB 없이 실행하는 시험도 23시간 경계의 대상 건수, 범위 밖 설정 거부, 정리된 결과의 A05 만료 응답을 확인한다.
+저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 시험한다. 001~013을 적용한 일회용 PostgreSQL의 `TEST_DB_URL`을 설정하면 `db` 표시 시험에서 23시간 경계, 정리 직후 유효 토큰의 A05 만료 응답, 삭제 시각 일치, 카카오 제외, 건수 조회, 재실행, 별도 연결의 잠금 충돌을 검증한다. DB 없이 실행하는 시험도 23시간 경계의 대상 건수, 범위 밖 설정 거부, 정리된 결과의 A05 만료 응답을 확인한다.
 
 11/27 제출 기준 커밋: 신유빈 고정 예정(`main` 병합 후)
