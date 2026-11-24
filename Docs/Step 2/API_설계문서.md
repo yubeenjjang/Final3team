@@ -392,7 +392,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | 429 | `RATE_LIMITED` | 요청 수 제한 초과 | `Retry-After` 뒤 |
 | 502 | `ROUTE_UPSTREAM_ERROR` | 1차·2차 공급원 모두 오류 | 예(1회) |
 | 503 | `ROUTE_QUOTA_EXCEEDED` | 공급원 일일 한도 소진 → '확인 불가 + 공식 안내' | 아니요(당일) |
-| 503 | `SERVICE_BUSY` | DB 연결 풀 대기 시간 초과(DB-14) | `Retry-After: 1` 뒤 |
+| 503 | `DB_POOL_TIMEOUT` | DB 연결 풀 대기 시간 초과(DB-14) | `Retry-After: 1` 뒤 |
 | 503 | `ROUTE_OVERLOADED` | 과부하 보호로 거절(`route_status=rejected`, **경로 제공 성공 아님**) | 예(잠시 뒤) |
 | 503 | `ROUTE_PROVIDER_UNVERIFIED` | 공급원 미연동·미검증(지금 상태) | 아니요 |
 | 504 | `ROUTE_TIMEOUT` | 제한 시간 초과(`route_status=timed_out`) | 예(같은 `request_id`로 1회) |
@@ -749,7 +749,7 @@ class AssistantQueryRequest(BaseModel):                         # A06 (7-6)
 | `INCIDENT_CLOSED` | false | 재시도 없이 멈추고 '이미 닫힌 사건'으로 안내. 새 조치를 제안하지 않음 |
 | `POLICY_LIMIT_EXCEEDED` | false | 재시도 없이 멈추고 상한(동시에 켠 조치 수 등)을 안내. 이미 켠 조치가 끝난 뒤 사람이 다시 요청 |
 | `SIMULATION_NOT_FOUND` | false | 재시도 없이 `simulation_id`를 확인해 달라고 안내(사건 ID만 있으면 그 ID로 다시 조회) |
-| `SERVICE_BUSY` | true | `Retry-After`(1초) 뒤 1회. 그래도 실패면 '잠시 후 다시'로 종료 (DB 연결 대기 초과, 11/24) |
+| `DB_POOL_TIMEOUT` | true | `Retry-After`(1초) 뒤 1회. 그래도 실패면 '잠시 후 다시'로 종료 (DB 연결 대기 초과, 11/24) |
 
 **Festival Agent 대조(11/24).** `origin/dayoung`의 단일 Festival Agent 상태 전이 그래프 설계서 8~9절과 도구 래퍼·그래프를 기준으로 합니다. HTTP/본문 값은 API 응답이고, `outcome`은 Agent 종료 상태입니다.
 
@@ -1361,7 +1361,7 @@ HTTP/1.1 503 Service Unavailable
 Retry-After: 1
 Content-Type: application/json
 
-{"error":{"code":"SERVICE_BUSY","message":"서버가 혼잡해요. 잠시 후 다시 시도해 주세요.","request_id":"req_01JD8Q3K2M","retryable":true}}
+{"error":{"code":"DB_POOL_TIMEOUT","message":"요청이 많아 잠시 후 다시 시도해 주세요.","request_id":"req_01JD8Q3K2M","retryable":true}}
 ```
 
 | 코드 | HTTP | 의미 |
@@ -1369,7 +1369,7 @@ Content-Type: application/json
 | `VALIDATION_ERROR` | 422 | 입력 형식 오류(Pydantic) |
 | `UNAUTHORIZED` / `FORBIDDEN` | 401 / 403 | 인증 없음·만료 / 권한 부족·타인 자원 |
 | `RATE_LIMITED` | 429 | 요청 수 제한 초과 |
-| `SERVICE_BUSY` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
+| `DB_POOL_TIMEOUT` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
 | `FESTIVAL_NOT_FOUND` | 404 | 없는 축제 ID |
 | `FESTIVAL_LOCATION_UNKNOWN` | 400 | 출발 또는 도착이 축제 장소인데 축제 좌표가 없음 |
 | `NICKNAME_TAKEN` | 409 | 닉네임이 이미 있음(대소문자 무시, A32 — DB `uq_profiles_nickname`) |
@@ -1816,7 +1816,7 @@ Content-Type: application/json
 | 항목 | 내용 |
 |---|---|
 | 주기·stale | `TREND_CRAWL_SCHEDULE` 6시간마다 양쪽 출처 수집. 최근 수집이 실패했거나 마지막 성공 이후 `TREND_STALE_H` 12시간을 초과하면 그 출처를 현재 점수 계산에서 제외. 작업 이력은 A23 `ingestion_jobs`에 기록 |
-| 기본 `trend_naver_search` | 네이버 공식 검색 API(블로그·뉴스). 우리 DB에서 게시된·안 끝난 축제명으로 검색해 게시일이 최근 7일인 게시물 수를 합산하고 `mention_count`에 저장. 무료 한도 하루 25,000회. 한태경이 키를 발급하고 서버 환경변수 `NAVER_SEARCH_CLIENT_ID`·`NAVER_SEARCH_CLIENT_SECRET`으로 설정(9-1) |
+| 기본 `trend_naver_search` | 네이버 공식 검색 API(블로그·뉴스, **NAVER API HUB** — 2026-07-31부터 네이버 개발자센터 신규 신청이 중단되어 네이버 클라우드로 이관). 우리 DB에서 게시된·안 끝난 축제명으로 검색해 게시일이 최근 7일인 게시물 수를 합산하고 `mention_count`에 저장. 호출 주소 `https://naverapihub.apigw.ntruss.com/search/v1/news`(블로그는 같은 경로의 `blog`), 헤더 `X-NCP-APIGW-API-KEY-ID`·`X-NCP-APIGW-API-KEY`. 한도: 검색 전체 월 775,000건·키당 초당 50회(현재 한시적 무료, 이후 종량제 예정). 키는 한태경 계정으로 발급(11/24 신유빈 결정)해 서버 환경변수 `NAVER_API_HUB_KEY_ID`·`NAVER_API_HUB_KEY`로 설정(9-1). **약관(9/7 개정 '네이버 검색 결과 제공 목적으로만 이용')**: A42는 검색 결과의 건수를 우리 축제 순위의 근거로 표시하는 용도라 한태경이 약관 확인. 목적 외 이용으로 확인되면 네이버 수집을 끄고 대한민국 구석구석만으로 운영(`partial_sources: true`, 아래 점수 규칙) |
 | 보조 `trend_visitkorea` | 한국관광공사 대한민국 구석구석 축제 목록의 인기순을 크롤링. 약관·`robots.txt` 허용 범위에서 축제명·순위만 수집하고 `source_rank`에 저장. 원문은 저장하지 않음 |
 | 보조 출처 요청 | 요청 간격 1초 이상, 한 번에 목록 페이지 몇 개만, 서비스 이름을 밝힌 User-Agent, 실패 시 재시도 1회(9-1 ②) 후 다음 주기 |
 | 우리 축제와 연결(LLM 없음) | 네이버는 검색에 사용한 DB 축제에 연결. 대한민국 구석구석은 기존 `name_norm+period` 규칙으로 연결. 이름 정규화(공백·괄호·"제n회" 제거) 후 `festivals.title`과 일치하고 축제 기간이 수집 시점과 겹치는 후보가 하나면 `matched`, 2개 이상이면 `ambiguous`, 없으면 `unmatched`. `match_rule`에 규칙을 남기고 `matched`만 표시 |
@@ -3112,7 +3112,7 @@ BFCL 30문항의 원본은 한다영 브랜치에 있으며, 채점에는 API �
 | `TAG_LLM_DAILY_MAX` / `REC_WEIGHTS_VERSION` | 하루 300건 / `rec-0.1` | 축제 태그 LLM 검증 상한(6-4-1) / 추천 점수 가중치 묶음 | LLM 비용 상한 / 가중치 바꾸면 버전 올림 | 임시 | W27 모델 결정(11/25)·W124(12/02) | 신유빈 |
 | `TREND_CRAWL_SCHEDULE` / `TREND_STALE_H` | 6시간마다 / 12시간 | A42 두 출처의 수집 주기 / 신선도 기준 | 출처별 마지막 성공이 12시간 초과면 현재 점수에서 제외. 둘 다 유효하지 않으면 6-2의 `stale` 규칙 적용 | 확정(11/24 권오현 결정) | 11/24 | 신유빈 |
 | `TREND_SCORE_WEIGHTS` | naver 0.6 / visitkorea 0.4 | A42 출처별 정규화 점수 합산 | 두 출처가 함께 반영된 축제에 적용. 한 출처만 반영되면 그 점수를 그대로 사용 | 확정(11/24 권오현 결정) | 11/24 | 신유빈 |
-| `NAVER_SEARCH_CLIENT_ID` / `NAVER_SEARCH_CLIENT_SECRET` | 서버 환경변수 | A42 네이버 검색 API 인증 | 블로그·뉴스 합계 무료 한도 하루 25,000회 | 확정(11/24 권오현 결정) | 11/24 | 한태경(키 발급) |
+| `NAVER_API_HUB_KEY_ID` / `NAVER_API_HUB_KEY` | 서버 환경변수 | A42 네이버 검색 API 인증(NAVER API HUB 헤더 `X-NCP-APIGW-API-KEY-ID`·`X-NCP-APIGW-API-KEY`) | 검색 전체 월 775,000건·키당 초당 50회(한시적 무료, 이후 종량제) — 6시간마다 게시된 축제 수만큼 호출하므로 한도 안 | 확정(11/24, 한태경 계정 발급) | 11/24 | 한태경(키 발급) |
 | `SIM_STOP_GRACE_S` | 2초 | A21 중단 후 새 요청 멈춤 | 시연 정지 버튼 | 임시 | W96 · 12/04 | 신유빈 |
 | `RECOVERY_DEFAULT_MAX_MIN` | 5분 | A19 `stop_condition` 기본값 | 7-5 재측정 한 번에 충분 | 임시 | W48 · 12/04 | 신유빈 |
 
@@ -3432,7 +3432,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | 지하철역·버스 정류장 위치 | 도시철도 노선정보·TAGO 정류소 | national | 아니요 | A08 | D-014 |
 | 방문 집중 예측·지역 수요 | 한국관광공사 (집중률 예측·관광 수요 강도) | national | 30일 예측 | A29 | D-018 |
 | 지도 | 카카오 지도 (프론트) | national | — | 화면 | D-035 |
-| 지금 핫한 축제(기본) | 네이버 공식 검색 API(블로그·뉴스, `trend_naver_search`, 무료 하루 25,000회, 키 발급 한태경) | national | 6시간마다 · 최근 7일 게시물 수 | A42 | 11/24 권오현 결정 |
+| 지금 핫한 축제(기본) | 네이버 공식 검색 API(블로그·뉴스, NAVER API HUB, `trend_naver_search`, 월 775,000건·초당 50회·한시적 무료 후 종량제, 키 발급 한태경 계정) | national | 6시간마다 · 최근 7일 게시물 수 | A42 | 11/24 권오현 결정 |
 | 지금 핫한 축제(보조) | 한국관광공사 대한민국 구석구석 축제 목록 인기순 크롤링(`trend_visitkorea`) | national | 6시간마다 · 축제명·순위 | A42 | 11/24 권오현 결정(약관·`robots.txt` 허용 범위) |
 
 ---
@@ -3844,6 +3844,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | DB 연결 대기 초과 오류를 `DB_POOL_TIMEOUT`(503, retryable, Retry-After 1, 신유빈 제안)으로 변경. A42 네이버 검색 API를 NAVER API HUB 기준(주소·헤더·월 775,000건·초당 50회·한태경 계정 발급·약관 확인 시 구석구석 단독 운영)으로 갱신. |
 | v0.5 | 2026-11-24 | A42 기본·보조 수집 출처와 점수 정렬, 부분 반영 응답을 확정했습니다(권오현 결정, 신유빈 님께 통보). |
 | v0.5 | 2026-11-24 | 11/24 신유빈 확인 팀 결정 14건 반영. |
 | v0.4 | 2026-11-24 | 축제 범위 확정. TourAPI `lclsSystm2=EV01`만 A02·A03에서 공개 대상으로 삼고 원본 분류 대응표를 추가했습니다. |

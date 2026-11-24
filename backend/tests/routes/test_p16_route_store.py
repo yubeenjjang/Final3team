@@ -159,8 +159,8 @@ def test_P24_pool_timeout_returns_retryable_service_busy(monkeypatch, caplog, me
     assert response.headers["X-Request-ID"] == headers["X-Request-ID"]
     assert "X-Mock" not in response.headers
     assert response.json() == {"error": {
-        "code": "SERVICE_BUSY",
-        "message": "서버가 혼잡해요. 잠시 후 다시 시도해 주세요.",
+        "code": "DB_POOL_TIMEOUT",
+        "message": "요청이 많아 잠시 후 다시 시도해 주세요.",
         "request_id": headers["X-Request-ID"],
         "retryable": True,
     }}

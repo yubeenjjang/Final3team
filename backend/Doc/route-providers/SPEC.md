@@ -175,7 +175,7 @@
 
 ### P24. DB 풀 대기 시간 초과 (DB-14)
 
-- SQLAlchemy `TimeoutError`가 요청 처리 중 발생하면 공통 오류 형식의 HTTP 503 `SERVICE_BUSY`, `retryable=true`, `Retry-After: 1`을 반환한다. 풀 원본 예외 내용은 기록하지 않는다. 이미 202를 돌려준 요청은 A05로 상태를 확인한다.
+- SQLAlchemy `TimeoutError`가 요청 처리 중 발생하면 공통 오류 형식의 HTTP 503 `DB_POOL_TIMEOUT`, `retryable=true`, `Retry-After: 1`을 반환한다. 풀 원본 예외 내용은 기록하지 않는다. 이미 202를 돌려준 요청은 A05로 상태를 확인한다.
 
 ### P25. TMAP 정리 (SK 회신 없이 적용하는 확정 기준 2-2)
 
