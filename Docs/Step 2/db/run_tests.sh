@@ -7,9 +7,9 @@ IMG=pgvector/pgvector:pg17
 NAME=noldaga-dbtest-$$
 LOG="results_$(date +%F).log"
 PSQL=(docker exec -i "$NAME" psql -U postgres -d noldaga -v ON_ERROR_STOP=1 -X)
-# 마이그레이션 파일(001~009 적용·되돌리기)은 파일 단위 트랜잭션으로: 중간에 실패하면 그 파일 전체가 취소됨(DB 설계서 0-A 1, 10-A T45)
+# 마이그레이션은 파일 단위 트랜잭션으로 실행한다. psql -1은 -f 또는 -c와 함께 쓴다.
 # 시험 SQL(tests_*.sql)은 파일 안에서 BEGIN/ROLLBACK을 직접 쓰므로 -1 없이 실행
-PSQL_TX=(docker exec -i "$NAME" psql -U postgres -d noldaga -1 -v ON_ERROR_STOP=1 -X)
+PSQL_TX=(docker exec -i "$NAME" psql -U postgres -d noldaga -1 -v ON_ERROR_STOP=1 -X -f -)
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
@@ -85,6 +85,18 @@ if [ "$full" -ge 1 ] && [ "$excl" -eq 0 ]; then echo "PASS T25 — 제외 백업
 
 echo "## 5. 실행 계획 (explain_v0.3.2.sql)"
 "${PSQL[@]}" -q < explain_v0.3.2.sql 2>&1 | grep -E '^--- |Scan|Rows Removed|Execution Time|Planning Time|Buffers' | sed 's/^ *//'
+
+echo "## 6. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
+# 010에는 자체 BEGIN/COMMIT이 있고, 011은 -1로 적용한다.
+"${PSQL[@]}" -q -f - < 010_festival_sources_public.sql
+"${PSQL_TX[@]}" -q -v seed=true -v applied=false < tests_011_route_access_token.sql
+"${PSQL[@]}" -t -f - < precheck_011_route_access_token.sql
+"${PSQL_TX[@]}" -q < 011_route_access_token.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_011_route_access_token.sql
+"${PSQL_TX[@]}" -q < 011_route_access_token_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_011_route_access_token.sql
+"${PSQL_TX[@]}" -q < 011_route_access_token.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_011_route_access_token.sql
 
 echo "## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)"
 } 2>&1 | tee "$LOG"

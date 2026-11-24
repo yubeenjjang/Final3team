@@ -1,4 +1,6 @@
+import logging
 import os
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from math import ceil
@@ -6,7 +8,7 @@ from typing import Any, Literal
 
 import httpx2
 
-from api.providers.tourapi import _KeyRedactor
+from api.providers.tourapi import HTTP_LOGGERS
 
 KST = timezone(timedelta(hours=9))
 Coordinates = tuple[float, float]
@@ -28,6 +30,16 @@ _ERROR_DETAILS: dict[ErrorKind, str] = {
     "timeout": "공급원 응답 시간이 초과됐어요.",
     "quota": "공급원 조회 한도를 다 썼어요.",
 }
+_private_transport = ContextVar("private_route_transport", default=False)
+_logger = logging.getLogger(__name__)
+
+
+def _allow_transport_log(record: logging.LogRecord) -> bool:
+    return not _private_transport.get()
+
+
+for _name in HTTP_LOGGERS:
+    logging.getLogger(_name).addFilter(_allow_transport_log)
 
 
 @dataclass(frozen=True)
@@ -113,7 +125,6 @@ class RouteProviderClient:
         if not key:
             raise ProviderError("config", self.provider)
         self._key = key
-        self._redactor = _KeyRedactor(key, key)
         self._client = client
 
     def _request_json(
@@ -132,6 +143,7 @@ class RouteProviderClient:
                 response = self._send(client, method, url, headers, params, json)
 
         status = response.status_code
+        _logger.debug("provider=%s http_status=%d", self.provider, status)
         if status in (401, 403):
             raise ProviderError("config", self.provider)
         if status == 429:
@@ -158,17 +170,20 @@ class RouteProviderClient:
         params: dict[str, str | float | int] | None,
         json: dict[str, object] | None,
     ) -> httpx2.Response:
-        with self._redactor.protect_logs():
-            try:
-                return client.request(
-                    method, url, headers=headers, params=params, json=json,
-                    timeout=self._timeout, follow_redirects=False,
-                )
-            except httpx2.TimeoutException:
-                kind: ErrorKind = "timeout"
-            except (httpx2.RequestError, httpx2.InvalidURL):
-                kind = "temporary"
-            except UnicodeEncodeError:
-                kind = "config"
+        # Transport logs can include the URL, header values and encoded payloads.
+        token = _private_transport.set(True)
+        try:
+            return client.request(
+                method, url, headers=headers, params=params, json=json,
+                timeout=self._timeout, follow_redirects=False,
+            )
+        except httpx2.TimeoutException:
+            kind: ErrorKind = "timeout"
+        except (httpx2.RequestError, httpx2.InvalidURL):
+            kind = "temporary"
+        except UnicodeEncodeError:
+            kind = "config"
+        finally:
+            _private_transport.reset(token)
         # 요청과 응답 원문에는 키가 있을 수 있어 오류에 전달하지 않는다.
         raise ProviderError(kind, self.provider)

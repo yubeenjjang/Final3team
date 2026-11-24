@@ -5,6 +5,7 @@
 | 1 | Codex · gpt-6.2-sol · reasoning medium | P1~P8 (어댑터·한도, 연결 없음) | 합성 고정 파일 준비 ✅ 11/23 |
 | 2 | Codex · gpt-6.2-sol · reasoning **high** (전환·동기/비동기·캐시·병합 규칙) | P9~P12 | 1단계 시험 통과 |
 | STEP3 막차 처리 | Codex | P13~P15 (강사 API 2 · W36 일부) | 5절 규칙·합성 응답 대조 |
+| STEP4 DB 저장 | Codex | P16~P19 (강사 DB 피드백 4) | 009·010과 A04·A05 동작 확인 |
 | 3-실행 | Claude | 실제 호출: **TMAP 3건 이내**(한태경 님 같은 날 사용 여부 먼저 확인)·카카오 대중교통 3건·장소 검색 3건 → 응답은 모양만 확인 후 **바로 삭제**(TMAP 24시간·카카오 저장 금지), 결과는 호출 기록 표로만. 노트북 시연에 `ROUTE_PROVIDER=real` 적용 여부는 오현 님이 결정 | 2단계 시험 통과 |
 
 ## 1단계 — 공통 형식·TMAP·카카오 어댑터·한도
@@ -55,7 +56,35 @@
 - [x] P15 고정 파일 시험·전체 시험·설계서와 연동표 갱신
 - 오프라인 `python -m pytest` 전체 결과는 335개 통과, 일회용 DB가 필요한 6개는 건너뜀. 현재 샌드박스에서는 TestClient 스레드 알림에 임시 파이프를 사용했다.
 
+## STEP4 DB 저장
+
+- SQL: `Docs/Step 2/db/precheck_011_route_access_token.sql`, `011_route_access_token.sql`, 되돌리기, `tests_011_route_access_token.sql`, `run_tests.sh`의 011 단계.
+- API: `api/repositories/route_db.py`·`route_store.py`, `api/ingestion/db.py`, `api/services/real_routes.py`, `api/routers/routes/routes.py`.
+- 시험: `tests/routes/test_p16_route_store.py`·`test_p18_route_store_db.py`, 공통 `db` 표시·건너뛰기 설정.
+- 문서: TODO·SPEC·IMP-PLAN·`codex/STEP4.md`, API·DB 설계서, API 연동 현황표.
+
+- [x] P16 011·사전 검사·되돌리기·T011a~d 작성
+- [x] P17 DB 요청·상태·A05 토큰 검증 구현
+- [x] P18 결과 저장·만료·카카오 동기 전용·시험 작성
+- [x] P19 설계서·연동표·신유빈 확인 항목 기록
+- [ ] 수정 뒤 일회용 PostgreSQL에서 011과 A02→A05 통합 시험 재실행
+- [ ] 서비스 계정 설정·기존 행 처리·정리 실행 주체 확인(신유빈)
+- 11/24 전체 오프라인 `python -m pytest` 377개 수집, 365개 통과, DB 표시 12개 건너뜀(P18 4개 포함). 샌드박스에서는 TestClient의 스레드 알림에 임시 파이프를 사용했다.
+- 011 사전 검사 파일은 자동 적용본과 구분되도록 `precheck_`로 시작한다. 병합 시 공통 실행기의 번호 검색이 기존 `009_precheck.sql`을 적용본에서 제외하는지 확인한다.
+
+**4-실행 결과 (11/23 밤 일회용 DB(로컬, AWS 아님))**
+
+- `Docs/Step 2/db/run_tests.sh` 통과. 로그 PASS 156건은 기존 SQL·백업 149건, T011a~d 4건 및 재적용 T011a~c 3건이다. 별도 컨테이너에서도 001~011을 적용했다. 010 자체의 `BEGIN/COMMIT` 때문에 중복 트랜잭션 경고가 나왔다.
+- 백엔드 `-m db` 9개 통과, 3개 실패. 귀가 경로 4개 중 011 적용·되돌리기·재적용 통과. A02→A05 상태·만료, 카카오 결과 미저장, TMAP 캐시 조기 정리 시험은 실패했다.
+- 당시 시험 데이터의 서울 지역 코드 `11`이 API 규격 `SEOUL`과 달랐다. A02 응답 검증(`api/services/festival_store.py:122`)과 귀가 요청 중 축제 상세 검증(`api/services/festival_store.py:149`)에서 실패했다.
+
+**11/24 검토 반영**
+
+- 축제 시험 데이터를 `SEOUL`로 고쳤다. P18은 축제 조회에 `TEST_DB_APP_URL`의 `noldaga_app` 계정을 쓰고, 경로 저장과 시험 데이터 준비에 `TEST_DB_URL`을 쓴다. 011 되돌리기 SQL은 두 경로 테이블을 먼저 잠근다.
+- A04·A25의 동일 요청 재전송은 조회 권한 만료 뒤에도 기존 경로 ID를 유지해야 한다. API 설계서가 이 시점의 응답을 지정하지 않아 200 `unavailable`·`ROUTE_ACCESS_EXPIRED`로 명시했다. 조회 토큰·후보·폴링 URL은 생략한다. 단위 시험은 기존 ID와 A05 401을 확인했고, P18에도 만료 재전송 검증을 추가했다.
+- Docker SQL 실행기와 백엔드 DB 표시 시험 12개는 **재실행 대기**. 011 DDL 시험은 소유자 권한 또는 `TEST_DB_MIGRATION_URL`이 필요하다.
+
 ## 메모
 - (11/23) TMAP 무료 하루 10건(오류도 셈)·유료 전환은 11/26 결정 대기(`TMAP_PAID_PLAN`) → 한도는 환경변수.
-- (11/23) 한도·캐시·병합·결과 보관은 **메모리/파일 임시** — 유빈 님 Redis·DB 연결 뒤 `quota:{provider}`·`route:cache:{route_key}`·`route_results`로 옮김. 프로세스 여러 개로 띄우면 맞지 않음(지금 노트북 시연은 1개).
+- (11/23) 한도·캐시·병합은 파일·메모리 방식. Redis 연동(`quota:{provider}`·`route:cache:{route_key}`)은 후속이다. STEP4의 DB 모드 상태와 저장 결과는 프로세스 간 공유된다.
 - (11/23) 카카오 도보 보완은 이번에 안 함(호출 아끼기).
