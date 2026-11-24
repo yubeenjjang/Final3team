@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import { KakaoMap } from "@/components/KakaoMap";
+import { LoginPromptSheet } from "@/components/LoginPromptSheet";
 import {
   getAccessToken,
   getAuthSessionVersion,
@@ -55,8 +55,6 @@ const NEARBY_ITEMS = [
 ] as const;
 
 export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
-  const router = useRouter();
-
   const [festival, setFestival] = useState<FestivalDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -75,6 +73,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
 
   const [nearbyMessage, setNearbyMessage] = useState<string | null>(null);
   const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,9 +137,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
 
   const handleToggleFavorite = useCallback(async () => {
     if (!getAccessToken()) {
-      router.push(
-        `/auth/login?next=${encodeURIComponent(`/festivals/${festivalId}`)}`,
-      );
+      setLoginPromptOpen(true);
       return;
     }
     if (!currentFavorite || favoriteLocked || session !== getAuthSessionVersion()) return;
@@ -168,7 +165,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
     } finally {
       setFavoriteBusy(false);
     }
-  }, [currentFavorite, favoriteLocked, festivalId, isFavorite, router, session]);
+  }, [currentFavorite, favoriteLocked, festivalId, isFavorite, session]);
 
   if (loading) {
     return (
@@ -479,6 +476,12 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
           </Link>
         </div>
       </section>
+
+      <LoginPromptSheet
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        nextPath={`/festivals/${festivalId}`}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronRight, Heart, MapPin } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
+import { LoginPromptSheet } from "@/components/LoginPromptSheet";
 import { getAuthUser, getAuthUserServerSnapshot, subscribeAuth } from "@/lib/api/auth";
 import { listFestivals, type FestivalListItem } from "@/features/festivals/explore/api";
 import { dday, formatFestivalPeriod } from "@/features/festivals/explore/dday";
@@ -123,6 +124,7 @@ export function FeaturedFestivals() {
   const [items, setItems] = useState<FestivalListItem[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -187,18 +189,24 @@ export function FeaturedFestivals() {
               key={item.festival_id}
               item={item}
               heart={
-                <Link
-                  href="/auth/login?next=%2F"
+                <button
+                  type="button"
+                  onClick={() => setLoginPromptOpen(true)}
                   className={heartClass}
                   aria-label={`${item.name} 찜하기`}
                 >
                   <Heart size={15} className="text-surface" aria-hidden="true" />
-                </Link>
+                </button>
               }
             />
           ))}
         </ul>
       )}
+      <LoginPromptSheet
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        nextPath="/"
+      />
     </section>
   );
 }

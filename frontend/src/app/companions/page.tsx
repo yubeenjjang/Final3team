@@ -1,10 +1,15 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { CompanionsView } from "@/features/community/companions/CompanionsView";
 
-export default function CompanionsPage() {
+export default async function CompanionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ festivalId?: string; tab?: string }>;
+}) {
+  const params = await searchParams;
   return (
-    <ComingSoon
-      title="동행 찾기"
-      description="함께 축제를 즐길 동행 모집 기능은 다음 단계에서 열릴 예정이에요."
+    <CompanionsView
+      initialFestivalId={params.festivalId}
+      initialTab={params.tab === "mine" ? "mine" : "browse"}
     />
   );
 }

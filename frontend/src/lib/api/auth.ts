@@ -139,6 +139,26 @@ export function updateAccessTokens(tokens: {
   notifyAuthListeners();
 }
 
+export function updateAuthUser(patch: Partial<AuthUser>): void {
+  hydrateIfNeeded();
+  if (!memoryUser && (!patch.userId || !patch.displayName)) {
+    return;
+  }
+  const nextUser: AuthUser = {
+    userId: patch.userId ?? memoryUser?.userId ?? "",
+    displayName: patch.displayName ?? memoryUser?.displayName ?? "",
+    email: patch.email !== undefined ? patch.email : memoryUser?.email,
+  };
+  memoryUser = nextUser;
+
+  const storage = getStorage();
+  if (storage) {
+    storage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
+  }
+
+  notifyAuthListeners();
+}
+
 export function clearAuthSession(): void {
   sessionVersion += 1;
   hydrated = true;

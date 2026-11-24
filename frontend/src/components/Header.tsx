@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { User } from "lucide-react";
+import { Bell, MessageCircle, User } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
   getAuthUser,
@@ -42,15 +42,31 @@ export function Header() {
         />
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {initial ? (
-          <Link
-            href="/auth/login"
-            aria-label={`내 계정 (${user?.displayName ?? ""})`}
-            className="flex h-9 w-9 items-center justify-center rounded-chip bg-brand text-sm font-bold text-surface shadow-sm transition-opacity hover:opacity-90"
-          >
-            {initial}
-          </Link>
+          <>
+            <Link
+              href="/chats"
+              aria-label="채팅"
+              className="flex h-9 w-9 items-center justify-center rounded-chip text-ink transition-colors hover:bg-surface-soft hover:text-brand"
+            >
+              <MessageCircle className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
+            </Link>
+            <Link
+              href="/notifications"
+              aria-label="알림"
+              className="flex h-9 w-9 items-center justify-center rounded-chip text-ink transition-colors hover:bg-surface-soft hover:text-brand"
+            >
+              <Bell className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
+            </Link>
+            <Link
+              href="/me"
+              aria-label={`내 계정 (${user?.displayName ?? ""})`}
+              className="flex h-9 w-9 items-center justify-center rounded-chip bg-brand text-sm font-bold text-surface shadow-sm transition-opacity hover:opacity-90"
+            >
+              {initial}
+            </Link>
+          </>
         ) : (
           <Link
             href="/auth/login"
