@@ -75,8 +75,13 @@ def _seed_account_data(db, first, second, ids):
     ):
         db.execute(text("""
             INSERT INTO public.festivals
-                (festival_id, title, region_code, category, review_status, published_at, start_date)
-            VALUES (:id, '축제', 'SEOUL', :category, :review, now(), CAST(:start AS date))
+                (festival_id, title, region_code, category, source_class_level1, source_class_level2,
+                 source_class_code, review_status, published_at, start_date)
+            VALUES (:id, '축제', 'SEOUL', :category,
+                    CASE WHEN :category = 'festival' THEN 'EV' END,
+                    CASE WHEN :category = 'festival' THEN 'EV01' END,
+                    CASE WHEN :category = 'festival' THEN 'EV010200' END,
+                    :review, now(), CAST(:start AS date))
         """), {"id": ids[key], "category": category, "review": review, "start": start})
     db.execute(text("""
         INSERT INTO public.chat_rooms (room_id, room_type, owner_id, name)
