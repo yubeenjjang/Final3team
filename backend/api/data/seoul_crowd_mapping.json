@@ -2010,7 +2010,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-25",
+          "approval_note": "11/25 승인: 서울빛초롱축제와 같은 청계광장 일대(11/24 팀 결정 6번, 같은 구역 적용)"
         },
         {
           "area_code": "POI130",
@@ -2021,7 +2024,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-25",
+          "approval_note": "11/25 승인: 서울빛초롱축제와 같은 청계광장 일대(11/24 팀 결정 6번, 같은 구역 적용)"
         },
         {
           "area_code": "POI003",
@@ -2032,7 +2038,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": false
+          "approved": true,
+          "approved_by": "권오현",
+          "approved_at": "2026-11-25",
+          "approval_note": "11/25 승인: 서울빛초롱축제와 같은 청계광장 일대(11/24 팀 결정 6번, 같은 구역 적용)"
         }
       ],
       "nearest_excluded_area": null
