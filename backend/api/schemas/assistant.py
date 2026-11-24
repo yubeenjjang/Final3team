@@ -22,6 +22,13 @@ class AssistantRequest(BaseModel):
     context: AssistantContext = Field(default_factory=AssistantContext)
     reference_date: Annotated[str, Field(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")] | None = None
 
+    @field_validator("request_id", "message")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        if "\x00" in value or any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+            raise ValueError("사용할 수 없는 문자가 포함되어 있습니다.")
+        return value
+
     @field_validator("reference_date")
     @classmethod
     def validate_reference_date(cls, value: str | None) -> str | None:

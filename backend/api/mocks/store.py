@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import count
 from threading import Lock
+from uuid import UUID
 
 from api.mocks.admin_festivals import mock_festival_store
 from api.mocks.festivals import MockFestival
@@ -47,9 +48,11 @@ class AssistantRun:
     run_id: str
     conversation_id: str
     access_token: str = field(repr=False)
-    request: AssistantRequest
-    body: str
+    request: AssistantRequest = field(repr=False)
+    body: str = field(repr=False)
     queued_at: str
+    user_id: UUID | None = None
+    anonymous_session_hash: str | None = field(default=None, repr=False)
     started_at: str | None = None
     ended_at: str | None = None
     outcome: dict[str, object] | None = field(default=None, repr=False)

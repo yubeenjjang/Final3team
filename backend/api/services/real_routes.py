@@ -27,7 +27,7 @@ from api.providers.route_base import (
     as_kst,
 )
 from api.providers.tmap import SERVICE_ENDED_NOTICE, TmapClient
-from api.repositories.route_store import RouteStore, stored_candidates, token_hash
+from api.repositories.route_store import TOKEN_TTL, RouteStore, stored_candidates, token_hash
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import Endpoint, FestivalEndpoint, RouteDirection, RouteRequest, RouteStatus
 from api.services.festival_lookup import find_festival
@@ -135,6 +135,19 @@ _PrimaryResult = _CachedRoute | _Failure | ErrorKind
 
 def uses_real_routes() -> bool:
     return os.environ.get("ROUTE_PROVIDER") == "real"
+
+
+def _stored_route_token(secret: bytes, route_id: str) -> str:
+    token = hmac.digest(secret, f"route-token:{route_id}".encode(), "sha256")
+    return "rrt_" + b32encode(token).decode()[:24]
+
+
+def stored_route_access_token(route_id: str, expected_hash: str | None, submitted_at: datetime) -> str | None:
+    secret = os.environ.get("ROUTE_KEY_SECRET")
+    if not uses_real_routes() or not secret or not expected_hash or datetime.now(KST) >= submitted_at + TOKEN_TTL:
+        return None
+    token = _stored_route_token(secret.encode(), route_id)
+    return token if hmac.compare_digest(expected_hash, token_hash(token)) else None
 
 
 class RealRouteService:
@@ -329,8 +342,7 @@ class RealRouteService:
         return hmac.digest(self._secret, f"{purpose}:{value}".encode(), "sha256").hex()
 
     def _db_token(self, route_id: str) -> str:
-        digest = bytes.fromhex(self._private_hash("route-token", route_id))
-        return "rrt_" + b32encode(digest).decode()[:24]
+        return _stored_route_token(self._secret, route_id)
 
     def _place_fields(self, endpoint: Endpoint) -> tuple[str, str | None]:
         if isinstance(endpoint, FestivalEndpoint):

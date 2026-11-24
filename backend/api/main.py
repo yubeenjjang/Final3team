@@ -20,18 +20,19 @@ from api.errors import (
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
 from api.request_logs import (
-    ADMIN_REVIEW_PATH, REPORT_PATHS, admin_festival_endpoint, admin_notice_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
+    ADMIN_REVIEW_PATH, REPORT_PATHS, admin_festival_endpoint, admin_notice_endpoint, assistant_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
     me_endpoint, private_endpoint, request_logger,
 )
-from api.realtime import chat_socket
+from api.realtime import chat_socket, job_events
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
 from api.routers.admin import festival_review, festivals as admin_festivals, notices, reports as admin_reports
-from api.routers.assistant import chatbot
+from api.routers.assistant import agent_jobs, chatbot
 from api.routers.community import chat, companions, friends, notifications, reports
 from api.routers.festivals import catalog, info
 from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
+from api.services.assistant import uses_assistant_db
 from api.services.real_festival_info import uses_real_info
 from api.services.real_routes import uses_real_routes
 from api.services.seoul_crowd import uses_real_crowd
@@ -47,6 +48,7 @@ app.add_exception_handler(Exception, handle_unexpected_error)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=[
         "X-Request-ID",
@@ -68,7 +70,8 @@ async def add_response_headers(
         request_id = "req_" + str(ULID())
     request.state.request_id = request_id
     endpoint = private_endpoint(request.url.path)
-    private_response = companion_endpoint(request.url.path) is not None or endpoint in REPORT_PATHS
+    is_assistant = assistant_endpoint(request.url.path) is not None
+    private_response = is_assistant or companion_endpoint(request.url.path) is not None or endpoint in REPORT_PATHS
     try:
         if endpoint == "/api/v1/auth/login" and request.method == "POST" and uses_auth_db():
             await run_in_threadpool(enforce_login_limit, request.client.host if request.client else "unknown")
@@ -80,13 +83,13 @@ async def add_response_headers(
             raise
         # The server traceback can contain input values from an unexpected error.
         response = await handle_unexpected_error(request, error)
-        if uses_auth_db() and _auth_data_endpoint(request.url.path):
+        if (uses_auth_db() and _auth_data_endpoint(request.url.path)) or (is_assistant and uses_assistant_db()):
             del response.headers["X-Mock"]
         if private_response:
             response.headers["Cache-Control"] = "private, no-store"
         request_logger.error(
             "endpoint=%s request_id=%r http_status=500 error=INTERNAL_SERVER_ERROR",
-            endpoint, request_id,
+            endpoint, '-' if is_assistant else request_id,
         )
         return response
     if (
@@ -112,7 +115,7 @@ async def add_response_headers(
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
         or _auth_data_endpoint(request.url.path)
-        or _FESTIVAL_INFO_PATH.match(request.url.path)
+        or _FESTIVAL_INFO_PATH.match(request.url.path) or is_assistant
     ):
         del response.headers["X-Mock"]
     if private_response:
@@ -120,7 +123,7 @@ async def add_response_headers(
     if endpoint is not None:
         request_logger.info(
             "endpoint=%s request_id=%r http_status=%d result_status=%s route_request_id=%s",
-            endpoint, request_id, response.status_code, getattr(request.state, "result_status", "-"),
+            endpoint, '-' if is_assistant else request_id, response.status_code, getattr(request.state, "result_status", "-"),
             getattr(request.state, "route_request_id", "-"),
         )
     return response
@@ -147,6 +150,7 @@ def _serves_real_data(request: Request) -> bool:
     info_path = _FESTIVAL_INFO_PATH.match(path)
     return (
         (bool(_HEALTH_PATH.match(path)) and health.uses_health_db())
+        or (uses_assistant_db() and assistant_endpoint(path) is not None)
         or (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
@@ -155,7 +159,7 @@ def _serves_real_data(request: Request) -> bool:
     )
 
 
-for module in (health, catalog, routes, chatbot, auth):
+for module in (health, catalog, routes, chatbot, agent_jobs, job_events, auth):
     app.include_router(module.router, prefix="/api/v1")
 for module in (
     info, favorites, users, friends, companions, chat, notifications, chat_socket, festival_review, reports,

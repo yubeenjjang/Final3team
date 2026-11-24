@@ -5,8 +5,11 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)
-def reset_mock_state() -> Iterator[None]:
+def reset_mock_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     from api.mocks.store import reset_store
+    from api.services import assistant
+
+    monkeypatch.setattr(assistant, "rate_limit", assistant.MemoryAssistantRateLimit())
 
     reset_store()
     yield

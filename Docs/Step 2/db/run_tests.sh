@@ -266,6 +266,13 @@ echo "T022d PASS: 관리자 감사 이력이 있으면 되돌리기 차단"
 "${PSQL[@]}" -q -v applied=false -f - < tests_022_admin-festivals.sql
 "${PSQL_TX[@]}" -q < 022_admin-festivals.sql
 "${PSQL[@]}" -q -v applied=true -f - < tests_022_admin-festivals.sql
+echo "## 5-9. 022_assistant 작업 큐·보존 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_assistant.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_assistant.sql
+"${PSQL_TX[@]}" -q < 022_assistant_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_022_assistant.sql
+"${PSQL_TX[@]}" -q < 022_assistant.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_assistant.sql
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
