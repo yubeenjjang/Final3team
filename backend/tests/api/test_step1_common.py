@@ -29,6 +29,7 @@ _NETWORK_CALLS = {
 _REAL_API_MODULES = {
     "providers/kakao.py", "providers/tmap.py", "providers/tourapi.py",
     "providers/seoul_citydata.py", "providers/quota.py", "providers/route_base.py",
+    "providers/festival_source.py",
     "services/real_routes.py", "services/seoul_crowd.py", "services/festival_store.py",
 }
 

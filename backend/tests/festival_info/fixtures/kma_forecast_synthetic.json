@@ -1,0 +1,44 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseDate": "20261119",
+            "baseTime": "1700",
+            "category": "TMP",
+            "nx": 60,
+            "ny": 127,
+            "fcstDate": "20261119",
+            "fcstTime": "1800",
+            "fcstValue": "10"
+          },
+          {
+            "baseDate": "20261119",
+            "baseTime": "1700",
+            "category": "PTY",
+            "nx": 60,
+            "ny": 127,
+            "fcstDate": "20261119",
+            "fcstTime": "1800",
+            "fcstValue": "1"
+          },
+          {
+            "baseDate": "20261119",
+            "baseTime": "1700",
+            "category": "PCP",
+            "nx": 60,
+            "ny": 127,
+            "fcstDate": "20261119",
+            "fcstTime": "1800",
+            "fcstValue": "1.7mm"
+          }
+        ]
+      },
+      "totalCount": 3
+    }
+  }
+}

@@ -1455,6 +1455,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `type`: 선택, `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure` / `active_only`: bool, 기본 true(지금 효력 있는 것만) |
 | 출처 | 운영자가 등록·승인한 공지 + 서울 TOPIS 통제(10번, 서울만) |
+| 구현 상태 | 기본 모의. `NOTICES_PROVIDER=real`은 006 공지 스키마의 `official_notices`에서 승인된 축제 공지를 조회합니다. |
 | 규칙 | `approval_status='approved'`만 보여 줌(미승인은 경로 차단에도 안 씀). 축제 공지가 없어도 `status:"ok"`, `items:[]` — "확인할 수 있는 공지 자료가 없어요" |
 
 **A07 쿼리 필드**
@@ -1509,7 +1510,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | 없음 |
 | 규칙 | 축제 좌표 → **기상청 격자(nx, ny)로 변환**(변환식은 기상청 참고문서, 11/19 서울 60,127·부산 97,74로 확인). `base_time`은 1시간 전 정시. 캐시 10분 |
-| 지금 범위 | **초단기실황(현재 날씨)만 실호출 확인.** 예보(`forecast`)는 단기예보 API를 아직 부르지 않아 `unverified` — 담당 한태경, W36 전(11/26) |
+| 구현 상태 | 기본 모의. `WEATHER_PROVIDER=real`은 초단기실황·단기예보를 조회합니다. 11/19 초단기실황 실호출 기록과 단기예보 합성 예시로 변환을 확인했습니다. 단기예보 실제 연결은 확인 예정입니다. |
 
 | 응답 필드 | 타입 | 원본(기상청) | 설명 |
 |---|---|---|---|
@@ -1518,7 +1519,7 @@ Content-Type: application/json
 | `precipitation_mm` | number | `RN1` | 1시간 강수량 |
 | `precipitation_type` | string | `PTY` 0~7 | `none`·`rain`·`rain_snow`·`snow`·`drizzle`·`drizzle_snow`·`snow_flurry`(코드 0·1·2·3·5·6·7) |
 | `grid` | object | `nx`·`ny` | 변환 결과 |
-| `forecast` | object | — | `{status:"unverified"}` (위 '지금 범위') |
+| `forecast` | object | `baseDate`·`baseTime`, `fcstDate`·`fcstTime`, `TMP`·`PCP`·`PTY` | 모의 `{status:"unverified"}`. 실제 성공은 `status`(`ok`·`stale`), 발표 시각 `issued_at`, `items[]`(`forecast_at`, `temperature_c`, `precipitation_mm`, `precipitation_type`). 예보 조회 실패는 `{status:"unavailable",error}`. |
 
 #### A10. 혼잡 구역 `GET /api/v1/festivals/{festival_id}/crowd` (서울만)
 
@@ -1725,6 +1726,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `mode`: `all`(기본)·`subway`·`bus` / `radius_m`: 100~1000, 기본 500 / `limit`: 정류장·역 최대 10 |
 | 공급원 | 지하철: 서울 지하철 실시간(서울만) / 버스: **서울 = 서울시 버스도착정보 15000314, 서울 밖 = TAGO** |
+| 구현 상태 | 기본 모의. `TRANSIT_PROVIDER=real`은 적재한 역·정류장을 기준으로 조회합니다. 공급원 응답 fixture 검증을 마쳤으며, 실제 키와 시연 대상 시설로 연결 확인 예정입니다. |
 | 규칙 | 주변 역·정류장 목록은 A08 위치 데이터에서 찾고, 도착 정보만 실시간으로 부름. 지하철 `barvlDt`가 0이어도 도착 전일 수 있어 **`arvlMsg2` 문구를 함께** 줌. 서울 버스 `itemCount`는 0으로 와서 **건수로 쓰지 않음**. TAGO `resultCode` 99는 일시 오류로 재시도. 캐시 30초 |
 
 **A26 쿼리 필드**
@@ -1744,7 +1746,7 @@ Content-Type: application/json
 | `arrivals[].eta_s` | int | 지하철 `barvlDt` / TAGO `arrtime` / 서울 버스는 `arrmsg1` 문구에서 계산(못 하면 null) | 도착까지 초 |
 | `arrivals[].message` | string | 지하철 `arvlMsg2` / 서울 버스 `arrmsg1` | 공급원 문구 그대로 |
 | `arrivals[].remaining_stops` | int | TAGO `arrprevstationcnt` | 남은 정류장 |
-| `arrivals[].crowding` | string | 서울 버스 `reride_Num1`(`rerdie_Div1`=4일 때: 3 `여유`·4 `보통`·5 `혼잡`) | **서울 버스만**, 교통수단 선택 근거(D-033). 나머지 null |
+| `arrivals[].crowding` | string | 서울 버스 `reride_Num1`(`rerdie_Div1`=4일 때: 3 `여유`·4 `보통`·5 `혼잡`) | **서울 버스만**, 교통수단 선택 근거(D-033). 짝을 확인할 수 없으면 `unverified`, 서울 버스 이외에는 null |
 | `observed_at` | string | 지하철 `recptnDt` / 수신 시각 | |
 
 - 수도권 노선(인천·경기 역) 포함 여부는 미확인(부평 미호출) → 서울 역만 `ok`로 표시, 담당 한태경 · W36 전(11/26).
@@ -1783,6 +1785,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `days`: 1~30, 기본 7 |
 | 공급원 | 한국관광공사 관광지 집중률 예측 15128555 + 지역별 관광 수요 강도 15151868 |
+| 구현 상태 | 기본 모의. `VISIT_FORECAST_PROVIDER=real`은 축제↔관광지 매핑이 확인된 경우에 조회합니다. 메모리 일일 캐시와 선택적 `VISIT_FORECAST_STORE=db` 적재를 구현했습니다. 실제 키와 매핑을 적용한 확인은 예정입니다. |
 | 규칙 | **실시간 혼잡이 아니라 상대값(0~100) 예측**이므로 다른 이름·색으로 표시(D-018). 축제 장소와 이름이 맞는 관광지(`tAtsNm`)가 있을 때만 `forecast`를 주고, 없으면 `forecast.status:"unsupported"`("이 축제 장소의 예측 자료가 없어요"). 관광 수요 강도는 **시군구 코드와 지표 코드를 함께 넣어야** 값이 옴(문서엔 선택값, 11/19 확인). 하루 1회 수집해 `realtime_snapshots`(`visit_forecast`·`region_demand`)에 저장 |
 
 **A29 쿼리 필드**
@@ -3895,6 +3898,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
 | v0.5 | 2026-11-24 | A32~A35 PostgreSQL 인증과 DB-19 RLS 연결을 구현하고 토큰 수명·폐기·로그인 한도·로그 차단을 코드와 시험에 연결했습니다. |
+| v0.5 | 2026-11-24 | A07 승인 공지 DB 조회, A09 기상청 실황·예보, A26 서울 지하철·전국 버스, A29 관광공사 예측·수요의 실제 모드와 오프라인 검증을 추가했습니다. |
 | v0.5 | 2026-11-24 | DB 연결 대기 초과 오류를 `DB_POOL_TIMEOUT`(503, retryable, Retry-After 1, 신유빈 제안)으로 변경. |
 | v0.5 | 2026-11-24 | A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정. 한태경 16:09 NAVER API HUB 명세와 A81 Redis 10분 캐시를 반영했습니다. |
 | v0.5 | 2026-11-24 | 11/24 신유빈 확인 팀 결정 14건 반영. |

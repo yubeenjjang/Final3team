@@ -1,0 +1,41 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseYmd": "20261119",
+            "areaCd": "26",
+            "areaNm": "부산광역시",
+            "signguCd": "26350",
+            "signguNm": "해운대구",
+            "tAtsNm": "SEA LIFE 부산아쿠아리움",
+            "cnctrRate": "55.19"
+          },
+          {
+            "baseYmd": "20261120",
+            "areaCd": "26",
+            "areaNm": "부산광역시",
+            "signguCd": "26350",
+            "signguNm": "해운대구",
+            "tAtsNm": "SEA LIFE 부산아쿠아리움",
+            "cnctrRate": "78.29"
+          },
+          {
+            "baseYmd": "20261121",
+            "areaCd": "26",
+            "areaNm": "부산광역시",
+            "signguCd": "26350",
+            "signguNm": "해운대구",
+            "tAtsNm": "SEA LIFE 부산아쿠아리움",
+            "cnctrRate": "87.87"
+          }
+        ]
+      },
+      "totalCount": 3
+    }
+  }
+}
