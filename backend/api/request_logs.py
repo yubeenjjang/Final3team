@@ -4,6 +4,12 @@ import re
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
 _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
 _ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
+_CHAT_PATH = re.compile(
+    r"/api/v1/(?:ws/chat|chat-rooms(?:/[^/]+(?:/(?:invitations|accept|decline|leave|read|messages))?)?"
+    r"|me/(?:chat-rooms|notifications(?:/read)?)|ws-tickets)/?"
+)
+_CHAT_ROOM_PATH = re.compile(r"/api/v1/chat-rooms/[^/]+(?:/([^/]+))?/?")
+_CHAT_SOCKET_PATH = "/api/v1/ws/chat"
 _FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
 _FRIENDS_PATH = re.compile(r"(/api/v1/(?:users/search|friend-requests|me/friend-requests|me/friends))/?")
 _FRIEND_ACTION_PATH = re.compile(r"/api/v1/friend-requests/[^/]+/[^/]+/?")
@@ -59,6 +65,14 @@ def companion_endpoint(path: str) -> str | None:
     return detail + ("/" + parts[5] if parts[5] in {"applications", "meeting-place"} else "/{action}")
 
 
+def chat_endpoint(path: str) -> str | None:
+    if not _CHAT_PATH.fullmatch(path):
+        return None
+    if room := _CHAT_ROOM_PATH.fullmatch(path):
+        return "/api/v1/chat-rooms/{room_id}" + ("/" + room[1] if room[1] else "")
+    return path.rstrip("/")
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -68,7 +82,7 @@ def private_endpoint(path: str) -> str | None:
         return "/api/v1/festivals/{festival_id}/" + info[1]
     if path.rstrip("/") == ADMIN_REVIEW_PATH:
         return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path)
+    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):
@@ -81,14 +95,21 @@ class _PrivateRequestFilter(logging.Filter):
             client, method, target, version, status = args
             if isinstance(target, str) and (endpoint := private_endpoint(target.partition("?")[0])):
                 record.args = client, method, endpoint, version, status
+        if record.name == "uvicorn.error":
+            record.args = tuple(
+                value.partition("?")[0]
+                if isinstance(value, str) and value.partition("?")[0].rstrip("/") == _CHAT_SOCKET_PATH else value
+                for value in args
+            )
         if record.name == "uvicorn.asgi" and len(args) == 3 and isinstance(args[2], dict):
             scope = args[2]
             path = scope.get("path")
-            if scope.get("type") == "http" and isinstance(path, str) and (endpoint := private_endpoint(path)):
-                record.args = args[:2] + ({"type": "http", "path": endpoint},)
+            if scope.get("type") in ("http", "websocket") and isinstance(path, str):
+                if endpoint := private_endpoint(path):
+                    record.args = args[:2] + ({"type": scope["type"], "path": endpoint},)
         return True
 
 
 _private_requests = _PrivateRequestFilter()
-for logger_name in ("uvicorn.access", "uvicorn.asgi"):
+for logger_name in ("uvicorn.access", "uvicorn.asgi", "uvicorn.error"):
     logging.getLogger(logger_name).addFilter(_private_requests)

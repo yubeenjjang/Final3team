@@ -60,9 +60,10 @@ def review_database(client, monkeypatch):
                 """), {"id": festival_id})
                 queue[key] = db.scalar(text("""
                     INSERT INTO public.festival_review_queue (festival_id, reason, proposed_value)
-                    VALUES (:id, 'coords_out_of_range', '{"latitude":37.5,"longitude":127,"coords_source":"geocoded"}')
+                    VALUES (:id, 'coords_out_of_range', CAST(:proposed AS jsonb))
                     RETURNING queue_id
-                """), {"id": festival_id})
+                """), {"id": festival_id,
+                       "proposed": '{"latitude": 37.5, "longitude": 127, "coords_source": "geocoded"}'})
 
         headers = {
             role: {"Authorization": "Bearer " + tokens.issue_access_token(

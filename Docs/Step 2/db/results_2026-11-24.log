@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-24 17:35:00 KST
+# 놀다가 DB 시험 결과 — 2026-11-24 18:00:57 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -261,12 +261,12 @@ psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new 
 (1 row)
 
 psql:<stdin>:37: NOTICE:  PASS T017c 미정의 신호 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_signal_check"
+psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null value in column "signal" of relation "festival_trends" violates not-null constraint
  expect_error 
 --------------
  
 (1 row)
 
-psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null value in column "signal" of relation "festival_trends" violates not-null constraint
  expect_error 
 --------------
  
@@ -274,12 +274,12 @@ psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null valu
 
 psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
 T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차단
+psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 — 0 행
  expect_count 
 --------------
  
 (1 row)
 
-psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 — 0 행
  expect_count 
 --------------
  
@@ -298,12 +298,12 @@ psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 
  
 (1 row)
 
+psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_count 
 --------------
  
 (1 row)
 
-psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_error 
 --------------
  
@@ -334,6 +334,24 @@ psql:<stdin>:62: NOTICE:  T018c PASS: 축제와 원본 RLS 모두 EV01만 공개
 psql:<stdin>:86: NOTICE:  T018d PASS: 014 정책과 기존 게시 상태 복원
 psql:<stdin>:49: NOTICE:  T018a~b PASS: 미분류 전환·이력 및 좌표 출처 제약
 psql:<stdin>:62: NOTICE:  T018c PASS: 축제와 원본 RLS 모두 EV01만 공개
+## 5-6. 019_admin-review 축제 검토 사유 이관·되돌리기·재적용
+psql:<stdin>:43: NOTICE:  T019a PASS: 기존 검토 항목과 보류 사유 이관 및 사유 제약
+psql:<stdin>:56: NOTICE:  T019b PASS: 앱 역할의 검토 대기열 및 비공개 축제 접근 제한
+T019d PASS: 새 사유로 처리한 결정이 있으면 되돌리기 차단
+psql:<stdin>:70: NOTICE:  T019c PASS: 되돌리기 뒤 기존 검토 항목과 사유 제약 복원
+psql:<stdin>:43: NOTICE:  T019a PASS: 기존 검토 항목과 보류 사유 이관 및 사유 제약
+psql:<stdin>:56: NOTICE:  T019b PASS: 앱 역할의 검토 대기열 및 비공개 축제 접근 제한
+## 5-7. 020 동행 수동 마감·보존 RLS 적용·되돌리기·재적용
+psql:<stdin>:29: NOTICE:  T020a PASS: 수동 마감 상태 유지
+psql:<stdin>:44: NOTICE:  T020b PASS: 72시간 전 참가자 열람
+psql:<stdin>:60: NOTICE:  T020c PASS: 72시간 이후 내용 접근 차단과 방 이력 보존
+psql:<stdin>:77: NOTICE:  T020d PASS: 마감 상태와 만료 정책 되돌리기
+psql:<stdin>:29: NOTICE:  T020a PASS: 수동 마감 상태 유지
+psql:<stdin>:44: NOTICE:  T020b PASS: 72시간 전 참가자 열람
+psql:<stdin>:60: NOTICE:  T020c PASS: 72시간 이후 내용 접근 차단과 방 이력 보존
+## 5-8. 021_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용
+T021a~c PASS: 입장 시각·보존·비회원·차단 해제 뒤 RLS 및 새 방 생성
+T021a~c PASS: 입장 시각·보존·비회원·차단 해제 뒤 RLS 및 새 방 생성
 psql:<stdin>:37: NOTICE:  PASS T25a: 복원된 route_results에 공급원 원본·후보 등 데이터 0행
 psql:<stdin>:37: NOTICE:  PASS T25b: 복원 뒤 공급원·조회 시각·요청 상태·오류 코드 보존
 psql:<stdin>:25: NOTICE:  PASS T25c: 복원 뒤 실제 삭제 시각 보존, 미정리·결과 없는 요청은 NULL
@@ -343,18 +361,18 @@ PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행
 ## 6. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
 Buffers: shared hit=297
-->  Seq Scan on festivals (actual time=0.081..1.168 rows=26 loops=1)
-Rows Removed by Filter: 19981
+->  Seq Scan on festivals (actual time=0.091..1.226 rows=26 loops=1)
+Rows Removed by Filter: 19987
 Buffers: shared hit=297
 Buffers: shared hit=95
-Planning Time: 0.154 ms
-Execution Time: 1.183 ms
+Planning Time: 0.245 ms
+Execution Time: 1.243 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
 Buffers: shared hit=35
-->  Bitmap Heap Scan on festivals (actual time=0.059..0.078 rows=26 loops=1)
+->  Bitmap Heap Scan on festivals (actual time=0.049..0.064 rows=26 loops=1)
 Buffers: shared hit=35
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.046..0.046 rows=26 loops=1)
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.044..0.046 rows=26 loops=1)
 Buffers: shared hit=9
-Planning Time: 0.065 ms
-Execution Time: 0.093 ms
+Planning Time: 0.081 ms
+Execution Time: 0.091 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)

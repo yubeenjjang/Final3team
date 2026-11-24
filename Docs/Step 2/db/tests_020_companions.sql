@@ -23,9 +23,9 @@ UPDATE public.companion_posts SET status = 'open' WHERE post_id = 'cpo_test019';
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.companion_posts WHERE post_id = 'cpo_test019' AND status = 'full') THEN
-    RAISE EXCEPTION 'T019a FAIL: 수동 마감 글이 다시 열렸습니다';
+    RAISE EXCEPTION 'T020a FAIL: 수동 마감 글이 다시 열렸습니다';
   END IF;
-  RAISE NOTICE 'T019a PASS: 수동 마감 상태 유지';
+  RAISE NOTICE 'T020a PASS: 수동 마감 상태 유지';
 END $$;
 
 UPDATE public.companion_posts SET status = 'ended', ended_at = now() - interval '71 hours'
@@ -38,9 +38,9 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.meeting_places WHERE post_id = 'cpo_test019')
      OR NOT EXISTS (SELECT 1 FROM public.chat_messages WHERE room_id = 'crm_test019') THEN
-    RAISE EXCEPTION 'T019b FAIL: 72시간 전에 내용이 사라졌습니다';
+    RAISE EXCEPTION 'T020b FAIL: 72시간 전에 내용이 사라졌습니다';
   END IF;
-  RAISE NOTICE 'T019b PASS: 72시간 전 참가자 열람';
+  RAISE NOTICE 'T020b PASS: 72시간 전 참가자 열람';
 END $$;
 
 RESET ROLE;
@@ -51,12 +51,12 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.meeting_places WHERE post_id = 'cpo_test019')
      OR EXISTS (SELECT 1 FROM public.chat_messages WHERE room_id = 'crm_test019') THEN
-    RAISE EXCEPTION 'T019c FAIL: 72시간이 지난 내용이 보입니다';
+    RAISE EXCEPTION 'T020c FAIL: 72시간이 지난 내용이 보입니다';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.chat_rooms WHERE room_id = 'crm_test019' AND status = 'read_only') THEN
-    RAISE EXCEPTION 'T019c FAIL: 지난 동행방 이력이 사라졌습니다';
+    RAISE EXCEPTION 'T020c FAIL: 지난 동행방 이력이 사라졌습니다';
   END IF;
-  RAISE NOTICE 'T019c PASS: 72시간 이후 내용 접근 차단과 방 이력 보존';
+  RAISE NOTICE 'T020c PASS: 72시간 이후 내용 접근 차단과 방 이력 보존';
 END $$;
 ROLLBACK;
 \else
@@ -71,8 +71,8 @@ BEGIN
      OR EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
                  AND policyname IN ('meeting_places_members', 'chat_messages_members')
                  AND qual LIKE '%statement_timestamp%') THEN
-    RAISE EXCEPTION 'T019d FAIL: 마이그레이션 변경이 남았습니다';
+    RAISE EXCEPTION 'T020d FAIL: 마이그레이션 변경이 남았습니다';
   END IF;
-  RAISE NOTICE 'T019d PASS: 마감 상태와 만료 정책 되돌리기';
+  RAISE NOTICE 'T020d PASS: 마감 상태와 만료 정책 되돌리기';
 END $$;
 \endif
