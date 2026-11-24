@@ -38,8 +38,8 @@
 | 항목 | 내용 |
 |---|---|
 | 개발 서버 | `http://localhost:8000/api/v1` |
-| 배포 서버 | **미정** (배포 환경 결정 후 기입, 12/24 웹 앱 마감 전) |
-| 자동 문서 | `<서버 주소>/docs`(Swagger UI), `<서버 주소>/openapi.json` — FastAPI가 생성. 구현 후 이 문서와 대조하고, 다르면 문서 버전을 올립니다 |
+| 배포 서버 | AWS Docker(D-037). 주소는 W65 AWS 구성(12/07~10, AWS 환경 신유빈 관리) 뒤 기입 — 지금은 학원 시연 서버 `http://192.100.200.242:3000`(웹)·같은 노트북의 API(`ohyun-web`) |
+| 자동 문서 | 개발: `http://localhost:8000/docs`(Swagger UI), `http://localhost:8000/openapi.json` — API 기본 경로(`/api/v1`)가 아니라 **서버 루트**에 있음(FastAPI 기본값, `backend/api/main.py`). 구현 후 이 문서와 대조하고, 다르면 문서 버전을 올립니다 |
 | 인증 | `Authorization: Bearer <JWT>` (1절) |
 | 오류 형식 | 모든 API 공통 (0절) |
 | 시각 | ISO 8601 + `+09:00`(KST) |
@@ -84,7 +84,7 @@
 **공통 규칙**
 - 기본 경로: **`/api/v1`** (수업 가이드 S10. 규격이 깨지게 바뀌면 `/api/v2`를 새로 열고 `v1`은 유지). 경로는 소문자·하이픈, 자원은 복수형 명사. 형식: JSON, UTF-8, 시각은 ISO 8601 + `+09:00`.
 - **검증 오류의 경계**: 입력 **형식**(타입·허용값·길이·패턴)은 Pydantic이 검사하고 **422 `VALIDATION_ERROR`**. 형식은 맞지만 서버가 판단해야 하는 것은 따로: 권한·소유권은 **403**, 대상 없음은 **404**, 중복·충돌은 **409**, 해석 불가(목적지를 찾을 수 없음 등)는 **400**. 두 검사를 섞지 않습니다(수업 가이드 S19·S31). FastAPI 기본 422 응답도 공통 오류 형식으로 바꾸는 예외 핸들러를 둡니다.
-- **ID 형식(두 문서 공통)**: 모두 `소문자 접두사_` + ULID — `fst_`(축제) · `rr_`(경로 요청) · `inc_`(사건) · `diag_`(진단) · `rp_`(복구 계획) · `ra_`(복구 시도) · `sim_`(부하 시험) · `run_`(에이전트 실행 묶음) · `ar_`(에이전트 1회 실행) · `cv_`(대화 세션, LangGraph `thread_id`) · `rv_`(후기) · `rt_`(Refresh Token). `request_id`(경로 요청 본문의 **멱등 키**)는 UUID. **추적 ID**(`X-Request-ID` 헤더·로그·오류 응답의 `request_id`)는 `req_` + ULID로, 둘은 다른 값입니다. BFCL의 `F01`·`RR02`·`INC-003`은 평가용 가짜 ID입니다(4-7절). **별도 `trace_id`는 도입하지 않습니다** — 추적은 `X-Request-ID`(`req_`) → `run_id` → `agent_run_id` → `route_request_id`·`incident_id`를 이어서 합니다(기획서 최신본과 같음).
+- **ID 형식(두 문서 공통)**: 모두 `소문자 접두사_` + ULID — `fst_`(축제) · `rr_`(경로 요청) · `inc_`(사건) · `diag_`(진단) · `rp_`(복구 계획) · `ra_`(복구 시도) · `sim_`(부하 시험) · `run_`(에이전트 실행 묶음) · `ar_`(에이전트 1회 실행) · `cv_`(대화 세션, LangGraph `thread_id`) · `rv_`(후기) · `rt_`(Refresh Token). `request_id`(경로·챗봇 요청 본문의 **멱등 키**)는 클라이언트가 만드는 8~64자 문자열(UUID 권장, 코드 `RouteRequest`·`AssistantRequest`). 서버가 만드는 자원 ID는 11/24부터 모두 `접두사_` + ULID 26자이고, 형식 검사는 `접두사_[0-9A-Za-z]{6,26}`을 허용합니다. 조회 토큰(`rrt_`·`rat_`)은 ID가 아니라 무작위 비밀값이라 ULID를 쓰지 않습니다. **추적 ID**(`X-Request-ID` 헤더·로그·오류 응답의 `request_id`)는 `req_` + ULID로, 둘은 다른 값입니다. BFCL의 `F01`·`RR02`·`INC-003`은 평가용 가짜 ID입니다(4-7절). **별도 `trace_id`는 도입하지 않습니다** — 추적은 `X-Request-ID`(`req_`) → `run_id` → `agent_run_id` → `route_request_id`·`incident_id`를 이어서 합니다(기획서 최신본과 같음).
 - 모든 요청에 `X-Request-ID`(없으면 서버가 생성)를 붙이고, 응답 헤더·로그·에이전트 `run_id`와 연결합니다.
 - 목록 API는 `page`(1부터)·`page_size`(기본 20, 최대 100) 사용, 응답에 `total`·`page`·`page_size`.
 - 오류 응답 형식(공통):
@@ -741,6 +741,12 @@ class AssistantQueryRequest(BaseModel):                         # A06 (7-6)
 | `FORBIDDEN`·`ACTION_NOT_ALLOWED` | false | 멈추고 이유를 안내. 다른 방법으로 우회하지 않음 |
 | `EVIDENCE_REQUIRED` | false | Diagnosis 단계로 되돌려 근거를 다시 모음 |
 | `REGION_UNSUPPORTED` | false | 실패가 아님 — '이 지역은 미지원'으로 그대로 안내 |
+| `FESTIVAL_LOCATION_UNKNOWN` | false | 재시도 없이 '축제 위치를 확인할 수 없어 경로를 찾을 수 없음'으로 안내하고 출발지·도착지를 직접 고르게 함 |
+| `ROUTE_OVERLOADED` | true | `Retry-After` 뒤 **같은 `request_id`로 1회**. 그래도 실패면 '지금은 경로 조회가 많아 확인할 수 없음 + 잠시 후 다시'로 종료 |
+| `INCIDENT_CLOSED` | false | 재시도 없이 멈추고 '이미 닫힌 사건'으로 안내. 새 조치를 제안하지 않음 |
+| `POLICY_LIMIT_EXCEEDED` | false | 재시도 없이 멈추고 상한(동시에 켠 조치 수 등)을 안내. 이미 켠 조치가 끝난 뒤 사람이 다시 요청 |
+| `SIMULATION_NOT_FOUND` | false | 재시도 없이 `simulation_id`를 확인해 달라고 안내(사건 ID만 있으면 그 ID로 다시 조회) |
+| `SERVICE_BUSY` | true | `Retry-After`(1초) 뒤 1회. 그래도 실패면 '잠시 후 다시'로 종료 (DB 연결 대기 초과, 11/24) |
 
 **Festival Agent 대조(11/24).** `origin/dayoung`의 단일 Festival Agent 상태 전이 그래프 설계서 8~9절과 도구 래퍼·그래프를 기준으로 합니다. HTTP/본문 값은 API 응답이고, `outcome`은 Agent 종료 상태입니다.
 
@@ -1598,7 +1604,7 @@ Content-Type: application/json
 | 2 | 헤더 | `Authorization: Bearer <operator 이상>` · `Idempotency-Key`(필수) |
 | 4 | 본문 | `{mode: "http_500"·"stale"·"body_error", duration_s: 5~300}` |
 | 5 | 검증·권한 | 401 / 403 / 운영 환경 403 `SIMULATION_DISABLED` / 이미 켜져 있으면 409 `SIMULATION_RUNNING` / 422 |
-| 6 | 정상 | 202 `{fault_id, mode, ends_at}` |
+| 6 | 정상 | 202 `{fault_id, mode, ends_at}` — 별도 상태 조회 API는 두지 않음(11/24 확정). 모의 장애는 `ends_at`까지 켜져 있다가 Redis TTL로 자동 해제되고, 켜져 있는 동안 다시 요청하면 409 `SIMULATION_RUNNING`. 결과는 A10 응답이 모의 장애 응답으로 바뀌는지와, 감지되면 생기는 `failure_domain=crowd_upstream` 사건(A15 사건 상세)으로 확인. `Idempotency-Key`는 `duration_s` 동안 보관하고, 같은 키·같은 본문은 같은 202를, 같은 키·다른 본문은 409를 돌려줌(A04와 같은 규칙) |
 | 8 | 실행 규칙 | 실제 서울시 API에는 아무것도 안 함 — A10 어댑터가 Redis `fault:crowd`(TTL = `duration_s`)를 보고 모의 응답을 냄. 감지되면 `failure_domain=crowd_upstream` 사건으로 기록. **귀가 부하 시험(A20)과 별개**이고 대표 시연 아님 |
 
 **A22 요청·202 응답 필드**
@@ -2226,7 +2232,13 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | `room_id` | 응답 | string | A67·A69 예 | 생성하거나 상태가 바뀐 방 ID, 기존 1:1 방은 기존 ID |
 | `my_status` | 응답 | string | A69 예 | 처리 후 `joined`·`declined`·`left` |
 
-A68 초대와 A70 이름 변경은 성공 응답이 200이며 응답 본문 필드는 정해지지 않았습니다.
+A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습니다(11/24 확정, `chat_members`·`chat_rooms` 컬럼 기준).
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `room_id` | 응답 | string | A68·A70 예 | 대상 방 ID |
+| `invited` | 응답 | array<object> | A68 예 | 이번에 초대한 멤버. 항목마다 `user_id`(UUID)·`status`(`invited`)·`invited_at`(ISO 8601). 이미 멤버이거나 초대 중인 사람은 넣지 않음 |
+| `name` | 응답 | string | A70 예 | 바뀐 방 이름 1~40자 |
 
 **A71 메시지 이력·A72 읽음·A73 연결 표 발급**
 
@@ -2350,7 +2362,15 @@ A68 초대와 A70 이름 변경은 성공 응답이 200이며 응답 본문 필�
 | `message_id` | 응답 | int (64비트) | 메시지 신고 열람 | 신고된 메시지 한 건의 ID |
 | `body` | 응답 | string 또는 null | 메시지 신고 열람 | 신고된 메시지 한 건의 본문 |
 
-A77 상세 표는 조회·처리 성공 상태를 200으로 명시합니다. 위 열람 데이터는 기존에 명시된 방 정보·신고 사유·신고 메시지의 DB 필드이며, 응답 본문에서 이 데이터를 감싸는 필드와 POST 성공 본문은 정의되어 있지 않습니다.
+A77 응답 본문(200, 11/24 확정)은 위 데이터를 아래처럼 묶습니다. 조회할 때마다 `chat_admin_access`에 열람 기록(관리자·방·신고·사유)이 먼저 남습니다.
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `report` | 응답(GET) | object | 예 | `report_id`·`target_type`(`room`·`message`)·`reason`·`status`(`received`·`reviewing`·`actioned`·`dismissed`, 007 `reports.status`)·`created_at` |
+| `room` | 응답(GET) | object | 예 | `room_id`·`room_type`·`name`·`status` (위 표) |
+| `message` | 응답(GET) | object 또는 null | 메시지 신고만 | `message_id`·`seq`·`sender_id`·`body`·`created_at` — 신고된 **한 건만**. 채팅방 신고는 `null`(원문 비공개) |
+| `access_id` | 응답(GET) | string | 예 | 이번 조회로 남은 열람 기록 ID |
+| `report_id`·`status`·`handled_by`·`handled_at` | 응답(POST 처리) | object | 예 | 처리 결과. `handled_by`는 관리자 `user_id` |
 
 **A78 본인 프로필 조회·수정**
 
@@ -2814,7 +2834,7 @@ HTTP 202
 | 5 | 검증·권한 | 형식 422 → 요청 수 제한 429 → 같은 `request_id`면 처음 만든 `run_id`, 본문이 다르면 409 `IDEMPOTENCY_CONFLICT` → `conversation_id`가 있으면 그 대화의 주인인지(로그인: JWT `sub`, 비로그인: `X-Run-Access-Token`) 확인, 아니면 403. **질문 안의 "나는 관리자"는 권한이 아님**(1절) — 운영 도구(`get_incident` 등)는 이 API로 실행된 에이전트에게 주지 않음 |
 | 6 | 정상 응답 | **202** `{run_id, run_status:"queued", status_url, events_url, run_access_token, retry_after_s}` — 답변은 아직 없음 |
 | 7 | 오류 응답 | 401(토큰이 왔는데 무효) / 403 `FORBIDDEN`(남의 대화) / 409 `IDEMPOTENCY_CONFLICT` / 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED` / 503 `AI_AGENT_FAILED`(작업 등록 자체 실패 — 큐·DB 장애. 이때도 A02~A05는 독립 동작) |
-| 8 | 실행 규칙 | API는 **작업 기록(DB) + 큐 등록만** 하고 바로 응답(수 ms~수십 ms). 큐에는 `run_id`만 넣고 질문 원문은 넣지 않음(워커가 DB에서 읽음). 워커는 작업을 **선점(claim)** 한 뒤 실행(같은 작업 두 번 실행 방지). 전체 실행 제한 30초(임시) — 넘으면 `failed`·`AI_AGENT_FAILED`. LLM 429·5xx·시간 초과만 **같은 `run_id`로 1회** 재시도(`retrying`, 5초 뒤), 나머지는 재시도 없음. 워커가 실행 중에 죽어 `running`이 70초를 넘으면 정리 작업이 `failed`로 바꿈. 숫자는 모두 9-1절 기준표 |
+| 8 | 실행 규칙 | API는 **작업 기록(DB) + 큐 등록만** 하고 바로 응답(수 ms~수십 ms). 큐에는 `run_id`만 넣고 질문 원문은 넣지 않음(워커가 DB에서 읽음). 워커는 작업을 **선점(claim)** 한 뒤 실행(같은 작업 두 번 실행 방지). 실행 제한은 **시도 1회당 30초**(넘으면 그 시도 실패), 재시도 1회(5초 뒤)를 포함해 **최대 65초** — 넘으면 `failed`·`AI_AGENT_FAILED`. LLM 429·5xx·시간 초과만 **같은 `run_id`로 1회** 재시도(`retrying`, 5초 뒤), 나머지는 재시도 없음. 워커가 실행 중에 죽어 `running`이 70초를 넘으면 정리 작업이 `failed`로 바꿈. 숫자는 모두 9-1절 기준표 |
 
 **요청 필드 명세**
 
@@ -3071,7 +3091,7 @@ HTTP 202
 | 장치 | 설정(초안) | 이유 |
 |---|---|---|
 | 작업 풀 분리 | 귀가 조회 처리와 축제 검색·상세를 서로 다른 동시성 한도로 처리 | 귀가 부하가 검색을 멈추지 않게 (FR-H18, BFCL NLD-06) |
-| 타임아웃 | 길찾기 어댑터 TMAP 5초·카카오 3초 · 그 밖의 외부 데이터 3초 · **도구 호출 15초(`TOOL_TIMEOUT`)** · **에이전트 실행 전체(A06) 30초** (모두 임시) | 무한 대기 방지 |
+| 타임아웃 | 길찾기 어댑터 TMAP 5초·카카오 3초 · 그 밖의 외부 데이터 3초 · **도구 호출 5초(`TOOL_TIMEOUT`, 공통 실행기 기본값 — A04는 3초 안에 200 또는 202로 답함)** · **에이전트 실행(A06) 시도 1회 30초, 재시도 1회 포함 최대 65초** | 무한 대기 방지 |
 | 재시도 | 일시적 오류(시간 초과·429·5xx)만 최대 1회, **1초 뒤**(429는 `Retry-After`), 같은 멱등 키 | 무제한 재시도 금지 (FR-H02) |
 | 요청 수 제한 | 귀가·가는 길 요청 IP·세션당 분당 10회, 챗봇 분당 10회(임시, 9-1 ⑤) | 외부 쿼터·비용 보호 |
 | **길찾기 일일 한도** | TMAP(1차: **무료 10건만 — 종량제 결제 미등록**, 11/20 한태경)·카카오맵(2차: 무료 1,000건, 결제 미설정) 호출 수와 **하루 비용 상한(지금 결제 수단이 없어 0원)**을 공급원별로 Redis에서 셈. **80%: 운영 경고 + 그 공급원으로 보내는 우회 조치(`fallback_provider_switch`) 원복. 100%: 그 공급원 호출 중지**(남은 공급원도 없으면 `ROUTE_QUOTA_EXCEEDED`) | 11/19 한태경 조사(공식 문서 기준, 실호출로 재확인) |
@@ -3110,7 +3130,7 @@ HTTP 202
 | `ROUTE_TOTAL_TIMEOUT_S` | 10초 | A04/A05 전체 처리(넘으면 `timed_out`) | 요청 전체 상한. 카카오 응답 전달은 동기 3초 안 | 임시 | W96 · 12/04 | 권오현 |
 | `ROUTE_ADAPTER_TIMEOUT_S`(통합 설정 예정) | TMAP 5초·카카오 3초 | 길찾기 1회 호출 | TMAP 실측 평균 응답 273ms·처리 314ms(11/19 콘솔, 4건) — 여유 크게 둠, 부하 시험은 모의라 W36에서 다시 봄 | 임시 | W36 실측 · 11/27 | 권오현 |
 | `EXT_DATA_TIMEOUT_S` | 3초 | 날씨·도착·주차·돌발·혼잡 호출 | 부가 정보라 짧게 | 임시 | W36 · 11/27 | 권오현 |
-| `TOOL_TIMEOUT_S` | 15초 | 에이전트 도구 1회(`TOOL_TIMEOUT`) | 경로 전체 10초 + 여유 | 임시 | W96 · 12/04 | 한다영 |
+| `TOOL_TIMEOUT_S` | 5초 | 에이전트 도구 1회(`TOOL_TIMEOUT`) | 공통 도구 실행기 기본값(`backend/agents/tools`, 신유빈 W14). A04는 동기 대기 3초 뒤 202로 답하므로 5초 안에 끝남 | 임시 | W96 · 12/04 | 한다영 |
 | `AGENT_RUN_SOFT_LIMIT_S` | 30초 | A06 작업 1건(넘으면 `failed`) | 강사 자료 예시는 9분이지만 챗봇 답변은 짧아야 함 | 임시 | W96 · 12/04 | 한다영 |
 | `AGENT_RUN_HARD_LIMIT_S` | 40초 | 워커 강제 종료 | soft + 10초 | 임시 | 같음 | 신유빈 |
 | `INGEST_SCHEDULE` | 매일 06:00 (KST) | 축제 정기 수집(A23 이력) | TourAPI 하루 갱신이면 충분 | 임시 | W98 수집 구현 때 | 권오현 |

@@ -76,9 +76,16 @@ echo "## 2-7. 009 마이그레이션(기능 상세 시나리오) 적용 → 되�
 echo "## 3. 시험 SQL (tests_v0.3.2.sql)"
 "${PSQL[@]}" < tests_v0.3.2.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /ALL SQL TESTS PASSED/p'
 
-echo "## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
+echo "## 4. 010 공개 원본 권한 적용·되돌리기·재적용"
 # 010에는 자체 BEGIN/COMMIT이 있고, 011은 -1로 적용한다.
 "${PSQL[@]}" -q -f - < 010_festival_sources_public.sql
+"${PSQL[@]}" -q -v applied=true -v reapplied=false -f - < tests_010_festival_sources_public.sql
+"${PSQL[@]}" -q -f - < 010_festival_sources_public_down.sql
+"${PSQL[@]}" -q -v applied=false -v reapplied=false -f - < tests_010_festival_sources_public.sql
+"${PSQL[@]}" -q -f - < 010_festival_sources_public.sql
+"${PSQL[@]}" -q -v applied=true -v reapplied=true -f - < tests_010_festival_sources_public.sql
+
+echo "## 4-1. 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
 "${PSQL_TX[@]}" -q -v seed=true -v applied=false < tests_011_route_access_token.sql
 "${PSQL[@]}" -t -f - < precheck_011_route_access_token.sql
 "${PSQL_TX[@]}" -q < 011_route_access_token.sql
@@ -112,6 +119,29 @@ echo "## 5-1. 014 축제 분류·공개 RLS 적용·되돌리기·재적용"
 "${PSQL[@]}" -q -v applied=false -f - < tests_014_tourapi_festival_class.sql
 "${PSQL_TX[@]}" -q < 014_tourapi_festival_class.sql
 "${PSQL[@]}" -q -v applied=true -f - < tests_014_tourapi_festival_class.sql
+
+echo "## 5-2. 015 친구 신청 UNIQUE 사전 검사·적용·되돌리기·재적용"
+"${PSQL[@]}" -f - < precheck_015_friendships_request_unique.sql
+if duplicate_check=$(
+  cat tests_015_friendships_request_unique.sql \
+    precheck_015_friendships_request_unique.sql 015_friendships_request_unique.sql |
+    "${PSQL[@]}" -qAt -v applied=false -v probe_duplicate=true -f - 2>&1
+); then
+  echo "T015d FAIL: 중복된 신청 ID가 있는 상태에서 015 적용이 성공했습니다"
+  exit 1
+fi
+if ! grep -qx '1' <<< "$duplicate_check" ||
+   ! grep -Fq '015: 중복된 friendships.request_id가 있어 적용을 중단합니다' <<< "$duplicate_check"; then
+  printf 'T015d FAIL: 사전 검사 또는 중복 적용 차단 실패\n%s\n' "$duplicate_check"
+  exit 1
+fi
+echo "T015d PASS: 사전 검사에서 중복 1건 발견 및 적용 중단"
+"${PSQL_TX[@]}" -q < 015_friendships_request_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
+"${PSQL_TX[@]}" -q < 015_friendships_request_unique_down.sql
+"${PSQL[@]}" -q -v applied=false -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
+"${PSQL_TX[@]}" -q < 015_friendships_request_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
