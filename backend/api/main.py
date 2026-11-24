@@ -19,10 +19,11 @@ from api.errors import (
 )
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
-from api.request_logs import auth_endpoint, me_endpoint, private_endpoint, request_logger
+from api.request_logs import auth_endpoint, companion_endpoint, me_endpoint, private_endpoint, request_logger
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
 from api.routers.assistant import chatbot
+from api.routers.community import companions
 from api.routers.festivals import catalog, info
 from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
@@ -62,6 +63,7 @@ async def add_response_headers(
         request_id = "req_" + str(ULID())
     request.state.request_id = request_id
     endpoint = private_endpoint(request.url.path)
+    is_companion = companion_endpoint(request.url.path) is not None
     try:
         if endpoint == "/api/v1/auth/login" and request.method == "POST" and uses_auth_db():
             await run_in_threadpool(enforce_login_limit, request.client.host if request.client else "unknown")
@@ -73,8 +75,10 @@ async def add_response_headers(
             raise
         # The server traceback can contain input values from an unexpected error.
         response = await handle_unexpected_error(request, error)
-        if uses_auth_db() and (auth_endpoint(request.url.path) or me_endpoint(request.url.path)):
+        if uses_auth_db() and (is_companion or auth_endpoint(request.url.path) or me_endpoint(request.url.path)):
             del response.headers["X-Mock"]
+        if is_companion:
+            response.headers["Cache-Control"] = "private, no-store"
         request_logger.error(
             "endpoint=%s request_id=%r http_status=500 error=INTERNAL_SERVER_ERROR",
             endpoint, request_id,
@@ -102,10 +106,12 @@ async def add_response_headers(
         response.headers["X-Mock"] = "true"
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
-        or auth_endpoint(request.url.path) or me_endpoint(request.url.path)
+        or auth_endpoint(request.url.path) or me_endpoint(request.url.path) or is_companion
         or _FESTIVAL_INFO_PATH.match(request.url.path)
     ):
         del response.headers["X-Mock"]
+    if is_companion:
+        response.headers["Cache-Control"] = "private, no-store"
     if endpoint is not None:
         request_logger.info(
             "endpoint=%s request_id=%r http_status=%d result_status=%s route_request_id=%s",
@@ -130,12 +136,14 @@ def _serves_real_data(request: Request) -> bool:
         or (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
-        or (uses_auth_db() and (auth_endpoint(path) is not None or me_endpoint(path) is not None))
+        or (uses_auth_db() and (
+            auth_endpoint(path) is not None or me_endpoint(path) is not None or companion_endpoint(path) is not None
+        ))
         or (info_path is not None and uses_real_info(info_path[1]))
     )
 
 
 for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
-for module in (info, favorites, users):
+for module in (info, favorites, users, companions):
     app.include_router(module.router, prefix="/api/v1")

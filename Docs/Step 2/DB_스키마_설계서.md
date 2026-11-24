@@ -1110,6 +1110,8 @@ A36·A37은 요청 트랜잭션에 설정된 `app.user_id`의 취향 행만 `nol
 
 ### 6-8. 동행·채팅·알림·신고
 
+**구현 상태** · 동행 API는 007·008의 테이블·권한과 009 신청자 프로필 조회를 사용합니다. 승인 시 서비스 트랜잭션에서 글 행을 잠그고 정원·신청·멤버·시스템 메시지·알림을 함께 변경합니다. [019 임시 마이그레이션](db/019_companions.sql)은 수동 마감과 72시간 경과 후 장소·메시지 열람 정책을 추가합니다.
+
 A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `applicant_id = app_current_user()`로 보낸 신청을 조회합니다. 작성자에게 RLS가 허용하는 받은 신청은 A61에서 조회합니다.
 
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
@@ -1138,6 +1140,7 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 |  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 모집 글 생성 시각 |
 |  | hidden_at (008) | TIMESTAMPTZ / NULL | 신고 처리로 글을 숨긴 시각 |
 |  | hidden_by (008) | UUID / NULL, `REFERENCES profiles(user_id)` | 글을 숨긴 관리자 |
+|  | recruitment_closed_at (019 임시) | TIMESTAMPTZ / NULL | 작성자가 모집을 수동 마감한 시각. 정원을 반환해도 공개 상태 `full` 유지 |
 | **companion_applications** (007) | application_id | TEXT / `PRIMARY KEY CHECK (application_id ~ '^cap_[0-9A-Za-z]{6,26}$')` | 동행 신청 ID |
 |  | post_id | TEXT / `NOT NULL REFERENCES companion_posts(post_id)` | 신청 대상 모집 글 |
 |  | applicant_id | UUID / `NOT NULL REFERENCES users(user_id)` | 동행 신청자 |
@@ -1247,6 +1250,7 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 
 - **상태** — **확정(11/24 팀 결정)**은 팀이 정한 보존 기준, **외부 고정**은 공급원 약관·답변 기준, **설계 고정**은 데이터의 성격상 정해진 기준입니다. 담당 칸의 시험 일정은 적용 검증에 사용합니다.
 - 기타 보존 기간 정리는 `retention_sweeper` 워커를 시간마다 실행해 처리하는 설계입니다.
+- 동행 종료·보존 정리는 저장소 루트에서 `PYTHONPATH=backend python -m api.jobs.maintain_companions`로 실행합니다. 시간당 실행은 W64·W65 배포 설정에 연결합니다. 019 적용 뒤 참가자는 워커가 본문을 지우기 전에도 종료·취소 72시간이 지난 만남 장소와 메시지를 열람할 수 없습니다.
 - **TMAP 정리 작업.** 권오현이 명령을 제공하고, 신유빈이 W64·W65에서 시간당 실행 및 실패 감시를 설정합니다. API와 같은 DB 환경에서 013까지 적용 후 `backend/`는 `python -m api.jobs.purge_route_results`, 저장소 루트는 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행합니다. `--dry-run`을 붙이면 대상 건수만 출력합니다. `queried_at` 기준 기본 23시간 이상 된 본문을 정리하며, `ROUTE_PURGE_AFTER_HOURS`에는 1~23 사이의 정수만 설정할 수 있습니다.
 - **감시 기준.** 완료는 종료 코드 `0`이며, 로그 한 줄에 `processed`와 `duration_ms`를 남깁니다. 처리 0건도 정상입니다. `1` 실행 실패, `2` 인자 또는 정리 기준 설정 오류, `3` 중복 실행은 각각 경보를 보냅니다. 직전 정리 성공이 65분을 넘으면 누락을 경보로 잡습니다. 시간당 정상 실행과 23시간 정리 기준을 적용하면 본문은 최대 24시간 보관됩니다. 유효 토큰으로 정리된 결과를 A05에서 조회하면 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다.
 - 프로젝트 종료 = 12/31 최종 제출(WBS W79). 그 뒤 데이터는 팀 합의로 일괄 삭제합니다.
@@ -2859,6 +2863,7 @@ ALTER TABLE rag_documents
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | 동행 서비스 트랜잭션, 019 임시 마감·만료 RLS와 자동 종료·72시간 정리 명령을 연결했습니다(6-8·7-0절). |
 | v0.5 | 2026-11-24 | 한태경 님 W64 Docker 검토를 반영해 A01의 앱 계정 DB 점검, 1초 제한 및 Redis 미설정 상태를 기록했습니다(10절). |
 | v0.5 | 2026-11-24 | 018로 EV01 공개 RLS, 미분류 게시 행의 검토 대기와 복원, 좌표 출처 저장을 추가했습니다. |
 | v0.5 | 2026-11-24 | A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정. A42 수집값은 기존 004·017을 사용하고 점수는 API에서 계산합니다. A81 글은 Redis에 10분간 캐시합니다. |

@@ -6,6 +6,10 @@ _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
 _ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
 _FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
 _FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
+_COMPANION_PATH = re.compile(
+    r"/api/v1/(?:festivals/[^/]+/companion-posts|companion-posts(?:/[^/]+(?:/[^/]+)?)?"
+    r"|companion-applications/[^/]+/[^/]+)/?"
+)
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
 
@@ -24,6 +28,22 @@ def me_endpoint(path: str) -> str | None:
     return None
 
 
+def companion_endpoint(path: str) -> str | None:
+    if not _COMPANION_PATH.fullmatch(path):
+        return None
+    if path.startswith("/api/v1/festivals/"):
+        return "/api/v1/festivals/{festival_id}/companion-posts"
+    parts = path.rstrip("/").split("/")
+    if parts[3] == "companion-applications":
+        return "/api/v1/companion-applications/{application_id}/{action}"
+    if len(parts) == 4:
+        return "/api/v1/companion-posts"
+    detail = "/api/v1/companion-posts/{post_id}"
+    if len(parts) == 5:
+        return detail
+    return detail + ("/" + parts[5] if parts[5] in {"applications", "meeting-place"} else "/{action}")
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -31,7 +51,7 @@ def private_endpoint(path: str) -> str | None:
     info = _FESTIVAL_INFO_PATH.fullmatch(path)
     if info:
         return "/api/v1/festivals/{festival_id}/" + info[1]
-    return auth_endpoint(path) or me_endpoint(path)
+    return auth_endpoint(path) or me_endpoint(path) or companion_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):
