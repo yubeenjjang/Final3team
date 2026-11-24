@@ -493,7 +493,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | `items[].event_status` | 응답 | string | 예 | `upcoming`·`ongoing`·`ended`·`cancelled`·`needs_review` |
 | `items[].thumbnail_url` | 응답 | string 또는 null | 예 | TourAPI `firstimage2`, null이면 화면 기본 이미지 |
 | `items[].image_credit` | 응답 | string 또는 null | 예 | 이미지 출처 표시 문구(2-4절) |
-| `items[].source` | 응답 | string | 예 | 현재 스키마 값 `tourapi` |
+| `items[].source` | 응답 | string | 예 | `tourapi` 또는 직접 등록 `admin` |
 | `items[].last_synced_at` | 응답 | string | 예 | 마지막 수집 시각 |
 | `total` | 응답 | int | 예 | 페이지 자르기 전 필터와 공개 조건을 만족하는 전체 건수 |
 | `page` | 응답 | int | 예 | 조회한 페이지 번호 |
@@ -521,7 +521,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 | `overview` · `fee_text` · `homepage_url` · `image_url` | string | null 가능 | 소개·입장료·홈페이지·대표 이미지(공급원에 있을 때만, D-015·D-031). 입장료 = `usetimefestival`, 소개 = `detailCommon2`의 `overview`, **대표 이미지 = `firstimage`**(모두 실호출 확인, 10절) |
 | `thumbnail_url` | string | null 가능 | 목록·지도 카드용 작은 이미지 = `firstimage2` |
 | `image_copyright` | object | 이미지 없으면 null | `{type: "Type1"·"Type3", credit: "한국관광공사", modify_allowed: bool}` — `cpyrhtDivCd`에서 계산(아래 규칙) |
-| `source` / `source_ref` / `last_synced_at` | string | 불가 | 출처·원본 ID·마지막 수집 시각 |
+| `source` / `source_ref` / `last_synced_at` | string | 불가 | 출처·원본 ID·마지막 수집 시각. 직접 등록은 `admin`·축제 ID·등록 시각 |
 
 오류: 404 `FESTIVAL_NOT_FOUND`, 422 `VALIDATION_ERROR`(ID 형식).
 
@@ -2678,7 +2678,9 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | `review_status` | 응답 | string | 예 | 등록은 `pending`, 수정 후 상태는 `pending`·`approved`·`hidden` |
 | `published_at` | 응답 | string(date-time) 또는 null | A56 예 | 공개 시각, 비공개면 null |
 
-- 담당: `admin/festival_review.py`(권오현, 협업 규칙). 화면 `admin/festival-management/`(정예진).
+**구현 상태.** `admin/festivals.py`에서 두 요청을 처리합니다. `AUTH_PROVIDER=db`이면 JWT의 본인 프로필을 조회한 뒤 관리자만 서비스 계정을 사용합니다. 등록은 EV01·`admin_manual`·검토 대기로 저장하고, 같은 이름·시작일·종료일·장소의 제안은 A24 대기열에 커밋한 뒤 409를 반환합니다. 주소는 선택이며, 값이 있으면 공백을 뺀 한 줄과 유효한 좌표가 필요합니다. 수정은 기존 행과 합친 값으로 검증하고, 실제로 바뀐 칸마다 사유·작업자·전후 값을 남깁니다. `published=false`는 숨김으로 처리하고 최초 게시 시각을 보존합니다. 비공개 응답의 `published_at`은 null입니다. 두 TourAPI 경로의 수집 충돌은 A24에 표시합니다. 기본 모의 모드는 `MOCK_ADMIN_FESTIVALS_TOKEN`으로 관리자 시연을 지원합니다.
+
+- 담당: `admin/festivals.py`(권오현, 협업 규칙). 화면 `admin/festival-management/`(정예진).
 
 ---
 
@@ -3966,6 +3968,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | A55·A56의 관리자 등록·수정·게시, A24 중복·수집 충돌 대기열 및 공개 축제 `admin` 출처를 연결했습니다(6-6절). |
 | v0.5 | 2026-11-24 | A43~A50의 DB·mock 동작, 닉네임 검색 한도, 신청·차단 트랜잭션과 채팅 차단 해제 연동 지점을 구현했습니다(6-4-3). |
 | v0.5 | 2026-11-24 | A24의 검토 필터·사유 필수·승인·거절·숨김, 운영자 권한과 서비스 계정 처리 명세를 구현과 맞췄습니다(6-2절). |
 | v0.5 | 2026-11-24 | A57~A65 동행 API 구현 상태, 글 수정과 수동 마감, 72시간 내용 보존을 반영했습니다(6-4-4절). |

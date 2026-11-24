@@ -4,8 +4,8 @@ from datetime import datetime
 from itertools import count
 from threading import Lock
 
-from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY
-from api.mocks.festivals import FESTIVALS, MockFestival
+from api.mocks.admin_festivals import mock_festival_store
+from api.mocks.festivals import MockFestival
 from api.schemas.assistant import AssistantRequest
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import RouteDirection, RouteRequest, RouteStatus
@@ -25,16 +25,15 @@ class RouteRecord:
     updated_at: str
 
 
-festivals: dict[str, MockFestival] = {}
+festivals = mock_festival_store.catalog
 
 
 def public_mock_festivals() -> Iterator[MockFestival]:
-    return (festival for festival in festivals.values() if festival.category == FESTIVAL_CATEGORY)
+    return iter(mock_festival_store.public_festivals())
 
 
 def get_public_mock_festival(festival_id: str) -> MockFestival | None:
-    festival = festivals.get(festival_id)
-    return festival if festival is not None and festival.category == FESTIVAL_CATEGORY else None
+    return mock_festival_store.public_festival(festival_id)
 
 
 route_requests: dict[str, RouteRecord] = {}
@@ -103,10 +102,7 @@ favorite_sequence = count()
 
 def reset_store() -> None:
     with assistant_lock, route_lock, auth_lock:
-        festivals.clear()
-        festivals.update(
-            (festival.festival_id, festival.model_copy(deep=True)) for festival in FESTIVALS
-        )
+        mock_festival_store.reset()
         route_requests.clear()
         route_request_keys.clear()
         assistant_conversations.clear()

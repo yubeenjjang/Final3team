@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, Query
 
 from api.auth.tokens import uses_auth_db
 from api.deps import CurrentUser, require_role
-from api.mocks.festival_review import MemoryReviewStore
+from api.mocks.admin_festivals import mock_festival_store
 from api.repositories.festival_review import PostgresReviewStore
 from api.schemas.festival_review import ApprovalStatus, ReviewPage, ReviewReason, ReviewRequest, ReviewResult
 from api.services.festival_review import ReviewStore
 
 router = APIRouter(prefix="/admin/festivals/review-queue")
 Reviewer = Annotated[CurrentUser, Depends(require_role("operator", "admin"))]
-_mock_store = MemoryReviewStore()
+_mock_store = mock_festival_store
 _db_store = PostgresReviewStore()
 
 

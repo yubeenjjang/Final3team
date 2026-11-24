@@ -17,7 +17,7 @@ from api.auth import service, state
 from api.auth.tokens import AccessClaims, read_access_token, unauthorized, uses_auth_db
 from api.errors import ApiError
 from api.mocks.store import auth_lock
-from api.request_logs import ADMIN_REVIEW_PATH
+from api.request_logs import admin_festival_endpoint
 from api.services.mock_auth import authenticated_access
 from shared.db.session import user_db_session
 
@@ -67,11 +67,15 @@ AuthenticatedSession = Annotated[tuple[CurrentUser, AsyncSession] | None,
                                  Depends(_authenticated_session, scope="function")]
 
 
-def _mock_review_user(authorization: str | None) -> CurrentUser:
-    configured = os.environ.get("MOCK_ADMIN_REVIEW_TOKEN", "").encode()
+def _mock_admin_user(authorization: str | None) -> CurrentUser:
     scheme, _, token = (authorization or "").partition(" ")
-    if len(configured) >= 32 and scheme.lower() == "bearer" and secrets.compare_digest(configured, token.encode()):
-        return CurrentUser(AccessClaims(UUID(int=0), "mock-admin-review", 0), "operator", True)
+    if scheme.lower() == "bearer":
+        configured = os.environ.get("MOCK_ADMIN_FESTIVALS_TOKEN", "").encode()
+        if len(configured) >= 32 and secrets.compare_digest(configured, token.encode()):
+            return CurrentUser(AccessClaims(UUID(int=1), "mock-admin-festivals", 0), "admin", True)
+        configured = os.environ.get("MOCK_ADMIN_REVIEW_TOKEN", "").encode()
+        if len(configured) >= 32 and secrets.compare_digest(configured, token.encode()):
+            return CurrentUser(AccessClaims(UUID(int=0), "mock-admin-review", 0), "operator", True)
     with auth_lock:
         _, session = authenticated_access(authorization, datetime.now(timezone.utc))
     return CurrentUser(
@@ -82,8 +86,8 @@ def _mock_review_user(authorization: str | None) -> CurrentUser:
 async def get_current_user(
     auth: AuthenticatedSession, request: Request, authorization: Authorization = None,
 ) -> CurrentUser | None:
-    if not uses_auth_db() and request.url.path.rstrip("/") == ADMIN_REVIEW_PATH:
-        return await run_in_threadpool(_mock_review_user, authorization)
+    if not uses_auth_db() and admin_festival_endpoint(request.url.path):
+        return await run_in_threadpool(_mock_admin_user, authorization)
     return auth[0] if auth else None
 
 

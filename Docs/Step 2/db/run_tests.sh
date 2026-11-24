@@ -231,6 +231,29 @@ echo "## 5-8. 021_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용
 "${PSQL_TX[@]}" -q < 021_chat.sql
 "${PSQL[@]}" -q -f - < tests_021_chat.sql
 
+echo "## 5-9. 022_admin-festivals 관리자 등록·변경 이력 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_admin-festivals.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_admin-festivals.sql
+if admin_festivals_down_check=$(
+  {
+    echo "INSERT INTO public.festivals (festival_id, title, region_code) VALUES ('fst_T22002', '축제', 'SEOUL');"
+    echo "INSERT INTO public.festival_change_history (festival_id, field, actor, changed_at, reason, actor_user_id) VALUES ('fst_T22002', 'title', 'admin', now(), '보존', '22220000-0000-0000-0000-000000000001');"
+    cat 022_admin-festivals_down.sql
+  } | "${PSQL_TX[@]}" -q 2>&1
+); then
+  echo "T022d FAIL: 운영 감사 이력이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -Fq '022_admin-festivals: 등록·수정 감사 이력이 있습니다' <<< "$admin_festivals_down_check"; then
+  printf 'T022d FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$admin_festivals_down_check"
+  exit 1
+fi
+echo "T022d PASS: 관리자 감사 이력이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 022_admin-festivals_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_022_admin-festivals.sql
+"${PSQL_TX[@]}" -q < 022_admin-festivals.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_admin-festivals.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh

@@ -20,7 +20,9 @@ _COMPANION_PATH = re.compile(
     r"|companion-applications/[^/]+/[^/]+)/?"
 )
 
-ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
+ADMIN_FESTIVALS_PATH = "/api/v1/admin/festivals"
+ADMIN_REVIEW_PATH = ADMIN_FESTIVALS_PATH + "/review-queue"
+_ADMIN_FESTIVAL_DETAIL = re.compile(ADMIN_FESTIVALS_PATH + r"/[^/]+")
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
 
@@ -73,6 +75,15 @@ def chat_endpoint(path: str) -> str | None:
     return path.rstrip("/")
 
 
+def admin_festival_endpoint(path: str) -> str | None:
+    path = path.rstrip("/")
+    if path in (ADMIN_FESTIVALS_PATH, ADMIN_REVIEW_PATH):
+        return path
+    if _ADMIN_FESTIVAL_DETAIL.fullmatch(path):
+        return ADMIN_FESTIVALS_PATH + "/{festival_id}"
+    return None
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -80,9 +91,10 @@ def private_endpoint(path: str) -> str | None:
     info = _FESTIVAL_INFO_PATH.fullmatch(path)
     if info:
         return "/api/v1/festivals/{festival_id}/" + info[1]
-    if path.rstrip("/") == ADMIN_REVIEW_PATH:
-        return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return (
+        admin_festival_endpoint(path) or auth_endpoint(path) or me_endpoint(path)
+        or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    )
 
 
 class _PrivateRequestFilter(logging.Filter):

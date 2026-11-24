@@ -19,11 +19,14 @@ from api.errors import (
 )
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
-from api.request_logs import ADMIN_REVIEW_PATH, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint, me_endpoint, private_endpoint, request_logger
+from api.request_logs import (
+    admin_festival_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
+    me_endpoint, private_endpoint, request_logger,
+)
 from api.realtime import chat_socket
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
-from api.routers.admin import festival_review
+from api.routers.admin import festival_review, festivals as admin_festivals
 from api.routers.assistant import chatbot
 from api.routers.community import chat, companions, friends, notifications
 from api.routers.festivals import catalog, info
@@ -131,9 +134,10 @@ _FESTIVAL_INFO_PATH = re.compile(r"^/api/v1/festivals/[^/]+/(notices|weather|tra
 
 
 def _auth_data_endpoint(path: str) -> str | None:
-    if path.rstrip("/") == ADMIN_REVIEW_PATH:
-        return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return (
+        admin_festival_endpoint(path) or auth_endpoint(path) or me_endpoint(path)
+        or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    )
 
 
 def _serves_real_data(request: Request) -> bool:
@@ -151,5 +155,7 @@ def _serves_real_data(request: Request) -> bool:
 
 for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
-for module in (info, favorites, users, friends, companions, chat, notifications, chat_socket, festival_review):
+for module in (
+    info, favorites, users, friends, companions, chat, notifications, chat_socket, festival_review, admin_festivals,
+):
     app.include_router(module.router, prefix="/api/v1")

@@ -83,7 +83,7 @@ class FestivalListItem(BaseModel):
     event_status: FestivalStatus
     thumbnail_url: str | None
     image_credit: str | None
-    source: Literal["tourapi"] = "tourapi"
+    source: Literal["tourapi", "admin"] = "tourapi"
     last_synced_at: str
 
 
