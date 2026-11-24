@@ -1,0 +1,18 @@
+# backend.Dockerfile 전용 제외 목록 (BuildKit이 Dockerfile 이름 옆의 .dockerignore를 쓴다)
+# 원칙: 필요한 것만 넣는다. 비밀값 파일과 시험·문서·프론트는 이미지에 넣지 않는다.
+*
+!backend/
+!Docs/Step 2/db/
+!infra/deployment/set_role_passwords.py
+
+# 들어간 폴더 안에서도 다시 뺄 것
+**/.env
+**/.env.*
+!**/.env.example
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.venv/
+backend/tests/
+backend/Doc/
+Docs/Step 2/db/results_*.log

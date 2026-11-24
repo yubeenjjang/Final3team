@@ -1,0 +1,91 @@
+# 놀다가 로컬 부분 기동 (W64 초안, R04 한태경 · 2026-11-24) — 12/04 부분 기동본 준비용
+# 실행(저장소 루트에서):
+#   docker compose --env-file .env -f infra/deployment/compose.yaml up -d --build
+# 순서: db(준비 확인) → migrate(001~ 적용) → role-passwords(앱·서비스 계정 비밀번호) → api
+# 원칙
+# - 비밀값은 .env(Git 제외, 권한 600)에만 두고, 서비스마다 필요한 값만 넘긴다(env_file로 통째로 넘기지 않음).
+#   api에는 관리자 비밀번호(POSTGRES_PASSWORD)를 주지 않는다.
+# - DB·API 포트는 이 컴퓨터(127.0.0.1)에만 연다.
+# - Redis·Celery 워커는 아직 코드가 비어 있어 넣지 않았다(코드가 생기면 추가).
+# - .env의 비밀번호는 fill_env_secrets.py(영문·숫자·-·_)로 만든다. 다른 문자를 쓰면 DSN에 넣을 때 URL 인코딩이 필요하다.
+name: noldaga
+
+x-backend: &backend
+  build:
+    context: ../..
+    dockerfile: infra/deployment/backend.Dockerfile
+  image: noldaga-backend:local
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${DB_NAME:-noldaga}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env에 POSTGRES_PASSWORD가 필요합니다}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - noldaga-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *backend
+    working_dir: /app
+    command: ["python", "-m", "backend.shared.db.migrate"]
+    environment:
+      DB_MIGRATION_DSN: postgresql://postgres:${POSTGRES_PASSWORD:?}@db:5432/${DB_NAME:-noldaga}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  role-passwords:
+    <<: *backend
+    working_dir: /app
+    command: ["python", "infra/deployment/set_role_passwords.py"]
+    environment:
+      DB_MIGRATION_DSN: postgresql://postgres:${POSTGRES_PASSWORD:?}@db:5432/${DB_NAME:-noldaga}
+      DB_USER_USERNAME: ${DB_USER_USERNAME:-noldaga_app}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:?.env에 DB_USER_PASSWORD가 필요합니다}
+      DB_SERVICE_USERNAME: ${DB_SERVICE_USERNAME:-noldaga_service}
+      DB_SERVICE_PASSWORD: ${DB_SERVICE_PASSWORD:?.env에 DB_SERVICE_PASSWORD가 필요합니다}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    <<: *backend
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-noldaga}
+      DB_USER_USERNAME: ${DB_USER_USERNAME:-noldaga_app}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:?}
+      # 서비스 계정을 API에 줄지는 A05 귀가 결과 조회 결정(팀장·오현) 대기. 귀가 DB 저장(ROUTE_STORE=db)에 필요.
+      DB_SERVICE_USERNAME: ${DB_SERVICE_USERNAME:-noldaga_service}
+      DB_SERVICE_PASSWORD: ${DB_SERVICE_PASSWORD:?}
+      # 데이터 모드: 비우면 모의(mock). db로 두면 축제 목록·상세를 DB에서 읽는다.
+      FESTIVAL_DATA: ${FESTIVAL_DATA:-}
+      ROUTE_PROVIDER: ${ROUTE_PROVIDER:-}
+      ROUTE_STORE: ${ROUTE_STORE:-}
+      CROWD_PROVIDER: ${CROWD_PROVIDER:-}
+      # 공급원 키 (없으면 해당 실제 모드만 동작하지 않음)
+      TMAP_APP_KEY: ${TMAP_APP_KEY:-}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+      SEOUL_OPEN_API_KEY: ${SEOUL_OPEN_API_KEY:-}
+      DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:-}
+      ROUTE_KEY_SECRET: ${ROUTE_KEY_SECRET:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      role-passwords:
+        condition: service_completed_successfully
+
+volumes:
+  noldaga-db:
