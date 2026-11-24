@@ -77,10 +77,7 @@ class MockChatRooms:
             timestamp = now()
             room.members[user] = Member("invited")
             invited.append({"user_id": user, "status": "invited", "invited_at": timestamp})
-            self.alerts.setdefault(user, []).append({
-                "notification_id": next(self.alert_ids), "created_at": timestamp, "read_at": None,
-                "type": "room_invited", "ref_type": "chat_room", "ref_id": room_id,
-            })
+            self._add_notification(user, "room_invited", "chat_room", room_id, timestamp)
         return invited
 
     def create(self, user_id: UUID, request: DirectRoom | GroupRoom) -> tuple[str, bool]:
@@ -166,6 +163,13 @@ class MockChatRooms:
             if user_id not in room.members or room.members[user_id].status != "joined":
                 room.members[user_id] = Member("joined", len(room.messages), now())
 
+    def finish_companion_room(self, room_id: str, ended_at: datetime) -> None:
+        with self.lock:
+            room = self._room(room_id)
+            if room.status == "active":
+                room.status = "read_only"
+            room.read_only_at = ended_at
+
     def close_direct_room_on_unblock(self, user_a: UUID, user_b: UUID) -> None:
         with self.lock:
             for room in self.rooms.values():
@@ -229,7 +233,8 @@ class MockChatRooms:
             if room.read_only_at is not None and room.read_only_at <= now() - timedelta(days=3):
                 return []
             threshold = joined
-        return [m for m in room.messages if m["created_at"] >= joined and m["created_at"] >= threshold]
+        return [m for m in room.messages if m["created_at"] >= joined and m["created_at"] >= threshold
+                and m.get("deleted_at") is None]
 
     def messages(self, user_id: UUID, room_id: str, after: int | None, before: int | None, limit: int):
         with self.lock:
@@ -266,7 +271,28 @@ class MockChatRooms:
 
     def _notifications(self, user_id: UUID) -> list[dict]:
         cutoff = now() - timedelta(days=90)
-        return [item for item in self.alerts.get(user_id, []) if item["created_at"] > cutoff]
+        items = [item for item in self.alerts.get(user_id, []) if item["created_at"] > cutoff]
+        if items:
+            self.alerts[user_id] = items
+        else:
+            self.alerts.pop(user_id, None)
+        return items
+
+    def _add_notification(self, user_id: UUID, event: str, ref_type: str, ref_id: str, timestamp: datetime) -> None:
+        items = self._notifications(user_id)
+        self.alerts[user_id] = items
+        items.append({
+            "notification_id": next(self.alert_ids), "created_at": timestamp, "read_at": None,
+            "type": event, "ref_type": ref_type, "ref_id": ref_id,
+        })
+
+    def notify(self, user_id: UUID, event: str, ref_type: str, ref_id: str) -> None:
+        with self.lock:
+            self._add_notification(user_id, event, ref_type, ref_id, now())
+
+    def remove_notifications(self, user_id: UUID) -> None:
+        with self.lock:
+            self.alerts.pop(user_id, None)
 
     def notifications(self, user_id: UUID, unread_only: bool, page: int) -> dict:
         with self.lock:

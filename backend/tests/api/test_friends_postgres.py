@@ -67,6 +67,12 @@ def test_postgres_crossed_requests_and_rls(friend_db, client):
     assert {first.json()["status"], second.json()["status"]} == {"pending", "accepted"}
     request_id = first.json()["request_id"]
     assert second.json()["request_id"] == request_id
+    notifications = [
+        client.get("/api/v1/me/notifications", headers=headers).json()["items"]
+        for headers in (alice, bob)
+    ]
+    assert all(len(items) == 1 and items[0]["ref_id"] == request_id for items in notifications)
+    assert {items[0]["type"] for items in notifications} == {"friend_requested", "friend_accepted"}
     assert search(client, alice, bob_name.upper()).json() == {"items": [{
         "user_id": bob_id, "display_name": bob_name, "friendship_status": "friends",
     }]}

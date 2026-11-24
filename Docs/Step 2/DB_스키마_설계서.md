@@ -561,6 +561,7 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | `notifications` | `noldaga_app`: 본인 알림만 | service | `noldaga_app`: 본인 알림의 `read_at`만, service | service |
 | `reports` | `noldaga_app`: 본인이 접수한 신고만. admin은 service 경유 | service | service(admin 신고 처리) | service |
 | `chat_admin_access` | `noldaga_app` 권한 없음. service만 | service(관리자 열람 기록) | 금지(권한 없음·추가 전용 트리거) | 금지(권한 없음·추가 전용 트리거) |
+| `report_moderation` (022) | service(운영 조치·메모) | service | 권한 없음 | 권한 없음 |
 
 추가 테이블 18개의 `noldaga_service`는 SELECT 권한과 RLS 우회 권한이 있습니다. INSERT·UPDATE·DELETE 칸의 `service`는 `noldaga_app`에 해당 명령 권한이 없고 `noldaga_service`에 있다는 뜻입니다. 두 역할이 모두 허용된 칸에는 각각 표시했습니다.
 
@@ -1116,6 +1117,8 @@ A36·A37은 요청 트랜잭션에 설정된 `app.user_id`의 취향 행만 `nol
 **구현 상태** · 동행 API는 007·008의 테이블·권한과 009 신청자 프로필 조회를 사용합니다. 승인 시 서비스 트랜잭션에서 글 행을 잠그고 정원·신청·멤버·시스템 메시지·알림을 함께 변경합니다. [019 임시 마이그레이션](db/020_companions.sql)은 수동 마감과 72시간 경과 후 장소·메시지 열람 정책을 추가합니다.
 **구현 상태 (ohyun-chat)** — 007·016에 [021_chat](db/021_chat.sql)을 추가했습니다. `closed_by_block`으로 차단 종료 방의 이력을 보호하고, 차단 추가·삭제 트리거와 016 부분 고유 인덱스로 닫힌 방 보존과 새 방 생성을 지원합니다. 앱 역할의 RLS는 입장 시각·삭제·차단·보존을 적용합니다. 보존 기한이 지난 본문·알림 정리 명령과 SQL 적용·되돌리기 시험은 [구현 및 검증 절차](../../backend/Doc/chat/IMP-PLAN.md)에 있습니다.
 
+**구현 상태 (ohyun-notify)** — A74·A75는 007의 본인 알림 RLS와 `read_at` 열 권한을 사용합니다. A76은 007·009·021의 대상·열람 규칙을 적용하고, 서비스 트랜잭션 잠금과 [022_notify](db/022_notify.sql) 인덱스로 KST 날짜당 중복을 막습니다. A77은 서비스 계정에서 열람 기록을 먼저 추가하고, 022의 `report_moderation`에 최종 조치·메모를 저장합니다.
+
 A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `applicant_id = app_current_user()`로 보낸 신청을 조회합니다. 작성자에게 RLS가 허용하는 받은 신청은 A61에서 조회합니다.
 
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
@@ -1203,6 +1206,9 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 |  | report_id | TEXT / NULL, `REFERENCES reports(report_id)` | 열람 사유와 관련된 신고 |
 |  | reason | TEXT / `NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 200)` | 관리자가 채팅을 열람한 이유 |
 |  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 열람 기록을 남긴 시각 |
+| **report_moderation** (022) | report_id | TEXT / `PRIMARY KEY REFERENCES reports(report_id)` | 조치한 신고 |
+|  | action | TEXT / `NOT NULL`, A77 조치 5종 CHECK | 실제로 적용한 조치 |
+|  | note | TEXT / `NOT NULL` | 운영자 처리 메모. 서비스 역할만 읽고 추가 가능 |
 
 - **1:1 방 재개설(11/24 팀 결정):** 차단 시 기존 방을 `closed`로 전환합니다. 차단 해제 뒤에도 기존 방은 닫힌 채 유지하고, 다시 친구가 된 두 사람이 대화를 시작할 때 새 방을 만듭니다(A49·A50·A67). 016은 007의 전역 UNIQUE를 `status <> 'closed'` 부분 UNIQUE로 바꿉니다. 닫힌 방의 키는 보존하고 닫히지 않은 방은 사용자 쌍당 한 개만 허용합니다(8·10절).
 - `chat_rooms`의 행 제약 `CHECK ((room_type = 'direct') = (direct_key IS NOT NULL))`, `CHECK (room_type <> 'friend_group' OR name IS NOT NULL)`, `CHECK (status = 'active' OR read_only_at IS NOT NULL OR status = 'closed')`.
@@ -1297,8 +1303,8 @@ A80은 비밀번호 재확인 뒤 `noldaga_service` 단일 트랜잭션으로 �
 | 동행방 메시지 | `chat_messages`(`companion` 방) | **동행 종료 뒤 3일**(11/20 팀장) | 본문 NULL·`deleted_at`(순서 번호는 남김, T41a) | 방·순서 | 기획서 '동행 채팅 단기 보관' | 확정(11/24 팀 결정) | 권오현 |
 | 친구 채팅 메시지 | `chat_messages`(`direct`·`friend_group`) | **최근 30일**(11/20 팀장·정예진) | 30일 지난 메시지 본문 NULL·`deleted_at` | 방·순서 | 기획서 '친구 채팅 기간 제한' | 확정(11/24 팀 결정) | 권오현 |
 | 채팅 최근 메시지 캐시 | Redis `chat:recent:{room_id}` | 방당 최근 100개·24시간 | 자동 삭제 | DB가 원본 | 빠른 조회(5.20) | 확정(11/24 팀 결정) | 권오현 |
-| 알림 | `notifications`(007) | 90일 | 행 삭제 | 없음 | 앱 안 알림 | 확정(11/24 팀 결정) | 권오현 · W16 |
-| 신고·관리자 열람 기록 | `reports`·`chat_admin_access`(007) | 프로젝트 종료까지 | 열람 기록은 수정·삭제 금지(T40c) | 전부 | FR-COM23 운영 기록 | 설계 고정 | 신유빈 |
+| 알림 | `notifications`(007) | 90일 | `PYTHONPATH=backend python -m api.jobs.purge_chat`로 행 삭제. API는 만료 즉시 조회에서 제외 | 없음 | 앱 안 알림 | 확정(11/24 팀 결정) | 권오현 · W16 |
+| 신고·관리자 열람 기록 | `reports`·`chat_admin_access`(007)·`report_moderation`(022) | 프로젝트 종료까지 | 열람 기록은 수정·삭제 금지(T40c) | 전부 | FR-COM23 운영 기록 | 설계 고정 | 신유빈 |
 | 축제 일간 지표 | `festival_engagement_daily`(005) | 프로젝트 종료까지(숫자만, 개인정보 없음) | — | 전부 | 인기 A39 | 설계 고정 | 신유빈 |
 
 **③ 운영·감사·시험 기록**
@@ -1384,7 +1390,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 |---|---|---|---|---|---|---|
 | 귀가 요청·결과(`route_requests`·`route_results`) | A05 요청 토큰으로 자기 요청만(로그인 여부 공통) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 장소 HMAC 해시와 TMAP 요약 최대 24시간 보관(7-0). 30일 뒤 행 삭제와 운영 정리 연동은 예정 | 메모리 모드는 메모리 토큰 비교. DB 모드(011)는 서비스 계정으로 토큰 해시 비교(11/24 로컬 P18 통과) |
 | 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만(TourAPI `lclsSystm2=EV01`) | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 재수집에서 비축제 또는 미분류 공개 행은 검토 대기로 전환하고 게시 시각을 비움. 관리자 숨김 상태와 게시 시각은 보존 | 018 RLS와 서버 A02·A03은 `category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at IS NOT NULL`을 적용. 010 원본 참조 정책은 같은 범위의 축제 행과 조인 |
-| 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지 1건만**. 방 신고는 방 정보·신고 사유로 처리. 메시지를 보여 주기 전에 `chat_admin_access`에 열람 이유를 기록(A77) | 넘기지 않음 | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 ‘알 수 없음’ | RLS: 방 멤버 함수(007). 관리자 열람 범위의 서버 검사·기록 시험은 A77 구현과 W128(12/17–18 권한 검증)에서 진행. T40c는 기록 삭제 차단 시험 |
+| 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지 1건만**. 방 신고는 방 정보·신고 사유로 처리. 메시지를 보여 주기 전에 `chat_admin_access`에 열람 이유를 기록(A77) | 넘기지 않음 | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 ‘알 수 없음’ | RLS: 방 멤버 함수(007). A77 서버 검사·기록 순서 시험은 `test_notify_postgres.py`에 연결. T40c·T022는 열람 기록 삭제 차단 시험 |
 | 가입 정보(출생연도·성별) | 본인 | 동행 글 작성자가 **대기·승인된 신청자만**(`app_applicant_profile`, 009) | 운영 필요 시 | 넘기지 않음 | 탈퇴 시 NULL(A80) | 함수 안 조건 = 서버 조건 |
 | 차단 관계 | 자기가 차단한 목록 | 서로 검색·신청 불가(닉네임 검색 양쪽 제외, 009) | 신고 처리 때 | 넘기지 않음 | 차단 해제 시 차단 관계 삭제. 닫힌 1:1 방과 이전 대화는 열지 않으며, 새 대화는 새 방에서 시작 | `app_find_user_by_nickname`(009) |
 | 챗봇 질문·작업 | 본인(세션 또는 `run_token`) | 불가 | 마스킹된 기록만 | 질문 문장 + 선택 축제 | 보존 기간 뒤 삭제(7-0) | RLS·토큰 해시(002) |
@@ -2872,6 +2878,7 @@ ALTER TABLE rag_documents
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | 022_notify에 운영 조치·메모와 신고 중복 조회 인덱스, A74~A77 권한·기록·90일 보존 구현 상태와 시험을 추가했습니다(6-8·7-0·7-2). |
 | v0.5 | 2026-11-24 | A43~A50에 기존 친구 DDL·RLS를 연결하고, 1:1 방 닫기와 30일 경과 신청 정리 작업을 추가했습니다(6-6·7-0). |
 | v0.5 | 2026-11-24 | A24 서비스 계정 권한·결정 이력·보존과 019_admin-review 사유 제약, 이관 및 SQL 시험을 반영했습니다. |
 | v0.5 | 2026-11-24 | 동행 서비스 트랜잭션, 019 임시 마감·만료 RLS와 자동 종료·72시간 정리 명령을 연결했습니다(6-8·7-0절). |

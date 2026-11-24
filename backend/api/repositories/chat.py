@@ -11,6 +11,7 @@ from ulid import ULID
 
 from api.auth.tokens import unauthorized
 from api.errors import ApiError
+from api.repositories.notifications import add as add_notifications
 from api.schemas.chat import Action, DirectRoom, GroupRoom, PAGE_SIZE, ROOM_ID_PATTERN, RoomFilter
 from shared.db.session import service_db_session
 
@@ -139,12 +140,7 @@ def _invite(db: Session, room_id: str, owner_id: UUID, users: list[UUID]) -> lis
         WHERE chat_members.status NOT IN ('invited', 'joined')
         RETURNING user_id, status, invited_at
     """), {"room": room_id, "owner": owner_id, "users": users}).mappings().all()
-    if invited:
-        db.execute(text("""
-            INSERT INTO public.notifications (user_id, type, ref_type, ref_id)
-            SELECT uid, 'room_invited', 'chat_room', :room
-            FROM unnest(CAST(:users AS uuid[])) AS target(uid)
-        """), {"room": room_id, "users": [row["user_id"] for row in invited]})
+    add_notifications(db, [row["user_id"] for row in invited], "room_invited", "chat_room", room_id)
     return [dict(row) for row in invited]
 
 
