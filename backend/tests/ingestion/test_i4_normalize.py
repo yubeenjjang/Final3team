@@ -28,10 +28,10 @@ def test_I3_record_fields(listing: dict[str, Any]) -> None:
     record = normalize_festival(listing, today=TODAY, details_requested=False)
     assert {field.name for field in fields(FestivalRecord)} == {
         "source_item_id", "title", "start_date", "end_date", "venue_name", "address",
-        "latitude", "longitude", "region_code", "category", "source_class_level1",
+        "latitude", "longitude", "coords_source", "region_code", "category", "source_class_level1",
         "source_class_level2", "source_class_code", "summary", "admission_fee_text",
         "image_url", "thumbnail_url", "image_copyright_type", "official_url", "organizer",
-        "event_status", "source_updated_at", "review_status", "publishable", "issues", "raw_checksum",
+        "event_status", "source_updated_at", "listing_updated_at", "review_status", "publishable", "issues", "raw_checksum",
     }
     assert record.source_item_id == "3379778"
     assert record.title == "가락 옥토버페스트"
@@ -184,7 +184,8 @@ def test_I18_classification_uses_listing_codes(
     assert record.category == category
     assert record.publishable is (category == "festival")
     assert record.review_status == ("approved" if record.publishable else "pending")
-    assert record.issues == ([] if record.publishable else ["not_festival_class"])
+    expected_issue = "not_festival_class" if level2 else "class_unverified"
+    assert record.issues == ([] if record.publishable else [expected_issue])
 
 
 def test_I6_detail_text_and_homepage(listing: dict[str, Any]) -> None:

@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Any
 
@@ -19,6 +20,40 @@ _NOTICES = (
     "첫·끝 도보 정보가 없어요",
     "막차 확인 불가",
 )
+_METROPOLITAN_CITIES = {"서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종"}
+_PROVINCES = {
+    "경기": "경기도", "강원": "강원도", "충북": "충청북도", "충남": "충청남도",
+    "전북": "전라북도", "전남": "전라남도", "경북": "경상북도", "경남": "경상남도",
+    "제주": "제주도",
+}
+_REGION_NAMES = {**_PROVINCES, **{name: name for name in _PROVINCES.values()},
+                 "강원특별자치도": "강원도", "전북특별자치도": "전라북도", "제주특별자치도": "제주도"}
+_REGION_NAMES.update({
+    f"{city}{suffix}": city for city in _METROPOLITAN_CITIES
+    for suffix in ("", "특별시", "광역시", "특별자치시")
+})
+_REGION_NAMES.update({f"{city}시": city for city in _METROPOLITAN_CITIES - {"광주"}})
+
+
+def _municipality(address: str) -> tuple[str | None, tuple[str, ...]]:
+    parts = address.replace(",", " ").split()
+    region = _REGION_NAMES.get(parts[0]) if parts else None
+    local = parts[1:] if region else parts
+    if not local or not re.fullmatch(r"[가-힣]+[시군구]", local[0]):
+        return region, ()
+    if local[0].endswith("시") and len(local) > 1 and re.fullmatch(r"[가-힣]+구", local[1]):
+        return region, tuple(local[:2])
+    return region, (local[0],)
+
+
+def _same_municipality(query: str, result: str) -> bool:
+    region, local = _municipality(query)
+    result_region, result_local = _municipality(result)
+    return (
+        (bool(local) or region in _METROPOLITAN_CITIES)
+        and (region is None or region == result_region)
+        and result_local[:len(local)] == local
+    )
 
 
 class KakaoClient(RouteProviderClient):
@@ -64,6 +99,24 @@ class KakaoClient(RouteProviderClient):
         except (KeyError, OverflowError, TypeError, ValueError):
             pass
         raise ProviderError("temporary", self.provider)
+
+    def search_address(self, address: str) -> tuple[float, float]:
+        body = self._get("/v2/local/search/address.json", {"query": address, "size": 1})
+        documents = body.get("documents")
+        if not isinstance(documents, list) or not documents or not isinstance(documents[0], dict):
+            raise ProviderError("no_result", self.provider)
+
+        document = documents[0]
+        if not any(
+            _same_municipality(address, part["address_name"])
+            for part in (document.get("road_address"), document.get("address"), document)
+            if isinstance(part, dict) and isinstance(part.get("address_name"), str)
+        ):
+            raise ProviderError("no_result", self.provider)
+        try:
+            return float(document["y"]), float(document["x"])
+        except (KeyError, OverflowError, TypeError, ValueError):
+            raise ProviderError("temporary", self.provider) from None
 
     def _get(self, path: str, params: dict[str, str | float | int]) -> dict[str, Any]:
         status, body = self._request_json(

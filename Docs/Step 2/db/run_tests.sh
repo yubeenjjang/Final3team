@@ -186,6 +186,15 @@ echo "T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차�
 "${PSQL_TX[@]}" -q < 017_festival_trends_signal.sql
 "${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_017_festival_trends_signal.sql
 
+echo "## 5-5. 018 축제 공개·좌표 출처 적용·되돌리기·재적용"
+"${PSQL[@]}" -q -v seed=true -v applied=false -f - < tests_018_festival_publication.sql
+"${PSQL_TX[@]}" -q < 018_festival_publication.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_018_festival_publication.sql
+"${PSQL_TX[@]}" -q < 018_festival_publication_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_018_festival_publication.sql
+"${PSQL_TX[@]}" -q < 018_festival_publication.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_018_festival_publication.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh

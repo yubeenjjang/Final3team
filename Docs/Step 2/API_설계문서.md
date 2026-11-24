@@ -461,7 +461,9 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 ### 2-3. 축제 검색: `GET /api/v1/festivals` (A02) — 필드 명세
 
-공개 조건은 `category='festival' AND review_status='approved' AND published_at IS NOT NULL`입니다. TourAPI에서는 `lclsSystm2=EV01`이 축제에 해당합니다. `items`와 `total` 모두 이 범위에서 계산합니다.
+수집 DB의 공개 조건은 `category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at IS NOT NULL`입니다(018). `items`와 `total` 모두 이 범위에서 계산합니다.
+
+원본 좌표가 대한민국 범위 밖이거나 유효하지 않으면, 주소가 있을 때 카카오 주소 검색에서 같은 시·군으로 확인된 범위 내 좌표를 저장합니다. 보정에 실패하면 검토 대기로 전환합니다. 주소도 없으면 공개 조건을 충족하는 축제는 목록·상세에 유지하고 좌표를 NULL로 두어 지도 마커에서 제외합니다. 좌표가 필요한 A04는 400 `FESTIVAL_LOCATION_UNKNOWN`, A10 실제 모드는 200 `unsupported`를 반환합니다.
 
 | 필드 | 위치 | 타입 | 필수 | 기본값 | 제약 | 설명 |
 |---|---|---|---|---|---|---|
@@ -513,7 +515,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 | `festival_id` | string | 불가 | `fst_…` |
 | `name` · `region_code` | string | 불가 | 이름·지역 |
 | `venue_name` · `address` | string | null 가능 | 장소·주소(원본에 없을 수 있음, 실호출 전) |
-| `lat` / `lng` | number | null 가능 | 좌표가 없으면 귀가 요청 시 400 `FESTIVAL_LOCATION_UNKNOWN` |
+| `lat` / `lng` | number | null 가능 | 원본 또는 주소 보정 좌표. 두 값이 null이면 지도 마커를 표시하지 않으며 A04·A10은 2-3절의 좌표 없음 응답을 사용합니다. |
 | `start_date` / `end_date` | string | null 가능(미확정 일정) | 기간 |
 | `event_status` | string | 불가 | `upcoming`·`ongoing`·`ended`·`cancelled`·`needs_review` |
 | `overview` · `fee_text` · `homepage_url` · `image_url` | string | null 가능 | 소개·입장료·홈페이지·대표 이미지(공급원에 있을 때만, D-015·D-031). 입장료 = `usetimefestival`, 소개 = `detailCommon2`의 `overview`, **대표 이미지 = `firstimage`**(모두 실호출 확인, 10절) |
@@ -3313,7 +3315,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | `festival_id` 원본 키 | `contentid` | `festival_sources.source_item_id` | ✅ 확인 |
 | `name` | `title` | `festivals.title` | ✅ |
 | `start_date` / `end_date` | `eventstartdate` / `eventenddate` (YYYYMMDD) | `festivals.start_date` / `end_date` | ✅ |
-| `lat` / `lng` | `mapy` / `mapx` | `festivals.latitude` / `longitude` | ✅ |
+| `lat` / `lng` | `mapy` / `mapx`, 범위 밖이거나 유효하지 않으면 카카오 주소 검색 | `festivals.latitude` / `longitude`, 출처는 `coords_source`(018) | 원본은 `tourapi`, 시·군이 일치하는 주소 보정은 `geocoded`. 주소가 있으나 보정 실패면 검토 대기, 주소도 없으면 좌표 NULL |
 | `region_code` | `lDongRegnCd`(서울 11 → `SEOUL`, 부산 26 → `BUSAN`) | `festivals.region_code` | ✅ 2개 확인, 나머지 15개 시·도 대응은 참고문서로 채움 |
 | 공개 분류(서버 내부) | `searchFestival2.lclsSystm2` | `festivals.category` | `EV01` → `festival`(공개 대상), `EV02` → `performance`, `EV03` → `event`, 빈 값·미등록 → `unknown` |
 | 원본 분류(서버 내부) | `lclsSystm1` / `lclsSystm2` / `lclsSystm3` | `festivals.source_class_level1` / `source_class_level2` / `source_class_code`(014) | 빈 원본 코드는 NULL, 옛 `cat1`~`cat3`는 분류에 사용하지 않음 |
@@ -3591,7 +3593,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | FR-D06 | 전국 축제 목록 API 정기 수집 | Must | `INGEST_SCHEDULE`(9-1)·A23 / `ingestion_jobs` | ✅ |
 | FR-D07 | 공급원 공통 스키마 정규화 | Must | 10절 원본 → 내부 필드 연결표 / `festival_sources` | ✅ |
 | FR-D08 | 중복 축제 식별·통합 | Must | `UNIQUE(source_id, source_item_id)`·A24 `duplicate` (04 문서 7절) | ✅ |
-| FR-D09 | 필수값·기간·좌표 검증 | Must | `festivals` 기간·좌표 CHECK·`needs_review` (04 문서 6-3) | ✅ |
+| FR-D09 | 필수값·기간·좌표 검증 | Must | 기간·좌표 CHECK, 시·군 확인 후 좌표 보정, 보정 실패 검토 대기, 주소 없이 좌표 NULL인 공개 축제의 마커 제외(2-3절, DB 6-3절) | ✅ |
 | FR-D10 | 축제 DB 저장·증분 갱신 | Must | 업서트·`raw_checksum`·숨김(삭제 안 함) (04 문서 7절) | ✅ |
 | FR-D11 | 출처·수집 이력·갱신 시각 | Must | `festival_sources`·`festival_change_history`·`last_synced_at` | ✅ |
 | FR-D12 | 관리자 축제 등록·수정·승인 | Must | **A55·A56** (6-6)·A24 | ✅ |
@@ -3689,7 +3691,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | `validity_check` (캐시·대체 경로) | `route_results.validity_check` | 7-5 |
 | `stop_reason` · `rollback_reason` | `recovery_attempts.stop_reason` · `rollback_reason` | 7-5 |
 | A02·A03 축제 필드(`name`·`venue_name`·`lat`·`lng`·`overview`·`fee_text`·`homepage_url`·`image_url`·`thumbnail_url`·`image_copyright.type`) | `festivals.title`·`venue_name`·`latitude`·`longitude`·`summary`·`admission_fee_text`·`official_url`·`image_url`·`thumbnail_url`·`image_copyright_type`(003) | **이름 다름** — API 이름이 기준, DB는 위 컬럼 |
-| A02·A03 공개 조건 | `festivals.category='festival' AND review_status='approved' AND published_at IS NOT NULL` | TourAPI `lclsSystm2=EV01`만 공개 대상으로 분류(014) |
+| A02·A03 공개 조건 | `category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at IS NOT NULL` | 018에서 오래된 미분류 게시 행을 검토 대기로 전환하며 `class_unverified` 이력을 남깁니다. |
 | A06 `run_id`·`run_status`·`answer` / 사용한 도구 | `assistant_runs`(04 문서 마이그레이션 002, 7-6) / `agent_runs.run_id`·`tool_calls` | |
 | A16 지표 필드 | `route_query_metrics` 같은 이름 (`phase` 포함) | |
 | `provider` · `provider_tier` · `queried_at` | `route_results.provider` · `provider_tier` · `queried_at` | |
@@ -3897,6 +3899,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | A02·A03의 EV01 검증, 미분류 보류와 카카오 좌표 보정, 주소 없는 축제의 좌표 NULL 응답을 반영했습니다. |
 | v0.5 | 2026-11-24 | A32~A35 PostgreSQL 인증과 DB-19 RLS 연결을 구현하고 토큰 수명·폐기·로그인 한도·로그 차단을 코드와 시험에 연결했습니다. |
 | v0.5 | 2026-11-24 | A07 승인 공지 DB 조회, A09 기상청 실황·예보, A26 서울 지하철·전국 버스, A29 관광공사 예측·수요의 실제 모드와 오프라인 검증을 추가했습니다. |
 | v0.5 | 2026-11-24 | DB 연결 대기 초과 오류를 `DB_POOL_TIMEOUT`(503, retryable, Retry-After 1, 신유빈 제안)으로 변경. |

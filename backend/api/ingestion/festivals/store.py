@@ -11,7 +11,10 @@ from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.sql.selectable import ScalarSelect
 from ulid import ULID
 
-from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY, KST, NOT_FESTIVAL_CLASS, FestivalRecord
+from api.ingestion.festivals.normalize import (
+    CLASS_UNVERIFIED, COORDS_OUT_OF_RANGE, FESTIVAL_CATEGORY, FESTIVAL_CLASS, KST, NOT_FESTIVAL_CLASS,
+    FestivalRecord,
+)
 
 SOURCE_ID = "tourapi"
 PRESENCE_FIELD = "source_presence"
@@ -20,9 +23,10 @@ REAPPEARED = "reappeared_in_source"
 CLASSIFICATION_FIELD = "source_classification"
 CLASSIFICATION_FIELDS = ("category", "source_class_level1", "source_class_level2", "source_class_code")
 PUBLICATION_FIELDS = ("review_status", "published_at")
+LOCATION_FIELDS = ("address", "latitude", "longitude", "coords_source")
 DETAIL_FIELDS = ("venue_name", "summary", "admission_fee_text", "official_url", "organizer")
 FESTIVAL_FIELDS = (
-    "title", "start_date", "end_date", "address", "latitude", "longitude", "region_code",
+    "title", "start_date", "end_date", *LOCATION_FIELDS, "region_code",
     "image_url", "thumbnail_url", "image_copyright_type", "event_status",
     "source_updated_at", *CLASSIFICATION_FIELDS, *DETAIL_FIELDS,
 )
@@ -104,7 +108,10 @@ def festival_values(
 
     if previous.get("review_status") == "hidden":
         values.update(review_status="hidden", published_at=previous["published_at"])
-    elif record.category == FESTIVAL_CATEGORY and record.publishable:
+    elif (
+        record.category == FESTIVAL_CATEGORY and record.source_class_level2 == FESTIVAL_CLASS
+        and record.publishable
+    ):
         values.update(review_status="approved", published_at=previous.get("published_at") or now)
     else:
         values.update(review_status="pending", published_at=None)
@@ -153,6 +160,15 @@ def _record_presence(
     _write_history(
         connection, festival_id, {PRESENCE_FIELD: previous},
         {PRESENCE_FIELD: {"reason": reason, "job_id": job_id}}, now,
+    )
+
+
+def _record_classification(
+    connection: Connection, festival_id: str, job_id: str, reason: str, now: datetime,
+) -> None:
+    _write_history(
+        connection, festival_id, {CLASSIFICATION_FIELD: None},
+        {CLASSIFICATION_FIELD: {"reason": reason, "job_id": job_id}}, now,
     )
 
 
@@ -214,8 +230,32 @@ def _upsert(
     else:
         # 목록 분류는 상세 재요청·체크섬과 별개로 갱신한다.
         fields = CLASSIFICATION_FIELDS
-        if record.category != FESTIVAL_CATEGORY or previous["category"] != record.category:
+        listing_is_current = (
+            saved_version is None or record.listing_updated_at is None
+            or record.listing_updated_at >= saved_version
+        )
+        # 같은 목록을 재수집해도 좌표 보정과 주소 없는 축제의 공개 판정을 반영한다.
+        recheck_location = has_required_fields and listing_is_current and (
+            COORDS_OUT_OF_RANGE in record.issues
+            or any(previous[name] != values[name] for name in LOCATION_FIELDS)
+        )
+        if recheck_location:
+            fields += LOCATION_FIELDS
+        if (
+            recheck_location or record.source_class_level2 != FESTIVAL_CLASS
+            or previous["source_class_level2"] != record.source_class_level2
+            or previous["category"] != record.category
+        ):
             fields += PUBLICATION_FIELDS
+            location = values if recheck_location else previous
+            if values["review_status"] == "approved" and (
+                previous["start_date"] is None or previous["end_date"] is None
+                or (
+                    location["address"] is not None
+                    and (location["latitude"] is None or location["longitude"] is None)
+                )
+            ):
+                values.update(review_status="pending", published_at=None)
         values = {name: values[name] for name in fields}
     changes = changed_fields(previous, values)
     if not has_required_fields and not changes:
@@ -226,12 +266,10 @@ def _upsert(
     connection.execute(FESTIVAL_SOURCES.update().where(source).values(**sync))
     if changes:
         _write_history(connection, festival_id, previous, changes, now)
-    if (record.category != FESTIVAL_CATEGORY and previous["review_status"] == "approved"
+    if (record.source_class_level2 != FESTIVAL_CLASS and previous["review_status"] == "approved"
             and previous["published_at"] is not None and changes.get("review_status") == "pending"):
-        _write_history(
-            connection, festival_id, {CLASSIFICATION_FIELD: None},
-            {CLASSIFICATION_FIELD: {"reason": NOT_FESTIVAL_CLASS, "job_id": job_id}}, now,
-        )
+        reason = CLASS_UNVERIFIED if record.source_class_level2 is None else NOT_FESTIVAL_CLASS
+        _record_classification(connection, festival_id, job_id, reason, now)
     return "updated" if refresh_fields or changes else "unchanged"
 
 
@@ -304,6 +342,8 @@ class FestivalStore:
             seen = {record.source_item_id for record in records if record.source_item_id}
             if track_presence and seen:
                 self._mark_reappeared(connection, job_id, seen, ended_at)
+            if track_presence and status == "success":
+                self._mark_unverified(connection, job_id, ended_at)
             if track_presence and status == "success" and scope is not None:
                 self._mark_missing(connection, job_id, scope, seen, ended_at)
                 job_data = {
@@ -335,6 +375,25 @@ class FestivalStore:
             INGESTION_JOBS.c.started_at > started_at,
         )
         return not connection.execute(select(newer.exists())).scalar_one()
+
+    def _mark_unverified(self, connection: Connection, job_id: str, now: datetime) -> None:
+        # 목록에서 빠진 014 이전 공개 행에도 분류 검증 기준을 적용한다.
+        rows = connection.execute(select(
+            FESTIVALS.c.festival_id, FESTIVALS.c.review_status, FESTIVALS.c.published_at,
+        ).where(
+            FESTIVALS.c.category == FESTIVAL_CATEGORY,
+            FESTIVALS.c.review_status == "approved",
+            FESTIVALS.c.published_at.is_not(None),
+            func.nullif(func.btrim(FESTIVALS.c.source_class_level2), "").is_(None),
+        ).with_for_update()).mappings()
+        changes = {"review_status": "pending", "published_at": None}
+        for row in rows:
+            festival_id = row["festival_id"]
+            connection.execute(FESTIVALS.update().where(
+                FESTIVALS.c.festival_id == festival_id,
+            ).values(**changes))
+            _write_history(connection, festival_id, row, changes, now)
+            _record_classification(connection, festival_id, job_id, CLASS_UNVERIFIED, now)
 
     def _mark_missing(
         self, connection: Connection, job_id: str, scope: ListingScope, seen: set[str], now: datetime,

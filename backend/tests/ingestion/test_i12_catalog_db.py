@@ -54,16 +54,17 @@ def catalog_client(
         connection.execute(text("""
             INSERT INTO festivals (
                 festival_id, title, region_code, venue_name, start_date, end_date,
-                event_status, review_status, category, published_at, last_synced_at,
+                event_status, review_status, category, source_class_level2, published_at, last_synced_at,
                 latitude, longitude, summary, admission_fee_text, official_url, address
             ) VALUES (
                 :id, :title, :region, :venue, :start_date, :end_date,
-                :status, :review, :category, :now, :now,
+                :status, :review, :category, :source_class, :now, :now,
                 37.5, 127.1, '축제 소개', '무료', 'https://example.invalid', '축제 주소'
             )
         """), [
             dict(id=festival_id, title=title, region=region, venue=venue, status=status,
-                 review=review, category=category, now=now, start_date=today + timedelta(days=start),
+                 review=review, category=category, source_class="EV01" if category == "festival" else "EV03",
+                 now=now, start_date=today + timedelta(days=start),
                  end_date=today + timedelta(days=end))
             for festival_id, title, region, venue, start, end, status, review, category in rows
         ])

@@ -526,8 +526,8 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | 테이블 | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | `users`, `refresh_tokens` | service만 | service(가입·로그인) | service | service |
-| `festivals` | `noldaga_app`: `category='festival' AND review_status='approved' AND published_at IS NOT NULL`인 행(014, A02·A03과 동일) / admin: 전체(service 경유) | service(수집·admin 승인) | service | 금지(게시 상태로 숨김) |
-| `festival_sources` | `noldaga_app`(010): 014 축제 RLS로 보이는 행의 `festival_id`·`source_id`·`source_item_id`·`source_url`만(A03 `source_ref`). `raw_checksum`·`fetched_at`·`last_job_id`는 앱 계정에 비공개. service·admin(service 경유)은 전체 | service | service | 금지 |
+| `festivals` | `noldaga_app`: `category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at IS NOT NULL`인 행(018, A02·A03과 동일) / admin: 전체(service 경유) | service(수집·admin 승인) | service | 금지(게시 상태로 숨김) |
+| `festival_sources` | `noldaga_app`(010): 018 축제 RLS로 보이는 행의 `festival_id`·`source_id`·`source_item_id`·`source_url`만(A03 `source_ref`). `raw_checksum`·`fetched_at`·`last_job_id`는 앱 계정에 비공개. service·admin(service 경유)은 전체 | service | service | 금지 |
 | `ingestion_jobs`, `festival_change_history` | service·admin(service 경유) | service | service | 금지 |
 | `festival_review_queue` | admin(service 경유) | service | admin 승인·반려(service 경유) | 금지 |
 | `profiles` | **본인만** | service(가입 시) | 본인(**`display_name` 컬럼만**), admin의 역할 변경은 service 경유 | service |
@@ -863,7 +863,8 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | title | TEXT / NOT NULL | 축제명 |
 | | start_date / end_date | DATE / NULL 허용, `CHECK(end_date >= start_date)` | 기간(미확정이면 NULL + 상태 `needs_review`) |
 | | venue_name / address | TEXT / NULL | 장소·주소 |
-| | latitude / longitude | NUMERIC(9,6) / NULL, 대한민국 범위 CHECK | 없으면 지도 마커 제외·검색은 유지, 귀가 요청은 400 `FESTIVAL_LOCATION_UNKNOWN` |
+| | latitude / longitude | NUMERIC(9,6) / NULL, 대한민국 범위 CHECK | 원본 또는 시·군 확인 후 카카오로 보정한 좌표. 주소가 있으나 보정 실패면 검토 대기. 주소도 없으면 좌표 NULL이며 공개 조건 충족 시 목록·상세 유지, 지도 마커 제외 |
+| | coords_source (018) | TEXT / NULL, 값이 있으면 좌표 두 칸 필수 | `tourapi`는 원본, `geocoded`는 카카오 주소 보정, NULL은 좌표가 없거나 출처를 기록하기 전의 기존 행 |
 | | region_code | TEXT / NOT NULL | 03 문서 0-1절 코드(`SEOUL` 등) |
 | | category | TEXT / NULL | TourAPI `lclsSystm2` 대응. `EV01` → `festival`(공개 대상), `EV02` → `performance`, `EV03` → `event`, 미분류 → `unknown` |
 | | source_class_level1 / source_class_level2 / source_class_code (014) | TEXT / NULL | TourAPI `searchFestival2`의 `lclsSystm1` / `lclsSystm2` / `lclsSystm3` 원본 코드. 빈 값이면 NULL |
@@ -891,11 +892,11 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | started_at / ended_at | TIMESTAMPTZ / started NOT NULL | |
 | | status | TEXT / CHECK IN ('running','success','partial','failed') | |
 | | scanned / inserted / updated / rejected | INT / NOT NULL DEFAULT 0 | 건수 |
-| | error | JSONB / NULL | 페이지별 오류 |
+| | error | JSONB / NULL | 페이지별 오류. 누락 대조용 정상 수집은 `errors`와 `listing.scope`·`listing.ids` 기록 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 | **festival_change_history** | change_id | BIGSERIAL / PK | |
 | | festival_id | TEXT / FK festivals, NOT NULL | |
-| | field | TEXT / NOT NULL | 바뀐 컬럼 이름(예: `start_date`) |
+| | field | TEXT / NOT NULL | 바뀐 컬럼 이름(예: `start_date`) 또는 `source_classification`·`source_presence`. 미분류 공개 전환 사유는 `after_value.reason='class_unverified'` |
 | | before_value / after_value | JSONB / NULL | 바뀌기 전·후 값 |
 | | source_id | TEXT / NULL | 변경을 가져온 공급원 |
 | | actor | TEXT / CHECK IN ('ingestion','admin') | 수집 작업 또는 관리자 |
@@ -1365,7 +1366,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 데이터 | 사용자 본인 | 다른 사용자 | 관리자 | 에이전트(LLM 포함) | 삭제·탈퇴·차단 뒤 | DB 행 접근 제한(RLS) ↔ 서버 검사 |
 |---|---|---|---|---|---|---|
 | 귀가 요청·결과(`route_requests`·`route_results`) | A05 요청 토큰으로 자기 요청만(로그인 여부 공통) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 장소 HMAC 해시와 TMAP 요약 최대 24시간 보관(7-0). 30일 뒤 행 삭제와 운영 정리 연동은 예정 | 메모리 모드는 메모리 토큰 비교. DB 모드(011)는 서비스 계정으로 토큰 해시 비교(11/24 로컬 P18 통과) |
-| 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만(TourAPI `lclsSystm2=EV01`) | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 재수집에서 비축제로 확인되면 검토 대기로 전환하고 게시 시각을 비움. 관리자 숨김 상태와 게시 시각은 보존 | 014 RLS와 서버 A02·A03은 `category='festival' AND review_status='approved' AND published_at IS NOT NULL`을 적용. 010 원본 참조 정책은 같은 범위의 축제 행과 조인 |
+| 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만(TourAPI `lclsSystm2=EV01`) | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 재수집에서 비축제 또는 미분류 공개 행은 검토 대기로 전환하고 게시 시각을 비움. 관리자 숨김 상태와 게시 시각은 보존 | 018 RLS와 서버 A02·A03은 `category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at IS NOT NULL`을 적용. 010 원본 참조 정책은 같은 범위의 축제 행과 조인 |
 | 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지 1건만**. 방 신고는 방 정보·신고 사유로 처리. 메시지를 보여 주기 전에 `chat_admin_access`에 열람 이유를 기록(A77) | 넘기지 않음 | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 ‘알 수 없음’ | RLS: 방 멤버 함수(007). 관리자 열람 범위의 서버 검사·기록 시험은 A77 구현과 W128(12/17–18 권한 검증)에서 진행. T40c는 기록 삭제 차단 시험 |
 | 가입 정보(출생연도·성별) | 본인 | 동행 글 작성자가 **대기·승인된 신청자만**(`app_applicant_profile`, 009) | 운영 필요 시 | 넘기지 않음 | 탈퇴 시 NULL(A80) | 함수 안 조건 = 서버 조건 |
 | 차단 관계 | 자기가 차단한 목록 | 서로 검색·신청 불가(닉네임 검색 양쪽 제외, 009) | 신고 처리 때 | 넘기지 않음 | 차단 해제 시 차단 관계 삭제. 닫힌 1:1 방과 이전 대화는 열지 않으며, 새 대화는 새 방에서 시작 | `app_find_user_by_nickname`(009) |
@@ -1450,7 +1451,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 
 **강사 11/19 DB 피드백 1:** 기본 시험과 기존 데이터가 있는 009 시험은 아래 실행기로 재실행할 수 있습니다. 이번에 연결한 010 전용 시험(T010a~e)과 015 시험(T015a~d)도 11/24 실행해 통과했습니다.
 
-적용 순서는 001→…→008→009 사전 검사→009→010→011 사전 검사→011→012→013→014→015 사전 검사→015→016 사전 검사→016→017입니다. 001~009와 011~017의 적용·되돌리기는 파일 단위로 `psql -1 -v ON_ERROR_STOP=1 -f <파일>`을 사용합니다(표의 기본 시험은 빈 DB에 적용). 010은 적용·되돌리기 SQL에 `BEGIN`/`COMMIT`이 있어 `psql -v ON_ERROR_STOP=1 -f <파일>`로 실행합니다. 011~013 적용·되돌리기는 트랜잭션 안에서 두 경로 테이블을 먼저 잠급니다.
+적용 순서는 001→…→008→009 사전 검사→009→010→011 사전 검사→011→012→013→014→015 사전 검사→015→016 사전 검사→016→017→018입니다. 001~009와 011~018의 적용·되돌리기는 파일 단위로 `psql -1 -v ON_ERROR_STOP=1 -f <파일>`을 사용합니다(표의 기본 시험은 빈 DB에 적용). 010은 적용·되돌리기 SQL에 `BEGIN`/`COMMIT`이 있어 `psql -v ON_ERROR_STOP=1 -f <파일>`로 실행합니다. 011~013 적용·되돌리기는 트랜잭션 안에서 두 경로 테이블을 먼저 잠급니다.
 
 | 순서 | 파일 (GitHub `Docs/Step 2/db/`) | 내용 |
 |---|---|---|
@@ -1475,6 +1476,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 2-14 사전 검사 | [`db/precheck_016_direct_room_key_partial_unique.sql`](db/precheck_016_direct_room_key_partial_unique.sql) | 적용 전 `duplicate_keys_for_up`, 되돌리기 전 `duplicate_keys_for_down`이 0인지 확인 |
 | 2-14 | [`db/016_direct_room_key_partial_unique.sql`](db/016_direct_room_key_partial_unique.sql) (되돌리기 [`016_direct_room_key_partial_unique_down.sql`](db/016_direct_room_key_partial_unique_down.sql)) | `chat_rooms`를 잠근 뒤 `status <> 'closed'` 부분 UNIQUE로 교체. 되돌릴 때 닫힌 방을 포함해 같은 키가 남아 있으면 DB가 전역 UNIQUE 복원을 거부하고 행과 부분 색인을 보존 |
 | 2-15 | [`db/017_festival_trends_signal.sql`](db/017_festival_trends_signal.sql) (되돌리기 [`017_festival_trends_signal_down.sql`](db/017_festival_trends_signal_down.sql)) | `festival_trends` 증가율·신호 추가 및 004 CHECK 교체. 되돌리면 새 컬럼 값이 사라지고, 004 제약에 맞지 않는 행이 남아 있으면 되돌리기가 중단됨 |
+| 2-16 | [`db/018_festival_publication.sql`](db/018_festival_publication.sql) (되돌리기 [`018_festival_publication_down.sql`](db/018_festival_publication_down.sql)) | EV01 RLS, `coords_source` 추가, 기존 미분류 공개 행 검토 대기 및 이전 게시 상태 이력. 되돌릴 때 이후 게시·분류 변경이 없는 018 대상만 복원하고 좌표 출처 컬럼을 제거합니다. 저장된 위경도 값은 유지됩니다. |
 | 3 | `db/tests_v0.3.2.sql` → `db/tests_v0.3.2_after_backup.sql` | 시험 T1~T43 (스스로 판정: 기대와 다르면 `FAIL`로 멈춤) |
 | 4 | [`db/tests_010_festival_sources_public.sql`](db/tests_010_festival_sources_public.sql) | 공개 원본 조회·조인, 내부 컬럼 차단, 되돌리기·재적용(T010a~e). **11/24 통과** |
 | 4 | `db/tests_011_route_access_token.sql` | 기존 행 보존·해시 제약·일반 계정 차단·되돌리기·재적용(T011a~d) |
@@ -1484,8 +1486,9 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 5-2 | [`db/tests_015_friendships_request_unique.sql`](db/tests_015_friendships_request_unique.sql) | 중복 신청 참조 거부·복수 NULL 허용·되돌리기·재적용 및 기존 중복 사전 검사·적용 중단(T015a~d). **11/24 통과** |
 | 5-3 | [`db/tests_016_direct_room_key_partial_unique.sql`](db/tests_016_direct_room_key_partial_unique.sql) | 닫힌 방 보존과 새 방 개설·활성 방 중복과 재개 거부·되돌리기와 재적용·중복 키가 있는 경우 되돌리기 차단(T016a~e). **11/24 통과** |
 | 5-4 | [`db/tests_017_festival_trends_signal.sql`](db/tests_017_festival_trends_signal.sql) | 증가율·신호 제약, 기존 행·공개 조회 정책 보존, 되돌리기·재적용, 004 제약에 맞지 않는 행이 있을 때 되돌리기 중단(T017a~e). 실행 결과는 10-A-4절 |
+| 5-5 | [`db/tests_018_festival_publication.sql`](db/tests_018_festival_publication.sql) | 미분류 데이터 정리·이력, 축제 및 원본 RLS, 좌표 출처 제약, 되돌리기·재적용(T018a~d) |
 | 6 | `db/explain_v0.3.2.sql` | 축제 검색 인덱스 전후 실행 계획(데이터 생성 SQL 포함) |
-| — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~017 적용·시험 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
+| — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~018 적용·시험 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
 | — | `backend/tests/routes/test_p18_route_store_db.py` | `TEST_DB_APP_URL`의 `noldaga_app`으로 축제 조회, `TEST_DB_URL`로 시험 데이터 준비·경로 저장. 접수→상태→TMAP 저장·조회·만료, 토큰 만료 후 A04 재전송, 카카오 미저장, A05·정기 정리의 삭제 시각 일치. 011 시험에는 소유자 권한 또는 `TEST_DB_MIGRATION_URL` 필요. **11/24 기존 P18 4개 로컬 통과**. 신규 DB 행 원문·삭제 시각 검사는 013 적용 일회용 DB에서 실행 |
 | — | `db/run_tests_009_existing.sh` · `db/tests_009_existing_data.sql` | 기존 데이터로 사전 검사→적용→실패 시 취소→되돌리기·다시 적용(T44~T48) |
 | — | `db/results_2026-11-20.log` · `db/results_2026-11-23.log` | 11/20 기본 SQL·백업 PASS 149건. 11/23 밤 PASS 156건(기본 149건 + T011a~d 4건 + 재적용 T011a~c 3건) |
@@ -2847,6 +2850,7 @@ ALTER TABLE rag_documents
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | 018로 EV01 공개 RLS, 미분류 게시 행의 검토 대기와 복원, 좌표 출처 저장을 추가했습니다. |
 | v0.5 | 2026-11-24 | A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정. A42 수집값은 기존 004·017을 사용하고 점수는 API에서 계산합니다. A81 글은 Redis에 10분간 캐시합니다. |
 | v0.5 | 2026-11-24 | 체크리스트 대조 반영. 001~014 기준 컬럼·RLS·Redis 설계 보완, 014 적용 순서 추가, 015 친구 신청 UNIQUE·사전 검사 및 010·015 전용 시험 연결. 11/24 신유빈 확인 팀 결정 14건을 19절과 본문에 반영. 11/24 SQL 시험 001~017(`f689dee` 이후) 실행기 출력 PASS 표기 213줄(개별 시험 PASS 208건 + 요약 5줄), FAIL 0. |
 | v0.4 | 2026-11-24 | 014에 TourAPI 분류 코드 저장을 추가하고, `lclsSystm2=EV01` 축제만 공개하도록 A02·A03과 RLS 조건을 통일했습니다. 비축제로 바뀐 공개 행의 검토 대기 전환과 수집 작업 이력을 반영했습니다. |
