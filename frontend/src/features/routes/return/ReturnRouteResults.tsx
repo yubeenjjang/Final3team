@@ -29,7 +29,7 @@ function endpointMarker(endpoint: ReadyRoute["origin"], prefix: string, pathPoin
 }
 
 function RouteMap({ route, candidate }: { route: ReadyRoute; candidate?: RouteCandidate }) {
-  const paths = (candidate?.legs ?? []).flatMap((leg) => leg.path?.length ? [leg.path] : []);
+  const paths = (candidate?.legs ?? []).flatMap((leg) => (leg.path?.length ? [leg.path] : []));
   const origin = endpointMarker(route.origin, "출발", paths[0]?.[0]);
   const destination = endpointMarker(route.destination, "도착", paths.at(-1)?.at(-1));
   const center = origin ?? destination;
@@ -41,10 +41,10 @@ function RouteMap({ route, candidate }: { route: ReadyRoute; candidate?: RouteCa
           center={center}
           markers={[origin, destination].filter((marker) => marker !== undefined)}
           polylines={paths}
-          className="h-[218px] w-full"
+          className="h-[224px] w-full rounded-none border-x-0"
         />
       ) : (
-        <div className="flex h-[218px] flex-col items-center justify-center gap-2 bg-accent/5 text-sm font-medium text-muted">
+        <div className="flex h-[224px] flex-col items-center justify-center gap-2 bg-surface-soft/50 text-sm font-medium text-muted">
           <MapPinOff size={22} aria-hidden="true" /> 지도에 표시할 위치가 없어요.
         </div>
       )}
@@ -72,6 +72,7 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
   const selected = candidates.find((candidate) => candidate.candidate_id === selectedId) ?? candidates[0];
   const origin = route.origin.name || route.origin.label;
   const destination = route.destination.name || route.destination.label;
+  const isTmapRoute = route.provider?.toLowerCase() === "tmap";
 
   return (
     <>
@@ -81,24 +82,47 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
       <div className="relative">
         <RouteMap route={route} candidate={selected} />
         {origin || destination ? (
-          <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-3">
-            {origin ? <span className="max-w-[48%] truncate rounded-chip border border-brand/30 bg-surface px-2.5 py-1 text-xs font-bold shadow-sm"><span className="text-brand">출발</span> {origin}</span> : null}
-            {destination ? <span className="ml-auto max-w-[48%] truncate rounded-chip border border-brand/30 bg-surface px-2.5 py-1 text-xs font-bold shadow-sm"><span className="text-brand">도착</span> {destination}</span> : null}
+          <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-2.5">
+            {origin ? (
+              <span className="inline-flex max-w-[48%] items-center gap-1.5 rounded-chip border border-brand/30 bg-surface/95 py-1 pl-1.5 pr-2.5 text-xs font-bold text-ink shadow-md backdrop-blur-sm">
+                <span className="shrink-0 rounded-chip bg-brand px-2 py-0.5 text-[10px] font-extrabold text-surface">출발</span>
+                <span className="truncate">{origin}</span>
+              </span>
+            ) : null}
+            {destination ? (
+              <span className="ml-auto inline-flex max-w-[48%] items-center gap-1.5 rounded-chip border border-brand/30 bg-surface/95 py-1 pl-1.5 pr-2.5 text-xs font-bold text-ink shadow-md backdrop-blur-sm">
+                <span className="shrink-0 rounded-chip bg-banner-dark px-2 py-0.5 text-[10px] font-extrabold text-surface">도착</span>
+                <span className="truncate">{destination}</span>
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
-      <section aria-labelledby="return-results-heading" className="relative -mt-3 space-y-3 rounded-t-input border-t border-line-light bg-bg px-4 pb-3 pt-2">
-        <div className="mx-auto h-1 w-8 rounded-chip bg-line-light" aria-hidden="true" />
+
+      {isTmapRoute ? (
+        <div className="bg-surface-muted/80 px-4 py-1.5 text-right text-[11px] font-semibold text-muted">
+          경로 정보: TMAP
+        </div>
+      ) : null}
+
+      <section
+        aria-labelledby="return-results-heading"
+        className={`relative ${isTmapRoute ? "mt-0" : "-mt-3"} space-y-3 rounded-t-[24px] border-t border-line-light bg-surface px-4 pb-4 pt-2.5 shadow-[0_-6px_20px_rgba(10,16,31,0.06)]`}
+      >
+        <div className="mx-auto h-1 w-9 rounded-chip bg-line-light" aria-hidden="true" />
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <h2 id="return-results-heading" className="flex items-center gap-1.5 text-base font-extrabold tracking-tight">
-            <Sparkles size={18} className="text-accent" aria-hidden="true" /> AI 추천 귀가 경로
+          <h2 id="return-results-heading" className="flex items-center gap-1.5 text-base font-black tracking-tight text-ink">
+            <Sparkles size={17} className="fill-brand text-brand" aria-hidden="true" />
+            <span className="rounded-chip bg-brand px-2 py-0.5 text-[11px] font-extrabold text-surface">AI</span>
+            <span>추천 귀가 경로</span>
           </h2>
-          <span className="inline-flex items-center gap-1 text-xs text-muted">
-            <Clock size={14} aria-hidden="true" /> 지금 출발 · {modeDetails(route.travel_mode).label}
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
+            <Clock size={13} aria-hidden="true" /> 지금 출발 · {modeDetails(route.travel_mode).label}
           </span>
         </div>
+
         {candidates.length ? (
-          <ol className="space-y-2">
+          <ol className="space-y-2.5">
             {candidates.map((candidate, index) => {
               const active = candidate === selected;
 
@@ -108,28 +132,38 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
                     type="button"
                     aria-pressed={active}
                     onClick={() => setSelectedId(candidate.candidate_id)}
-                    className={`w-full space-y-2 rounded-card border px-3 py-2.5 text-left shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? "border-brand bg-surface-soft/70" : "border-line-light bg-surface hover:border-accent/60"}`}
+                    className={`w-full space-y-2.5 rounded-card border px-3.5 py-3 text-left shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                      active
+                        ? "border-brand bg-surface-soft/55"
+                        : "border-line-light bg-surface hover:border-brand/40"
+                    }`}
                   >
-                    <span className="flex items-start gap-2">
-                      <span aria-hidden="true" className={`rounded-lg px-2 py-1 text-xs font-extrabold ${active ? "bg-brand/10 text-brand" : "bg-accent/10 text-accent"}`}>
+                    <span className="flex items-start gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className={`rounded-lg px-2 py-1 text-xs font-extrabold ${
+                          active ? "bg-brand text-surface" : "bg-surface-soft text-brand"
+                        }`}
+                      >
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                          <span className="text-sm font-extrabold">{candidate.summary}</span>
+                          <span className="text-sm font-extrabold text-ink">{candidate.summary}</span>
                           {index === 0 && route.completed_valid_route ? (
-                            <span className="inline-flex items-center gap-1 rounded-chip bg-brand px-2 py-0.5 text-[11px] font-bold text-surface">
-                              <Crown size={12} aria-hidden="true" /> 추천
+                            <span className="inline-flex items-center gap-1 rounded-chip bg-brand px-2 py-0.5 text-[10px] font-extrabold text-surface">
+                              <Crown size={11} aria-hidden="true" /> 추천
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted">
+                        <span className="mt-1 flex flex-wrap gap-x-2.5 gap-y-1 text-xs text-muted">
                           <span className="inline-flex items-center gap-1"><Footprints size={13} aria-hidden="true" /> 도보 {candidate.walk_m.toLocaleString("ko-KR")}m</span>
                           <span className="inline-flex items-center gap-1"><BusFront size={13} aria-hidden="true" /> 환승 {candidate.transfers}회</span>
                         </span>
                       </span>
-                      <span className={`flex shrink-0 items-center gap-0.5 whitespace-nowrap text-lg font-extrabold ${active ? "text-brand" : "text-accent"}`}>
-                        {candidate.duration_min}분 <ChevronRight size={17} aria-hidden="true" />
+                      <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap font-display text-2xl font-black tracking-tight text-brand">
+                        {candidate.duration_min}분
+                        <ChevronRight size={17} className="text-brand/75" aria-hidden="true" />
                       </span>
                     </span>
                     <span className="flex flex-wrap items-center gap-x-1 gap-y-1.5 pl-1">
@@ -138,8 +172,14 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
                         return (
                           <span key={legIndex} className="inline-flex items-center gap-1">
                             {legIndex > 0 ? <span className="text-xs text-muted" aria-hidden="true">···</span> : null}
-                            <span className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[11px] font-bold ${leg.mode === "walk" ? "bg-muted/10 text-muted" : "bg-accent/10 text-accent"}`}>
-                              <Icon size={13} aria-hidden="true" /> {label}{leg.line ? ` ${leg.line}` : ` ${leg.duration_min}분`}
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-chip px-2.5 py-0.5 text-[11px] font-bold ${
+                                leg.mode === "walk"
+                                  ? "bg-surface-muted text-muted"
+                                  : "bg-surface-soft text-brand"
+                              }`}
+                            >
+                              <Icon size={12} aria-hidden="true" /> {label}{leg.line ? ` ${leg.line}` : ` ${leg.duration_min}분`}
                             </span>
                           </span>
                         );
@@ -151,10 +191,16 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
             })}
           </ol>
         ) : (
-          <p role="status" className="rounded-card border border-line-light bg-surface p-3 text-sm text-muted">표시할 경로가 없어요.</p>
+          <p role="status" className="rounded-card border border-line-light bg-surface p-3.5 text-sm text-muted">표시할 경로가 없어요.</p>
         )}
+
         <RouteNotices notices={route.notices} />
-        <button type="button" onClick={onEdit} className="rounded-chip border border-accent/30 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent/10">
+
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded-chip border border-brand/35 bg-surface px-3.5 py-1.5 text-xs font-bold text-brand transition-colors hover:bg-surface-soft"
+        >
           {fromLink ? "다른 경로 찾기" : "입력 수정"}
         </button>
       </section>

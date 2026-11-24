@@ -26,7 +26,7 @@ describe("F3 AppShell & F5 MockBadge", () => {
     cleanup();
   });
 
-  it("F3 renders 5 bottom tabs and applies dark theme only on home", () => {
+  it("F3 renders 5 bottom tabs and applies light theme across routes", () => {
     mockPathname = "/";
     const { rerender } = render(
       <AppShell>
@@ -35,8 +35,9 @@ describe("F3 AppShell & F5 MockBadge", () => {
     );
 
     const shell = screen.getByTestId("app-shell");
-    expect(shell).toHaveAttribute("data-theme", "dark");
-    expect(shell.className).toContain("bg-dark-bg");
+    expect(shell).toHaveAttribute("data-theme", "light");
+    expect(shell.className).toContain("bg-bg");
+    expect(screen.getByAltText("NOLDAGA")).toBeInTheDocument();
 
     const tabs = [
       { label: "홈", href: "/" },

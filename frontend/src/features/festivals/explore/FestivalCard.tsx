@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, ImageOff, MapPin } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
+import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import type { FestivalListItem } from "./api";
 import { dday, formatFestivalPeriod } from "./dday";
 import { getRegionLabel } from "./regions";
@@ -32,7 +33,7 @@ export function FestivalCard({ item, today }: FestivalCardProps) {
       data-testid={`festival-card-${item.festival_id}`}
       className="group block overflow-hidden rounded-card border border-line-light bg-surface shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="relative h-44 w-full overflow-hidden bg-surface-soft/50">
+      <div className="relative h-44 w-full overflow-hidden bg-surface-soft/45">
         {showImage && item.thumbnail_url ? (
           <>
             <Image
@@ -49,14 +50,11 @@ export function FestivalCard({ item, today }: FestivalCardProps) {
             </span>
           </>
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted">
-            <ImageOff className="h-6 w-6" aria-hidden="true" />
-            <span className="text-xs font-medium">이미지 준비 중</span>
-          </div>
+          <FestivalImagePlaceholder />
         )}
 
         {badge ? (
-          <span className="absolute left-3 top-3 rounded-chip bg-brand px-2.5 py-1 text-xs font-bold text-surface shadow-sm">
+          <span className="absolute left-3 top-3 rounded-chip bg-brand px-2.5 py-1 text-xs font-extrabold text-surface shadow-sm">
             {badge}
           </span>
         ) : null}
@@ -71,7 +69,7 @@ export function FestivalCard({ item, today }: FestivalCardProps) {
           <span className="truncate">{period}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted">
-          <MapPin className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden="true" />
           <span className="truncate">{locationText}</span>
         </div>
       </div>

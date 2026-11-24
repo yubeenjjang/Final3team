@@ -285,4 +285,19 @@ describe("F8 return route flow", () => {
     expect(signal?.aborted).toBe(true);
     expect(fetchApi).toHaveBeenCalledTimes(3);
   });
+
+  it("renders all 5 preference chips and displays TMAP attribution when provider is tmap", async () => {
+    await openWithFestival();
+    for (const label of ["가장 빠른", "도보 최소", "환승 최소", "혼잡 적은", "이동 편한"]) {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByLabelText("이동 편한"));
+    reply({ ...ROUTE, route_preference: "accessible", provider: "tmap", provider_tier: "primary" });
+
+    findRoute();
+    await flush();
+
+    expect(submittedRequest(1)).toMatchObject({ route_preference: "accessible" });
+    expect(screen.getByText("경로 정보: TMAP")).toBeInTheDocument();
+  });
 });

@@ -171,7 +171,7 @@ export function FestivalExploreView() {
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="축제 이름, 장소 검색"
               aria-label="축제 검색"
-              className="h-11 w-full rounded-input border border-line-light bg-surface pl-10 pr-9 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+              className="h-11 w-full rounded-input border border-line-light bg-surface pl-10 pr-9 text-sm text-ink shadow-sm placeholder:text-muted focus:border-brand focus:outline-none"
             />
             {searchInput ? (
               <button
@@ -207,7 +207,7 @@ export function FestivalExploreView() {
                 setRegion(nextRegion);
               }
             }}
-            className="h-9 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink focus:border-accent focus:outline-none"
+            className="h-9 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink shadow-sm focus:border-brand focus:outline-none"
           >
             {REGION_OPTIONS.map((option) => (
               <option key={option.code} value={option.code}>

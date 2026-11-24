@@ -48,7 +48,7 @@ function FestivalSearch({ onSelect }: { onSelect: (festival: SelectedFestival) =
 
   return (
     <div id="return-festival-search" className="space-y-2 pb-3">
-      <label className="flex items-center gap-2 rounded-input border border-line-light bg-bg px-3 py-2 focus-within:border-accent">
+      <label className="flex items-center gap-2 rounded-input border border-line-light bg-surface-muted/70 px-3 py-2 focus-within:border-brand focus-within:bg-surface">
         <Search size={16} className="shrink-0 text-muted" aria-hidden="true" />
         <input
           type="search"
@@ -75,7 +75,7 @@ function FestivalSearch({ onSelect }: { onSelect: (festival: SelectedFestival) =
               <button
                 type="button"
                 onClick={() => onSelect(festival)}
-                className="block w-full px-3 py-2 text-left text-sm font-bold hover:bg-accent/5 focus-visible:bg-accent/10"
+                className="block w-full px-3 py-2 text-left text-sm font-bold text-ink hover:bg-surface-soft focus-visible:bg-surface-soft"
               >
                 {festival.name}
                 {festival.venue_name ? (
@@ -103,7 +103,7 @@ export function FestivalPicker({ festival, loading, error, onChange }: FestivalP
         className="flex min-h-11 w-full items-center gap-3 py-2 text-left"
         onClick={() => setOpen(!open)}
       >
-        <Ticket size={21} className="ml-1 shrink-0 text-accent" aria-hidden="true" />
+        <Ticket size={20} className="ml-0.5 shrink-0 text-brand" aria-hidden="true" />
         <span className="min-w-0 flex-1">
           <span className="block text-xs text-muted">축제</span>
           <span className="block truncate text-sm font-extrabold">

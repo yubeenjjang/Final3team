@@ -37,7 +37,7 @@ function resolveAccentStrokeColor(): string {
   }
   const value = window
     .getComputedStyle(document.documentElement)
-    .getPropertyValue("--color-accent")
+    .getPropertyValue("--color-brand")
     .trim();
   return value || "currentColor";
 }

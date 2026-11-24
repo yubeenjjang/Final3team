@@ -86,6 +86,8 @@ export interface ReadyRoute extends RouteResponse {
   completed_valid_route: boolean;
   route_preference: RoutePreference;
   travel_mode: ReturnRouteRequest["travel_mode"];
+  provider?: string | null;
+  provider_tier?: string | null;
   origin: RouteEndpoint;
   destination: RouteEndpoint;
   route_candidates: RouteCandidate[];

@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   Bus,
   CalendarDays,
   Compass,
   Heart,
   Hospital,
-  ImageOff,
   MapPin,
   ParkingCircle,
   RotateCcw,
@@ -21,6 +21,7 @@ import {
   Utensils,
   Users,
 } from "lucide-react";
+import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import { KakaoMap } from "@/components/KakaoMap";
 import {
   getAccessToken,
@@ -172,9 +173,9 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   if (loading) {
     return (
       <div className="space-y-4 px-4 py-4">
-        <div className="h-56 animate-pulse rounded-card bg-surface" />
-        <div className="h-8 w-2/3 animate-pulse rounded-card bg-surface" />
-        <div className="h-24 animate-pulse rounded-card bg-surface" />
+        <div className="h-56 animate-pulse rounded-card bg-surface-muted" />
+        <div className="h-8 w-2/3 animate-pulse rounded-card bg-surface-muted" />
+        <div className="h-24 animate-pulse rounded-card bg-surface-muted" />
       </div>
     );
   }
@@ -188,7 +189,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         </p>
         <Link
           href="/festivals"
-          className="mt-1 rounded-chip bg-brand px-4 py-2 text-xs font-bold text-surface"
+          className="mt-1 rounded-chip bg-brand px-4 py-2 text-xs font-bold text-surface shadow-sm"
         >
           목록으로
         </Link>
@@ -206,7 +207,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
           <button
             type="button"
             onClick={() => setReloadTick((prev) => prev + 1)}
-            className="inline-flex items-center gap-1.5 rounded-chip bg-brand px-4 py-2 text-xs font-bold text-surface"
+            className="inline-flex items-center gap-1.5 rounded-chip bg-brand px-4 py-2 text-xs font-bold text-surface shadow-sm"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
             <span>다시 시도</span>
@@ -241,7 +242,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       <div className="flex items-center justify-between">
         <Link
           href="/festivals"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-brand"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-ink transition-colors hover:text-brand"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           <span>축제 상세</span>
@@ -250,7 +251,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
 
       {/* 대표 이미지 + D-day + 하트 */}
       <section className="space-y-2">
-        <div className="relative h-56 w-full overflow-hidden rounded-card border border-line-light bg-surface-soft/50">
+        <div className="relative h-56 w-full overflow-hidden rounded-card border border-line-light bg-surface-soft/45 shadow-md">
           {showHeroImage && heroImage ? (
             <>
               <Image
@@ -267,14 +268,11 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
               </span>
             </>
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted">
-              <ImageOff className="h-7 w-7" aria-hidden="true" />
-              <span className="text-xs font-medium">이미지 준비 중</span>
-            </div>
+            <FestivalImagePlaceholder />
           )}
 
           {badge ? (
-            <span className="absolute left-3 top-3 rounded-chip bg-brand px-2.5 py-1 text-xs font-bold text-surface shadow-sm">
+            <span className="absolute left-3 top-3 rounded-chip bg-brand px-2.5 py-1 text-xs font-extrabold text-surface shadow-sm">
               {badge}
             </span>
           ) : null}
@@ -306,10 +304,10 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       </section>
 
       {/* 제목 & 한 줄 소개 */}
-      <section className="space-y-2">
+      <section className="space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="h-5 w-1.5 rounded-chip bg-brand" aria-hidden="true" />
-          <h1 className="text-xl font-extrabold tracking-tight text-ink">
+          <h1 className="text-xl font-black tracking-tight text-ink">
             {festival.name}
           </h1>
         </div>
@@ -323,29 +321,31 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       {/* AI 질문창 */}
       <FestivalAiPrompt festivalId={festival.festival_id} />
 
-      {/* 정보 칩 2x2 */}
+      {/* 정보 칩 */}
       <section aria-label="기본 정보" className="grid grid-cols-2 gap-2">
-        <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3 py-2.5 text-xs">
-          <CalendarDays className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
-          <span className="whitespace-normal font-medium leading-snug text-ink">
+        <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
+          <CalendarDays className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+          <span className="whitespace-normal font-semibold leading-snug text-ink">
             {periodText}
           </span>
         </div>
-        <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3 py-2.5 text-xs">
-          <MapPin className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
-          <span className="truncate font-medium text-ink">
+        <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
+          <MapPin className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+          <span className="truncate font-semibold text-ink">
             {festival.venue_name ?? festival.address ?? "장소 미정"}
           </span>
         </div>
-        <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3 py-2.5 text-xs">
-          <Ticket className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
-          <span className="truncate font-medium text-ink">
-            {festival.fee_text ?? "요금 정보 없음"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3 py-2.5 text-xs">
-          <Compass className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
-          <span className="truncate font-medium text-ink">{regionLabel}</span>
+        {festival.fee_text ? (
+          <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
+            <Ticket className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+            <span className="truncate font-semibold text-ink">
+              {festival.fee_text}
+            </span>
+          </div>
+        ) : null}
+        <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
+          <Compass className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+          <span className="truncate font-semibold text-ink">{regionLabel}</span>
         </div>
       </section>
 
@@ -356,7 +356,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
             <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
             <h2 className="text-base font-extrabold text-ink">축제 정보</h2>
           </div>
-          <div className="space-y-1.5 rounded-card bg-surface-soft/70 px-4 py-3 text-xs leading-relaxed text-ink">
+          <div className="space-y-1.5 rounded-card bg-surface-soft/75 px-4 py-3.5 text-xs leading-relaxed text-ink shadow-sm">
             {festival.address ? (
               <p>
                 <span className="font-bold">주소: </span>
@@ -370,7 +370,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
                   href={festival.homepage_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-accent underline"
+                  className="font-semibold text-brand underline underline-offset-2"
                 >
                   {festival.homepage_url}
                 </a>
@@ -380,10 +380,10 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         </section>
       ) : null}
 
-      {/* 현장 정보 (혼잡 · 날씨 · 공지) */}
+      {/* 현장 정보 (주변 지역 혼잡 · 날씨 · 공지) */}
       <LiveInfoSection festivalId={festival.festival_id} />
 
-      {/* 주변 정보 아이콘 + 작은 지도 */}
+      {/* 주변 정보 아이콘 + 지도 */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
@@ -398,7 +398,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
                 key={item.id}
                 type="button"
                 onClick={() => setNearbyMessage(`${item.label} 정보는 준비 중이에요`)}
-                className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface px-1 py-2.5 text-center transition-colors hover:bg-surface-soft"
+                className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface-soft/45 px-1 py-2.5 text-center shadow-sm transition-colors hover:border-brand/40 hover:bg-surface-soft"
               >
                 <Icon className="h-4 w-4 text-brand" aria-hidden="true" />
                 <span className="text-[11px] font-semibold text-ink">
@@ -429,10 +429,10 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
                   title: festival.name,
                 },
               ]}
-              className="h-44 w-full"
+              className="h-44 w-full shadow-sm"
             />
             {festival.venue_name || festival.address ? (
-              <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3.5 py-2.5 text-xs text-ink">
+              <div className="flex items-center gap-2 rounded-card border border-line-light bg-surface px-3.5 py-2.5 text-xs text-ink shadow-sm">
                 <MapPin className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
                 <div className="min-w-0">
                   {festival.venue_name ? (
@@ -448,22 +448,22 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
             ) : null}
           </div>
         ) : (
-          <div className="flex h-28 items-center justify-center rounded-card border border-line-light bg-muted/10 text-xs font-medium text-muted">
+          <div className="flex h-28 items-center justify-center rounded-card border border-line-light bg-surface-muted/60 text-xs font-medium text-muted">
             위치 정보가 없어요
           </div>
         )}
       </section>
 
-      {/* AI 안심 귀가 배너 */}
-      <section className="rounded-card bg-accent p-4 text-surface shadow-sm">
+      {/* AI 안심 귀가 진한 회색 배너 */}
+      <section className="rounded-[20px] bg-banner-dark p-4 text-surface shadow-md">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-card bg-surface/15">
-              <ShieldCheck className="h-6 w-6 text-surface" aria-hidden="true" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand/20 ring-1 ring-brand/40">
+              <ShieldCheck className="h-6 w-6 fill-brand text-surface" aria-hidden="true" />
             </div>
             <div className="space-y-0.5">
-              <h2 className="text-sm font-extrabold">AI 안심 귀가</h2>
-              <p className="text-[11px] leading-snug text-surface/85">
+              <h2 className="text-sm font-black">AI 안심 귀가</h2>
+              <p className="text-[11px] leading-snug text-surface/80">
                 혼잡도와 동선을 고려한 안전한 귀갓길을 안내해요
               </p>
             </div>
@@ -473,9 +473,9 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
             href={`/routes/return?festivalId=${encodeURIComponent(
               festival.festival_id,
             )}`}
-            className="shrink-0 rounded-chip bg-surface px-3.5 py-2 text-xs font-extrabold text-brand shadow-sm transition-opacity hover:opacity-95"
+            className="inline-flex shrink-0 items-center gap-1 rounded-chip bg-brand px-3.5 py-2 text-xs font-extrabold text-surface shadow-sm transition-opacity hover:opacity-90"
           >
-            귀가 경로 보기 →
+            귀가 경로 보기 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         </div>
       </section>

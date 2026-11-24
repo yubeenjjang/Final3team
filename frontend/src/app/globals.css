@@ -5,9 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #FCFCFF;
+  --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
   --color-surface-soft: #FEEEF2;
+  --color-surface-muted: #F4F5F7;
+  --color-banner-dark: #2D2E32;
   --color-ink: #0A101F;
   --color-muted: #6B7280;
   --color-brand: #F0145F;

@@ -28,6 +28,13 @@ export interface LiveInfoSectionProps {
   festivalId: string;
 }
 
+function formatAreaDistance(distanceM: number): string {
+  if (!Number.isFinite(distanceM) || distanceM <= 0) {
+    return "구역 내";
+  }
+  return `${Math.round(distanceM)}m`;
+}
+
 export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
   const [crowdState, setCrowdState] = useState<AsyncCardState<CrowdResponse>>({
     resolvedId: null,
@@ -120,6 +127,8 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
   const crowdLoading = crowdState.resolvedId !== festivalId;
   const weatherLoading = weatherState.resolvedId !== festivalId;
   const noticesLoading = noticesState.resolvedId !== festivalId;
+  const nearbyAreas = crowdState.data?.nearby_areas ?? [];
+  const fallbackAreas = crowdState.data?.areas ?? [];
 
   return (
     <section aria-label="현장 정보" className="space-y-3">
@@ -129,14 +138,14 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {/* 혼잡도 카드 (A10) */}
+        {/* 주변 지역 혼잡 카드 (A10) */}
         <article
           data-testid="live-info-crowd"
-          className="rounded-card border border-line-light bg-surface p-3.5"
+          className="rounded-card border border-line-light bg-surface p-3.5 shadow-sm"
         >
           <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-ink">
             <Users className="h-4 w-4 text-brand" aria-hidden="true" />
-            <span>현재 혼잡도</span>
+            <span>주변 지역 혼잡</span>
           </div>
 
           {crowdLoading ? (
@@ -149,33 +158,89 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
             <p className="text-xs font-medium text-brand">
               {crowdState.data.error?.message ?? "혼잡 정보를 불러올 수 없어요"}
             </p>
-          ) : crowdState.data?.areas && crowdState.data.areas.length > 0 ? (
+          ) : nearbyAreas.length > 0 ? (
             <div className="space-y-2">
-              {crowdState.data.status === "stale" ? (
+              {crowdState.data?.status === "stale" ? (
                 <p className="text-[11px] font-semibold text-ink">
                   정보가 오래됐어요
                 </p>
               ) : null}
-              {crowdState.data.areas.map((area) => (
-                <div key={area.area_code} className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs font-bold text-ink">
-                      {area.area_name}
-                    </span>
-                    <span
-                      className={`rounded-chip px-2 py-0.5 text-[11px] font-bold ${getCrowdColorClass(
-                        area.congest_color,
-                      )}`}
-                    >
-                      {area.congest_level}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted">
-                    추정 인구 {area.population_min.toLocaleString("ko-KR")}~
-                    {area.population_max.toLocaleString("ko-KR")}명
-                  </p>
-                </div>
-              ))}
+              <ul className="space-y-2">
+                {nearbyAreas.map((area) => (
+                  <li
+                    key={area.area_code}
+                    className="space-y-1 border-t border-line-light/70 pt-2 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold text-ink">
+                        {area.area_name}
+                        <span className="ml-1 text-[11px] font-medium text-muted">
+                          ({formatAreaDistance(area.distance_m)})
+                        </span>
+                      </span>
+                      {area.data ? (
+                        <span
+                          className={`rounded-chip px-2 py-0.5 text-[11px] font-bold ${getCrowdColorClass(
+                            area.data.congest_color,
+                          )}`}
+                        >
+                          {area.data.congest_level}
+                        </span>
+                      ) : (
+                        <span className="rounded-chip bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-muted">
+                          확인 불가
+                        </span>
+                      )}
+                    </div>
+                    {area.data ? (
+                      <p className="text-[11px] text-muted">
+                        추정 인구 {area.data.population_min.toLocaleString("ko-KR")}~
+                        {area.data.population_max.toLocaleString("ko-KR")}명
+                      </p>
+                    ) : area.error?.message ? (
+                      <p className="text-[11px] text-muted">{area.error.message}</p>
+                    ) : null}
+                    {area.status === "stale" && crowdState.data?.status !== "stale" ? (
+                      <p className="text-[11px] font-semibold text-ink">
+                        정보가 오래됐어요
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : fallbackAreas.length > 0 ? (
+            <div className="space-y-2">
+              {crowdState.data?.status === "stale" ? (
+                <p className="text-[11px] font-semibold text-ink">
+                  정보가 오래됐어요
+                </p>
+              ) : null}
+              <ul className="space-y-2">
+                {fallbackAreas.map((area) => (
+                  <li
+                    key={area.area_code}
+                    className="space-y-1 border-t border-line-light/70 pt-2 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold text-ink">
+                        {area.area_name}
+                      </span>
+                      <span
+                        className={`rounded-chip px-2 py-0.5 text-[11px] font-bold ${getCrowdColorClass(
+                          area.congest_color,
+                        )}`}
+                      >
+                        {area.congest_level}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted">
+                      추정 인구 {area.population_min.toLocaleString("ko-KR")}~
+                      {area.population_max.toLocaleString("ko-KR")}명
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
             <p className="text-xs text-muted">혼잡 정보가 없어요</p>
@@ -185,10 +250,10 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
         {/* 날씨 카드 (A09) */}
         <article
           data-testid="live-info-weather"
-          className="rounded-card border border-line-light bg-surface p-3.5"
+          className="rounded-card border border-line-light bg-surface p-3.5 shadow-sm"
         >
           <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-ink">
-            <CloudSun className="h-4 w-4 text-accent" aria-hidden="true" />
+            <CloudSun className="h-4 w-4 text-brand" aria-hidden="true" />
             <span>현장 날씨</span>
           </div>
 
@@ -239,7 +304,7 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
       {/* 공지 카드 (A07) */}
       <article
         data-testid="live-info-notices"
-        className="rounded-card border border-line-light bg-surface p-3.5"
+        className="rounded-card border border-line-light bg-surface p-3.5 shadow-sm"
       >
         <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-ink">
           <Megaphone className="h-4 w-4 text-brand" aria-hidden="true" />
@@ -271,7 +336,7 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
               {noticesState.data.items.map((notice) => (
                 <li
                   key={notice.notice_id}
-                  className="rounded-xl bg-surface-soft/50 px-3 py-2.5"
+                  className="rounded-xl bg-surface-soft/55 px-3 py-2.5"
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="rounded-chip bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
