@@ -189,4 +189,8 @@ def get_crowd(festival_id: str, scenario: str | None) -> CrowdResponse:
     ) and area is not None:
         response.areas = [area]
         response.observed_at = area.observed_at
+        response.notices.extend([
+            f"주변 지역 혼잡(모의 데이터) · {area.area_name}",
+            "행사장 안 혼잡과 다를 수 있어요",
+        ])
     return response
