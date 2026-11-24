@@ -1,6 +1,6 @@
 # 놀다가 단일 Festival Agent 상태 전이 그래프 설계서 — 초안
 
-> 작성 기준: 2026-11-23. 11/27 M03 제출을 위한 **설계 초안**이다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, `Docs/Step 2/API_설계문서.md` v0.3.3, `origin/ohyun` 브랜치의 `Docs/Step 2/handoff/에이전트_도구_인계.md`이다. 도구 계약은 최신 `origin/ohyun` 브랜치와 대조한다.
+> 작성 기준: 2026-11-23, 검토 갱신 2026-11-24. 11/27 M03 제출을 위한 **설계 초안**이다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, `origin/ohyun:Docs/Step 2/API_설계문서.md` v0.4, `origin/ohyun:Docs/Step 2/handoff/에이전트_도구_인계.md`이다. 현재 작업 브랜치의 API 문서 사본은 v0.3.3이며, 최신 도구 계약은 오현님 브랜치를 기준으로 확인한다.
 
 ## 1. 목적과 범위
 
@@ -24,6 +24,16 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 
 현재 단독 입력 계약은 `FestivalRequest(intent, festival_id, 검색 조건, notice_type)`이고, 최종 출력은 `FestivalResult(outcome, answer, evidence, transitions, used_tools, handoff_target)`이다. `tool_results`는 그래프의 한 실행 동안 `response`에 보관하며 별도 영속 상태가 아니다. **Supervisor가 이 입력을 실제로 생성하는 세부 형식은 아직 확정되지 않았다.** 이 표는 W22의 확장 계약 초안이며 후속 기능을 현재 구현 완료로 세지 않는다.
 
+### 1-2. 실제 자료와 모의 자료의 시연 경계
+
+| 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
+|---|---|---|
+| 축제 검색·상세 | TourAPI 적재 DB의 실제 응답을 수동 확인하고, 그 응답 필드를 Agent에 재생했다. 학원 서버 직접 Agent 호출은 남았다. | 직접 연결이 검증된 경우에만 실제 DB 조회로 표시한다. |
+| 서울 주변 혼잡 | 서울시 API의 `is_mock:false` 응답을 Safari에서 확인하고 필드를 Agent에 재생했다. Agent의 직접 HTTP 연결 시험은 남았다. | 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. 실제 API 응답을 확인한 사실과 실제 연동 시연을 구분한다. |
+| 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
+
+서버 응답의 `is_mock` 값을 유지해 답변에 반영한다. 시연 환경의 자료 모드는 실제 실행 직전에 다시 확인한다.
+
 ## 2. 상태·노드·전이(개념)
 
 **그림 1. Festival Agent 개념 상태 전이.** 그림의 설명 상자는 실제 LangGraph 노드 이름이 아니며, 바로 아래 2-1 표에서 노드에 대응한다.
@@ -33,10 +43,10 @@ flowchart TD
     START([START]) --> I[구조화 요청의 범위 판정]
     I -->|귀가·운영 등 다른 역할| H[handoff_required로 종료]
     I -->|Festival 범위| S{필수 입력 충분?}
-    S -->|아니요| Q[누락값 질문 후 종료]
+    S -->|아니요| Q[확인 질문 후 clarification_needed]
     S -->|예| P[허용 도구·인자 선택]
     P --> B{30초·4회 호출 예산 남음?}
-    B -->|아니요| U[확인 불가 또는 부분 결과로 종료]
+    B -->|아니요| U[unavailable 또는 partial로 종료]
     B -->|예| T[축제 도구 호출]
     T -->|ok=true| V[ID·출처·시각·지원 범위 검증]
     T -->|ok=false, retryable=true| R{재시도 한도·시간 남음?}
@@ -47,15 +57,15 @@ flowchart TD
     E -->|입력 오류| Q
     E -->|재시도 가능·호출 예산 소진| U
     E -->|권한 오류·기타| U
-    V -->|검색·공지 items 빈 배열| Z[확인된 범위의 빈 결과 안내 후 종료]
-    V -->|status=unsupported| X[지역 미지원 또는 부분 결과로 종료]
+    V -->|검색·공지 items 빈 배열| Z[빈 결과 안내 후 answered]
+    V -->|status=unsupported| X[unsupported 또는 partial로 종료]
     V -->|status=stale| L[관측 시각·오래된 정보 경고 후 answered]
     V -->|status=unavailable·지원 범위 또는 필수 근거 부족| U
     V -->|추가 도구 필요| P
-    V -->|검증 완료| A[출처·시각·한계 포함 답변 후 종료]
+    V -->|검증 완료| A[출처·시각·한계 포함 answered]
 ```
 
-현재 그래프에서 `FESTIVAL_NOT_FOUND`는 재선택 질문으로 끝난다. 검색 조건을 이용한 자동 검색 복귀는 구현되지 않았다. `추가 도구 필요 → P`는 `search_detail_crowd`의 검색→상세→혼잡 순차 호출에만 쓰며 도구 호출 상한을 적용한다. 복합 흐름에서 이미 확인한 정보가 있으면 후속 조회 실패·미지원·예산 초과 시 `partial`로 종료한다. 단독 혼잡 조회의 `stale`은 오래된 자료임을 밝힌 `answered`다.
+현재 그래프에서 `FESTIVAL_NOT_FOUND`는 재선택 질문으로 끝난다. 검색 조건을 이용한 자동 검색 복귀는 구현되지 않았다. `추가 도구 필요 → P`는 `search_detail_crowd`의 검색→상세→혼잡 순차 호출에만 쓰며 도구 호출 상한을 적용한다. 복합 흐름에서 이미 확인한 정보가 있으면 후속 조회 실패·미지원·예산 초과 시 `partial`로 종료한다. 단독 혼잡 조회의 `stale`은 오래된 자료임을 밝힌 `answered`다. `budget_exceeded`는 최종 `outcome`이 아니라 호출 예산 소진을 나타내는 `transitions` 기록이며, 그때의 최종 결과는 `unavailable` 또는 `partial`이다.
 
 
 ### 2-1. 개념 단계와 실제 노드 대응
@@ -115,7 +125,7 @@ flowchart TD
 | `save_favorite` | 단일 Festival Agent 범위 밖 | 팀 합의에 따라 Supervisor가 처리한다. Festival Agent 도구 허용 목록에서 제외한다. |
 | `get_weather` | 후속 후보 | 현재 13개 도구에 없다. 도구·API 계약과 BFCL 영향 검토 후 추가한다. |
 
-이름·인자·허용값은 API 설계 v0.3.3의 JSON Schema 및 `origin/ohyun` 브랜치의 `handoff/tools/*.json`을 따른다. 이 문서에서 새로운 도구 인자를 임의 확정하지 않는다. 운영자 전용 `get_incident`·`get_route_metrics`·`list_allowed_actions`·`propose_recovery_action` 등은 Festival Agent에 제공하지 않는다.
+이름·인자·허용값은 `origin/ohyun`의 API 설계 v0.4 JSON Schema 및 `handoff/tools/*.json`을 따른다. 현재 인계 문서 머리말에는 v0.3.3이 남아 있어 버전 표기 갱신을 오현님께 확인한다. 이 문서에서 새로운 도구 인자를 임의 확정하지 않는다. 운영자 전용 `get_incident`·`get_route_metrics`·`list_allowed_actions`·`propose_recovery_action` 등은 Festival Agent에 제공하지 않는다.
 
 ### 5-1. 연결된 도구 4개의 입력·결과
 
@@ -123,12 +133,12 @@ flowchart TD
 |---|---|---|---|
 | `search_festivals` | 모두 선택: `region`(기본 `ALL`, 17개 시·도 코드), `date_from`·`date_to`(`YYYY-MM-DD`, 순서·최대 366일 검증), `q`(1~50자), `status`(`upcoming/ongoing/ended/cancelled`), `page_size`(1~20, 기본 10). **도구 스키마에는 `bbox`·`sort`·`page`가 없다.** | `data.items[]`의 `festival_id`, `name`, `region_code`, 날짜, `source`, `last_synced_at`; `total`·`page`·`page_size` | `items:[]`는 `ok:true`인 결과 없음. `VALIDATION_ERROR`는 되묻거나 입력 수정, `TOOL_TIMEOUT`·`RATE_LIMITED`는 제한 재시도. |
 | `get_festival` | 필수 `festival_id:string` 하나. 검색 결과의 ID나 선택 문맥의 ID를 그대로 사용 | `data.festival_id`, `name`, 장소·주소·좌표, 날짜, `source`, `source_ref`, `last_synced_at`. 빈값 허용 필드는 그대로 표시 | `FESTIVAL_NOT_FOUND`는 재선택 요청. ID 형식 오류는 `VALIDATION_ERROR`, 일시적 호출 오류는 `TOOL_TIMEOUT`. |
-| `get_crowd` | 필수 `festival_id:string` 하나. 지역 코드나 관측구역 코드를 인자로 보내지 않음 | `data.festival_id`, `status`, `coverage`, `areas[]`의 `area_name`, `relation_type`, `congest_level`, `observed_at`, 별도 `forecast[]` | `status:unsupported`는 정상 미지원. `status:stale`은 관측 시각을 밝히고 현재 상태로 단정하지 않음. `status:unavailable`은 정보 제공 불가. 본문 결과 코드 오류는 `SOURCE_RESULT_ERROR`. |
+| `get_crowd` | 필수 `festival_id:string` 하나. 지역 코드나 관측구역 코드를 인자로 보내지 않음 | 현재 Agent가 사용하는 값은 `data.festival_id`, `status`, `coverage`, `areas[]`의 `area_name`, `congest_level`, `observed_at`, `is_estimate`, `source`다. API의 `forecast[]`는 현재 답변에 사용하지 않는다. | `status:unsupported`는 정상 미지원. `status:stale`은 관측 시각을 밝히고 현재 상태로 단정하지 않음. `status:unavailable`은 정보 제공 불가. 본문 결과 코드 오류는 `SOURCE_RESULT_ERROR`. |
 | `get_official_notices` | 필수 `festival_id:string`, 선택 `type`(`operation/traffic_control/no_stop/bus_detour/road_closure`) | `data.festival_id`, `status`, `coverage`, `items[]`의 `notice_id`, `title`, `source`, `published_at`, `effective_from`, `effective_to` | `items:[]`는 정상 빈 결과. `unsupported`·`unavailable`은 공지 확인 불가, `stale`은 오래된 자료임을 표시. 현재 검증 자료는 모의 응답이다. |
 
 `search_festivals` 도구의 기본 `page_size`는 10이지만 공개 축제 목록 API의 기본값은 20이다. 연결 어댑터는 도구 호출에서 값이 생략되면 API 요청에 `page_size=10`을 명시한다.
 
-도구 래퍼의 공통 출력은 `{ok, data, request_id, is_mock}` 또는 `{ok:false, error:{code,message,retryable}, request_id}`다. **`ok`는 도구 호출의 성공 여부이고, `data.status`는 데이터 이용 가능 상태**이므로 두 값을 순서대로 판정한다. `forecast[]`는 예측 정보로 따로 표시하고 현재 관측값처럼 표현하지 않는다.
+도구 래퍼의 공통 출력은 `{ok, data, request_id, is_mock}` 또는 `{ok:false, error:{code,message,retryable}, request_id}`다. **`ok`는 도구 호출의 성공 여부이고, `data.status`는 데이터 이용 가능 상태**이므로 두 값을 순서대로 판정한다. API가 `forecast[]`를 보내더라도 현재 Agent는 이를 답변·근거에 넣지 않는다. 후속 연결 시에는 예측 정보로 별도 표시하고 현재 관측값처럼 표현하지 않는다.
 
 
 ### 5-2. 재시도와 재추론의 구분
@@ -226,7 +236,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `validate` | 단일 조회 완료·빈 결과·미지원·근거 실패 | `END` | 결과별 `outcome` 반환 |
 | `validate` | 복합 검색·상세 성공, 다음 단계 필요 | `select_tool` | 정상 3회 호출, 전체 상한 4회(일시 오류 재시도 1회분) |
 | `validate` | 복합 후속 단계 완료·실패 | `END` | 앞 단계 답변이 있으면 `partial` |
-| `error` | 재시도 가능 오류이고 총 4회 호출 예산 소진 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록, 추가 호출 없음 |
+| `error` | 재시도 가능 오류이고, 현재 단계에서 아직 재시도하지 않았으며(`attempts<2`), 총 4회 호출 예산 소진 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록, 추가 호출 없음 |
 | `error` | 그 밖의 오류 | `END` | 없는 ID·입력 오류는 확인 질문, 기타는 확인 불가 |
 
 조건은 `build_festival_graph()`의 `add_conditional_edges` 및 각 노드의 결과 생성과 대응한다. `retry`와 복합 `validate → select_tool`은 모두 호출 수·시간으로 닫힌 유한 반복이다. 성공·실패·예산 초과 중 어느 것도 다음 노드 없이 방치되지 않는다.
@@ -254,7 +264,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 공식 공지 결과 0건 | 정상 빈 결과로 처리하되 전체 현장 공지가 없다고 단정하지 않는다. 모의 응답은 모의임을 표시한다. |
 | 혼잡 `stale` | `observed_at`과 오래된 정보 경고를 함께 제시하고 현재 혼잡이라고 단정하지 않음. |
 | 혼잡 대체값 `is_estimate=true` | 최근 4주 같은 요일·시간대 평균임을 답변과 근거에 표시한다. 실시간 관측으로 표현하지 않는다. |
-| 혼잡 `unavailable` | 공급원 오류·좌표 누락 등 이유를 확인 가능한 범위에서 안내하고 현재 혼잡값을 만들지 않음. |
+| 혼잡 `unavailable` | 현재 코드의 안내는 “현재 혼잡 정보를 확인할 수 없습니다.”다. 응답의 세부 원인을 사용자 문구에 덧붙이지 않고 현재 혼잡값도 만들지 않는다. 복합 요청에서 앞 단계 결과가 있으면 `partial`로 종료한다. |
 | 일시적 도구 오류·시간 초과 | `retryable=true`일 때만 **최대 1회** 재시도. 전체 실행 시간·도구 호출 상한을 초과하면 `unavailable`, 앞 단계에서 확인한 결과가 있으면 `partial`. |
 | 입력 오류·권한 오류 | 입력 오류는 되묻고, 권한 오류는 우회 호출 없이 종료. |
 | 출처·시각·지원 범위 검증 실패 | 확인 불가를 명시하고 종료. 혼잡 `ok`·`stale`에는 `coverage.supported=true`가 필요하다. 모의 결과는 실제 현장 정보로 표시하지 않음. |
