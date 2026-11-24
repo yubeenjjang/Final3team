@@ -1,6 +1,6 @@
-# 놀다가 단일 Festival Agent 상태 전이 그래프 설계서 — 초안
+# 놀다가 단일 Festival Agent 상태 전이 그래프 설계서
 
-> 작성 기준: 2026-11-23, 검토 갱신 2026-11-24. 11/27 M03 제출을 위한 **설계 초안**이다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, `origin/ohyun:Docs/Step 2/API_설계문서.md` v0.4, `origin/ohyun:Docs/Step 2/handoff/에이전트_도구_인계.md`이다. 현재 작업 브랜치의 API 문서 사본은 v0.3.3이며, 최신 도구 계약은 오현님 브랜치를 기준으로 확인한다.
+> 작성 기준: 2026-11-23, 제출본 정리: 2026-11-24. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, `origin/ohyun:Docs/Step 2/API_설계문서.md` v0.4, `origin/yubeen:Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 현재 작업 브랜치의 API 문서 사본은 v0.3.3이며, 최신 도구 계약은 오현님 브랜치를 기준으로 확인한다. 코드 기준은 `dayoung 6dc31ca`다.
 
 ## 1. 목적과 범위
 
@@ -421,15 +421,19 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 따라서 A-7의 재시험 명령을 새 ID와 `--require-crowd-answered`로 갱신했다. **다영님이 학원망 맥북에서 `dayoung f242684`를 임시 폴더에 받아 직접 실행한 결과**, 진행 축제 검색 `total=1`, 예정 축제 검색 `total=12`, 첫 검색 결과 상세 `answered`·`source=tourapi`였다. 이어 서울빛초롱축제의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 검색·상세·혼잡 응답의 `is_mock:false`를 요구하며, 새 옵션은 실제 혼잡 `answered`가 아니면 오류로 종료한다. 이번 실행은 오류 없이 끝났으므로 **서울빛초롱축제 1건의 실제 DB·혼잡 API와 Festival Agent 직접 HTTP 연결을 확인**했다. 다만 터미널 출력에는 혼잡 관측 시각·구역 이름이 없어 그 값은 이번 증빙으로 확정하지 않는다. A-8~A-11의 과거 실행 기록은 당시 결과로 유지한다.
 
-같은 날 집 Windows에서 새 명령을 실행했으나 첫 `ongoing` 검색이 5초 안에 응답하지 않아 `TOOL_TIMEOUT`으로 종료됐다. 학원망 서버에 닿지 못한 결과이며 **새 축제 ID의 공개 상세나 Agent 혼잡 답변을 검증한 결과가 아니다.** 학원망에 접속한 맥북에서 동일 명령을 다시 실행해야 한다.
+별도 접속 환경에서의 재시도는 첫 `ongoing` 검색이 `TOOL_TIMEOUT`으로 종료되어 실자료 검증 근거로 사용하지 않는다. 앞 문단의 직접 HTTP 성공 기록은 이와 구분한다.
 
-## 부록 B. 제출 전 확인할 결정
+### A-13. W14 공통 실행기 연결 후 재시험 (2026-11-24)
+
+`dayoung 6dc31ca`에서 Festival 단독 실행기의 도구 호출을 `ToolExecutor.execute`로 바꾸고, 실행별 추적 ID를 전달했다. 공통 명령으로 모의 전송·그래프 시험 **35개가 통과**했다. 같은 코드로 A-7의 실제 API 명령을 다시 실행했으나 첫 진행 축제 검색에서 `TOOL_TIMEOUT`으로 종료됐다. 따라서 **공통 실행기를 통한 실제 DB·서울 혼잡 공급원 연속 실행은 아직 통과로 기록하지 않는다.** 이전 A-12의 성공은 기존 `FestivalApiTools`를 사용한 결과다. 동일 명령을 API에 접속 가능한 환경에서 재시험해야 한다.
+
+## 부록 B. 후속 구현에서 확인할 결정
 
 1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
 2. 세션·체크포인트를 도입할 시점에 `thread_id`, 보존 기간, 중단 후 재개 규칙을 W26 및 DB 문서와 맞춘다.
 3. 날씨 답변: Festival Agent의 최종 범위에 둘지, `get_weather` 도구를 언제 추가할지, BFCL 문항에 어떤 영향을 주는지 결정한다.
 4. 공식 공지의 실제 공급원과 시설 자료의 준비 상태를 확인한다. 현재 공지는 모의 API와의 계약만 검증했다.
-5. 재시도·호출·전체 시간 예산과 상태 저장 필드를 구현 담당자와 확정한다.
+5. 현재 코드의 단계별 재시도 1회·전체 도구 호출 4회·30초 제한을 후속 협업 흐름에도 적용할지 구현 담당자와 확인한다.
 6. 도구 계약은 `origin/ohyun` 최신 브랜치를 기준으로 유지한다. 인계 문서의 Festival Agent 도구 목록에서 `save_favorite`가 제외된 상태도 확인했다.
 
 ## 부록 C. W23 검토자가 확인할 지점 (2026-11-24)
@@ -445,7 +449,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ## 부록 D. 11/27 공통 시험 실행 기준
 
-- **시험 코드 기준:** `dayoung` 브랜치의 `64d2093`. `origin/main`의 2026-11-23 WBS 갱신 `ce5fcad`를 병합한 뒤의 시험 코드다. 이후 RAG 자료 커밋은 Festival Agent 실행 계약을 바꾸지 않았다. 팀 병합 기준 커밋은 실제 병합 후 다시 기록한다.
+- **시험 코드 기준:** `dayoung 6dc31ca`(2026-11-24). W14 공통 도구 실행기를 Festival 단독 HTTP 실행기에 연결한 코드다. 팀 `main` 병합 기준 커밋은 실제 병합 후 기록한다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
 - **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
