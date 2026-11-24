@@ -41,10 +41,11 @@ flowchart TD
     T -->|ok=true| V[ID·출처·시각·지원 범위 검증]
     T -->|ok=false, retryable=true| R{재시도 한도·시간 남음?}
     R -->|예| T
-    R -->|아니요| U
+    R -->|아니요| E
     T -->|ok=false, retryable=false| E{오류 종류}
     E -->|FESTIVAL_NOT_FOUND| Q
     E -->|입력 오류| Q
+    E -->|재시도 가능·호출 예산 소진| U
     E -->|권한 오류·기타| U
     V -->|검색·공지 items 빈 배열| Z[확인된 범위의 빈 결과 안내 후 종료]
     V -->|status=unsupported| X[지역 미지원 또는 부분 결과로 종료]
@@ -219,13 +220,14 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | `call_tool` | 호출 전·후 시간 또는 총 4회 예산 초과 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록 |
 | `call_tool` | `response.ok=true` | `validate` | — |
 | `call_tool` | 오류가 재시도 가능, `attempts<2`, 총 호출 수 `<4` | `retry` | 같은 단계 최대 1회 재시도 |
-| `call_tool` | 재시도 가능 오류이나 총 4회 호출 예산 소진 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록, 추가 호출 없음 |
+| `call_tool` | 재시도 가능 오류이나 총 4회 호출 예산 소진 | `error` | 추가 호출 없이 예산 결과 생성 |
 | `call_tool` | 그 밖의 오류 | `error` | 같은 도구 추가 호출 없음 |
 | `retry` | 항상 | `call_tool` | 다음 호출에서도 시간·횟수 검사 |
 | `validate` | 단일 조회 완료·빈 결과·미지원·근거 실패 | `END` | 결과별 `outcome` 반환 |
 | `validate` | 복합 검색·상세 성공, 다음 단계 필요 | `select_tool` | 정상 3회 호출, 전체 상한 4회(일시 오류 재시도 1회분) |
 | `validate` | 복합 후속 단계 완료·실패 | `END` | 앞 단계 답변이 있으면 `partial` |
-| `error` | 항상 | `END` | 없는 ID·입력 오류는 확인 질문, 기타는 확인 불가 |
+| `error` | 재시도 가능 오류이고 총 4회 호출 예산 소진 | `END` (`unavailable`/`partial`) | `budget_exceeded` 기록, 추가 호출 없음 |
+| `error` | 그 밖의 오류 | `END` | 없는 ID·입력 오류는 확인 질문, 기타는 확인 불가 |
 
 조건은 `build_festival_graph()`의 `add_conditional_edges` 및 각 노드의 결과 생성과 대응한다. `retry`와 복합 `validate → select_tool`은 모두 호출 수·시간으로 닫힌 유한 반복이다. 성공·실패·예산 초과 중 어느 것도 다음 노드 없이 방치되지 않는다.
 
