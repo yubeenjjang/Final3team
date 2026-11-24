@@ -15,13 +15,15 @@ _DB_POOL_RETRY_AFTER_S = 1
 
 class ApiError(Exception):
     def __init__(
-        self, status: int, code: str, message: str, retryable: bool = False
+        self, status: int, code: str, message: str, retryable: bool = False,
+        *, retry_after: int | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
         self.retryable = retryable
+        self.retry_after = retry_after
 
 
 def error_response(
@@ -45,7 +47,8 @@ def error_response(
 
 
 async def handle_api_error(request: Request, error: ApiError) -> JSONResponse:
-    headers = {"Retry-After": str(_DB_POOL_RETRY_AFTER_S)} if error.code == SERVICE_BUSY_CODE else None
+    retry_after = _DB_POOL_RETRY_AFTER_S if error.code == SERVICE_BUSY_CODE else error.retry_after
+    headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
     return error_response(request, error, headers)
 
 

@@ -3,8 +3,14 @@ import re
 
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
 _CROWD_PATH = re.compile(r"/api/v1/festivals/[^/]+/crowd/?")
+_AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
+
+
+def auth_endpoint(path: str) -> str | None:
+    match = _AUTH_PATH.fullmatch(path)
+    return match[1] if match else None
 
 
 def private_endpoint(path: str) -> str | None:
@@ -13,7 +19,7 @@ def private_endpoint(path: str) -> str | None:
         return route[1] + ("/{route_request_id}" if route[2] else "")
     if _CROWD_PATH.fullmatch(path):
         return "/api/v1/festivals/{festival_id}/crowd"
-    return None
+    return auth_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):
