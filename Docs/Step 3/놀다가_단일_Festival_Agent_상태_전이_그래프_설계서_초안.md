@@ -300,7 +300,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 복합 요청 `search_detail_crowd`에 `select_first=true`를 주어 서울 축제를 검색하면 `search_festivals → get_festival → get_crowd` 순서로 호출됐다. 상세·혼잡에는 첫 검색 결과 `fst_000001`이 전달됐고, 결과는 `answered`였다. 첫 선택이 명시되지 않거나 검색 결과가 비어 있으면 후속 호출을 하지 않는다. 혼잡 미지원 시 앞서 확인한 축제 정보와 함께 `partial`로 종료한다.
 
-### A-2. 최신 오현님 브랜치 모의 API 재확인 (2026-11-23)
+### A-2. 당시 오현님 브랜치 모의 API 재확인 (2026-11-23)
 
 `origin/ohyun`의 `5838bfa`를 별도 작업 폴더에서 실행하고 현재 Festival Agent를 연결했다. 전체 축제 검색의 첫 결과 `fst_000004`는 상세 조회가 `answered`, 주변 혼잡이 `unsupported`였다. 같은 축제를 대상으로 한 복합 요청은 도구를 검색→상세→혼잡 순서로 3회 호출하고, 확인된 정보와 미지원 안내를 함께 담아 `partial`로 끝났다. 없는 축제 ID는 `clarification_needed`로 끝났다. 서울 검색의 첫 결과 `fst_000001`은 혼잡 조회가 `answered`였고, 지원 범위 검사도 통과했다. 이 검증은 모의 데이터에 대한 연결 시험이며 실제 DB·현장 혼잡 검증은 아니다.
 
@@ -308,7 +308,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 ### A-3. W24 실제 데이터 연결 준비 상태
 
-최신 `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣는다. 혼잡 API는 아직 모의 응답을 반환한다. DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
+11/23 당시 `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣었다. **이 절을 처음 작성할 때 혼잡 API는 모의 응답이었으며, 이후 W89 실제 모드가 추가됐다(A-7~A-10 참조).** DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
 
 W24 확인 순서는 다음과 같다.
 
@@ -384,6 +384,17 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 4. 공식 공지의 실제 공급원과 시설 자료의 준비 상태를 확인한다. 현재 공지는 모의 API와의 계약만 검증했다.
 5. 재시도·호출·전체 시간 예산과 상태 저장 필드를 구현 담당자와 확정한다.
 6. 도구 계약은 `origin/ohyun` 최신 브랜치를 기준으로 유지한다. 인계 문서의 Festival Agent 도구 목록에서 `save_favorite`가 제외된 상태도 확인했다.
+
+## 부록 C. W23 검토자가 확인할 지점 (2026-11-24)
+
+| 확인 지점 | 현재 근거 | 검토할 질문 |
+|---|---|---|
+| 그래프 전이·종료 | 2장·8장·9장, `backend/agents/festival_graph.py` | 모든 분기가 `END`에 도달하고, 검색→상세→혼잡의 ID가 계속 같은가? |
+| 오류·호출 예산 | 5-2절·9장, 단독·그래프 시험 30개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
+| 실제·모의 근거 경계 | A-7~A-10 | 실제 API 직접 조회, 실제 응답 필드 재생, Agent의 학원 서버 직접 HTTP E2E를 구분했는가? |
+| 기능 범위 | 1-1절·3장 | 현재 네 도구와 후속 시설·코스·RAG·Supervisor 계약을 구현 완료로 혼동하지 않는가? |
+
+현재 브랜치의 시험 통과와 실제 응답 재생은 **작성자 확인 결과**다. 이 표는 R04 검토를 요청할 때 사용할 점검 목록이며 검토 완료·M03 제출을 뜻하지 않는다.
 
 ## 참고 파일
 
