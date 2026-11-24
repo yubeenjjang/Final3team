@@ -74,13 +74,17 @@ def festival_id(route_engine: Engine) -> Iterator[str]:
             connection.execute(text("DELETE FROM public.festivals WHERE festival_id = :id"), {"id": festival_id})
 
 
-def use_db(route_engine, app_engine, monkeypatch, clock, tmap, kakao):
+def use_service_session(route_engine, monkeypatch):
     @event.listens_for(route_engine, "begin")
     def use_service_role(connection):
         connection.exec_driver_sql("SET LOCAL ROLE noldaga_service")
 
     monkeypatch.setattr(db_sessions, "_service_engine", lambda: route_engine)
-    store = RouteStore()
+    return RouteStore()
+
+
+def use_db(route_engine, app_engine, monkeypatch, clock, tmap, kakao):
+    store = use_service_session(route_engine, monkeypatch)
     monkeypatch.setenv("ROUTE_PROVIDER", "real")
     monkeypatch.setenv("ROUTE_STORE", "db")
     monkeypatch.setenv("FESTIVAL_DATA", "db")
@@ -171,9 +175,11 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
         assert "route_candidates" not in expired
         with route_engine.connect() as connection:
             purged = connection.execute(text("""
-                SELECT candidates, evidence, purged_at FROM public.route_results WHERE route_request_id = :id
+                SELECT candidates, evidence, purged_at, result_purged_at
+                FROM public.route_results JOIN public.route_requests USING (route_request_id)
+                WHERE route_request_id = :id
             """), {"id": route_id}).one()
-        assert purged == (None, {}, clock.now)
+        assert purged == (None, {}, clock.now, clock.now)
         clock.now += TOKEN_TTL
         assert client.get(url, headers=headers).status_code == 401
         replay = client.post(_RETURN, json=body)
@@ -201,14 +207,14 @@ def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, 
         route_id = ready["route_request_id"]
 
         with route_engine.begin() as connection:
-            # 012 백업에서 결과 데이터만 빠진 복원 상태를 재현한다.
+            # 백업에서 미정리 결과가 제외된 복원 상태를 재현한다.
             deleted = connection.execute(text("""
                 DELETE FROM public.route_results WHERE route_request_id = :id
             """), {"id": route_id})
             assert deleted.rowcount == 1
-            assert connection.scalar(text("""
-                SELECT status FROM public.route_requests WHERE route_request_id = :id
-            """), {"id": route_id}) == "ready"
+            assert connection.execute(text("""
+                SELECT status, result_purged_at FROM public.route_requests WHERE route_request_id = :id
+            """), {"id": route_id}).one() == ("ready", None)
 
         response = client.get(f"{_RETURN}/{route_id}", headers={_TOKEN: ready["route_access_token"]})
         assert response.status_code == 200
@@ -245,7 +251,7 @@ def test_P18_db_kakao_has_no_result_row(route_engine, app_engine, festival_id, m
     assert row == ("unavailable", "ROUTE_SECONDARY_SYNC_ONLY", None)
 
 
-def test_P18_db_sweeper_clears_cached_result_before_24h(route_engine, app_engine, festival_id, monkeypatch):
+def test_P18_db_sweeper_clears_cached_api_result_at_23h(route_engine, app_engine, festival_id, monkeypatch):
     clock = Clock()
     store, _ = use_db(route_engine, app_engine, monkeypatch, clock, FakeProvider("tmap", clock),
                       FakeProvider("kakao", clock))
@@ -254,15 +260,96 @@ def test_P18_db_sweeper_clears_cached_result_before_24h(route_engine, app_engine
         for _ in range(2):
             response = client.post(_RETURN, json=body_for(festival_id))
             assert response.status_code == 200 and response.json()["provider"] == "tmap"
-        cached_id = response.json()["route_request_id"]
-    clock.now += timedelta(hours=23)
-    assert store.purge_expired(clock.now) >= 2
+        cached = response.json()
+        cached_id = cached["route_request_id"]
+        with route_engine.begin() as connection:
+            # 결과만 과거로 옮겨 토큰이 유효한 상태에서 정리 응답을 확인한다.
+            connection.execute(text("""
+                UPDATE public.route_results SET queried_at = :old WHERE route_request_id = :id
+            """), {"old": clock.now - timedelta(hours=23), "id": cached_id})
+        assert store.purge_expired(clock.now) >= 1
+        status = client.get(f"{_RETURN}/{cached_id}", headers={_TOKEN: cached["route_access_token"]})
+        assert status.status_code == 200
+        expired = status.json()
+        assert expired["route_status"] == "unavailable"
+        assert expired["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+        assert expired["error"]["retryable"] is False
+        assert "route_candidates" not in expired
     with route_engine.connect() as connection:
         row = connection.execute(text("""
             SELECT source_type, candidates, evidence, validity_check, purged_at
             FROM public.route_results WHERE route_request_id = :id
         """), {"id": cached_id}).one()
     assert row == ("cache", None, {}, {}, clock.now)
+
+
+def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festival_id, monkeypatch):
+    clock = Clock()
+    store = use_service_session(route_engine, monkeypatch)
+    cutoff = clock.now - timedelta(hours=23)
+
+    def add_result(queried_at, provider):
+        route_id = f"rr_{uuid4().hex[:20]}"
+        digest = token_hash(route_id)
+        assert store.register({
+            "route_id": route_id, "request_id": route_id, "body_hash": digest, "token_hash": digest,
+            "direction": "return", "festival_id": festival_id, "festival_lat": 37.5, "festival_lng": 127,
+            "origin_type": "festival", "destination_type": "user", "origin_hash": None,
+            "destination_hash": digest, "travel_mode": "transit", "route_preference": "fastest",
+            "constraints": "{}", "route_key": digest, "now": queried_at,
+        })
+        with route_engine.begin() as connection:
+            connection.execute(text("""
+                INSERT INTO public.route_results (
+                    route_request_id, provider, provider_tier, provider_ref, candidates, evidence,
+                    route_hash, source_type, validity_check, queried_at, validation_status, is_mock
+                ) VALUES (
+                    :id, :provider, :tier, 'synthetic-ref', CAST(:candidates AS jsonb), '{"fixture": true}',
+                    :digest, :source, '{"fixture": true}', :queried_at, 'control_unverified', false
+                )
+            """), {
+                "id": route_id, "provider": provider, "digest": digest, "queried_at": queried_at,
+                "tier": "primary" if provider == "tmap" else "secondary",
+                "source": "cache" if provider == "tmap" else "fresh",
+                "candidates": '[{"candidate_id": "synthetic"}]' if provider == "tmap" else None,
+            })
+        return route_id
+
+    expired_id = add_result(cutoff, "tmap")
+    older_id = add_result(cutoff - timedelta(microseconds=1), "tmap")
+    fresh_id = add_result(cutoff + timedelta(microseconds=1), "tmap")
+    # 현재 API는 카카오 결과 행을 만들지 않는다. 과거 스키마가 허용한 행으로 필터를 검사한다.
+    kakao_id = add_result(cutoff, "kakao")
+    with route_engine.begin() as connection:
+        connection.execute(text("SELECT pg_advisory_xact_lock(hashtext('noldaga.purge_route_results'))"))
+        assert store.purge_expired(clock.now) is None
+        assert store.purge_expired(clock.now, dry_run=True) is None
+
+    def result_state(route_id):
+        with route_engine.connect() as connection:
+            return connection.execute(text("""
+                SELECT candidates, evidence, provider_ref, validity_check, purged_at, result_purged_at
+                FROM public.route_results JOIN public.route_requests USING (route_request_id)
+                WHERE route_request_id = :id
+            """), {"id": route_id}).one()
+
+    before = result_state(expired_id)
+    fresh_before = result_state(fresh_id)
+    kakao_before = result_state(kakao_id)
+    assert before.purged_at is None and before.result_purged_at is None
+    count = store.purge_expired(clock.now, dry_run=True)
+    assert count >= 2 and result_state(expired_id) == before
+    assert store.purge_expired(clock.now) == count
+    assert store.purge_expired(clock.now) == 0
+    assert store.purge_expired(clock.now, dry_run=True) == 0
+    assert result_state(expired_id) == (None, {}, None, {}, clock.now, clock.now)
+    assert result_state(older_id) == (None, {}, None, {}, clock.now, clock.now)
+    assert result_state(fresh_id) == fresh_before
+    assert result_state(kakao_id) == kakao_before
+
+    # 경계를 1마이크로초 넘겨 재실행해도 이미 정리된 행의 삭제 시각은 유지된다.
+    assert store.purge_expired(clock.now + timedelta(microseconds=1)) >= 1
+    assert result_state(expired_id).result_purged_at == clock.now
 
 
 def test_a3_db_route_rows_exclude_raw_places_before_and_after_purge(route_engine, festival_id, monkeypatch):
@@ -302,7 +389,7 @@ def test_a3_db_route_rows_exclude_raw_places_before_and_after_purge(route_engine
             route_ids.append(response.json()["route_request_id"])
     check_stored_rows(route_ids, purged=False)
 
-    clock.now += timedelta(hours=23)
+    clock.now += timedelta(hours=24)
     assert store.purge_expired(clock.now) >= len(route_ids)
     check_stored_rows(route_ids, purged=True)
 

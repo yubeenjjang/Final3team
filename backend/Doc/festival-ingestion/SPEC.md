@@ -89,7 +89,7 @@
 ## 4. DB 저장 (2단계) — `api/ingestion/festivals/store.py`, `api/ingestion/db.py`
 ### I9. 연결 (`api/ingestion/db.py`, 유빈 님 `shared/db/session.py` 전까지 임시)
 - SQLAlchemy 2 + psycopg 3(D1 결정). 엔진 생성은 **이 파일 한 곳**. 수집은 서버 내부 작업이므로 **`noldaga_service`** 계정.
-- 환경변수: `DB_HOST`(기본 `127.0.0.1`), `DB_PORT`(5432), `DB_NAME`(`noldaga`), `DB_SERVICE_PASSWORD`(D1에서 정한 이름). 사용자 이름은 `noldaga_service` 고정.
+- 환경변수: `DB_HOST`(기본 `127.0.0.1`), `DB_PORT`(5432), `DB_NAME`(`noldaga`), `DB_SERVICE_USERNAME`(`noldaga_service`), `DB_SERVICE_PASSWORD`(필수).
 - **확인:** 환경변수로 URL이 만들어지고 비밀번호가 `repr(engine.url)`에 나오지 않음.
 
 ### I10. 업서트 (한 수집 = 트랜잭션 하나는 아님: 축제 1건마다 저장점(savepoint), 1건 실패가 전체를 막지 않음)
@@ -109,10 +109,10 @@
 ## 5. A02·A03 실제 조회 (3단계) — `api/routers/festivals/catalog.py` + `api/services/festival_store.py`
 ### I12. 데이터 출처 고르기
 - 환경변수 **`FESTIVAL_DATA=mock|db`**(기본 `mock`). `db`면 DB에서, `mock`이면 지금 모의 그대로. **주소·쿼리 규칙·응답 칸은 R7·R8과 같다.**
-- `db`일 때: 사용자 요청이므로 **`noldaga_app`** 계정(`DB_USER_PASSWORD`), 요청마다 트랜잭션, 비회원은 `app.user_id`를 설정하지 않음(D1). 공개 축제만(`review_status='approved' AND published_at IS NOT NULL`).
+- `db`일 때: 사용자 요청용 계정(`DB_USER_USERNAME`·`DB_USER_PASSWORD`), 요청마다 트랜잭션, 비회원은 `app.user_id`를 설정하지 않음(D1). 공개 축제만(`review_status='approved' AND published_at IS NOT NULL`).
 - 응답 칸 대응: `name←title`, `lat/lng←latitude/longitude`, `overview←summary`, `fee_text←admission_fee_text`, `homepage_url←official_url`, `source="tourapi"`, `source_ref←festival_sources.source_item_id`, `image_credit`·`image_copyright`는 R6 규칙(이미지 있으면 "한국관광공사"). `is_mock: false`, 헤더 `X-Mock` 없음.
 - `event_status`는 **조회 시점 KST 오늘로 다시 계산**(저장 값이 어제 기준일 수 있음).
-- **DB 연결:** `api/services/festival_store.py`에 `noldaga_app` 엔진 생성 **한 곳**(환경변수 `DB_HOST`·`DB_PORT`·`DB_NAME`·`DB_USER_PASSWORD`, 사용자 `noldaga_app` 고정, `hide_parameters=True`). 요청마다 `with engine.begin()` 트랜잭션 하나. 유빈 님 `shared/db/session.py`가 나오면 이 함수만 바꾼다.
+- **DB 연결:** `api/services/festival_store.py`에서 `DB_HOST`·`DB_PORT`·`DB_NAME`·`DB_USER_USERNAME`(기본 `noldaga_app`)·`DB_USER_PASSWORD`로 엔진을 생성한다(`hide_parameters=True`). 요청마다 `with engine.begin()`으로 트랜잭션을 연다.
 - **`source_ref`:** `festival_sources`(`source_id='tourapi'`)의 `source_item_id`. 마이그레이션 **010**으로 `noldaga_app`이 공개 축제의 이 칸만 읽을 수 있다(11/23 Claude 추가·시험 완료). `raw_checksum` 등은 읽지 않는다.
 - 필터·정렬·페이지는 **SQL에서** 처리(전체를 파이썬으로 가져와 거르지 않음). `q`는 `title`·`venue_name` ILIKE(입력의 `%`·`_`는 이스케이프). 기본 정렬 `start_date` 오름차순 + 날짜 없는 것 마지막 + 같은 날이면 `festival_id`.
 - `event_status` 필터는 조회 시점 KST 오늘 기준 계산값으로 거른다(저장 칸이 아니라 날짜로 SQL 조건: upcoming = start > today, ongoing = start ≤ today ≤ end, ended = end < today, cancelled = 저장 값 `cancelled`).

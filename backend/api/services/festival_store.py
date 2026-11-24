@@ -40,7 +40,7 @@ def get_festival_engine() -> Engine:
         raise RuntimeError("DB_PORT는 1부터 65535 사이여야 합니다.")
     return _create_engine(URL.create(
         "postgresql+psycopg",
-        username="noldaga_app",
+        username=os.environ.get("DB_USER_USERNAME", "noldaga_app"),
         password=password,
         host=os.environ.get("DB_HOST", "127.0.0.1"),
         port=port,

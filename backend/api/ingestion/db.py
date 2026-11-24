@@ -23,7 +23,7 @@ def create_ingestion_engine(
             raise IngestionDBError("DB_PORT는 1부터 65535 사이여야 합니다.")
         url = URL.create(
             "postgresql+psycopg",
-            username="noldaga_service",
+            username=os.environ.get("DB_SERVICE_USERNAME", "noldaga_service"),
             password=password,
             host=os.environ.get("DB_HOST", "127.0.0.1"),
             port=port,
