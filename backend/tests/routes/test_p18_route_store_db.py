@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import re
 from collections.abc import Iterator
 from datetime import date, timedelta
 from pathlib import Path
@@ -145,7 +146,8 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
                 FROM public.route_requests WHERE route_request_id = :id
             """), {"id": route_id}).one()
         assert initial.access_token_hash == token_hash(token)
-        assert all(len(value) == 64 for value in initial)
+        assert all(len(value) == 64 for value in initial[:3])
+        assert re.fullmatch(r"(pending|v2):[0-9a-f]{64}", initial.route_key)
         assert len(tmap.queries) == 1
         # 백그라운드 종료를 기다린다. 실제 시각 대신 시험 시계를 사용한다.
         deadline = time.monotonic() + 3
