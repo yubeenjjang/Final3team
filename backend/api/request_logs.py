@@ -5,6 +5,9 @@ _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
 _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
 _ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
 _FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
+_FRIENDS_PATH = re.compile(r"(/api/v1/(?:users/search|friend-requests|me/friend-requests|me/friends))/?")
+_FRIEND_ACTION_PATH = re.compile(r"/api/v1/friend-requests/[^/]+/[^/]+/?")
+_FRIEND_ITEM_PATH = re.compile(r"(/api/v1/me/(?:friends|blocks))/[^/]+/?")
 _FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
@@ -24,6 +27,16 @@ def me_endpoint(path: str) -> str | None:
     return None
 
 
+def friends_endpoint(path: str) -> str | None:
+    match = _FRIENDS_PATH.fullmatch(path)
+    if match:
+        return match[1]
+    if _FRIEND_ACTION_PATH.fullmatch(path):
+        return "/api/v1/friend-requests/{request_id}/{action}"
+    match = _FRIEND_ITEM_PATH.fullmatch(path)
+    return match[1] + "/{user_id}" if match else None
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -31,7 +44,7 @@ def private_endpoint(path: str) -> str | None:
     info = _FESTIVAL_INFO_PATH.fullmatch(path)
     if info:
         return "/api/v1/festivals/{festival_id}/" + info[1]
-    return auth_endpoint(path) or me_endpoint(path)
+    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):

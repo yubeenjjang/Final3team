@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime, timezone
+from uuid import UUID
 
 from api.auth.tokens import unauthorized
 from api.mocks.store import (
@@ -15,6 +16,7 @@ from api.mocks.store import (
 )
 from api.repositories.users import nickname_taken
 from api.schemas.users import CompanionActivity, FestivalPreferences, PreferencesUpdate, Profile, ProfileUpdate
+from api.services import mock_friends
 from api.services.account_deletion import password_mismatch
 from api.services.mock_auth import _password_hash, authenticated_access, update_nickname
 
@@ -79,6 +81,7 @@ def delete_account(authorization: str | None, password: str) -> None:
         user_nicknames.discard(user.display_name.casefold())
         favorites_by_user.pop(user.user_id, None)
         preferences_by_user.pop(user.user_id, None)
+        mock_friends.store.remove_account(UUID(user.user_id))
         for token, access in tuple(access_sessions.items()):
             if access.user_id == user.user_id:
                 del access_sessions[token]
