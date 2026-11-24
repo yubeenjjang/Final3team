@@ -1279,8 +1279,8 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 **보존 기간의 기준은 이 표**이며, 표에서 위임한 Redis 단기 키의 TTL은 API 설계서 9-1절을 따릅니다. 03 문서의 설명, 이 문서 4·6·7절, 정리 코드가 이 표와 다르면 이 표가 맞습니다.
 
 - **상태** — **확정(11/24 팀 결정)**은 팀이 정한 보존 기준, **외부 고정**은 공급원 약관·답변 기준, **설계 고정**은 데이터의 성격상 정해진 기준입니다. 담당 칸의 시험 일정은 적용 검증에 사용합니다.
-- 기타 보존 기간 정리는 `retention_sweeper` 워커를 시간마다 실행해 처리하는 설계입니다.
-- 동행 종료·보존 정리는 저장소 루트에서 `PYTHONPATH=backend python -m api.jobs.maintain_companions`로 실행합니다. 시간당 실행은 W64·W65 배포 설정에 연결합니다. 019 적용 뒤 참가자는 워커가 본문을 지우기 전에도 종료·취소 72시간이 지난 만남 장소와 메시지를 열람할 수 없습니다.
+- **구현 상태** · 022 적용 후 저장소 루트에서 `PYTHONPATH=backend python -m api.jobs.scheduler`로 실행합니다. 동행 종료·정리와 TMAP 결과 정리는 매시, 축제 수집과 일일 보존 정리(경로 요청·알림·체크포인트·거절·취소 신청·채팅)는 06:00 KST 회차입니다. 작업별 advisory lock과 서비스 전용 `scheduled_job_runs`가 마지막 성공 회차를 관리합니다. [예약 실행 예시](../../backend/Doc/jobs/IMP-PLAN.md)
+- 동행 종료·취소 시 방은 읽기 전용으로 전환됩니다. 020·021을 적용하면 참가자는 정기 작업이 본문을 지우기 전에도 종료·취소 72시간이 지난 만남 장소와 메시지를 열람할 수 없습니다.
 - **TMAP 정리 작업.** 권오현이 명령을 제공하고, 신유빈이 W64·W65에서 시간당 실행 및 실패 감시를 설정합니다. API와 같은 DB 환경에서 013까지 적용 후 `backend/`는 `python -m api.jobs.purge_route_results`, 저장소 루트는 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행합니다. `--dry-run`을 붙이면 대상 건수만 출력합니다. `queried_at` 기준 기본 23시간 이상 된 본문을 정리하며, `ROUTE_PURGE_AFTER_HOURS`에는 1~23 사이의 정수만 설정할 수 있습니다.
 - **감시 기준.** 완료는 종료 코드 `0`이며, 로그 한 줄에 `processed`와 `duration_ms`를 남깁니다. 처리 0건도 정상입니다. `1` 실행 실패, `2` 인자 또는 정리 기준 설정 오류, `3` 중복 실행은 각각 경보를 보냅니다. 직전 정리 성공이 65분을 넘으면 누락을 경보로 잡습니다. 시간당 정상 실행과 23시간 정리 기준을 적용하면 본문은 최대 24시간 보관됩니다. 유효 토큰으로 정리된 결과를 A05에서 조회하면 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다.
 - 프로젝트 종료 = 12/31 최종 제출(WBS W79). 그 뒤 데이터는 팀 합의로 일괄 삭제합니다.
@@ -1307,7 +1307,7 @@ A80은 비밀번호 재확인 뒤 `noldaga_service` 단일 트랜잭션으로 �
 | 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것 | 근거 | 상태 | 담당·검증 |
 |---|---|---|---|---|---|---|---|
 | 목적지·출발지 원문 | **Redis** `route:label:{id}`만(DB 칸 없음, 004) | 24시간 | 키 자동 삭제 | `origin_place_hash`·`destination_place_hash`(HMAC) | 기획서 FR-R15 "원문 장소 장기 보존 금지". DB에 두면 백업(7일)에 남음 | 확정(11/24 팀 결정) | 한태경 · W16 11/20 |
-| 경로 요청 기록·장소 해시 | `route_requests`(`origin_place_hash`·`destination_place_hash` HMAC, 009) | 30일 | 행 삭제. **사건에 연결된 행**은 장소 해시 두 칸만 NULL, 통계 칸 유지(T28b) | 사건·지표 | 멱등 키 보관(03 9-1 ⑥)보다 김. 해시도 영구 보관 안 함(11/20 한태경) | 확정(11/24 팀 결정) | 권오현 · W16 11/20 |
+| 경로 요청 기록·장소 해시 | `route_requests`(`origin_place_hash`·`destination_place_hash` HMAC, 009) | 30일 | 비사건 요청의 행과 연결 결과 삭제, 공유·챗봇의 선택 참조는 NULL(022·002). **사건에 연결된 행**은 장소 해시 두 칸을 NULL로 바꾸고 통계 칸 유지(T28b) | 사건·지표 | 멱등 키 보관(03 9-1 ⑥)보다 김. 해시도 영구 보관 안 함(11/20 한태경) | 확정(11/24 팀 결정) | 권오현 · W16 11/20 |
 | 챗봇 질문·답변·방문 코스 결과 | `assistant_runs`(002·006) `message`·`answer`·`result` | 30일 — **탈퇴하면 즉시 삭제** | 세 칸 → NULL, `purged_at` | `run_id`·상태·시각·`error_code` | **저장 전에 연락처·주소 마스킹**(11/20 한태경) | 확정(11/24 팀 결정) | 권오현 |
 | 대화 상태(체크포인트) | LangGraph `langgraph.checkpoints` 등 | 7일 | 그 `thread_id`(`cv_…`) 전체 삭제 | 없음 | 2-1절 | 확정(11/24 팀 결정) | 한다영 · W16 11/20 |
 | 에이전트 입출력 원문 | `agent_runs.input_ref`·`output_ref`가 가리키는 파일 | 30일 | **파일만** 삭제(`agent_runs` 행은 감사 기록이라 수정 금지 — 열면 '만료') | `agent_runs` 행(도구·결과 코드·토큰·비용) | 감사 + 개인정보. **경로 내용 금지**: Route 도구 결과는 `route_request_id`·`provider`·`route_status`만 쓰고 `route_candidates`(TMAP·카카오)는 넣지 않음(체크포인트와 같은 규칙) | 확정(11/24 팀 결정) | 한다영 · W16 11/20 |
@@ -1347,7 +1347,7 @@ A80은 비밀번호 재확인 뒤 `noldaga_service` 단일 트랜잭션으로 �
 | 서버·워커 로그 | 14일 | **쓰면 안 되는 것**: 목적지 원문, 경로 내용(TMAP·카카오), 챗봇 질문 원문, 토큰·비밀번호·API 키, **전체 IP**(뒷자리 가림 — 11/20 한태경). 대신 `X-Request-ID`·`route_request_id`·`run_id`·해시만. 외부 오류는 HTTP 상태·결과 코드만 | 확정(11/24 팀 결정) | 신유빈 · W54 12/16(마스킹 검증) |
 | DB 논리 백업(매일) | 7일 | 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)의 `pg_dump --exclude-table-data=public.route_results`를 사용. 테이블 정의와 `route_requests` 데이터(삭제 시각 포함)는 보존. 공급원 원본·후보 상세·경로 근거를 담을 수 있는 `route_results` 행 전체는 제외. DB 볼륨 EBS 스냅샷은 이 보존에 사용하지 않음 | SK 회신 없이 적용하는 확정 기준 · T25a~c 11/24 로컬 통과(`719484d`, 10-A절) | 신유빈 · AWS 준비 때(W65) |
 
-DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `bash 'Docs/Step 2/db/backup_long_term.sh' --dbname=noldaga --file=/path/to/noldaga.dump`로 생성하고, 빈 DB에 `pg_restore --single-transaction`으로 복원합니다. 복원 뒤 `retention_sweeper`를 1회 실행해 만료 대상을 정리합니다.
+DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `bash 'Docs/Step 2/db/backup_long_term.sh' --dbname=noldaga --file=/path/to/noldaga.dump`로 생성하고, 빈 DB에 `pg_restore --single-transaction`으로 복원합니다. 복원 뒤 정기 실행기를 호출해 현재 회차를 확인하고 다음 일일 회차에서 만료 대상 정리를 확인합니다.
 
 012는 기존 결과의 `provider`·`queried_at`을 각각 `route_requests.result_provider`·`result_queried_at`에 이관합니다. 신규 결과를 저장하거나 공급원·조회 시각을 수정할 때 같은 트랜잭션에서 갱신합니다. 013은 기존 `route_results.purged_at`을 `route_requests.result_purged_at`에 이관하고, 이후 A05 또는 정리 명령이 본문을 지울 때 트리거가 같은 트랜잭션에서 같은 시각을 기록합니다. 백업에는 이 증빙과 `submitted_at`·`status`·`error_code`가 남습니다. 백업 당시 미정리 결과의 삭제 시각은 NULL이며, 애초에 결과가 저장되지 않은 요청은 요청 시각·상태·오류 코드만 남습니다. 복원 후 `route_requests.status=ready`이고 `route_results` 행이 없으면 유효 토큰으로 조회한 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다. 메시지는 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”입니다.
 
@@ -1526,6 +1526,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 2-15 | [`db/017_festival_trends_signal.sql`](db/017_festival_trends_signal.sql) (되돌리기 [`017_festival_trends_signal_down.sql`](db/017_festival_trends_signal_down.sql)) | `festival_trends` 증가율·신호 추가 및 004 CHECK 교체. 되돌리면 새 컬럼 값이 사라지고, 004 제약에 맞지 않는 행이 남아 있으면 되돌리기가 중단됨 |
 | 2-16 | [`db/018_festival_publication.sql`](db/018_festival_publication.sql) (되돌리기 [`018_festival_publication_down.sql`](db/018_festival_publication_down.sql)) | EV01 RLS, `coords_source` 추가, 기존 미분류 공개 행 검토 대기 및 이전 게시 상태 이력. 되돌릴 때 이후 게시·분류 변경이 없는 018 대상만 복원하고 좌표 출처 컬럼을 제거합니다. 저장된 위경도 값은 유지됩니다. |
 | 2-17 | [`db/019_admin-review.sql`](db/019_admin-review.sql) (되돌리기 [`019_admin-review_down.sql`](db/019_admin-review_down.sql)) | A24 대기열 사유 제약 확장, 인덱스와 기존 TourAPI 보류 사유 이관. 새 사유를 처리한 결정이 있으면 되돌리기를 중단합니다. |
+| 2-20 | [`db/022_jobs.sql`](db/022_jobs.sql) (되돌리기 [`022_jobs_down.sql`](db/022_jobs_down.sql)) | 서비스 전용 성공 회차와 경로 요청 만료 외래 키·인덱스. 적용·되돌리기·재적용은 [`tests_022_jobs.sql`](db/tests_022_jobs.sql)에서 확인합니다. |
 | 3 | `db/tests_v0.3.2.sql` → `db/tests_v0.3.2_after_backup.sql` | 시험 T1~T43 (스스로 판정: 기대와 다르면 `FAIL`로 멈춤) |
 | 4 | [`db/tests_010_festival_sources_public.sql`](db/tests_010_festival_sources_public.sql) | 공개 원본 조회·조인, 내부 컬럼 차단, 되돌리기·재적용(T010a~e). **11/24 통과** |
 | 4 | `db/tests_011_route_access_token.sql` | 기존 행 보존·해시 제약·일반 계정 차단·되돌리기·재적용(T011a~d) |
@@ -2907,6 +2908,7 @@ ALTER TABLE rag_documents
 | v0.5 | 2026-11-24 | 022 공지 수동 종료·효력 전이·축제별 경로 통제 버전과 SQL 시험을 추가했습니다. |
 | v0.5 | 2026-11-24 | 022_admin-festivals의 관리자 출처, 중복 확인, 컬럼별 감사 이력과 되돌리기 시험을 A55·A56에 연결했습니다. |
 | v0.5 | 2026-11-24 | 022_assistant에 A06 DB 큐 선점·재시도·종료 알림과 보존 정리 연동, 적용·되돌리기 SQL 시험을 추가했습니다(6-5절). |
+| v0.5 | 2026-11-24 | 022 작업별 성공 회차·경로 요청 보존과 7-0의 정기 실행기, 적용·되돌리기·권한 시험을 추가했습니다. |
 | v0.5 | 2026-11-24 | A43~A50에 기존 친구 DDL·RLS를 연결하고, 1:1 방 닫기와 30일 경과 신청 정리 작업을 추가했습니다(6-6·7-0). |
 | v0.5 | 2026-11-24 | A24 서비스 계정 권한·결정 이력·보존과 019_admin-review 사유 제약, 이관 및 SQL 시험을 반영했습니다. |
 | v0.5 | 2026-11-24 | 동행 서비스 트랜잭션, 019 임시 마감·만료 RLS와 자동 종료·72시간 정리 명령을 연결했습니다(6-8·7-0절). |

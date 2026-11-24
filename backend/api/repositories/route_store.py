@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError, TimeoutError as DBPoolTimeout
 from sqlalchemy.orm import Session
 
 from api.errors import ApiError
+from api.jobs.locks import ROUTE_RESULTS
 from api.providers.route_base import ProviderResult
 from api.schemas.routes import RouteDirection
 from shared.db.session import service_db_session
@@ -49,7 +50,6 @@ _PURGE = f"""
            purged_at = COALESCE(purged_at, :now)
 """ + _EXPIRED_RESULTS
 _COUNT_EXPIRED = text("SELECT count(*) FROM public.route_results " + _EXPIRED_RESULTS)
-_PURGE_LOCK = text("SELECT pg_try_advisory_xact_lock(hashtext('noldaga.purge_route_results'))")
 
 
 def token_hash(token: str) -> str:
@@ -197,7 +197,7 @@ class RouteStore:
     ) -> int | None:
         """정리 기준에 도달한 결과 수를 반환한다. 다른 정리 작업이 실행 중이면 None이다."""
         with self._transaction() as session:
-            if not session.execute(_PURGE_LOCK).scalar_one():
+            if not session.execute(ROUTE_RESULTS).scalar_one():
                 return None
             params = {"cutoff": now - timedelta(hours=after_hours)}
             if dry_run:

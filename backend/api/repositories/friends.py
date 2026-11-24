@@ -223,4 +223,8 @@ def unblock_user(actor: UUID, other: UUID) -> bool:
 
 def purge_expired_requests() -> int:
     with service_db_session() as db:
-        return db.execute(text(f"DELETE FROM public.friend_requests WHERE {_EXPIRED}")).rowcount
+        return delete_expired_requests(db)
+
+
+def delete_expired_requests(db: Session) -> int:
+    return db.execute(text(f"DELETE FROM public.friend_requests WHERE {_EXPIRED}")).rowcount

@@ -1655,12 +1655,14 @@ Content-Type: application/json
 
 #### A23. 축제 수집 작업 이력 `GET /api/v1/admin/ingestion-jobs`
 
+**구현 상태** · `api.jobs.scheduler`가 매일 06:00 KST 회차에 KST 기준 올해 1월 1일부터 기존 DB 수집 경로를 실행합니다. 수집 상태와 집계는 `ingestion_jobs`에 기록합니다. [예약 실행 예시](../../backend/Doc/jobs/IMP-PLAN.md)
+
 | 항목 | 명세 |
 |---|---|
 | 권한 | admin만(401/403) |
 | 쿼리 | `source_id`, `status`(`running`·`success`·`partial`·`failed`), `from`·`to`(기본 최근 7일), `page`·`page_size` |
 | 응답 `items[]` | `{job_id, source_id, status, started_at, ended_at, scanned, inserted, updated, rejected, error}` — DB `ingestion_jobs` 그대로. `error`는 페이지별 오류 요약(키 값 없음) |
-| 규칙 | 조회만. 수집 실행은 API가 아니라 정기 작업(워커 주기 실행, 매일 06:00 임시)이 함 |
+| 규칙 | 이 API는 조회 전용입니다. 수집은 정기 작업의 06:00 KST 회차에서 실행합니다. |
 
 **A23 요청·이력 목록 응답 (200)**
 
@@ -2173,6 +2175,8 @@ Content-Type: application/json
 
 **구현 상태** · A57~A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
 
+시간당 정기 작업이 기본 `meet_at + 12시간`에 도달한 글을 자동 종료하고 방을 읽기 전용으로 전환합니다. 종료·취소 시각부터 72시간이 지나면 동행 내용을 정리합니다.
+
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A57** `GET /api/v1/festivals/{festival_id}/companion-posts` | `status`(기본 `open`)·`page`(기본 1, 20개씩) | `{items[] {post_id, author_display_name, meet_at, capacity, approved_count, age_pref, gender_pref, memo, status}}` | 공개. **정확한 만남 장소는 안 줌**(FR-COM01·08) | 404 / 422 |
@@ -2264,6 +2268,8 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 #### 6-4-5. 채팅 API (A66~A73 + WebSocket) — 담당 권오현(`community/chat.py`, `realtime/chat_socket.py`), 화면 `chats/[roomId]/`·`friends/`(정예진)
 
 **구현 상태 (ohyun-chat)** — A66~A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
+
+정기 작업이 30일 지난 친구 채팅과 종료 72시간이 지난 동행방의 메시지 본문을 비우고 삭제 시각을 기록합니다. DB는 메시지 순서를 보존합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
@@ -3224,7 +3230,7 @@ BFCL 30문항의 원본은 한다영 브랜치에 있으며, 채점에는 API �
 | `TOOL_TIMEOUT_S` | 5초 | 에이전트 도구 1회(`TOOL_TIMEOUT`) | 공통 도구 실행기 기본값(`backend/agents/tools`, 신유빈 W14). A04는 동기 대기 3초 뒤 202로 답하므로 5초 안에 끝남 | 임시 | W96 · 12/04 | 한다영 |
 | `AGENT_RUN_SOFT_LIMIT_S` | 30초 | A06 작업 1건(넘으면 `failed`) | 강사 자료 예시는 9분이지만 챗봇 답변은 짧아야 함 | 임시 | W96 · 12/04 | 한다영 |
 | `AGENT_RUN_HARD_LIMIT_S` | 40초 | 워커 강제 종료 | soft + 10초 | 임시 | 같음 | 신유빈 |
-| `INGEST_SCHEDULE` | 매일 06:00 (KST) | 축제 정기 수집(A23 이력) | TourAPI 하루 갱신이면 충분 | 임시 | W98 수집 구현 때 | 권오현 |
+| `INGEST_SCHEDULE` | 매일 06:00 (KST) | 축제 정기 수집(A23 이력) | TourAPI 하루 갱신이면 충분 | 실행기 구현 완료 | W64·W65 예약 설치 | 권오현 |
 | `COMPANION_AUTO_END_H` | 12시간 | 만남 시각 뒤 자동 동행 종료(A65) | 기획서 '정책에 따른 자동 종료' | 임시 | W115 구현 때(12/03) | 권오현 |
 | `CHAT_RATE_USER` / `CHAT_RATE_ROOM` | 초당 5개 / 초당 20개 | WebSocket 전송 제한 | 도배 방지 | 임시 | W116(12/08) | 권오현 |
 | `WS_TICKET_TTL_S` | 30초 | WebSocket 연결 표 | 1회용 표 | 임시 | W116(12/08) | 권오현 |
@@ -3818,6 +3824,8 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 
 ### 17-3. 저장·캐시 규칙 ↔ 실제 코드 (강사 11/20 API 2)
 
+**구현 상태** · 022 적용 뒤 `api.jobs.scheduler`가 시간당 TMAP 결과 정리(23시간)와 06:00 KST 일일 경로 요청 보존 정리를 실행합니다. [실행·감시 예시](../../backend/Doc/jobs/IMP-PLAN.md)
+
 실제 경로 모드에서 `ROUTE_STORE` 기본값은 `memory`입니다. `db` 선택 시 011 적용 DB에서 공통 서비스 세션으로 A04 요청과 결과를 저장하고 A05 토큰 해시와 결과를 조회합니다. `FESTIVAL_DATA=db`이면 A02·A03과 같은 축제를 사용합니다. 서비스 계정 설정과 마이그레이션 파일 선택은 [귀가 경로 SPEC](../../backend/Doc/route-providers/SPEC.md#8-step5-공통-db-연결과-시험-명령)에 기록했습니다.
 11/24 10:29 합의에 따라 011 이전 요청 행은 보존하며 조회 토큰은 재발급하지 않습니다. 조회하려면 새 요청을 접수합니다. API 컨테이너에는 `.env.example`의 DB 환경변수 7개를 전달하고, `DB_MIGRATION_DSN`은 관리자용 실행 환경에만 둡니다.
 
@@ -3986,6 +3994,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.5 | 2026-11-24 | A74·A75 이벤트 연결, A76 신고 접수·일일 한도, A77 운영자 열람 기록과 조치를 구현했습니다(6-4-6·18-2). |
 | v0.5 | 2026-11-24 | A55·A56의 관리자 등록·수정·게시, A24 중복·수집 충돌 대기열 및 공개 축제 `admin` 출처를 연결했습니다(6-6절). |
 | v0.5 | 2026-11-24 | A06·A06-1·A06-2의 DB 작업 접수·별도 워커·조회 권한·SSE 구현 상태를 반영했습니다(7-6절). |
+| v0.5 | 2026-11-24 | A23 축제 수집과 A04·A05 경로 보존, A65 동행 종료·정리, A71 채팅 보존을 KST 정기 실행기에 연결했습니다. |
 | v0.5 | 2026-11-24 | A43~A50의 DB·mock 동작, 닉네임 검색 한도, 신청·차단 트랜잭션과 채팅 차단 해제 연동 지점을 구현했습니다(6-4-3). |
 | v0.5 | 2026-11-24 | A24의 검토 필터·사유 필수·승인·거절·숨김, 운영자 권한과 서비스 계정 처리 명세를 구현과 맞췄습니다(6-2절). |
 | v0.5 | 2026-11-24 | A52~A54 공식 공지 관리·수동 종료, A07 승인 공개, A04/A25 통제 버전과 안내를 연결했습니다. |

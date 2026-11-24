@@ -273,6 +273,13 @@ echo "## 5-9. 022_assistant 작업 큐·보존 적용·되돌리기·재적용"
 "${PSQL[@]}" -q -v applied=false -f - < tests_022_assistant.sql
 "${PSQL_TX[@]}" -q < 022_assistant.sql
 "${PSQL[@]}" -q -v applied=true -f - < tests_022_assistant.sql
+echo "## 5-9. 022_jobs 정기 작업 회차·경로 요청 보존 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_jobs.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_jobs.sql
+"${PSQL_TX[@]}" -q < 022_jobs_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_022_jobs.sql
+"${PSQL_TX[@]}" -q < 022_jobs.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_jobs.sql
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
