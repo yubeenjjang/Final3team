@@ -26,6 +26,7 @@ from api.routers.assistant import chatbot
 from api.routers.festivals import catalog
 from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
+from api.services.real_festival_info import uses_real_info
 from api.services.real_routes import uses_real_routes
 from api.services.seoul_crowd import uses_real_crowd
 from ulid import ULID
@@ -95,6 +96,7 @@ async def add_response_headers(
         response.headers["X-Mock"] = "true"
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
+        or _FESTIVAL_INFO_PATH.match(request.url.path)
     ):
         del response.headers["X-Mock"]
     if endpoint is not None:
@@ -109,14 +111,17 @@ async def add_response_headers(
 _REAL_FESTIVAL_PATHS = re.compile(r"^/api/v1/festivals(/fst_[0-9A-Za-z]{6,26})?/?$")
 _REAL_ROUTE_PATHS = re.compile(r"^/api/v1/routes/(return|visit)(/[^/]+)?/?$")
 _REAL_CROWD_PATH = re.compile(r"^/api/v1/festivals/[^/]+/crowd/?$")
+_FESTIVAL_INFO_PATH = re.compile(r"^/api/v1/festivals/[^/]+/(notices|weather|transit|visit-forecast)/?$")
 
 
 def _serves_real_data(request: Request) -> bool:
     path = request.url.path
+    info_path = _FESTIVAL_INFO_PATH.match(path)
     return (
         (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
+        or (info_path is not None and uses_real_info(info_path[1]))
     )
 
 

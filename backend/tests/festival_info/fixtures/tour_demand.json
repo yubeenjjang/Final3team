@@ -1,0 +1,27 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseYm": "202610",
+            "areaCd": "26",
+            "areaNm": "부산광역시",
+            "signguCd": "26350",
+            "signguNm": "해운대구",
+            "tarSjrnDsIxCd": "2101",
+            "tarSjrnDsIxNm": "타권역 방문자 비중",
+            "tarSjrnDsIxVal": "73.39"
+          }
+        ]
+      },
+      "numOfRows": 1,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}
