@@ -1,0 +1,25 @@
+{
+  "started_at": "2026-11-24T12:47:06.108146+09:00",
+  "ended_at": "2026-11-24T12:48:08.854738+09:00",
+  "since": "2026-01-01",
+  "until": null,
+  "scanned": 869,
+  "publishable": 520,
+  "pending": 349,
+  "issues": {
+    "not_festival_class": 348,
+    "coords_out_of_range": 1
+  },
+  "calls": {
+    "searchFestival2": 9
+  },
+  "errors": [],
+  "db": {
+    "job_id": "ij_01M85TM5RR911T2K5GFX4C49WF",
+    "status": "success",
+    "scanned": 869,
+    "inserted": 0,
+    "updated": 869,
+    "rejected": 0
+  }
+}

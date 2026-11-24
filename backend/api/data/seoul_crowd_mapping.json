@@ -74,10 +74,10 @@
           "strict_interior": true,
           "repaired_boundary": false,
           "relation_type": "contains",
-          "approved": true,
+          "approved": false,
           "approved_by": "권오현",
           "approved_at": "2026-11-24",
-          "approval_note": "W89 시연 대표 매핑(주변 지역 혼잡). 행사장 좌표가 공식 구역 내부(contains)"
+          "approval_note": "11/24 승인 취소: TourAPI 분류 EV03(행사)로 축제 범위 밖"
         }
       ],
       "nearest_excluded_area": null
