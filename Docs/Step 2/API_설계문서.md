@@ -392,7 +392,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | 429 | `RATE_LIMITED` | 요청 수 제한 초과 | `Retry-After` 뒤 |
 | 502 | `ROUTE_UPSTREAM_ERROR` | 1차·2차 공급원 모두 오류 | 예(1회) |
 | 503 | `ROUTE_QUOTA_EXCEEDED` | 공급원 일일 한도 소진 → '확인 불가 + 공식 안내' | 아니요(당일) |
-| 503 | `SERVICE_BUSY` | DB 연결 풀 대기 시간 초과(DB-14) | `Retry-After: 1` 뒤 |
+| 503 | `DB_POOL_TIMEOUT` | DB 연결 풀 대기 시간 초과(DB-14) | `Retry-After: 1` 뒤 |
 | 503 | `ROUTE_OVERLOADED` | 과부하 보호로 거절(`route_status=rejected`, **경로 제공 성공 아님**) | 예(잠시 뒤) |
 | 503 | `ROUTE_PROVIDER_UNVERIFIED` | 공급원 미연동·미검증(지금 상태) | 아니요 |
 | 504 | `ROUTE_TIMEOUT` | 제한 시간 초과(`route_status=timed_out`) | 예(같은 `request_id`로 1회) |
@@ -749,7 +749,7 @@ class AssistantQueryRequest(BaseModel):                         # A06 (7-6)
 | `INCIDENT_CLOSED` | false | 재시도 없이 멈추고 '이미 닫힌 사건'으로 안내. 새 조치를 제안하지 않음 |
 | `POLICY_LIMIT_EXCEEDED` | false | 재시도 없이 멈추고 상한(동시에 켠 조치 수 등)을 안내. 이미 켠 조치가 끝난 뒤 사람이 다시 요청 |
 | `SIMULATION_NOT_FOUND` | false | 재시도 없이 `simulation_id`를 확인해 달라고 안내(사건 ID만 있으면 그 ID로 다시 조회) |
-| `SERVICE_BUSY` | true | `Retry-After`(1초) 뒤 1회. 그래도 실패면 '잠시 후 다시'로 종료 (DB 연결 대기 초과, 11/24) |
+| `DB_POOL_TIMEOUT` | true | `Retry-After`(1초) 뒤 1회. 그래도 실패면 '잠시 후 다시'로 종료 (DB 연결 대기 초과, 11/24) |
 
 **Festival Agent 대조(11/24).** `origin/dayoung`의 단일 Festival Agent 상태 전이 그래프 설계서 8~9절과 도구 래퍼·그래프를 기준으로 합니다. HTTP/본문 값은 API 응답이고, `outcome`은 Agent 종료 상태입니다.
 
@@ -1361,7 +1361,7 @@ HTTP/1.1 503 Service Unavailable
 Retry-After: 1
 Content-Type: application/json
 
-{"error":{"code":"SERVICE_BUSY","message":"서버가 혼잡해요. 잠시 후 다시 시도해 주세요.","request_id":"req_01JD8Q3K2M","retryable":true}}
+{"error":{"code":"DB_POOL_TIMEOUT","message":"요청이 많아 잠시 후 다시 시도해 주세요.","request_id":"req_01JD8Q3K2M","retryable":true}}
 ```
 
 | 코드 | HTTP | 의미 |
@@ -1369,7 +1369,7 @@ Content-Type: application/json
 | `VALIDATION_ERROR` | 422 | 입력 형식 오류(Pydantic) |
 | `UNAUTHORIZED` / `FORBIDDEN` | 401 / 403 | 인증 없음·만료 / 권한 부족·타인 자원 |
 | `RATE_LIMITED` | 429 | 요청 수 제한 초과 |
-| `SERVICE_BUSY` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
+| `DB_POOL_TIMEOUT` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
 | `FESTIVAL_NOT_FOUND` | 404 | 없는 축제 ID |
 | `FESTIVAL_LOCATION_UNKNOWN` | 400 | 출발 또는 도착이 축제 장소인데 축제 좌표가 없음 |
 | `NICKNAME_TAKEN` | 409 | 닉네임이 이미 있음(대소문자 무시, A32 — DB `uq_profiles_nickname`) |

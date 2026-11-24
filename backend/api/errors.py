@@ -8,8 +8,8 @@ from starlette.exceptions import HTTPException
 
 from api.schemas.common import ErrorDetail, ErrorResponse
 
-SERVICE_BUSY_CODE = "SERVICE_BUSY"
-SERVICE_BUSY_MESSAGE = "서버가 혼잡해요. 잠시 후 다시 시도해 주세요."
+SERVICE_BUSY_CODE = "DB_POOL_TIMEOUT"
+SERVICE_BUSY_MESSAGE = "요청이 많아 잠시 후 다시 시도해 주세요."
 _DB_POOL_RETRY_AFTER_S = 1
 
 
