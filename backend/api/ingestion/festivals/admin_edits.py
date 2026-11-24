@@ -47,6 +47,7 @@ def _json_value(value: object) -> object:
 
 def protect_admin_edits(
     db: Connection | Session, festival_id: str, previous: Mapping[str, object], changes: dict[str, object],
+    *, queue_conflicts: bool = True,
 ) -> set[str]:
     """축제 행을 잠근 호출자가 공급원 변경 중 보류할 칸을 검토 대기열로 옮깁니다."""
     if not EDITABLE_FIELDS.intersection(changes):
@@ -59,7 +60,10 @@ def protect_admin_edits(
     if not conflicts:
         return conflicts
 
-    proposal = json.dumps({field: changes.pop(field) for field in conflicts}, default=_json_value)
+    blocked = {field: changes.pop(field) for field in conflicts}
+    if not queue_conflicts:
+        return conflicts
+    proposal = json.dumps(blocked, default=_json_value)
     params = {"id": festival_id, "proposal": proposal}
     pending = db.scalar(text("""
         SELECT queue_id FROM public.festival_review_queue

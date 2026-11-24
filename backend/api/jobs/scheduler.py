@@ -14,6 +14,7 @@ from sqlalchemy.sql.elements import TextClause
 
 from api.ingestion.festivals import collect
 from api.ingestion.festivals.normalize import KST
+from api.ingestion.seoul_culture import collect as seoul_culture
 from api.jobs import locks, retention
 from api.jobs.maintain_companions import maintain_companions
 from api.jobs.purge_route_results import DEFAULT_PURGE_AFTER_HOURS, RouteStore
@@ -30,6 +31,7 @@ class Job:
     lock: TextClause
     run: Callable[[Session, datetime], dict[str, int]]
     daily: bool = False
+    enabled: Callable[[], bool] | None = None
 
 
 def _purge_routes(db: Session, now: datetime) -> dict[str, int]:
@@ -51,11 +53,17 @@ def _collect_festivals(db: Session, now: datetime) -> dict[str, int]:
     return {"scanned": job.scanned, "inserted": job.inserted, "updated": job.updated, "rejected": job.rejected}
 
 
+def _collect_seoul_culture(db: Session, now: datetime) -> dict[str, int]:
+    job = seoul_culture.collect_to_db(now, locked_engine=db.get_bind())
+    return {"scanned": job.scanned, "inserted": job.inserted, "updated": job.updated, "rejected": job.rejected}
+
+
 JOBS = (
     Job("purge_route_results", locks.ROUTE_RESULTS, _purge_routes),
     Job("maintain_companions", locks.COMPANIONS, maintain_companions),
     Job("retention", locks.RETENTION, _sweep, daily=True),
     Job("collect_festivals", locks.FESTIVALS, _collect_festivals, daily=True),
+    Job("collect_seoul_culture", locks.FESTIVALS, _collect_seoul_culture, daily=True, enabled=seoul_culture.enabled),
 )
 
 
@@ -85,7 +93,7 @@ def run_due(now: datetime | None = None) -> int:
 
     for job in JOBS:
         slot = daily_slot if job.daily else hourly_slot
-        if slot > now:
+        if slot > now or (job.enabled is not None and not job.enabled()):
             continue
 
         started = monotonic()
