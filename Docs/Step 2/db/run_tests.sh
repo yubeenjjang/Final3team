@@ -88,7 +88,7 @@ echo "## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적
 "${PSQL_TX[@]}" -q < 011_route_access_token.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_011_route_access_token.sql
 
-echo "## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증"
+echo "## 5. 012·013 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증"
 "${PSQL[@]}" -q -v seed=true -v applied=false -v restored=false -f - < tests_012_route_backup_evidence.sql
 "${PSQL_TX[@]}" -q < 012_route_backup_evidence.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_012_route_backup_evidence.sql
@@ -97,6 +97,14 @@ echo "## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검�
 "${PSQL_TX[@]}" -q < 012_route_backup_evidence.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_012_route_backup_evidence.sql
 
+"${PSQL[@]}" -q -v seed=true -v applied=false -v restored=false -f - < tests_013_route_purge_evidence.sql
+"${PSQL_TX[@]}" -q < 013_route_purge_evidence.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_013_route_purge_evidence.sql
+"${PSQL_TX[@]}" -q < 013_route_purge_evidence_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -v restored=false -f - < tests_013_route_purge_evidence.sql
+"${PSQL_TX[@]}" -q < 013_route_purge_evidence.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_013_route_purge_evidence.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
@@ -104,6 +112,8 @@ docker exec "$NAME" createdb -U postgres -T template0 "$restore_db"
 docker exec "$NAME" pg_restore -U postgres -d "$restore_db" --single-transaction "$archive"
 docker exec -i "$NAME" psql -U postgres -d "$restore_db" -v ON_ERROR_STOP=1 -X -q \
   -v seed=false -v applied=false -v restored=true -f - < tests_012_route_backup_evidence.sql
+docker exec -i "$NAME" psql -U postgres -d "$restore_db" -v ON_ERROR_STOP=1 -X -q \
+  -v seed=false -v applied=false -v restored=true -f - < tests_013_route_purge_evidence.sql
 "${PSQL[@]}" < tests_v0.3.2_after_backup.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /PASSED/p'
 
 echo "## 6. 실행 계획 (explain_v0.3.2.sql)"

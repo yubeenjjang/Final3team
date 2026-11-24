@@ -422,22 +422,26 @@ def test_P11_expiry_removes_shared_tmap_body_for_all_ids(routes: Routes) -> None
     assert _poll(routes, second)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
 
 
-def test_a05_db_ready_request_without_result(routes: Routes, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("purged", [False, True], ids=["missing", "purged-at-23h"])
+def test_a05_db_ready_request_without_result(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch, purged: bool,
+) -> None:
     ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
     assert ready["route_status"] == "ready"
 
-    class StoreWithoutResult:
+    class StoreWithExpiredResult:
         def lookup(self, direction, route_id, token, now):
             assert direction == "return"
             assert route_id == ready["route_request_id"]
             assert token == ready["route_access_token"]
+            result = {"queried_at": now - timedelta(hours=23), "purged_at": now} if purged else None
             return {
                 "status": "ready",
                 "completed_at": routes.clock.now,
                 "error_detail": None,
-            }, None
+            }, result
 
-    monkeypatch.setattr(routes.service, "_store", StoreWithoutResult())
+    monkeypatch.setattr(routes.service, "_store", StoreWithExpiredResult())
     restored = _poll(routes, ready)
     assert restored["route_status"] == "unavailable"
     assert restored["completed_valid_route"] is False

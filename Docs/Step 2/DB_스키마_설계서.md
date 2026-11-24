@@ -13,7 +13,7 @@
 | 기준 문서 | **기획서 최신본**([놀다가 기획서](../Step%201/놀다가_기획서.md), 11/19 05:18 신유빈 님 공유, v3.1 다음판) · [WBS 128개](../Step%201/놀다가_WBS.md), 결정대장 D-009~D-039 + 11/20 결정(추천 취향 아기 동반 제외), 팀 자체 평가 30문항(11/18), 강사 2차 의견(11/18)·일일 피드백(11/19), 수업 가이드 「DB 스키마 설계서 작성법」(11/18) |
 | DB | **AWS 위 Docker PostgreSQL 17 + pgvector**(이미지 `pgvector/pgvector:pg17`) / 캐시·임시 상태: Docker Redis. **인증은 FastAPI 자체 JWT**(Supabase 사용 안 함, **D-037 11/19 결정** — 기획서·WBS 최신본과 일치, 11/20 GitHub 대조) |
 | 진행 단계 | ☑ 초안 작성(11/19) → ☑ 팀 검토 완료(11/19) → ☑ GitHub 정본 업로드(v0.3.1, 11/19 `91b3337`) → ☑ v0.3.2 교체(11/20 12:32 `41c66a5`) → ☑ v0.3.3 교체 + `db/` 폴더 업로드(11/20 16:24 신유빈 `e8aecb4`) → ☑ **v0.4 작성(11/23, 강사 11/20 피드백 반영)** → ☐ v0.4 GitHub 정본 교체(`ohyun` 병합) → ☐ 대시보드 링크·제출·접수 상태 팀 확인 대기 |
-| v0.4 대조 기준 | `ohyun` `f24671e`의 코드·SQL과 11/24 로컬 시험 기록. v0.4 GitHub 정본 기준 커밋은 병합 뒤 기록 |
+| v0.4 대조 기준 | `ohyun` `f24671e`의 코드·SQL과 11/24 로컬 시험 기록. 11/27 제출 기준 커밋: 신유빈 고정 예정(`main` 병합 후) |
 | **SQL 실행 확인** | 기본 DDL(30개 테이블) + 마이그레이션 002(`assistant_runs`)·003(축제 이미지 칸)·004(`festival_trends`·개인정보)·005(추천·친구)·006(방문 코스·공지 이력)·007(동행·채팅·알림·신고, 총 48개)·008(교차 검토 반영: 권한·숨김·검색 경로·누락 칸)·009(기능 상세 시나리오: 출발·도착 선택, 닉네임·출생연도·성별, 채팅방 신고, 앱 사용법 RAG)를 **운영과 같은 Docker 이미지(PostgreSQL 17.12 + pgvector 0.8.7)로 집 컴퓨터에서 2026-11-20 다시 실행, 시험 T1~T43(확인 149개) 모두 통과, `EXPLAIN ANALYZE` 측정**(5·10절). 시험 SQL·실행기는 `db/` 파일로 분리. **AWS 서버에서는 아직 실행하지 않았습니다**(예정: W65 12/07–10, 담당 신유빈) |
 
 > 테이블은 **설계안**이며 실제 AWS 서버에는 아직 만들지 않았습니다. 외부 공급원 필드(TourAPI·TMAP·카카오맵 등)는 실호출 뒤 확정합니다(8절).
@@ -49,7 +49,7 @@
 
 | # | 피드백 | 상태 | 반영 위치·근거 |
 |---|---|---|---|
-| 4 | SK 회신 전 7일 백업에서 TMAP 경로 본문 제외 및 증빙 보존 | ✅ 로컬 T25a·b 복원 통과, AWS 적용·검증 예정 | 7-0 ④, 012, T25a·b 복원 검증(10절), [11/24 SQL 로그](db/results_2026-11-24.log) |
+| 4 | SK 회신 전 7일 백업에서 TMAP 경로 본문 제외 및 증빙 보존 | T25a·b 로컬 통과. 013·T25c 재실행 대기, AWS 적용·검증 예정 | 7-0 ④, 012·013, 복원 시험(10절), [11/24 SQL 로그](db/results_2026-11-24.log) |
 
 ## 1. ERD 관계 명세
 
@@ -578,7 +578,7 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 
 ## 4. JWT·Redis 세션 수명주기
 
-아래 Redis 키는 연결 예정입니다. 실제 경로의 **기본 메모리 모드**는 TMAP 결과 본문과 요청 원문을 캐시 만료(60초) 때 정리합니다(`ROUTE_RESULT_EXPIRED`, `retryable=true`). 카카오·실패 요청의 원문은 처리 끝에 정리합니다. **011 DB 모드**는 접수 후 10분 토큰과 TMAP 요약의 24시간 정리 정책을 적용합니다. 유효 토큰으로 조회한 정리된 결과에는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”를 반환합니다. 11/24 일회용 DB에서 기존 P18을 통과했습니다(API 설계서 2-2·17-3절).
+아래 Redis 키는 연결 예정입니다. 실제 경로의 **기본 메모리 모드**는 TMAP 결과 본문과 요청 원문을 캐시 만료(60초) 때 정리합니다(`ROUTE_RESULT_EXPIRED`, `retryable=true`). 카카오·실패 요청의 원문은 처리 끝에 정리합니다. **011 DB 모드**는 접수 후 10분 토큰과 TMAP 요약의 최대 24시간 보존 정책을 적용합니다. 유효 토큰으로 조회한 정리된 결과에는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”를 반환합니다. 11/24 일회용 DB에서 기존 P18을 통과했습니다(API 설계서 2-2·17-3절).
 
 **인증 흐름 (FastAPI 자체 JWT — D-037)**
 ① `POST /api/v1/auth/login`(이메일·비밀번호, `users.password_hash`는 bcrypt/argon2) → **Access JWT**(수명 30분, `sub`=user_id, `role`, `jti` 포함, 임시) + **Refresh Token**(수명 14일, 원문은 사용자에게만, DB `refresh_tokens`에는 해시만) → ② FastAPI가 요청마다 서명·만료·발급자 검증 → ③ `profiles.role`로 역할 확인(JWT 클레임과 다르면 DB 값 우선) → ④ Access 만료 시 `POST /api/v1/auth/refresh` — **Refresh는 쓸 때마다 새로 발급하고 이전 것은 `revoked_at` 기록(교체 방식)**, 폐기된 Refresh가 다시 오면 그 사용자의 Refresh 전부 폐기 → ⑤ `POST /api/v1/auth/logout` 시 Refresh 폐기 + Redis `revoked:{jti}` 등록(남은 Access 수명만큼 TTL).
@@ -675,6 +675,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | error_code | TEXT / NULL | 03 문서 오류 코드 |
 | | submitted_at / started_at / completed_at | TIMESTAMPTZ | 접수·처리 시작·완료 시각 |
 | | result_provider / result_queried_at (012) | TEXT / TIMESTAMPTZ, 둘 다 값이 있거나 둘 다 NULL | 결과의 공급원과 조회 시각. 012가 기존 결과에서 이관하고 이후 결과 저장과 같은 트랜잭션에서 기록. 7일 백업에 보존 |
+| | result_purged_at (013) | TIMESTAMPTZ / NULL | 본문을 실제로 지운 시각. 013이 기존 `route_results.purged_at`을 이관하며, 이후 정리 시 같은 트랜잭션에서 기록. 7일 백업에 보존 |
 | | shared_from | TEXT / FK route_requests NULL | 병합으로 다른 요청 결과를 공유했으면 원래 요청 |
 | | simulation_id | TEXT / FK load_simulations NULL | 부하 시험 요청이면 연결 |
 | | incident_id | TEXT / FK incident_logs NULL | 사건 기간에 처리된 요청 |
@@ -695,7 +696,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | validated_at | TIMESTAMPTZ / NULL | 검증 시각 |
 | | validation_status | TEXT / CHECK IN ('verified_basic','constraint_unverified','control_unverified','failed') | 검증 결과 |
 | | is_mock | BOOLEAN / NOT NULL | |
-| | **purged_at** | TIMESTAMPTZ / NULL | 공급원 약관 때문에 경로 내용을 지운 시각. **TMAP은 받은 데이터를 24시간 넘게 쓸 수 없음**(11/19 한태경 님 약관 확인) → 정리 작업이 24시간 안에 `candidates`·`evidence`를 비우고 기록 |
+| | **purged_at** | TIMESTAMPTZ / NULL | 만료된 경로 내용을 실제로 지운 시각. **TMAP은 받은 데이터를 24시간 넘게 쓸 수 없음**(11/19 한태경 님 약관 확인). A05 조회 또는 정기 작업이 본문을 정리하며 기록 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 | **route_cache_entries** | cache_key | TEXT / PK (= route_key) | |
 | | **festival_id** | TEXT / FK festivals, NOT NULL | 통제 공지가 바뀌면 이 축제의 캐시를 한꺼번에 무효화(7절) |
@@ -965,7 +966,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 |---|---|
 | **삭제 대신 상태** | 축제는 물리 삭제하지 않고 `review_status`·`published_at`으로 숨깁니다. 원본에서 사라져도 관심·후기 연결 보존 (FR-D10) |
 | **수집 멱등성** | `UNIQUE(source_id, source_item_id)` + `raw_checksum`이 같으면 갱신하지 않음. 바뀌면 `festival_change_history`에 기록 |
-| **공급원 약관에 따른 보관 (D-038, 11/19)** | (기준: 7-0 보존표) TMAP 경로 내용: **24시간 안에 삭제**(`route_results.purged_at`, 요청 메타데이터는 남김). 카카오맵: **저장·캐시 모두 안 함**(카카오 공식 답변 '실시간 호출만·저장 불가', 11/20 한태경) — Redis 60초 캐시는 TMAP 결과만. 외부 원본 JSON 근거 파일도 같은 규칙 → 제출용 근거는 합성 예시·메타데이터 |
+| **공급원 약관에 따른 보관 (D-038, 11/19)** | (기준: 7-0 보존표) TMAP 경로 내용은 **23시간 기준으로 시간당 정리해 최대 24시간 보관**합니다(정상 실행 기준). A05 조회 정리와 시간당 작업은 본문을 지울 때 `route_results.purged_at`과 `route_requests.result_purged_at`에 같은 시각을 기록. 카카오맵: **저장·캐시 모두 안 함**(카카오 공식 답변 '실시간 호출만·저장 불가', 11/20 한태경) — Redis 60초 캐시는 TMAP 결과만. 외부 원본 JSON 근거 파일도 같은 규칙 → 제출용 근거는 합성 예시·메타데이터 |
 | **개인정보 최소화** | (기준: 7-0 보존표) 사용자 장소는 DB에 HMAC 해시만(30일), 표시 이름은 Redis 24시간만(004). GPS·이동 이력 수집 안 함. `route_requests`는 30일 뒤 삭제(임시) — 사건에 연결된 행은 통계 컬럼만 남기고 익명화 |
 | **모의/실제 분리** | `is_mock`, `injected_test`, `sample_kind`가 모든 경로·사건·외부 데이터 행에 있음. 집계 쿼리는 이 값으로 반드시 나눕니다 |
 | **지역 지원 범위** | `data_sources.enabled_region_codes`에 없는 지역은 `unsupported`로 응답. 다른 지역 값으로 채우지 않음. 지역 확대는 이 칸에 지역을 추가하는 것으로 함 (D-020) |
@@ -986,7 +987,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | **인증** | JWT 서명·만료 검증 후 `profiles.role`로 권한 검사 |
 | **마이그레이션** | SQL 마이그레이션 파일(`db/migrations/NNN_*.sql`, 부록 DDL이 001번)로 관리 제안(Alembic 사용 여부는 개발 시작 때 결정) — 적용·되돌리기 로그를 WBS W17 증빙으로 |
 | **신규 기능 테이블** | 아래 7-1 표. 13개 + 신고·관리자 열람 기록 2개 모두 005·007로 DDL·시험 완료 |
-| **AWS Docker 운영 (D-037)** | `pgvector/pgvector:pg17` 컨테이너 + 데이터는 볼륨(EBS)에 저장, 5432 포트는 **같은 서버의 API 컨테이너에만**(외부 공개 안 함), 접속 역할 비밀번호는 환경변수. 매일 백업은 012 적용 후 [백업 실행기](db/backup_long_term.sh)로 생성(7일, SK 회신 전 기준, 7-0 ④). DB 볼륨 EBS 스냅샷은 TMAP 24시간 규칙 때문에 쓰지 않음. 서버 사양·배포 방식은 인프라 담당(신유빈)과 확정 |
+| **AWS Docker 운영 (D-037)** | `pgvector/pgvector:pg17` 컨테이너 + 데이터는 볼륨(EBS)에 저장, 5432 포트는 **같은 서버의 API 컨테이너에만**(외부 공개 안 함), 접속 역할 비밀번호는 환경변수. 매일 백업은 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)로 생성(7일, SK 회신 전 기준, 7-0 ④). DB 볼륨 EBS 스냅샷은 TMAP 24시간 규칙 때문에 쓰지 않음. 서버 사양·배포 방식은 인프라 담당(신유빈)과 확정 |
 
 ---
 
@@ -995,14 +996,16 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 **보존 기간의 기준은 이 표 하나**입니다(Redis TTL 숫자는 03 문서 9-1절이 기준). 03 문서의 설명, 이 문서 4·6·7절, 정리 코드가 이 표와 다르면 이 표가 맞습니다.
 
 - **상태**: **외부 고정** = 공급원 약관·답변이 정한 것 / **설계 고정** = 의미상 정해진 것 / **임시** = 숫자를 정했지만 보안 검토(W16·W54) 전
-- **정리 작업** `retention_sweeper`: 1시간마다 실행(워커 주기 작업). 지운 행 수·실행 시각을 운영 로그에 남기고, 실패하면 다음 회차에 다시 지움. TMAP 경로는 **만들어진 지 23시간 지난 것**을 지워서 1시간 주기여도 24시간을 넘기지 않습니다.
+- 기타 보존 기간 정리는 `retention_sweeper` 워커를 시간마다 실행해 처리하는 설계입니다.
+- **TMAP 정리 작업.** 권오현이 명령을 제공하고, 신유빈이 W64·W65에서 시간당 실행 및 실패 감시를 설정합니다. API와 같은 DB 환경에서 013까지 적용 후 `backend/`는 `python -m api.jobs.purge_route_results`, 저장소 루트는 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행합니다. `--dry-run`을 붙이면 대상 건수만 출력합니다. `queried_at` 기준 기본 23시간 이상 된 본문을 정리하며, `ROUTE_PURGE_AFTER_HOURS`에는 1~23 사이의 정수만 설정할 수 있습니다.
+- **감시 기준.** 완료는 종료 코드 `0`이며, 로그 한 줄에 `processed`와 `duration_ms`를 남깁니다. 처리 0건도 정상입니다. `1` 실행 실패, `2` 인자 또는 정리 기준 설정 오류, `3` 중복 실행은 각각 경보를 보냅니다. 직전 정리 성공이 65분을 넘으면 누락을 경보로 잡습니다. 시간당 정상 실행과 23시간 정리 기준을 적용하면 본문은 최대 24시간 보관됩니다. 유효 토큰으로 정리된 결과를 A05에서 조회하면 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다.
 - 프로젝트 종료 = 12/31 최종 제출(WBS W79). 그 뒤 데이터는 팀 합의로 일괄 삭제합니다.
 
 **① 공급원에서 받은 데이터**
 
 | 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것(이력) | 근거 | 상태 | 담당·확정 |
 |---|---|---|---|---|---|---|---|
-| TMAP 경로 내용 | `route_results.candidates`·`evidence` | **24시간 안**(23시간 지나면 정리) | `candidates` → NULL, `evidence` → `'{}'`(NOT NULL 칸), `purged_at` 기록(T20b) | `provider`·`provider_tier`·`queried_at`·`validation_status`·`route_hash`·`source_type` | TMAP 약관 "저장 후 24시간 넘게 사용 불가"(11/19 한태경) | 외부 고정 | 권오현(코드, T20) |
+| TMAP 경로 내용 | `route_results.candidates`·`evidence`·`provider_ref`·`validity_check` | 시간당 정기 실행은 조회 후 기본 23시간 이상 된 본문을 정리(정상 실행 시 최대 24시간 보관). 유효 토큰 A05 조회의 정리 기준은 24시간 | `candidates`·`provider_ref` → NULL, `evidence` → `{}`, `validity_check` → 캐시·대체 결과는 `{}`, 그 외는 NULL | 결과 메타데이터와 `route_results.purged_at`. 같은 트랜잭션에서 `route_requests.result_purged_at`을 기록해 백업에 보존 | TMAP 약관 "저장 후 24시간 넘게 사용 불가"(11/19 한태경) | 외부 고정 | 권오현(명령) · 신유빈(W64·W65) |
 | 카카오맵 경로 내용 | **어디에도 저장 안 함** — DB·Redis·큐·로그·대화 상태·챗봇 답변 모두 | 0 | — | STEP4는 `route_requests`의 상태와 오류 코드만 기록 | 카카오 공식 답변(데브톡 6/29, 11/20 한태경) "실시간 호출만·저장 불가" | 외부 고정 | 권오현 |
 | 경로 캐시 | Redis `route:cache` | 60초 | 키 자동 삭제 | `route_cache_entries`(메타·`valid_until`) | TMAP 24시간 안, 카카오는 캐시 안 함 | 임시(9-1 ④) | 신유빈 · W96 12/04 |
 | 경로 캐시 메타 | `route_cache_entries` | 30일 | 행 삭제 | 없음(지표는 `route_query_metrics`) | `route_requests`와 같게 | 임시 | 권오현 · W16 11/20 |
@@ -1051,11 +1054,11 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | 데이터 | 보존 | 규칙 | 상태 | 담당·확정 |
 |---|---|---|---|---|
 | 서버·워커 로그 | 14일 | **쓰면 안 되는 것**: 목적지 원문, 경로 내용(TMAP·카카오), 챗봇 질문 원문, 토큰·비밀번호·API 키, **전체 IP**(뒷자리 가림 — 11/20 한태경). 대신 `X-Request-ID`·`route_request_id`·`run_id`·해시만. 외부 오류는 HTTP 상태·결과 코드만 | 임시 | 신유빈 · W54 12/16(마스킹 검증) |
-| DB 논리 백업(매일) | 7일 | 012 적용 후 [백업 실행기](db/backup_long_term.sh)의 `pg_dump --exclude-table-data=public.route_results`를 사용. 테이블 정의와 `route_requests` 데이터는 보존. 공급원 원본·후보 상세·경로 근거를 담을 수 있는 `route_results` 행 전체는 제외. DB 볼륨 EBS 스냅샷은 이 보존에 사용하지 않음 | SK 회신 전 기준 · T25a·b 11/24 로컬 복원 통과 | 신유빈 · AWS 준비 때(W65) |
+| DB 논리 백업(매일) | 7일 | 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)의 `pg_dump --exclude-table-data=public.route_results`를 사용. 테이블 정의와 `route_requests` 데이터(삭제 시각 포함)는 보존. 공급원 원본·후보 상세·경로 근거를 담을 수 있는 `route_results` 행 전체는 제외. DB 볼륨 EBS 스냅샷은 이 보존에 사용하지 않음 | SK 회신 전 기준 · T25a·b 11/24 로컬 통과 · T25c 재실행 대기 | 신유빈 · AWS 준비 때(W65) |
 
 DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `bash 'Docs/Step 2/db/backup_long_term.sh' --dbname=noldaga --file=/path/to/noldaga.dump`로 생성하고, 빈 DB에 `pg_restore --single-transaction`으로 복원합니다. 복원 뒤 `retention_sweeper`를 1회 실행해 만료 대상을 정리합니다.
 
-012는 기존 결과의 `provider`·`queried_at`을 각각 `route_requests.result_provider`·`result_queried_at`에 이관합니다. 신규 결과를 저장하거나 공급원·조회 시각을 수정할 때 같은 트랜잭션에서 갱신합니다. 백업에는 이 두 값과 `submitted_at`·`status`·`error_code`가 남습니다. 애초에 결과가 저장되지 않은 요청의 이력은 요청 시각·상태·오류 코드입니다. 복원 후 `route_requests.status=ready`이고 `route_results` 행이 없으면 유효 토큰으로 조회한 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다. 메시지는 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”입니다.
+012는 기존 결과의 `provider`·`queried_at`을 각각 `route_requests.result_provider`·`result_queried_at`에 이관합니다. 신규 결과를 저장하거나 공급원·조회 시각을 수정할 때 같은 트랜잭션에서 갱신합니다. 013은 기존 `route_results.purged_at`을 `route_requests.result_purged_at`에 이관하고, 이후 A05 또는 정리 명령이 본문을 지울 때 트리거가 같은 트랜잭션에서 같은 시각을 기록합니다. 백업에는 이 증빙과 `submitted_at`·`status`·`error_code`가 남습니다. 백업 당시 미정리 결과의 삭제 시각은 NULL이며, 애초에 결과가 저장되지 않은 요청은 요청 시각·상태·오류 코드만 남습니다. 복원 후 `route_requests.status=ready`이고 `route_results` 행이 없으면 유효 토큰으로 조회한 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다. 메시지는 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”입니다.
 
 **⑤ 추가 기능(동행·채팅 — 11/20 결정 반영)**
 
@@ -1074,7 +1077,7 @@ DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `ba
 | 챗봇 답변(30일 보존) | 답변에 구간·정류장을 쓰면 TMAP 내용이 30일 남음 | 답변에는 **어떤 공급원이든 경로 구간·정류장 내용을 쓰지 않고** 요약("경로를 찾았어요")과 `route_request_id`만. 경로는 화면이 A05로 받음(03 문서 7-6 수정) |
 | DB 백업(7일 보존) | 매일 백업에 `route_results`가 들어가면 TMAP 내용이 7일 남음 | 위 ④ — 백업에서 `route_results` 데이터 제외, EBS 스냅샷 안 씀 |
 
-T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조회 시각·요청 상태·오류 코드 보존을 확인했습니다. 체크포인트·챗봇 답변과 로그 마스킹은 API·워커 시험에서 다룹니다(W54 보안 검증 12/14–16, 한태경). [11/24 SQL 로그](db/results_2026-11-24.log)
+T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조회 시각·요청 상태·오류 코드 보존을 확인했습니다. 013을 적용한 복원 DB에서 `result_purged_at`을 확인하는 T25c는 재실행 대기입니다. 체크포인트·챗봇 답변과 로그 마스킹은 API·워커 시험에서 다룹니다(W54 보안 검증 12/14–16, 한태경). [11/24 SQL 로그](db/results_2026-11-24.log)
 
 ### 7-1. 신규 테이블 (기획서 최신본 5.19 13개 + 신고·관리자 열람 기록 2개 — 005·007로 모두 DDL·시험 완료)
 
@@ -1115,7 +1118,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 
 | 데이터 | 사용자 본인 | 다른 사용자 | 관리자 | 에이전트(LLM 포함) | 삭제·탈퇴·차단 뒤 | DB 행 접근 제한(RLS) ↔ 서버 검사 |
 |---|---|---|---|---|---|---|
-| 귀가 요청·결과(`route_requests`·`route_results`) | A05 요청 토큰으로 자기 요청만(로그인 여부 공통) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 장소 HMAC 해시와 TMAP 요약 24시간 정리. 30일 뒤 행 삭제와 운영 정리 연동은 예정 | 메모리 모드는 메모리 토큰 비교. DB 모드(011)는 서비스 계정으로 토큰 해시 비교(11/24 로컬 P18 통과) |
+| 귀가 요청·결과(`route_requests`·`route_results`) | A05 요청 토큰으로 자기 요청만(로그인 여부 공통) | 불가 | 운영 지표(service 경유) | 경로 도구 결과만(좌표 원문 없음) | 장소 HMAC 해시와 TMAP 요약 최대 24시간 보관(7-0). 30일 뒤 행 삭제와 운영 정리 연동은 예정 | 메모리 모드는 메모리 토큰 비교. DB 모드(011)는 서비스 계정으로 토큰 해시 비교(11/24 로컬 P18 통과) |
 | 축제(`festivals`·`festival_sources`) | A02·A03은 승인·게시된 축제만 | 같음 | 전체(검토 대기 포함) | API를 통해 승인·게시된 축제만 | 관리자 숨김(`hidden`)은 수집이 다시 공개하지 않음 | DB 008 RLS: `published_at IS NOT NULL AND review_status <> 'hidden'`(010 조인도 이 범위). 서버 A02·A03: `published_at IS NOT NULL AND review_status = 'approved'`. 게시 시각이 있는 `pending` 행은 DB 조건을 통과하지만 서버에서 제외됨. 수집 DB 시험 I12와 010 기록은 10-A절 |
 | 동행 채팅 메시지 | 참여 중인 방만 | 같은 방 참여자 | **신고된 메시지 1건만**. 방 신고는 방 정보·신고 사유로 처리. 메시지를 보여 주기 전에 `chat_admin_access`에 열람 이유를 기록(A77) | 넘기지 않음 | 동행 종료 3일 뒤 접근 차단·삭제(7-0), 탈퇴 시 작성자 표시 ‘알 수 없음’ | RLS: 방 멤버 함수(007). 관리자 열람 범위의 서버 검사·기록 시험은 A77 구현과 W128(12/17–18 권한 검증)에서 진행. T40c는 기록 삭제 차단 시험 |
 | 가입 정보(출생연도·성별) | 본인 | 동행 글 작성자가 **대기·승인된 신청자만**(`app_applicant_profile`, 009) | 운영 필요 시 | 넘기지 않음 | 탈퇴 시 NULL(A80) | 함수 안 조건 = 서버 조건 |
@@ -1126,8 +1129,10 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 
 > **마이그레이션 011(11/24 로컬 적용·되돌리기·재적용 통과):** `route_requests`에 `access_token_hash TEXT NOT NULL`과 64자리 해시 제약을 추가했습니다. `request_body_hash`는 멱등 비교, `error_detail`은 오류 안내에 사용합니다. `user_id` 칸 없이 로그인·비로그인 A05에서 같은 방식으로 검증합니다. 기존 RLS와 `noldaga_service` 접근 권한을 검사하고, TMAP 정리용 부분 색인을 만듭니다.
 
-- `precheck_011_route_access_token.sql`로 기존 행 수를 확인합니다. 기존 요청·결과는 보존되고, 기존 요청의 난수 해시는 유효 토큰 발급에 쓰이지 않습니다. 적용과 되돌리기는 각 파일을 `psql -X -v ON_ERROR_STOP=1 -1 -f`로 실행합니다.
-- **확인 필요(신유빈)** — API 컨테이너의 서비스 계정 접속 정보 전달 방식, 기존 행 보존·재요청 처리, 24시간 정리를 실행할 담당 작업. 확인 항목과 검증 명령은 [STEP4 지시서](../../backend/Doc/route-providers/codex/STEP4.md)에 있습니다.
+- `precheck_011_route_access_token.sql`로 기존 행 수를 확인합니다. 신유빈 님 11/24 10:29 답변에 따라 011 이전 요청·결과 행은 보존하고 조회 토큰은 재발급하지 않습니다. 011 이전 요청을 조회하려면 새 요청을 접수해야 합니다. 적용과 되돌리기는 각 파일을 `psql -X -v ON_ERROR_STOP=1 -1 -f`로 실행합니다.
+- API 컨테이너에는 `.env.example`의 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER_USERNAME`, `DB_USER_PASSWORD`, `DB_SERVICE_USERNAME`, `DB_SERVICE_PASSWORD`를 전달합니다. `DB_MIGRATION_DSN`은 관리자용 실행 환경에만 둡니다. 011 부분 색인을 쓰는 TMAP 정리 명령과 감시 기준은 7-0절에 있습니다.
+
+**마이그레이션 013(한태경 님 11/24 검토).** 012 적용 DB에서 `route_results`를 제외하는 백업에 삭제 시각을 남기기 위해 `route_requests.result_purged_at`을 추가합니다. 기존 삭제 시각은 이관하고 새 삭제 시각은 트리거로 기록합니다. 기존 RLS와 역할 권한을 유지하며 `noldaga_app`은 삭제 시각을 조회·수정할 수 없습니다. 013을 되돌리면 요청 행의 삭제 시각 칸과 트리거가 제거되고 결과 행의 `purged_at`은 보존됩니다. T013·T25c는 재실행 대기입니다.
 
 **확보한 원본:** 서울시 `citydata_ppltn` 광화문·덕수궁 응답(2026-11-16 샘플 키, 11/19 정식 키 재호출 `evidence/responses/2026-11-19_seoul-ppltn_광화문덕수궁.json`) → 혼잡 `payload`의 필드(`AREA_CD`·`AREA_CONGEST_LVL`·`AREA_PPLTN_MIN/MAX`·`PPLTN_TIME`·`FCST_PPLTN[]`)를 이 원본으로 정했습니다. 나머지 공급원은 03 문서 10-1절 '최소 실호출 계획'으로 확인합니다.
 
@@ -1191,7 +1196,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 
 **강사 11/19 DB 피드백 1:** 001~009 기본 시험과 기존 데이터가 있는 009 시험은 아래 실행기로 재실행할 수 있습니다. 010은 적용·되돌리기 SQL과 별도 통과 기록이 있습니다(10-A-3).
 
-적용 순서는 001→…→008→009 사전 검사→009→010→011 사전 검사→011→012입니다. 001~009와 011~012의 적용·되돌리기는 파일 단위로 `psql -1 -v ON_ERROR_STOP=1 -f <파일>`을 사용합니다(표의 기본 시험은 빈 DB에 적용). 010은 적용·되돌리기 SQL에 `BEGIN`/`COMMIT`이 있어 `psql -v ON_ERROR_STOP=1 -f <파일>`로 실행합니다. 011~012 적용·되돌리기는 트랜잭션 안에서 두 경로 테이블을 먼저 잠급니다.
+적용 순서는 001→…→008→009 사전 검사→009→010→011 사전 검사→011→012→013입니다. 001~009와 011~013의 적용·되돌리기는 파일 단위로 `psql -1 -v ON_ERROR_STOP=1 -f <파일>`을 사용합니다(표의 기본 시험은 빈 DB에 적용). 010은 적용·되돌리기 SQL에 `BEGIN`/`COMMIT`이 있어 `psql -v ON_ERROR_STOP=1 -f <파일>`로 실행합니다. 011~013 적용·되돌리기는 트랜잭션 안에서 두 경로 테이블을 먼저 잠급니다.
 
 | 순서 | 파일 (GitHub `Docs/Step 2/db/`) | 내용 |
 |---|---|---|
@@ -1209,12 +1214,14 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 2-9 사전 검사 | `db/precheck_011_route_access_token.sql` | 기존 경로 요청 건수 확인 |
 | 2-9 | `db/011_route_access_token.sql` (되돌리기 `011_route_access_token_down.sql`) | 토큰·본문 해시, 오류 상세, TMAP 정리 색인 추가 |
 | 2-10 | `db/012_route_backup_evidence.sql` (되돌리기 `012_route_backup_evidence_down.sql`) | 요청에 결과의 공급원·조회 시각 이관 및 동기화. 복원 후 `ready` 요청의 결과 행이 없으면 유효 토큰으로 조회한 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 새 경로 요청 안내를 반환(7-0 ④) |
+| 2-11 | `db/013_route_purge_evidence.sql` (되돌리기 `013_route_purge_evidence_down.sql`) | 요청의 `result_purged_at`에 기존 삭제 시각 이관 및 이후 정리와 같은 트랜잭션에서 기록 |
 | 3 | `db/tests_v0.3.2.sql` → `db/tests_v0.3.2_after_backup.sql` | 시험 T1~T43 (스스로 판정: 기대와 다르면 `FAIL`로 멈춤) |
 | 4 | `db/tests_011_route_access_token.sql` | 기존 행 보존·해시 제약·일반 계정 차단·되돌리기·재적용(T011a~d) |
 | 5 | `db/tests_012_route_backup_evidence.sql` · `db/backup_long_term.sh` | 012 이관·신규 기록·되돌리기·재적용, 7일 백업을 빈 DB에 복원해 경로 내용 제외와 증빙 보존 확인(T25a·b). **11/24 로컬 통과** |
+| 5 | `db/tests_013_route_purge_evidence.sql` | 013 이관·트리거·권한·되돌리기·재적용(T013a~d), 복원 뒤 삭제 시각 보존(T25c). **재실행 대기** |
 | 6 | `db/explain_v0.3.2.sql` | 축제 검색 인덱스 전후 실행 계획(데이터 생성 SQL 포함) |
-| — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~012 적용 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
-| — | `backend/tests/routes/test_p18_route_store_db.py` | `TEST_DB_APP_URL`의 `noldaga_app`으로 축제 조회, `TEST_DB_URL`로 시험 데이터 준비·경로 저장. 접수→상태→TMAP 저장·조회·만료, 토큰 만료 후 A04 재전송, 카카오 미저장, TMAP 조기 정리. 011 시험에는 소유자 권한 또는 `TEST_DB_MIGRATION_URL` 필요. **11/24 기존 P18 4개 로컬 통과**. 신규 DB 행 원문 검사는 `TEST_DB_URL` 설정 시 실행 |
+| — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~013 적용 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
+| — | `backend/tests/routes/test_p18_route_store_db.py` | `TEST_DB_APP_URL`의 `noldaga_app`으로 축제 조회, `TEST_DB_URL`로 시험 데이터 준비·경로 저장. 접수→상태→TMAP 저장·조회·만료, 토큰 만료 후 A04 재전송, 카카오 미저장, A05·정기 정리의 삭제 시각 일치. 011 시험에는 소유자 권한 또는 `TEST_DB_MIGRATION_URL` 필요. **11/24 기존 P18 4개 로컬 통과**. 신규 DB 행 원문·삭제 시각 검사는 013 적용 일회용 DB에서 실행 |
 | — | `db/run_tests_009_existing.sh` · `db/tests_009_existing_data.sql` | 기존 데이터로 사전 검사→적용→실패 시 취소→되돌리기·다시 적용(T44~T48) |
 | — | `db/results_2026-11-20.log` · `db/results_2026-11-23.log` | 11/20 기본 SQL·백업 PASS 149건. 11/23 밤 PASS 156건(기본 149건 + T011a~d 4건 + 재적용 T011a~c 3건) |
 | — | `db/results_2026-11-23_009_existing.log` | 기존 데이터 시험 T44~T48, PASS 13개 |
@@ -1225,7 +1232,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 환경 | 집 컴퓨터 Docker `pgvector/pgvector:pg17`(digest `sha256:b513c485…`) — **PostgreSQL 17.12**, `vector` 0.8.7, `pg_trgm` 1.6. **운영(AWS)과 같은 이미지** |
 | 결과 | 001 뒤 테이블 30·외래키 43 → 002 적용 → **되돌리기 확인(테이블 사라짐)** → 다시 적용 → 003~009도 각각 적용·되돌리기·다시 적용 → 테이블 48·외래키 80·**RLS 48개 모두 켬**. **확인 149개 모두 PASS, FAIL 0** (`db/results_2026-11-20.log`) |
 | AWS | **미실행.** 같은 이미지·DDL·시험을 AWS에서 다시 돌릴 예정: WBS W65(AWS Docker·DB 운영 구성, 신유빈, 12/07–12/10). 로컬 통과를 배포 환경 검증으로 쓰지 않습니다(강사 피드백 3) |
-| 코드 위치 | `Docs/Step 2/db/`에 설계 검증 SQL·시험·로그를 둡니다. `ohyun` 실행기는 012까지 포함합니다. `yubeen` 실행기와 병합 뒤 적용 범위는 신유빈이 확인합니다(W17, API 설계서 19절) |
+| 코드 위치 | `Docs/Step 2/db/`에 설계 검증 SQL·시험·로그를 둡니다. `ohyun` 실행기는 013까지 포함합니다. `yubeen` 실행기와 병합 뒤 적용 범위는 신유빈이 확인합니다(W17, API 설계서 19절) |
 
 11/24 기준 커밋 `ohyun` `f24671e`에서 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너로 `Docs/Step 2/db/run_tests.sh`를 실행해 PASS 표기 164건을 확인했습니다. 001~012 적용 후 저장소 루트 `python -m pytest backend/tests -m db -q`는 12개 통과했고, 오프라인 전체 `python -m pytest backend/tests -q`는 380개 통과·16개 건너뜀입니다. AWS 검증은 예정입니다. [11/24 SQL 로그](db/results_2026-11-24.log)
 
@@ -1249,12 +1256,13 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | T17 비공개 축제 조회 | 게시된 1건만 | ✅ 1행 |
 | T18 카카오 결과에 경로 내용 저장 / 캐시 등록 / 내용 없이 저장 | 거부 / 거부 / 성공 | ✅ `route_results_check1` / `route_cache_entries_provider_check` / 1행 |
 | T19 TMAP 결과에 경로 내용 없이 저장 | 거부 | ✅ `route_results_check2` |
-| T20 TMAP 경로 내용을 `purged_at` 없이 지움 / 함께 지움 / 23시간 정리 조건 쿼리 | 거부 / 성공 / 실행됨 | ✅ `route_results_check2` / 1행 / 0행 |
+| T20 TMAP 경로 내용을 `purged_at` 없이 지움 / 함께 지움 / 당시 23시간 기준 SQL 쿼리 | 거부 / 성공 / 실행됨 | ✅ `route_results_check2` / 1행 / 0행 |
 | **T21 DB 연결 재사용(새)** — 같은 연결에서 요청 A → 사용자 정보 없는 요청 → 요청 B → 오류로 롤백된 요청 → 다음 요청 | 앞 요청의 사용자가 남지 않음, 사용자 정보 없으면 본인 데이터 0행·쓰기 거부, B는 B 것만 | ✅ A 다음 요청 `app_current_user()` = NULL, `favorites`·`profiles` 0행, 저장 거부, B 요청 B 1행·A 0행, 롤백 뒤 NULL |
 | **T22 금지 패턴 확인(새)** — `LOCAL` 없이 `SET app.user_id` | 다음 요청에 **남음**(그래서 코드에서 금지) | ✅ 남는 것 확인 → 3절 규칙의 근거 |
 | **T23 다른 사람 데이터 수정·삭제(새)** | 0행(안 보이므로 안 바뀜), 본인 것은 1행 | ✅ B 표시 이름 수정 0행·B 관심 삭제 0행·본인 수정 1행, B 값 그대로 |
 | **T24 챗봇 작업 `assistant_runs`(새, 002)** | 같은 `request_id` 거부, 두 워커 동시 선점 시 1명만, 답변 없이 성공·오류 코드 없이 실패 거부, 70초 넘은 `running` 정리, 보존 정리 규칙, 본인 작업만 조회, API 역할 상태 변경 거부 | ✅ 11개 확인 모두 통과 |
 | **T25a·b 7일 백업 복원(7-0 ④)** | 원본 DB에 합성 후보·공급원 원본 표식이 있는 상태에서 백업. 복원 DB의 `route_results` 0행, 요청의 공급원·조회 시각·상태·오류 코드 일치 | ✅ 11/24 로컬 복원 통과. [SQL 로그](db/results_2026-11-24.log) |
+| **T25c 7일 백업 복원(013)** | 복원 DB에서 정리한 요청의 `result_purged_at`이 원본 삭제 시각과 일치. 미정리 요청과 결과가 없었던 요청은 NULL | 재실행 대기 |
 | **T27 지금 핫한 축제 `festival_trends`(새, 004)** | 연결·미연결 저장, matched인데 축제 없음 거부, 순위·언급 수 둘 다 없음 거부, 공개 역할은 연결된 것만 조회·추가 거부 | ✅ 6개 확인 통과 |
 | **T28 목적지 라벨 DB에 없음·장소 해시 지우기(새, 004)** | `user_place_label` 칸 0개, 사건 연결 행의 해시만 NULL | ✅ 0개 / 1행 |
 | **T29 취향(새, 005)** | 모르는 값 거부, 아무것도 안 고르고 완료 거부, 본인 저장 성공, 남의 취향 저장 거부, 다른 사용자 조회 0행 | ✅ 5개 |
@@ -2547,3 +2555,4 @@ ALTER TABLE rag_documents
 | v0.4 | 2026-11-24 | 강사 11/23 일지 피드백 4 반영. SK 회신 전 7일 백업에서 경로 결과 데이터를 제외하고 012로 요청 증빙을 보존합니다. |
 | v0.4 | 2026-11-24 | `ohyun` `f24671e` 기준 011·012 및 T25a·b 로컬 SQL·복원 결과(PASS 표기 164건)와 P18 포함 DB pytest 12개 통과를 기록하고 0-A 및 보존·시험 표를 갱신. |
 | v0.4 | 2026-11-24 | 012 복원 후 `ready` 요청의 결과 행이 없으면 A05가 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 새 경로 요청 안내를 반환하는 동작을 명시하고 P18 회귀 시험 추가(7-0 ④·10절 012 항목). |
+| v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 TMAP 본문 삭제 시각을 요청에 이관·동기화하고 T25c 백업 복원 검사 추가(7-0 ④·8·10절). SQL 재실행 대기. |

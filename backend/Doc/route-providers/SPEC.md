@@ -127,7 +127,7 @@
 - 009·010 이후 `precheck_011_route_access_token.sql`로 기존 경로 요청 행 수를 확인한다. 011과 되돌리기 파일은 각각 `psql -X -v ON_ERROR_STOP=1 -1 -f`로 적용한다. 011은 필요한 스키마와 권한을 잠금 안에서 먼저 검사한다.
 - `access_token_hash TEXT NOT NULL`에 소문자 SHA-256 64자리 제약을 둔다. `user_id`는 추가하지 않는다. `request_body_hash`는 접수 본문 HMAC, `error_detail`은 API가 정한 오류 안내·재시도 정보다. A05는 기존 요청 PK를 사용하고 TMAP 정리에는 `queried_at` 부분 색인을 쓴다.
 - 두 경로 테이블의 RLS와 기존 `noldaga_service` 권한을 사용한다. 일반 `noldaga_app` 계정에는 접근 권한을 주지 않는다.
-- **확인 필요(신유빈) — 기존 행 처리.** 현재 011은 기존 요청·결과 행을 보존한다. 기존 요청에는 식별할 수 없는 난수 해시를 채우고 `request_body_hash`를 NULL로 남겨 A05에서 제외한다. 다시 조회하려면 새 요청이 필요하다. 되돌리기 전 `ROUTE_STORE=memory`로 전환한다. 011용 신규 컬럼·색인만 제거하며, 정리된 결과 내용은 복원되지 않는다.
+- **기존 행 처리 확정(신유빈, 11/24 10:29).** 011 이전 요청·결과 행을 보존하고 조회 토큰은 재발급하지 않는다. 기존 요청에는 식별할 수 없는 난수 해시를 채우고 `request_body_hash`를 NULL로 남겨 A05에서 제외한다. 조회하려면 새 요청을 접수한다. 되돌리기 전 `ROUTE_STORE=memory`로 전환한다. 011용 신규 컬럼·색인만 제거하며, 정리된 결과 내용은 복원되지 않는다.
 
 ### P17. 실제 경로 요청·상태 접수와 조회
 - `ROUTE_PROVIDER=real`에서만 `ROUTE_STORE=memory|db`를 읽는다. 기본 `memory`는 STEP3 방식이다. DB 모드 검증은 `FESTIVAL_DATA=db`로 A02·A03과 동일한 축제 ID를 사용한다.
@@ -141,8 +141,8 @@
 - TMAP 후보의 안내 필드만 DB에 저장한다. 사용자 장소 검색어·원문 좌표·토큰, 공급원 원본 응답, TMAP 경로선·정류장 좌표는 저장하지 않는다. 공개 축제 좌표는 009의 제약에 맞춰 저장한다. 동기 A04는 기존 경로선을 포함하고, DB A05와 POST 재조회는 저장된 요약을 반환한다.
 - 카카오 결과는 동기 응답으로 한 번 전달할 수 있다. DB에는 요청 상태 `unavailable`과 `ROUTE_SECONDARY_SYNC_ONLY`만 남기고 `route_results`에는 행을 만들지 않는다.
 - A05는 토큰 유효성을 먼저 검사한다. 유효 토큰으로 조회한 결과가 24시간에 도달했으면 후보·근거 등을 지우고 `purged_at`을 기록한 뒤 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환한다. 일반 흐름에서는 10분 토큰이 먼저 만료되므로 주기 정리가 필요하다.
-- **확인 필요(신유빈) — 24시간 정리 작업 실행 주체.** DB 설계서 7-0의 시간당 실행을 기준으로 `RouteStore.purge_expired(now)`가 조회 후 23시간 이상 지난 미정리 TMAP 결과를 비운다. 실행 주체와 모니터링은 운영 적용 전에 확정한다.
-- 단위 시험은 DB 없이 실행한다. `db` 표시는 001~011을 적용한 일회용 DB에서 A02·A03→A04 접수→A05 처리 상태→TMAP 저장·조회·만료, 잘못된 토큰, 토큰 만료 후 재전송, 카카오 미저장을 확인한다. 시험 데이터를 준비할 때는 `TEST_DB_URL`, 축제 조회는 `TEST_DB_APP_URL`의 `noldaga_app`을 사용한다. 011 적용·되돌리기 시험은 DB 소유자 또는 `TEST_DB_MIGRATION_URL`이 필요하며 트랜잭션을 롤백한다. SQL 실행기의 T011a~d는 기존 행 보존과 제약·권한·되돌리기를 확인한다.
+- **정리 작업 확정(신유빈, 11/24 10:29).** 권오현이 명령을 제공하고, 신유빈이 W64·W65에서 시간당 실행과 실패 감시를 구성한다. CLI의 실행과 시험은 [STEP6](codex/STEP6.md)에 기록한다.
+- 단위 시험은 DB 없이 실행한다. `db` 표시는 001~013을 적용한 일회용 DB에서 A02·A03→A04 접수→A05 처리 상태→TMAP 저장·조회·만료, 잘못된 토큰, 토큰 만료 후 재전송, 카카오 미저장을 확인한다. 시험 데이터를 준비할 때는 `TEST_DB_URL`, 축제 조회는 `TEST_DB_APP_URL`의 `noldaga_app`을 사용한다. 011 적용·되돌리기 시험은 DB 소유자 또는 `TEST_DB_MIGRATION_URL`이 필요하며 트랜잭션을 롤백한다. SQL 실행기의 T011a~d는 기존 행 보존과 제약·권한·되돌리기를 확인한다.
 
 ### P19. 문서
 - API 설계서 17-3·19절, DB 설계서 0-A·8·10절, 양쪽 v0.4 이력과 API 연동 현황표를 갱신한다. 진행 상태는 **구현 완료·DB 시험 대기**로 기록한다.
@@ -152,9 +152,15 @@
 ### P20. 서비스 세션
 
 - A04 접수·상태 변경·결과 저장과 A05 요청 조회·토큰 해시 비교·결과 조회 및 정리는 공통 `shared.db.session.service_db_session()`으로 처리한다. A05는 해시 검증 뒤 결과에 접근한다. 커밋·롤백과 풀 반납 시 `RESET ALL`은 공통 연결층이 담당한다. 설정·연결 오류는 기존 503 `ROUTE_STORE_UNAVAILABLE`로 응답한다.
-- **확인 필요(유빈님) — API 컨테이너의 서비스 계정 접속 정보 주입 방식.** 공통 `load_db_settings()`는 `DB_HOST`, `DB_NAME`, `DB_USER_USERNAME`, `DB_USER_PASSWORD`, `DB_SERVICE_USERNAME`, `DB_SERVICE_PASSWORD`를 읽고 `DB_PORT` 기본값은 5432다. API에 주입할 설정과 권한을 확인한다. 축제 조회의 접속 설정은 기존 방식대로 사용한다.
+- **API 컨테이너 DB 설정 확정(신유빈, 11/24 10:29).** `.env.example`의 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER_USERNAME`, `DB_USER_PASSWORD`, `DB_SERVICE_USERNAME`, `DB_SERVICE_PASSWORD`를 전달한다. `DB_MIGRATION_DSN`은 관리자용 실행 환경에만 둔다. 축제 조회는 `DB_USER_USERNAME`·`DB_USER_PASSWORD`, 수집은 `DB_SERVICE_USERNAME`·`DB_SERVICE_PASSWORD`를 읽는다.
 
 ### P21. 마이그레이션 파일 선택과 시험
 
 - **확인 필요(유빈님) — 공통 마이그레이션의 사전 검사 제외.** 현재 `migration_files()`가 `009_precheck.sql`과 `009_scenario_v1.sql`을 함께 읽어 009 중복으로 중단한다. 파일 선택에서 `009_precheck.sql`을 제외해 검증하면 011·012가 순서대로 선택되고 되돌리기 파일은 제외된다. 공통 실행기로 실제 적용하기 전 010의 명시적 트랜잭션과 실행기 트랜잭션 경계도 확인한다.
 - 루트에서 공통 명령으로 백엔드 전체를 시험하고, `backend/`에서도 `python -m pytest tests -q`가 수집·실행되어야 한다. 일회용 PostgreSQL이 필요한 경로 통합 시험은 `db` 표시를 사용하고 `TEST_DB_URL`이 설정된 경우에만 실행한다.
+
+## 9. STEP6 TMAP 결과 정리 명령
+
+- 013까지 적용한 DB에서 `service_db_session()`으로 `queried_at`부터 기본 23시간 이상 된 미정리 TMAP 결과를 처리한다. `ROUTE_PURGE_AFTER_HOURS`는 1~23 사이의 정수만 허용한다. 시간당 실행이 정상적으로 이어지면 본문은 최대 24시간 보관된다. 유효 토큰의 A05 조회에는 정리된 결과를 `ROUTE_RESULT_EXPIRED`(`retryable=false`)로 반환한다. 후보·근거·공급원 참조·검증 상세를 비우고 `route_results.purged_at`을 기록하면, 트리거가 같은 트랜잭션에서 `route_requests.result_purged_at`에 같은 값을 기록한다. 요청·결과 행과 메타데이터는 보존한다. 카카오 응답은 API의 동기 응답에만 있다.
+- `backend/`에서 `python -m api.jobs.purge_route_results`, 루트에서 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행한다. `--dry-run`은 대상 건수만 출력한다. 트랜잭션 advisory lock으로 동시 실행을 막고, 재실행은 이미 정리한 행을 건너뛴다.
+- `0`은 성공(0건 포함), `1`은 실행 실패, `2`는 인자 또는 정리 기준 설정 오류, `3`은 중복 실행이다. 신유빈이 W64·W65에서 시간당 실행과 감시를 구성한다. 정기 작업에서 0 이외 종료나 65분 동안 성공 로그 누락을 경보로 잡는다. 일반 실행 로그는 처리 건수와 소요 시간을 한 줄로 남긴다.
