@@ -379,10 +379,10 @@ W24 확인 순서는 다음과 같다.
 
 학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <API 주소> --crowd-festival-id <서울 축제 ID>`를 실행하도록 준비했다. 축제 검색·상세는 실제 DB 응답을 요구하고, 혼잡은 `is_mock:false`인지와 Agent 종료 상태·대체값 표시를 대조한다. `unsupported`·`unavailable`은 기록하지만 혼잡 조회 성공으로 세지 않는다. 실행 전 서버의 `CROWD_PROVIDER=real` 및 축제 DB 모드가 활성화됐는지 확인해야 한다.
 
-재시험 ID는 오현님이 11/24 학원 서버에서 실제 `status:ok`를 확인한 **서울빛초롱축제** `fst_01M835B57450M888RBNEFVRWWA`다. 11/24 공개 범위가 축제(EV01)로 좁혀져 이전 후보 숭례문 파수의식(EV03)은 제외됐다. **프로젝트 코드가 있고 학원망에 접속되는 컴퓨터**에서, API 주소가 `http://192.100.200.242:3000/api/v1`로 유지된다면 `backend/`를 기준으로 다음을 실행한다. 실행기는 혼잡 조회 대상 ID의 공개 상세 조회도 확인하며, `--require-crowd-answered`는 실제 혼잡 답변이 없으면 실패한다.
+재시험 ID는 오현님이 11/24 학원 서버에서 실제 `status:ok`를 확인한 **서울빛초롱축제** `fst_01M835B57450M888RBNEFVRWWA`다. 11/24 공개 범위가 축제(EV01)로 좁혀져 이전 후보 숭례문 파수의식(EV03)은 제외됐다. API에 접속 가능한 환경에서 실제 API v1 루트 URL을 확인한 뒤, 아래 명령의 `<학원 API 주소>`를 해당 URL로 바꾸고 `backend/`에서 실행한다. 실행기는 혼잡 조회 대상 ID의 공개 상세 조회도 확인하며, `--require-crowd-answered`는 실제 혼잡 답변이 없으면 실패한다.
 
 ```powershell
-uv run --with-requirements agents/requirements.txt python -m agents.check_festival_live --base-url http://192.100.200.242:3000/api/v1 --crowd-festival-id fst_01M835B57450M888RBNEFVRWWA --require-crowd-answered
+uv run --with-requirements agents/requirements.txt python -m agents.check_festival_live --base-url '<학원 API 주소>' --crowd-festival-id fst_01M835B57450M888RBNEFVRWWA --require-crowd-answered
 ```
 
 이전 집 컴퓨터 시험에서는 학원 API의 축제 목록 조회가 5초 안에 연결되지 않았다. 맥북에서 Safari로 API를 확인하는 것만으로는 Festival Agent 전체 E2E가 되지 않는다. `is_mock:false`와 `agent_outcome=answered`가 모두 확인돼야 실제 혼잡 조회 성공으로 기록한다. 평균 대체값이면 답변에 같은 요일·시간대 평균 표시가 있어야 한다.
@@ -409,7 +409,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ### A-11. 학원망 맥북에서 Festival Agent 직접 HTTP 실행 (2026-11-24)
 
-사용자가 맥북의 임시 폴더에 `dayoung` 브랜치를 받아 `python -m agents.check_festival_live --base-url http://192.100.200.242:3000/api/v1 --crowd-festival-id fst_01M835BYKKNJ8CZP9RP09ST18D`를 직접 실행한 터미널 기록을 제공했다. 실행기는 각 API 응답의 `is_mock:false`를 검사한 뒤 Agent를 실행한다. 출력은 `ongoing: total=28, agent_evidence=10`, `upcoming: total=31, agent_evidence=10`, `detail: festival_id=fst_01M835BPX17Y44VEDJM1VMZ3N6, outcome=answered, source=tourapi`, `Real DB search/detail check passed.`였다. 따라서 **실제 축제 DB 검색·상세에 대한 Agent 직접 HTTP 연결은 통과**했다.
+사용자가 맥북의 임시 폴더에 `dayoung` 브랜치를 받아 `python -m agents.check_festival_live --base-url '<학원 API 주소>' --crowd-festival-id fst_01M835BYKKNJ8CZP9RP09ST18D`를 직접 실행한 터미널 기록을 제공했다. 실행기는 각 API 응답의 `is_mock:false`를 검사한 뒤 Agent를 실행한다. 출력은 `ongoing: total=28, agent_evidence=10`, `upcoming: total=31, agent_evidence=10`, `detail: festival_id=fst_01M835BPX17Y44VEDJM1VMZ3N6, outcome=answered, source=tourapi`, `Real DB search/detail check passed.`였다. 따라서 **실제 축제 DB 검색·상세에 대한 Agent 직접 HTTP 연결은 통과**했다.
 
 같은 실행의 혼잡 출력은 `festival_id=fst_01M835BYKKNJ8CZP9RP09ST18D, provider_status=unsupported, agent_outcome=unsupported, is_estimate=False`였다. 실행기는 혼잡 응답도 `is_mock:false`인지 검사했으므로 이는 모의 값이 아닌 **실제 API의 미지원 판정**이다. 당시에는 Agent가 이를 `unsupported`로 안내하는 분기만 확인했다. 이후 서울빛초롱축제에서 실제 혼잡 `answered`를 확인했다(A-12). 기존 `check_festival_live.py`는 `unsupported`에서도 정상 종료하므로 이 실행의 프로세스 종료만으로 혼잡값 제공 성공이라 판단하지 않는다.
 
@@ -458,6 +458,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
 - **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
 - **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
+- **팀 병합 후 공통 시험:** `yubeen`의 시험 실행 기준이 `main`에 병합되면 저장소 루트에서 `python -m pytest backend/tests -q`로 백엔드 전체 시험을 실행한다. 유빈님이 `yubeen`에서 보고한 395개 통과는 이 제출본의 병합 후 재시험 결과로 대신하지 않는다.
 
 ## 참고 파일
 
