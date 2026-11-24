@@ -2,6 +2,7 @@ import logging
 import re
 
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
+_ASSISTANT_PATH = re.compile(r"/api/v1/assistant/(query|runs/[^/]+(?:/events)?)/?")
 _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
 _ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
 _CHAT_PATH = re.compile(
@@ -23,6 +24,15 @@ _COMPANION_PATH = re.compile(
 ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
+
+
+def assistant_endpoint(path: str) -> str | None:
+    match = _ASSISTANT_PATH.fullmatch(path)
+    if match is None:
+        return None
+    if match[1] == "query":
+        return "/api/v1/assistant/query"
+    return "/api/v1/assistant/runs/{run_id}" + ("/events" if match[1].endswith("/events") else "")
 
 
 def auth_endpoint(path: str) -> str | None:
@@ -82,7 +92,7 @@ def private_endpoint(path: str) -> str | None:
         return "/api/v1/festivals/{festival_id}/" + info[1]
     if path.rstrip("/") == ADMIN_REVIEW_PATH:
         return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return assistant_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):

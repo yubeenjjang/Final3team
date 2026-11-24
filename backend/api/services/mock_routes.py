@@ -149,6 +149,16 @@ def create_ready_route(festival_id: str, destination_query: str) -> tuple[str, s
     return record.route_request_id, record.access_token
 
 
+def verify_return_route_token(route_id: str, token: str | None) -> None:
+    with route_lock:
+        route = route_requests.get(route_id)
+        if (
+            not token or route is None or route.direction != "return"
+            or not secrets.compare_digest(token.encode(), route.access_token.encode())
+        ):
+            raise ApiError(403, "FORBIDDEN", "이 경로에 접근할 수 없어요.")
+
+
 def get_route(
     direction: RouteDirection, route_request_id: str, access_token: str | None
 ) -> dict[str, object]:
