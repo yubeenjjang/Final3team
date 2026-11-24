@@ -175,6 +175,9 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 
 ### 1-1. 인증 API 상세 (A32~A35, FR-A01~A04, D-037)
 
+**구현 상태 (itest)** — 가입·로그인·Refresh 교체와 재사용 폐기·로그아웃을 DB 모드에서 호출하는 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
+
 공통: 경로 `/api/v1/auth/*`, 본문 JSON, 비밀번호·토큰 원문은 **로그에 남기지 않음**(04 문서 7-0 ⑤). 로그인 요청 수 제한은 IP당 분당 10회(`AUTH_RATE_LIMIT_PER_MIN`, 9-1 ⑤, 11/24 팀 결정). 오류 형식은 6절 공통 오류 응답과 같음.
 
 | API | 요청 | 정상 응답 | 검증·처리 규칙 | 오류 | 구현 상태 |
@@ -462,6 +465,9 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 - **DB 모드(011·012)** — 유효 토큰으로 조회하면 24시간이 지난 TMAP 후보와 근거를 정리하고 `purged_at`을 기록합니다. 정리된 결과와 012 백업 복원 후 `route_requests.status=ready`이지만 `route_results` 행이 없는 요청은 모두 `route_status=unavailable`, `completed_valid_route=false`, `ROUTE_RESULT_EXPIRED`(`retryable=false`)로 답합니다. 메시지는 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”입니다. 정상 흐름에서는 조회 토큰이 먼저 만료됩니다. 새 경로는 새 `request_id`로 요청합니다.
 
 ### 2-3. 축제 검색: `GET /api/v1/festivals` (A02) — 필드 명세
+
+**구현 상태 (itest)** — A02·A03에서 승인·게시된 EV01만 목록·상세에 보이는지 확인하는 통합 시험을 추가했습니다. DB 모드의 404 상세 응답에는 `X-Mock` 헤더를 붙이지 않습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
 
 수집 DB의 공개 조건은 `category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at IS NOT NULL`입니다(018). `items`와 `total` 모두 이 범위에서 계산합니다.
 
@@ -1569,6 +1575,9 @@ Content-Type: application/json
 
 #### A11~A13. 관심 축제 (로그인 필요)
 
+**구현 상태 (itest)** — 저장·목록·해제와 타인 행 차단을 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
+
 `AUTH_PROVIDER=db`에서 로그인 계정의 RLS 세션으로 저장·조회·해제합니다. 승인·게시된 축제만 저장하고 목록·전체 건수에 포함합니다. `start_date` 정렬에서 날짜가 없는 축제는 뒤에 표시합니다. 기본은 모의 모드입니다.
 
 | # | 칸 | A11 `GET /api/v1/me/favorites` | A12 `PUT /api/v1/me/favorites/{festival_id}` | A13 `DELETE /api/v1/me/favorites/{festival_id}` |
@@ -2112,6 +2121,9 @@ Content-Type: application/json
 
 #### 6-4-3. 친구 API (A43~A50) — 담당 권오현(11/20 GitHub 협업 규칙 `community/friends.py`)
 
+**구현 상태 (itest)** — 신청·수락·차단·해제와 기존 1:1 방 상태를 이어서 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
+
 **구현 상태 (11/24)** — A43~A50을 `AUTH_PROVIDER=db`의 PostgreSQL 모드와 기본 mock 모드에 연결했습니다. A43은 사용자별 최근 60초에 20회까지 허용하며 Redis 연동 전에는 API 프로세스 메모리에 횟수를 보관합니다. A47은 1페이지부터 20건씩 반환합니다. A49에서 기존 1:1 방을 닫고, A50은 실제 차단 삭제가 끝나면 채팅 연동 함수 `notify_chat_unblocked`를 호출합니다. 새 1:1 방 개설은 A67에서 처리합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
@@ -2172,6 +2184,9 @@ Content-Type: application/json
 
 
 #### 6-4-4. 동행 API (A57~A65) — 담당 권오현(`community/companions.py`), 화면 `companions/`(정예진)
+
+**구현 상태 (itest)** — 글 작성부터 승인 뒤 장소 조회까지 이어서 호출하고 대기자의 장소 접근 차단을 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
 
 **구현 상태** · A57~A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
 
@@ -2266,6 +2281,9 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | `status` | 응답 | string | A64 장소가 없으면 예·A65 예 | A64 미정이면 `undecided`, A65 완료면 `full`·`ended`·`cancelled` |
 
 #### 6-4-5. 채팅 API (A66~A73 + WebSocket) — 담당 권오현(`community/chat.py`, `realtime/chat_socket.py`), 화면 `chats/[roomId]/`·`friends/`(정예진)
+
+**구현 상태 (itest)** — 동시 1:1 방 생성, WebSocket 발신, 마지막 수신 순번으로 HTTP 재조회, 차단 전후 방 상태를 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
 
 **구현 상태 (ohyun-chat)** — A66~A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
 
@@ -2386,6 +2404,9 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 - 전송 제한: 사람당 초당 5개·방당 초당 20개(임시, 9-1). 사용자 대화는 AI·RAG에 넣지 않음(5.20).
 
 #### 6-4-6. 알림·신고·마이페이지·탈퇴 (A74~A80)
+
+**구현 상태 (itest)** — A76 신고 접수와 A77 운영자 열람에 해당하는 감사 행을 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
 
 **구현 상태 (ohyun-chat)** — A74·A75를 구현했습니다. 본인의 알림을 조회하고 읽음 처리합니다. WebSocket은 `{"type":"notification","notification":{...}}`으로 새 알림을 전달합니다.
 
@@ -2917,6 +2938,9 @@ HTTP 202
 - 초기 복구 SLO는 7-0·9-1절을 따릅니다. 유효 경로 제공률은 조치 전후 비교와 시험 성공 집계에 기록합니다.
 
 ### 7-6. 챗봇 질문: `POST /api/v1/assistant/query` (A06) — v0.3.2에서 **비동기 작업**으로 변경
+
+**구현 상태 (itest)** — A06 접수와 PostgreSQL 워커 1회 모의 답변 처리, A06-1 결과 조회를 연결한 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
+
 
 **왜 바꿨나:** 강사 11/19 자료 「API 서버 + 백그라운드 워커로 멀티에이전트 운영하기」는 *멀티에이전트를 HTTP 요청 안에서 기다리지 말고, API는 작업만 등록하고 202 + 작업 ID를 바로 돌려주라*고 정합니다(타임아웃·새로고침 유실·서버 막힘 방지). v0.3의 A06은 응답 안에서 `answer`를 기다리는 방식(최대 30초)이라 이 기준에 맞춰 **접수(A06) → 상태·결과 조회(A06-1) → 진행 이벤트(A06-2)** 세 개로 나눴습니다. 워커 구현 방식(Celery 또는 직접 만든 worker)은 팀 결정 대상이고(`Docs/3team/GitHub_협업_규칙_및_디렉터리.md`), 이 API 계약은 둘 중 무엇이든 같습니다.
 
@@ -4025,3 +4049,4 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.4 | 2026-11-24 | STEP7 경로 키 v2(분석 #26), DB 연결 풀 과부하 503(DB-14), SK 회신 없이 적용하는 TMAP 정리 확정 기준 및 시험을 반영했습니다(2·6·17-3절). |
 | v0.5 | 2026-11-24 | API 3번 감사 반영. 누락된 API 필드와 조회 쿼리, 202 응답, SSE·WebSocket 이벤트를 명세하고 6절 작성 현황을 갱신했습니다. 이후 11/24 팀 결정에 따라 A79 유형별 목록은 최종 범위에서 제외했습니다(6-4-6절). |
 | v0.5 | 2026-11-24 | `ohyun-me`에서 A11~A13·A36·A37·A78~A80의 DB·모의 모드, A78·A79 필드 및 A80 보존 처리를 반영했습니다(6-2·6-4절). |
+| v0.5 | 2026-11-25 | 인증·축제·관심·친구·채팅·동행·신고·챗봇의 화면 API를 DB에 연결하는 itest를 추가하고 DB 모드 축제 상세 404의 `X-Mock` 헤더를 수정했습니다. |

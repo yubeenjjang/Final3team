@@ -115,7 +115,7 @@ async def add_response_headers(
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
         or _auth_data_endpoint(request.url.path)
-        or _FESTIVAL_INFO_PATH.match(request.url.path) or is_assistant
+        or _REAL_FESTIVAL_PATHS.match(request.url.path) or _FESTIVAL_INFO_PATH.match(request.url.path) or is_assistant
     ):
         del response.headers["X-Mock"]
     if private_response:

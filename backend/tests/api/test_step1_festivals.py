@@ -255,6 +255,9 @@ def test_I20_catalog_filters_without_relying_on_rls(client: TestClient, monkeypa
         assert crowd.json()["status"] == "unsupported"
         assert crowd.json()["unsupported_reason"] == "missing_coordinates"
         for festival_id in ("fst_T20002", "fst_T20003", "fst_T20004"):
-            assert client.get(f"{_FESTIVALS}/{festival_id}").status_code == 404
+            missing = client.get(f"{_FESTIVALS}/{festival_id}")
+            assert missing.status_code == 404
+            assert missing.json()["error"]["code"] == "FESTIVAL_NOT_FOUND"
+            assert "X-Mock" not in missing.headers
     finally:
         engine.dispose()
