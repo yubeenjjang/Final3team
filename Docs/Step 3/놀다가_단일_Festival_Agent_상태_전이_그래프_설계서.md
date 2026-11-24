@@ -427,9 +427,9 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 `dayoung 6dc31ca`에서 Festival 단독 실행기의 도구 호출을 `ToolExecutor.execute`로 바꾸고, 실행별 추적 ID를 전달했다. 공통 명령으로 모의 전송·그래프 시험 **35개가 통과**했다. 한 접속 환경에서는 첫 진행 축제 검색이 `TOOL_TIMEOUT`으로 끝나 실자료 검증 근거로 사용하지 않았다.
 
-이후 다영님이 `dayoung` 브랜치를 받아 A-7의 실제 API 명령을 실행한 터미널 출력을 제공했다. 진행 검색은 `total=1`, `agent_evidence=1`, 예정 검색은 `total=12`, `agent_evidence=10`이었다. 검색 결과의 상세는 `festival_id=fst_01M835BCHV21MGQF4333AAJZJ4`, `outcome=answered`, `source=tourapi`였고 실행기가 `Real DB search/detail check passed.`를 출력했다. 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 각각의 원시 응답에서 `is_mock:false`를 요구하고 `--require-crowd-answered`로 혼잡 결과를 검사하므로, **W14 공통 실행기를 통한 실제 DB·서울 혼잡 공급원 직접 HTTP 단독 실행이 통과**했다. 이 출력은 검색·상세·혼잡의 단독 실행을 확인한 것이며, 실제 공급원을 사용한 한 번의 `search_detail_crowd` 복합 호출이나 공식 공지·주변 시설 응답까지 확인한 것은 아니다. 혼잡 관측 시각과 구역 이름도 터미널 출력에 없어 이번 증빙으로 확정하지 않는다.
+이후 다영님이 `dayoung` 브랜치를 받아 A-7의 실제 API 명령을 실행한 터미널 출력을 제공했다. 진행 검색은 `total=1`, `agent_evidence=1`, 예정 검색은 `total=12`, `agent_evidence=10`이었다. 검색 결과의 상세는 `festival_id=fst_01M835BCHV21MGQF4333AAJZJ4`, `outcome=answered`, `source=tourapi`였고 실행기가 `Real DB search/detail check passed.`를 출력했다. 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 각각의 원시 응답에서 `is_mock:false`를 요구하고 `--require-crowd-answered`로 혼잡 결과를 검사하므로, **W14 공통 실행기를 통한 실제 DB·서울 혼잡 공급원 직접 HTTP 단독 실행이 통과**했다. 첫 실행 출력은 검색·상세·혼잡의 단독 실행을 확인한 것이며, 복합 호출은 아래의 후속 실행으로 따로 확인했다. 공식 공지·주변 시설 응답은 확인하지 않았다. 혼잡 관측 시각과 구역 이름도 터미널 출력에 없어 이번 증빙으로 확정하지 않는다.
 
-후속 코드 `dayoung 7b8451a`는 `--require-crowd-answered` 실행 시 축제 이름으로 검색→상세→혼잡을 **한 번의 그래프에서 연속 호출**하고 축제 ID·호출 순서·근거를 검사하도록 추가했다. 고정 응답 시험 35개는 다시 통과했으며, 이 새 복합 검사의 실제 공급원 실행 결과는 아직 받지 않았다.
+후속 코드 `dayoung 7b8451a`는 `--require-crowd-answered` 실행 시 축제 이름으로 검색→상세→혼잡을 **한 번의 그래프에서 연속 호출**하고 축제 ID·호출 순서·근거를 검사하도록 추가했다. 고정 응답 시험 35개가 다시 통과했다. 다영님이 이 코드를 받은 뒤 같은 실제 API 명령을 재실행한 터미널 출력은 `composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_calls=3, evidence=3`이었다. 따라서 **W14 공통 실행기를 통한 실제 공급원 복합 흐름도 통과**했다. 이 검사는 검색 결과로 선택된 축제 ID와 상세·혼잡 근거의 ID가 모두 같은지 확인한다. 공식 공지와 주변 시설의 실제 공급원 응답은 이 시험에 포함되지 않는다.
 
 ## 부록 B. 후속 구현에서 확인할 결정
 
