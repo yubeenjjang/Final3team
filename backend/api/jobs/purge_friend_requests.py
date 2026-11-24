@@ -2,12 +2,18 @@
 
 import sys
 
-from api.repositories.friends import purge_expired_requests
+from api.jobs.locks import RETENTION
+from api.repositories.friends import delete_expired_requests
+from shared.db.session import service_db_session
 
 
 def main() -> int:
     try:
-        count = purge_expired_requests()
+        with service_db_session() as db:
+            if not db.scalar(RETENTION):
+                print("purge_friend_requests status=locked", file=sys.stderr)
+                return 3
+            count = delete_expired_requests(db)
     except Exception:
         print("purge_friend_requests status=error", file=sys.stderr)
         return 1

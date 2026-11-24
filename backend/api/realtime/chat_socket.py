@@ -10,6 +10,7 @@ from time import monotonic
 from typing import Annotated, Protocol
 from uuid import UUID
 
+from anyio import CancelScope
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
 from pydantic import Field, TypeAdapter, ValidationError
@@ -293,10 +294,12 @@ class ChatConnection:
         finally:
             for task in (receive, wakeup, timer):
                 task.cancel()
-            await asyncio.gather(receive, wakeup, timer, return_exceptions=True)
-            await bus.unsubscribe(user_topic(self.user_id), self.wake)
-            for room_id in tuple(self.rooms):
-                await self.remove(room_id)
+            # A disconnect can also cancel the ASGI scope while subscriptions are being removed.
+            with CancelScope(shield=True):
+                await asyncio.gather(receive, wakeup, timer, return_exceptions=True)
+                await bus.unsubscribe(user_topic(self.user_id), self.wake)
+                for room_id in tuple(self.rooms):
+                    await self.remove(room_id)
 
 
 @router.websocket("/ws/chat")

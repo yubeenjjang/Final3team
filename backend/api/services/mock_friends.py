@@ -20,6 +20,7 @@ from api.schemas.friends import (
     RequestStatus,
 )
 from api.services import friends as rules
+from api.services import mock_chat
 from api.services.mock_auth import authenticated_access
 
 
@@ -56,12 +57,20 @@ class MockFriends:
         row.responded_at = now
         if status == "accepted":
             self.friendships[row.pair] = now
+            with mock_chat.mock_rooms.lock:
+                mock_chat.mock_rooms.friendships.add(row.pair)
+            mock_chat.mock_rooms.notify(row.sender, "friend_accepted", "friend_request", row.request_id)
         return FriendRequestResult(request_id=row.request_id, status=status)
 
     def remove_account(self, user_id: UUID) -> None:
         self.requests = {key: row for key, row in self.requests.items() if user_id not in row.pair}
         self.friendships = {pair: since for pair, since in self.friendships.items() if user_id not in pair}
         self.blocks = {pair for pair in self.blocks if user_id not in pair}
+        with mock_chat.mock_rooms.lock:
+            chat = mock_chat.mock_rooms
+            chat.friendships = {pair for pair in chat.friendships if user_id not in pair}
+            chat.blocks = {pair for pair in chat.blocks if user_id not in pair}
+        mock_chat.mock_rooms.remove_notifications(user_id)
 
     def prune_expired(self, now: datetime) -> None:
         cutoff = now - timedelta(days=30)
@@ -72,7 +81,7 @@ class MockFriends:
     def search(self, actor: UUID, nickname: str) -> FriendSearchResult:
         rules.enforce_search_limit(actor)
         for user in users_by_email.values():
-            if user.display_name.lower() != nickname.lower():
+            if user.disabled or user.display_name.lower() != nickname.lower():
                 continue
             other = UUID(user.user_id)
             if actor == other or self._blocked(actor, other):
@@ -105,6 +114,7 @@ class MockFriends:
 
         request_id = rules.new_request_id()
         self.requests[request_id] = _Request(request_id, actor, other, datetime.now(timezone.utc))
+        mock_chat.mock_rooms.notify(other, "friend_requested", "friend_request", request_id)
         return FriendRequestResult(request_id=request_id, status="pending")
 
     def act_on_request(self, actor: UUID, request_id: str, action: RequestAction) -> FriendRequestResult:
@@ -139,12 +149,18 @@ class MockFriends:
         ])
 
     def delete_friend(self, actor: UUID, other: UUID) -> None:
-        self.friendships.pop(frozenset((actor, other)), None)
+        pair = frozenset((actor, other))
+        self.friendships.pop(pair, None)
+        with mock_chat.mock_rooms.lock:
+            mock_chat.mock_rooms.friendships.discard(pair)
 
     def block_user(self, actor: UUID, other: UUID) -> None:
         if _display_name(other) is None:
             return
         self.blocks.add((actor, other))
+        with mock_chat.mock_rooms.lock:
+            mock_chat.mock_rooms.blocks.add((actor, other))
+        mock_chat.mock_rooms.close_direct_room_on_unblock(actor, other)
         self.delete_friend(actor, other)
         pending = self._pending(frozenset((actor, other)))
         if pending:
@@ -154,11 +170,14 @@ class MockFriends:
         if (actor, other) not in self.blocks:
             return False
         self.blocks.remove((actor, other))
+        with mock_chat.mock_rooms.lock:
+            mock_chat.mock_rooms.blocks.discard((actor, other))
         return True
 
 
 def _display_name(user_id: UUID) -> str | None:
-    return next((user.display_name for user in users_by_email.values() if user.user_id == str(user_id)), None)
+    return next((user.display_name for user in users_by_email.values()
+                 if user.user_id == str(user_id) and not user.disabled), None)
 
 
 store = MockFriends()

@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from datetime import date
 from pathlib import Path
 from unittest.mock import Mock
@@ -36,7 +37,11 @@ def test_I15_only_complete_listing_is_forwarded(
     store = Mock()
     store.load.return_value = {}
     store.finish_job.return_value = None
-    monkeypatch.setattr(collect, "create_ingestion_engine", Mock())
+    engine = Mock()
+    lock = Mock()
+    lock.scalar.return_value = True
+    engine.begin.return_value = nullcontext(lock)
+    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: engine)
     monkeypatch.setattr(collect, "FestivalStore", lambda engine: store)
     if scenario == "quota":
         monkeypatch.setattr("api.providers.tourapi.LIST_CALL_LIMIT", 1)

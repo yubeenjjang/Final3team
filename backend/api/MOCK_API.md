@@ -46,11 +46,15 @@ uv run --with-requirements backend/api/requirements.txt --with-requirements back
 
 ## A06 챗봇 작업 접수
 
-`POST /api/v1/assistant/query`에 `request_id`와 `message`를 보냅니다. 기존 대화는 `conversation_id`로 이어갈 수 있습니다. 선택 항목으로 `context.festival_id`, `context.route_request_id`, `reference_date`를 보낼 수 있습니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 `request_id`와 본문을 다시 보내면 기존 접수 응답을 반환하며, 본문을 바꾸면 409를 반환합니다.
+`POST /api/v1/assistant/query`에 `request_id`와 `message`를 보냅니다. 익명 대화를 이어가려면 `conversation_id`와 이전 작업의 `X-Run-Access-Token`을 보냅니다. 선택 항목은 `context.festival_id`, `context.route_request_id`, `reference_date`입니다. 경로 ID를 보내면 `X-Route-Access-Token`도 필요합니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 클라이언트의 세션 쿠키나 작업 토큰으로 다시 제출하면 기존 접수 응답을 반환합니다. 같은 `request_id`로 본문을 바꾸면 409를 반환합니다.
 
 ## A06-1 챗봇 작업 조회
 
 `GET /api/v1/assistant/runs/{run_id}`에 `X-Run-Access-Token`을 보냅니다. 첫 조회는 `running`이고, 두 번째부터 `succeeded` 또는 `failed`입니다. 귀가 질문의 결과에 경로 ID와 토큰이 있으면 A05에서 경로를 조회할 수 있습니다.
+
+## A06-2 챗봇 진행 SSE
+
+응답의 `events_url`에 `X-Run-Access-Token`을 보내면 진행 `step`, 답변 `token`, 종료 `done` 또는 `failed`를 받을 수 있습니다.
 
 ## A07 공지·통제
 

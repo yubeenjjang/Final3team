@@ -2,6 +2,7 @@ import logging
 import re
 
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
+_ASSISTANT_PATH = re.compile(r"/api/v1/assistant/(query|runs/[^/]+(?:/events)?)/?")
 _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
 _ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
 _CHAT_PATH = re.compile(
@@ -14,15 +15,33 @@ _FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
 _FRIENDS_PATH = re.compile(r"(/api/v1/(?:users/search|friend-requests|me/friend-requests|me/friends))/?")
 _FRIEND_ACTION_PATH = re.compile(r"/api/v1/friend-requests/[^/]+/[^/]+/?")
 _FRIEND_ITEM_PATH = re.compile(r"(/api/v1/me/(?:friends|blocks))/[^/]+/?")
-_FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
+_FESTIVAL_INFO_PATH = re.compile(
+    r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|traffic-incidents|visit-forecast)/?"
+)
 _COMPANION_PATH = re.compile(
     r"/api/v1/(?:festivals/[^/]+/companion-posts|companion-posts(?:/[^/]+(?:/[^/]+)?)?"
     r"|companion-applications/[^/]+/[^/]+)/?"
 )
 
-ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
+_ADMIN_NOTICE_PATH = re.compile(r"/api/v1/admin/notices(?:/[^/]+(?:/(review|end))?)?/?")
+
+ADMIN_FESTIVALS_PATH = "/api/v1/admin/festivals"
+ADMIN_REVIEW_PATH = ADMIN_FESTIVALS_PATH + "/review-queue"
+_ADMIN_FESTIVAL_DETAIL = re.compile(ADMIN_FESTIVALS_PATH + r"/[^/]+")
+REPORTS_PATH = "/api/v1/reports"
+ADMIN_REPORTS_PATH = "/api/v1/admin/reports"
+REPORT_PATHS = frozenset((REPORTS_PATH, ADMIN_REPORTS_PATH))
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
+
+
+def assistant_endpoint(path: str) -> str | None:
+    match = _ASSISTANT_PATH.fullmatch(path)
+    if match is None:
+        return None
+    if match[1] == "query":
+        return "/api/v1/assistant/query"
+    return "/api/v1/assistant/runs/{run_id}" + ("/events" if match[1].endswith("/events") else "")
 
 
 def auth_endpoint(path: str) -> str | None:
@@ -73,6 +92,25 @@ def chat_endpoint(path: str) -> str | None:
     return path.rstrip("/")
 
 
+def admin_notice_endpoint(path: str) -> str | None:
+    match = _ADMIN_NOTICE_PATH.fullmatch(path)
+    if not match:
+        return None
+    base = "/api/v1/admin/notices"
+    if path.rstrip("/") == base:
+        return base
+    return base + "/{notice_id}" + ("/" + match[1] if match[1] else "")
+
+
+def admin_festival_endpoint(path: str) -> str | None:
+    path = path.rstrip("/")
+    if path in (ADMIN_FESTIVALS_PATH, ADMIN_REVIEW_PATH):
+        return path
+    if _ADMIN_FESTIVAL_DETAIL.fullmatch(path):
+        return ADMIN_FESTIVALS_PATH + "/{festival_id}"
+    return None
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -80,9 +118,10 @@ def private_endpoint(path: str) -> str | None:
     info = _FESTIVAL_INFO_PATH.fullmatch(path)
     if info:
         return "/api/v1/festivals/{festival_id}/" + info[1]
-    if path.rstrip("/") == ADMIN_REVIEW_PATH:
-        return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    normalized = path.rstrip("/")
+    if normalized in REPORT_PATHS or normalized == ADMIN_REVIEW_PATH:
+        return normalized
+    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or assistant_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):

@@ -2,8 +2,7 @@
 
 import logging
 
-from sqlalchemy import text
-
+from api.jobs.locks import COMPANIONS
 from api.repositories.companions import maintain_companions
 from api.services.companion_rules import now_utc
 from shared.db.session import service_db_session
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 def main() -> int:
     try:
         with service_db_session() as db:
-            if not db.scalar(text("SELECT pg_try_advisory_xact_lock(190072)")):
+            if not db.scalar(COMPANIONS):
                 return 3
             counts = maintain_companions(db, now_utc())
     except Exception:

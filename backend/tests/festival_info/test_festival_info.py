@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
 
 from api.main import app
-from api.providers import festival_source, kma_weather, transit_arrivals
+from api.providers import festival_source, kma_weather, transit_arrivals, visit_forecast
 from api.providers.festival_source import FestivalSource
 from api.providers.route_base import KST
 from api.repositories import festival_info as repository
@@ -285,7 +285,9 @@ def test_tour_forecast_strict_attraction_and_monthly_demand(setup, monkeypatch, 
     monkeypatch.setenv("VISIT_FORECAST_PROVIDER", "real")
     config = tmp_path / "attractions.json"
     config.write_text(json.dumps({
-        "fst_000004": {"area_code": "26", "district_code": "26350", "attraction": "SEA LIFE 부산아쿠아리움"}
+        "fst_000004": {
+            "area_code": "26", "district_code": "26350", "attraction": "SEA LIFE 부산아쿠아리움", "approved": True,
+        }
     }))
     original = real_festival_info.find_festival
 
@@ -328,7 +330,9 @@ def test_forecast_daily_snapshots_reused_after_service_restart(setup, monkeypatc
     monkeypatch.setenv("VISIT_FORECAST_PROVIDER", "real")
     file = tmp_path / "attractions.json"
     file.write_text(json.dumps({
-        "fst_000004": {"area_code": "26", "district_code": "26350", "attraction": "해운대해수욕장"}
+        "fst_000004": {
+            "area_code": "26", "district_code": "26350", "attraction": "해운대해수욕장", "approved": True,
+        }
     }))
     snapshots = {}
 
@@ -378,17 +382,17 @@ def test_notice_queries_real_repository_filters_and_nullable_fields(setup, monke
             CREATE TABLE official_notices (
                 notice_id TEXT, festival_id TEXT, type TEXT, title TEXT, content TEXT,
                 effective_from TEXT, effective_to TEXT, source_id TEXT, source_url TEXT,
-                published_at TEXT, control_version TEXT, approval_status TEXT
+                published_at TEXT, control_version TEXT, approval_status TEXT, ended_at TEXT
             )
         """))
         connection.execute(text("""
             INSERT INTO official_notices VALUES
-                ('open','fst_000001','operation','열린 공지',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved'),
-                ('pending','fst_000001','operation','대기',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'pending'),
-                ('rejected','fst_000001','operation','거절',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'rejected'),
-                ('past','fst_000001','road_closure','종료',NULL,NULL,'2026-11-18T00:00:00+09:00','seoul_topis',NULL,NULL,'v1','approved'),
-                ('future','fst_000001','road_closure','예정',NULL,'2026-11-20T00:00:00+09:00',NULL,'seoul_topis',NULL,NULL,'v2','approved'),
-                ('different','fst_000002','operation','타 축제',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved')
+                ('open','fst_000001','operation','열린 공지',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved',NULL),
+                ('pending','fst_000001','operation','대기',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'pending',NULL),
+                ('rejected','fst_000001','operation','거절',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'rejected',NULL),
+                ('past','fst_000001','road_closure','종료',NULL,NULL,'2026-11-18T00:00:00+09:00','seoul_topis',NULL,NULL,'v1','approved',NULL),
+                ('future','fst_000001','road_closure','예정',NULL,'2026-11-20T00:00:00+09:00',NULL,'seoul_topis',NULL,NULL,'v2','approved',NULL),
+                ('different','fst_000002','operation','타 축제',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved',NULL)
         """))
     with TestClient(app) as client:
         response = client.get(_url("notices"))
@@ -403,6 +407,21 @@ def test_notice_queries_real_repository_filters_and_nullable_fields(setup, monke
         empty = client.get(_url("notices", "fst_000006")).json()
         assert empty["status"] == "ok" and empty["items"] == []
     engine.dispose()
+
+
+def test_tour_forecast_uses_explicit_approval_and_confirmed_venue(monkeypatch, tmp_path):
+    festival_id = "fst_01M835B57450M888RBNEFVRWWA"
+    venue = "청계천(청계광장 ~ 삼일교)"
+    monkeypatch.delenv("VISIT_FORECAST_MAPPING_FILE", raising=False)
+    assert visit_forecast.find_attraction(festival_id, venue) is None
+
+    candidate = {"area_code": "11", "district_code": "11110", "attraction": venue}
+    for approval in ({}, {"approved": False}, {"approved": True}):
+        config = tmp_path / f"attraction-{approval.get('approved')}.json"
+        config.write_text(json.dumps({festival_id: candidate | approval}), encoding="utf-8")
+        monkeypatch.setenv("VISIT_FORECAST_MAPPING_FILE", str(config))
+        assert (visit_forecast.find_attraction(festival_id, venue) is not None) == (approval.get("approved") is True)
+        assert visit_forecast.find_attraction(festival_id, "청계광장") is None
 
 
 def test_new_endpoints_default_to_mock(setup, monkeypatch):

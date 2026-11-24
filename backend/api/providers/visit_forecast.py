@@ -17,12 +17,14 @@ _DEMAND = _TOUR_API + "AreaTarDemDsService/areaTarSjrnDsList"
 _INDICATOR_CODE = "2101"
 _PAGE_SIZE = 1000
 _MAX_PAGES = 40
+_DEFAULT_MAPPING = Path(__file__).resolve().parents[1] / "data" / "visit_forecast_mapping.json"
 
 
 class AttractionMatch(BaseModel):
     attraction: str = Field(min_length=1)
     area_code: str = Field(pattern=r"^\d{2}$")
     district_code: str = Field(pattern=r"^\d{5}$")
+    approved: bool = Field(default=False, strict=True)
 
 
 @dataclass(frozen=True)
@@ -46,8 +48,8 @@ def _normalized_name(name: str) -> str:
 
 
 def find_attraction(festival_id: str, venue: str | None) -> AttractionMatch | None:
-    match = _load_mappings(os.environ.get("VISIT_FORECAST_MAPPING_FILE", "")).get(festival_id)
-    if match is not None and venue and _normalized_name(venue) == _normalized_name(match.attraction):
+    match = _load_mappings(os.environ.get("VISIT_FORECAST_MAPPING_FILE", str(_DEFAULT_MAPPING))).get(festival_id)
+    if match is not None and match.approved and venue and _normalized_name(venue) == _normalized_name(match.attraction):
         return match
     return None
 

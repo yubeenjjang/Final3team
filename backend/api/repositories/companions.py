@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ulid import ULID
 
 from api.auth.tokens import unauthorized
+from api.repositories.notifications import add as add_notifications
 from api.schemas import companions as schema
 from api.services import companion_rules as rules
 from api.services.companion_chat import ChatRooms, append_system_message
@@ -178,7 +179,7 @@ class CompanionWrites:
                "actor": self.actor_id, "message": request.message})
         if application_id is None:
             raise rules.application_exists()
-        _notify(self.db, post.author_id, "companion_applied", "companion_application", application_id)
+        add_notifications(self.db, [post.author_id], "companion_applied", "companion_application", application_id)
         return schema.ApplicationCreated(application_id=application_id)
 
     def decide_application(self, application_id: str, action: schema.ApplicationAction) -> schema.ApplicationChanged:
@@ -219,7 +220,8 @@ class CompanionWrites:
             ChatRooms.add_member(self.db, post.room_id, application.applicant_id)
             append_system_message(self.db, post.room_id, "새 참여자가 동행에 합류했어요.")
         if action != "cancel":
-            _notify(self.db, application.applicant_id, f"companion_{status}", "companion_application", application_id)
+            add_notifications(self.db, [application.applicant_id], f"companion_{status}",
+                              "companion_application", application_id)
         return schema.ApplicationChanged(application_id=application_id, status=status, post_status=post_status)
 
     def set_meeting_place(self, post_id: str, request: schema.MeetingPlace) -> schema.MeetingPlaceUpdated:
@@ -258,13 +260,6 @@ class CompanionWrites:
         else:
             _finish_post(self.db, post, status, now)
         return schema.PostChanged(post_id=post_id, status=status)
-
-
-def _notify(db: Session, user_id: UUID, event: str, ref_type: str, ref_id: str) -> None:
-    db.execute(text("""
-        INSERT INTO public.notifications (user_id, type, ref_type, ref_id)
-        VALUES (:user_id, :event, :ref_type, :ref_id)
-    """), {"user_id": user_id, "event": event, "ref_type": ref_type, "ref_id": ref_id})
 
 
 def _notify_members(db: Session, post: Row, event: str) -> None:

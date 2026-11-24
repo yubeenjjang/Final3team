@@ -1,12 +1,14 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Lock
+from uuid import UUID
 
 from ulid import ULID
 
 from api.mocks import store
 from api.schemas import companions as schema
 from api.services import companion_rules as rules
+from api.services import mock_chat
 
 
 @dataclass
@@ -26,6 +28,7 @@ class Post:
     ended_at: datetime | None = None
     members: set[str] = field(default_factory=set)
     place: schema.MeetingPlaceDetail | None = None
+    hidden: bool = False
 
 
 @dataclass
@@ -53,6 +56,7 @@ class MemoryCompanions:
             if post.status in {"open", "full"} and post.meet_at + auto_end <= now:
                 post.status = "ended"
                 post.ended_at = post.meet_at + auto_end
+                mock_chat.mock_rooms.finish_companion_room(post.room_id, post.ended_at)
             if post.ended_at is not None and post.ended_at + rules.RETENTION <= now:
                 post.memo = None
                 post.place = None
@@ -97,6 +101,7 @@ class MockCompanions:
         rows = [
             post for post in self.memory.posts.values()
             if post.festival_id == festival_id and post.status == status
+            and (not post.hidden or post.author_id == self.actor_id)
         ]
         rows.sort(key=lambda post: (post.meet_at, post.post_id))
         offset = (page - 1) * rules.PAGE_SIZE
@@ -104,6 +109,8 @@ class MockCompanions:
 
     def get_post(self, post_id: str) -> schema.PostDetail:
         post = self.memory.get_post(post_id)
+        if post.hidden and post.author_id != self.actor_id:
+            raise rules.not_found()
         latest = next((
             row for row in reversed(self.memory.applications.values())
             if row.post_id == post_id and row.applicant_id == self.actor_id
@@ -122,7 +129,7 @@ class MockCompanions:
         assert self.actor_id is not None
         self.memory.validate_meeting(request.festival_id, request.meet_at, rules.now_utc())
         post_id = "cpo_" + str(ULID())
-        room_id = "crm_" + str(ULID())
+        room_id = mock_chat.mock_rooms.create_companion_room(post_id, UUID(self.actor_id))
         self.memory.posts[post_id] = Post(
             **request.model_dump(), post_id=post_id, room_id=room_id, author_id=self.actor_id,
             members={self.actor_id},
@@ -145,6 +152,8 @@ class MockCompanions:
     def create_application(self, post_id: str, request: schema.ApplicationCreate) -> schema.ApplicationCreated:
         assert self.actor_id is not None
         post = self.memory.get_post(post_id)
+        if post.hidden and post.author_id != self.actor_id:
+            raise rules.not_found()
         rules.check_application(post.author_id, self.actor_id, post.status)
         if any(
             row.post_id == post_id and row.applicant_id == self.actor_id and row.status != "cancelled"
@@ -155,6 +164,7 @@ class MockCompanions:
         self.memory.applications[application_id] = Application(
             application_id, self.actor_id, post_id, request.message, rules.now_utc(),
         )
+        mock_chat.mock_rooms.notify(UUID(post.author_id), "companion_applied", "companion_application", application_id)
         return schema.ApplicationCreated(application_id=application_id)
 
     def list_applications(
@@ -189,10 +199,14 @@ class MockCompanions:
         if action == "approve":
             rules.require_active(post.status, post.meet_at, rules.now_utc())
             rules.require_approval_slot(post.status, post.approved_count, post.capacity)
+            mock_chat.mock_rooms.add_member(post.room_id, UUID(row.applicant_id))
             post.approved_count += 1
             post.status = rules.edited_status(post.capacity, post.approved_count, post.recruitment_closed)
             post.members.add(row.applicant_id)
         row.status = status
+        if action != "cancel":
+            mock_chat.mock_rooms.notify(UUID(row.applicant_id), f"companion_{status}",
+                                        "companion_application", application_id)
         return schema.ApplicationChanged(application_id=application_id, status=status, post_status=post.status)
 
     def set_meeting_place(self, post_id: str, request: schema.MeetingPlace) -> schema.MeetingPlaceUpdated:
@@ -217,4 +231,5 @@ class MockCompanions:
             post.recruitment_closed = True
         else:
             post.ended_at = now
+            mock_chat.mock_rooms.finish_companion_room(post.room_id, now)
         return schema.PostChanged(post_id=post_id, status=post.status)

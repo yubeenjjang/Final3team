@@ -313,8 +313,9 @@ def test_P23_route_key_includes_direction_departure_control_and_provider(routes:
         assert key == service._route_key(record, query, "tmap")
         assert key != service._route_key(record, query, "kakao")
 
-        with_control = real_routes.RealRouteService(control_version="notice-2")
-        assert key != with_control._route_key(record, query, "tmap")
+        record.control = real_routes.ControlSnapshot("cv2")
+        assert key != service._route_key(record, query, "tmap")
+        record.control = real_routes.ControlSnapshot()
         record.direction = "visit"
         record.request = VisitRouteRequest(**request.model_dump())
         assert key != service._route_key(record, query, "tmap")

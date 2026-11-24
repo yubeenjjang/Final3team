@@ -13,6 +13,8 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.ingestion.festivals.admin_edits import protect_admin_edits
+
 EVIDENCE = Path(__file__).resolve().parents[3] / "Docs" / "Step 2" / "evidence" / "responses"
 KST = ZoneInfo("Asia/Seoul")
 REGIONS = {"11": "SEOUL", "26": "BUSAN"}  # 원본으로 확인된 지역만 적재
@@ -157,43 +159,24 @@ def ingest(session: Session, records: list[tuple[dict, str]], rejected: list[str
             inserted += 1
         else:
             changed = {field: values[field] for field in fields if existing[field] != values[field]}
+            protect_admin_edits(session, festival_id, existing, changed)
             if changed:
-                # 관리자 변경 칸은 덮어쓰지 않고 검토 대기열로 보냅니다.
-                admin_fields = set(session.execute(text("""
-                    SELECT DISTINCT field FROM festival_change_history
-                    WHERE festival_id=:festival_id AND actor='admin'
-                """), {"festival_id": festival_id}).scalars())
-                conflicts = admin_fields.intersection(changed)
-                if conflicts:
-                    pending = session.execute(text("""
-                        SELECT 1 FROM festival_review_queue WHERE festival_id=:festival_id
-                        AND reason='conflict' AND approval_status='pending' LIMIT 1
-                    """), {"festival_id": festival_id}).first()
-                    if pending is None:
-                        session.execute(text("""
-                            INSERT INTO festival_review_queue (festival_id, reason, proposed_value)
-                            VALUES (:festival_id, 'conflict', CAST(:proposed AS jsonb))
-                        """), {"festival_id": festival_id,
-                               "proposed": json.dumps({field: str(changed[field]) for field in conflicts})})
-                    for field in conflicts:
-                        changed.pop(field)
-                if changed:
-                    assignments = ", ".join(f"{field}=:{field}" for field in changed)
-                    session.execute(text(f"UPDATE festivals SET {assignments}, last_synced_at=:snapshot_at "
-                                         "WHERE festival_id=:festival_id"),
-                                    {**changed, "festival_id": festival_id,
-                                     "snapshot_at": values["source_fetched_at"]})
-                    for field, after in changed.items():
-                        session.execute(text("""
-                            INSERT INTO festival_change_history
-                              (festival_id, field, before_value, after_value, source_id, actor, changed_at)
-                            VALUES (:festival_id, :field, CAST(:before AS jsonb), CAST(:after AS jsonb),
-                                    :source_id, 'ingestion', :changed_at)
-                        """), {"festival_id": festival_id, "field": field,
-                               "before": json.dumps(existing[field], default=str),
-                               "after": json.dumps(after, default=str),
-                               "source_id": SOURCE_ID, "changed_at": now})
-                    updated += 1
+                assignments = ", ".join(f"{field}=:{field}" for field in changed)
+                session.execute(text(f"UPDATE festivals SET {assignments}, last_synced_at=:snapshot_at "
+                                     "WHERE festival_id=:festival_id"),
+                                {**changed, "festival_id": festival_id,
+                                 "snapshot_at": values["source_fetched_at"]})
+                for field, after in changed.items():
+                    session.execute(text("""
+                        INSERT INTO festival_change_history
+                          (festival_id, field, before_value, after_value, source_id, actor, changed_at)
+                        VALUES (:festival_id, :field, CAST(:before AS jsonb), CAST(:after AS jsonb),
+                                :source_id, 'ingestion', :changed_at)
+                    """), {"festival_id": festival_id, "field": field,
+                           "before": json.dumps(existing[field], default=str),
+                           "after": json.dumps(after, default=str),
+                           "source_id": SOURCE_ID, "changed_at": now})
+                updated += 1
         session.execute(text("""
             INSERT INTO festival_sources
               (festival_id, source_id, source_item_id, source_url, raw_checksum, fetched_at, last_job_id)

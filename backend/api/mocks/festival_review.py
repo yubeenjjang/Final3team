@@ -41,7 +41,16 @@ class MemoryReviewStore:
                 if item.approval_status == status and (reason is None or item.reason == reason)
             ]
             offset = (page - 1) * page_size
-            return ReviewPage(items=items[offset:offset + page_size], total=len(items), page=page, page_size=page_size)
+            return ReviewPage(
+                items=[
+                    item.model_copy(update={"festival_name": self._festivals[item.festival_id]["title"]})
+                    for item in items[offset:offset + page_size]
+                ],
+                total=len(items), page=page, page_size=page_size,
+            )
+
+    def _apply_changes(self, festival_id: str, changes: dict[str, object]) -> None:
+        self._festivals[festival_id].update(changes)
 
     def decide(self, request: ReviewRequest, reviewer: UUID) -> ReviewResult:
         with self._lock:
@@ -50,7 +59,7 @@ class MemoryReviewStore:
             festival = self._festivals[item.festival_id]
             updates = review_changes(request, festival, item.proposed_value, datetime.now(timezone.utc))
             applied = any(festival[key] != value for key, value in updates.items())
-            festival.update(updates)
+            self._apply_changes(item.festival_id, updates)
             status = "approved" if request.decision == "approve" else "rejected"
             self._items[item.queue_id] = item.model_copy(update={
                 "approval_status": status, "festival_name": festival["title"],

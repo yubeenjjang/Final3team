@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
+from api.providers.route_base import as_kst
 from api.schemas.festivals import RegionCode
 
 NoticeType = Literal["operation", "traffic_control", "no_stop", "bus_detour", "road_closure"]
@@ -30,6 +31,8 @@ class SourceError(BaseModel):
 
 InfoStatus = Literal["ok", "stale", "unavailable", "unsupported", "unverified"]
 TransitMode = Literal["all", "subway", "bus"]
+TrafficIncidentType = Literal["accident", "construction", "event", "control"]
+TrafficIncidentSource = Literal["police_incident", "seoul_topis"]
 
 
 class InfoResponse(BaseModel):
@@ -54,6 +57,10 @@ class Notice(BaseModel):
     source_url: str | None = None
     published_at: datetime | None
     control_version: str | None = None
+
+    @field_serializer("effective_from", "effective_to", "published_at", when_used="json")
+    def serialize_time(self, value: datetime | None) -> datetime | None:
+        return as_kst(value) if value is not None else None
 
 
 class NoticeResponse(InfoResponse):
@@ -123,6 +130,21 @@ class TransitStation(BaseModel):
 
 class TransitResponse(InfoResponse):
     stations: list[TransitStation] = Field(default_factory=list)
+
+
+class TrafficIncident(BaseModel):
+    type: TrafficIncidentType
+    title: str
+    lat: float
+    lng: float
+    distance_m: float
+    start_at: datetime | None
+    end_at: datetime | None
+    source: TrafficIncidentSource
+
+
+class TrafficIncidentResponse(InfoResponse):
+    items: list[TrafficIncident] = Field(default_factory=list)
 
 
 class VisitForecastDay(BaseModel):
