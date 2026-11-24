@@ -302,7 +302,13 @@ erDiagram
         uuid actor FK
     }
     official_notices ||--o{ notice_events : "notice_id"
-    profiles ||--o{ notice_events : "actor(관리자)"
+    profiles ||--o{ notice_events : "actor(운영자·관리자)"
+    notice_control_changes {
+        bigint change_id PK
+        text festival_id FK
+        timestamptz effective_at
+    }
+    festivals |o--o{ notice_control_changes : "festival_id"
     chat_rooms {
         text room_id PK
         uuid owner_id FK
@@ -453,6 +459,7 @@ erDiagram
 | 78 | `chat_rooms` | 1 : N | `chat_admin_access` | `chat_admin_access.room_id → chat_rooms.room_id` | 예 | [최종] 007 |
 | 79 | `reports` | 0..1 : N | `chat_admin_access` | `chat_admin_access.report_id → reports.report_id` | 아니요(NULL 허용) | [최종] 007 |
 | 80 | `profiles` | 0..1 : N | `companion_posts` | `companion_posts.hidden_by → profiles.user_id`(신고 처리로 숨긴 관리자) | 아니요(NULL 허용) | [최종] 008 |
+| 81 | `festivals` | 0..1 : N | `notice_control_changes` | `notice_control_changes.festival_id → festivals.festival_id` | 아니요(공통 공지 NULL) | 022 |
 
 56번의 `0..1 : 0..1`은 A46의 수락 처리(신청 상태 변경과 친구 관계 한 행 생성)에 맞춘 관계입니다. 001~014만 적용하면 `0..1 : N`이며, 015 적용 후 `friendships.request_id`의 UNIQUE가 그림과 표의 관계를 보장합니다.
 
@@ -539,7 +546,7 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | `incident_logs` | **operator·admin**(정책 `incident_logs_select_operator`) | service | service(**`status`·`closed_at`만 — 트리거로 강제**) | **금지(트리거)** |
 | `incident_events`, `incident_diagnostics`, `recovery_plans`, `incident_outcomes`, `agent_runs` | operator 이상(service 경유) | service — `recovery_plans`는 A19가 operator/service 권한 확인 뒤 기록 | **금지**(추가만, 트리거) | **금지** |
 | `recovery_attempts` | operator 이상(service 경유) | service | 결과 칸만 **`pending`일 때 1회**(트리거) | **금지** |
-| `official_notices` | 공개: `approval_status='approved'` | service | service(admin 승인) | 금지 |
+| `official_notices` | 공개: `approval_status='approved'`이며 공개 축제에 연결됐거나 공통 공지인 행(022) | service | service(공지 관리) | 금지 |
 | `facilities`, `data_sources`, `population_areas`, `festival_population_links` | 공개 | service | service | service |
 | `realtime_snapshots` | service(최신 유효값만 API로) | service | 금지 | service(보존 기간 정리) |
 | `rag_documents`, `rag_chunks` | service(에이전트 검색), admin | service | service | service |
@@ -551,7 +558,8 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 | `friend_requests` | `noldaga_app`: 보낸 사람·받은 사람 | service | service | service |
 | `friendships` | `noldaga_app`: 두 친구 당사자 | service | service | service |
 | `user_blocks` | `noldaga_app`: 차단을 설정한 본인만 | service | service | service |
-| `notice_events` | `noldaga_app` 권한 없음. admin은 service 경유 | service(admin 공지 관리) | 금지(권한 없음·추가 전용 트리거) | 금지(권한 없음·추가 전용 트리거) |
+| `notice_events` | `noldaga_app` 권한 없음. operator·admin은 API에서 권한 확인 후 service 경유 | service(공지 관리) | 금지(권한 없음·추가 전용 트리거) | 금지(권한 없음·추가 전용 트리거) |
+| `notice_control_changes` (022) | service | service | 권한 없음 | service(승인 일정 변경 시 미래 전이만) |
 | `chat_rooms` | `noldaga_app`: 그 방에서 `invited`·`joined`인 사용자(`app_room_visible`). 관리자 열람은 service 경유 | service | service | service |
 | `companion_posts` | `noldaga_app`: 숨김 처리하지 않은 글 또는 본인 작성 글(008) | service | service | service |
 | `companion_applications` | `noldaga_app`: 신청자 또는 해당 모집 글 작성자 | service | service | service |
@@ -945,7 +953,8 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | source_id | TEXT / FK data_sources, NOT NULL | 출처(TOPIS 등) |
 | | source_url / published_at / effective_from / effective_to | TEXT / TIMESTAMPTZ / NULL | 원문·효력 기간 |
 | | geometry | JSONB / NULL | 구간(형식은 공급원 확인 후) |
-| | control_version | TEXT / NULL | 경로 캐시 무효화 기준 |
+| | control_version | TEXT / NULL | 승인 또는 수동 종료 당시의 통제 버전 |
+| | ended_at (022) | TIMESTAMPTZ / NULL | 수동 종료 시각. A07 실효 종료는 이 시각과 예정 종료 중 빠른 시각 |
 | | approval_status | TEXT / CHECK IN ('pending','approved','rejected') | 미승인은 경로 차단 규칙에 적용 안 함 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 | **facilities** | facility_id | TEXT / PK | 지도 표시용 위치 (FR-F04·F11, D-014). 주차는 A08 주차장 위치만 제공 |
@@ -1102,14 +1111,20 @@ A36·A37은 요청 트랜잭션에 설정된 `app.user_id`의 취향 행만 `nol
 |---|---|---|---|
 | **notice_events** (006) | event_id | BIGSERIAL / `PRIMARY KEY` | 공지 관리 이력 ID |
 |  | notice_id | TEXT / `NOT NULL REFERENCES official_notices(notice_id)` | 변경한 공식 공지 |
-|  | action | TEXT / `NOT NULL CHECK (action IN ('create','update','approve','reject'))` | 등록·수정·승인·반려 구분 |
-|  | actor | UUID / `NOT NULL REFERENCES profiles(user_id)` | 변경을 실행한 관리자 |
+|  | action | TEXT / `NOT NULL CHECK (action IN ('create','update','approve','reject','end'))` | 등록·수정·승인·반려·수동 종료 구분(022) |
+|  | actor | UUID / `NOT NULL REFERENCES profiles(user_id)` | 변경을 실행한 운영자·관리자 |
 |  | before_value | JSONB / NULL | 변경 전 값 |
 |  | after_value | JSONB / NULL | 변경 후 값 |
 |  | reason | TEXT / NULL, `CHECK (char_length(reason) <= 300)` | 변경 사유(반려할 때 필수) |
 |  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 변경 이력을 기록한 시각 |
 
 - `notice_events`의 행 제약 `CHECK (action <> 'reject' OR reason IS NOT NULL)`. 트리거 `trg_notice_events_append_only`가 이력의 수정·삭제를 막습니다.
+
+**구현 상태 (ohyun-notice)** — [022_notice](db/022_notice.sql)가 수동 종료와 `notice_control_changes`를 추가합니다. 공지 변경·감사 행을 같은 서비스 트랜잭션에 기록합니다. A07 앱 역할은 공개 축제에 연결된 승인 공지와 승인된 공통 공지를 조회합니다.
+
+| 테이블 | 주요 컬럼 | 제약과 용도 |
+|---|---|---|
+| `notice_control_changes` | `change_id`, `notice_id`, `festival_id`, `effective_at`, `created_at` | `change_id` PK, `festival_id` FK(공통이면 NULL). 공지 ID는 변경 기록을 보존하기 위한 참조값. 해당 축제와 공통 범위에서 효력 시각이 지난 변경 건수가 통제 버전. |
 
 ### 6-8. 동행·채팅·알림·신고
 
@@ -1230,7 +1245,7 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 | **장애 감지·복구 초기 SLO** | 귀가 조회 p95가 3초를 초과한 상태가 30초 이어지면 장애, 3초 이하가 5분 유지되면 복구. W96 계측 뒤 숫자만 조정하며, 조정 시 설정 버전(`LIMITS_VERSION`)을 올림(API 설계서 7-0·9-1절, 11/24 팀 결정) |
 | **사건 결과 1건** | `incident_outcomes.incident_id` PK → 사건당 최종 결과 하나. 시도별 결과는 `recovery_attempts`에만 |
 | **감사 기록 보존** | `incident_events`·`agent_runs`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`는 UPDATE/DELETE를 막고(RLS·트리거 6개, 10절 T6) 추가만 허용. `incident_logs`는 `status`·`closed_at`만 바꿀 수 있고, 바꿀 때마다 `incident_events`에 이력을 남김 |
-| **캐시 무효화** | `official_notices.control_version`이 바뀌면 `route_cache_entries.festival_id`로 그 축제의 캐시 행을 찾아 `valid_until=now()`, 같은 `cache_key`의 서버 메모리 캐시를 무효화 |
+| **캐시 무효화** | 022는 승인·재검토·수동 종료 시 해당 축제의 DB 캐시를 즉시 만료시키고, 새 DB 캐시의 유효 시간을 다음 효력 전이로 제한합니다. A04/A25는 같은 축제의 최신 통제 버전으로 v2 키를 만들어 이전 메모리 캐시와 진행 중인 조회의 재사용을 차단합니다. 공통 공지는 모든 축제에 반영합니다. |
 | **시간대** | 모든 시각은 TIMESTAMPTZ(UTC 저장), API에서 `+09:00`으로 변환. 시간대 없는 TIMESTAMP는 쓰지 않음 |
 | **ID 형식** | 03 문서 0절과 같은 접두사를 CHECK로 강제(`fst_`·`rr_`·`inc_`·`diag_`·`rp_`·`ra_`·`sim_`·`ar_`·`run_`·`rv_`·`rt_`). 잘못된 형식은 DB가 거부(10절 T7) |
 | **캐시·대체 경로 유효성** | `route_results.source_type`이 `cache`·`alternate`면 `validity_check`가 없으면 저장 거부(CHECK, 10절 T8) |
@@ -1306,6 +1321,7 @@ A80은 비밀번호 재확인 뒤 `noldaga_service` 단일 트랜잭션으로 �
 | 데이터 | 저장 위치 | 보존 | 만료 때 | 남기는 것 | 근거 | 상태 | 담당·검증 |
 |---|---|---|---|---|---|---|---|
 | 공지 관리 이력 | `notice_events`(006) | 프로젝트 종료까지 | 수정·삭제 금지(트리거, T35c) | 전부 | FR-O06 이력 | 설계 고정 | 신유빈 |
+| 공지 통제 버전 | `notice_control_changes`(022) | 프로젝트 종료까지 | 승인 공지 일정 변경 시 이전 미래 전이만 삭제 | 효력이 도달한 버전 변경 기록 | 경로 키·캐시 무효화 | 구현 | 권오현 |
 | 사건·진단·복구 기록 | `incident_logs`·`incident_events`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`·`agent_runs` | 프로젝트 종료까지 | 수정·삭제 금지(트리거 6개, T6) | 전부 | Auto-Healing 결과서 근거. **개인정보 칸 없음**(11/20 확인: 사용자 ID·장소·질문 원문 칸이 없고, 행위자는 `detector`·`recovery_agent` 같은 역할 이름. `agent_runs` 입출력 원문은 30일 지나면 파일만 삭제) | 설계 고정 | 신유빈 |
 | 지금 핫한 축제 수집 결과 | `festival_trends`(004·017) | 30일 | 행 삭제 | 없음 | 데이터랩 축제명·증가율·신호, 대한민국 구석구석 축제명·순위 | 확정(11/24 신유빈 B안·권오현 확정) | 신유빈 |
 | 요즘 올라온 글(A81) | Redis `posts:{festival_id}` | 10분 | 키 자동 삭제 | 없음 | 제목·링크·게시일·출처 종류만 캐시 | 확정(11/24) | 신유빈 |
@@ -1508,6 +1524,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 5-4 | [`db/tests_017_festival_trends_signal.sql`](db/tests_017_festival_trends_signal.sql) | 증가율·신호 제약, 기존 행·공개 조회 정책 보존, 되돌리기·재적용, 004 제약에 맞지 않는 행이 있을 때 되돌리기 중단(T017a~e). 실행 결과는 10-A-4절 |
 | 5-5 | [`db/tests_018_festival_publication.sql`](db/tests_018_festival_publication.sql) | 미분류 데이터 정리·이력, 축제 및 원본 RLS, 좌표 출처 제약, 되돌리기·재적용(T018a~d) |
 | 5-6 | [`db/tests_019_admin-review.sql`](db/tests_019_admin-review.sql) | 기존 행 이관·사유 제약·앱 역할 접근 제한·되돌리기·재적용과 처리된 결정의 되돌리기 차단(T019a~d) |
+| 5-9 | [`db/022_notice.sql`](db/022_notice.sql)·[`db/022_notice_down.sql`](db/022_notice_down.sql)·[`db/tests_022_notice.sql`](db/tests_022_notice.sql) | 공지 수동 종료·축제별 효력 전이·캐시 무효화·공개 RLS와 이력 보존(T022a~e). 021 적용 뒤 적용·되돌리기·재적용 |
 | 6 | `db/explain_v0.3.2.sql` | 축제 검색 인덱스 전후 실행 계획(데이터 생성 SQL 포함) |
 | — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~019 적용·시험 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
 | — | `backend/tests/routes/test_p18_route_store_db.py` | `TEST_DB_APP_URL`의 `noldaga_app`으로 축제 조회, `TEST_DB_URL`로 시험 데이터 준비·경로 저장. 접수→상태→TMAP 저장·조회·만료, 토큰 만료 후 A04 재전송, 카카오 미저장, A05·정기 정리의 삭제 시각 일치. 011 시험에는 소유자 권한 또는 `TEST_DB_MIGRATION_URL` 필요. **11/24 기존 P18 4개 로컬 통과**. 신규 DB 행 원문·삭제 시각 검사는 013 적용 일회용 DB에서 실행 |
@@ -2872,6 +2889,7 @@ ALTER TABLE rag_documents
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | 022 공지 수동 종료·효력 전이·축제별 경로 통제 버전과 SQL 시험을 추가했습니다. |
 | v0.5 | 2026-11-24 | A43~A50에 기존 친구 DDL·RLS를 연결하고, 1:1 방 닫기와 30일 경과 신청 정리 작업을 추가했습니다(6-6·7-0). |
 | v0.5 | 2026-11-24 | A24 서비스 계정 권한·결정 이력·보존과 019_admin-review 사유 제약, 이관 및 SQL 시험을 반영했습니다. |
 | v0.5 | 2026-11-24 | 동행 서비스 트랜잭션, 019 임시 마감·만료 RLS와 자동 종료·72시간 정리 명령을 연결했습니다(6-8·7-0절). |

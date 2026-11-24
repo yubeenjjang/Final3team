@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
+from api.providers.route_base import as_kst
 from api.schemas.festivals import RegionCode
 
 NoticeType = Literal["operation", "traffic_control", "no_stop", "bus_detour", "road_closure"]
@@ -54,6 +55,10 @@ class Notice(BaseModel):
     source_url: str | None = None
     published_at: datetime | None
     control_version: str | None = None
+
+    @field_serializer("effective_from", "effective_to", "published_at", when_used="json")
+    def serialize_time(self, value: datetime | None) -> datetime | None:
+        return as_kst(value) if value is not None else None
 
 
 class NoticeResponse(InfoResponse):

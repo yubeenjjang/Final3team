@@ -32,13 +32,16 @@ def approved_notices(
     festival_id: str, notice_type: NoticeType | None, active_only: bool, now: datetime,
 ) -> list[Notice]:
     query = text("""
-        SELECT notice_id, type, title, content, effective_from, effective_to,
+        SELECT notice_id, type, title, content, effective_from,
+               CASE WHEN ended_at IS NOT NULL AND (effective_to IS NULL OR ended_at < effective_to)
+                    THEN ended_at ELSE effective_to END AS effective_to,
                source_id AS source, source_url, published_at, control_version
           FROM official_notices
-         WHERE festival_id = :festival_id AND approval_status = 'approved'
+         WHERE (festival_id IS NULL OR festival_id = :festival_id) AND approval_status = 'approved'
            AND (:all_types OR type = :notice_type)
            AND (:all_dates OR ((effective_from IS NULL OR effective_from <= :now)
-                          AND (effective_to IS NULL OR effective_to >= :now)))
+                          AND (effective_to IS NULL OR effective_to > :now)
+                          AND (ended_at IS NULL OR ended_at > :now)))
          ORDER BY effective_from DESC NULLS LAST, notice_id
     """)
     with get_festival_engine().connect() as connection:

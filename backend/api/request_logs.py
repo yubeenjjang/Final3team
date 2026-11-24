@@ -20,6 +20,8 @@ _COMPANION_PATH = re.compile(
     r"|companion-applications/[^/]+/[^/]+)/?"
 )
 
+_ADMIN_NOTICE_PATH = re.compile(r"/api/v1/admin/notices(?:/[^/]+(?:/(review|end))?)?/?")
+
 ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
@@ -73,6 +75,16 @@ def chat_endpoint(path: str) -> str | None:
     return path.rstrip("/")
 
 
+def admin_notice_endpoint(path: str) -> str | None:
+    match = _ADMIN_NOTICE_PATH.fullmatch(path)
+    if not match:
+        return None
+    base = "/api/v1/admin/notices"
+    if path.rstrip("/") == base:
+        return base
+    return base + "/{notice_id}" + ("/" + match[1] if match[1] else "")
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -82,7 +94,7 @@ def private_endpoint(path: str) -> str | None:
         return "/api/v1/festivals/{festival_id}/" + info[1]
     if path.rstrip("/") == ADMIN_REVIEW_PATH:
         return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return admin_notice_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):

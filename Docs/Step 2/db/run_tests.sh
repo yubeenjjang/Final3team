@@ -231,6 +231,13 @@ echo "## 5-8. 021_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용
 "${PSQL_TX[@]}" -q < 021_chat.sql
 "${PSQL[@]}" -q -f - < tests_021_chat.sql
 
+echo "## 5-9. 022_notice 공식 공지 통제 버전 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_notice.sql
+"${PSQL[@]}" -q -f - < tests_022_notice.sql
+"${PSQL_TX[@]}" -q < 022_notice_down.sql
+"${PSQL_TX[@]}" -q < 022_notice.sql
+"${PSQL[@]}" -q -f - < tests_022_notice.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh

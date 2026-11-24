@@ -378,17 +378,17 @@ def test_notice_queries_real_repository_filters_and_nullable_fields(setup, monke
             CREATE TABLE official_notices (
                 notice_id TEXT, festival_id TEXT, type TEXT, title TEXT, content TEXT,
                 effective_from TEXT, effective_to TEXT, source_id TEXT, source_url TEXT,
-                published_at TEXT, control_version TEXT, approval_status TEXT
+                published_at TEXT, control_version TEXT, approval_status TEXT, ended_at TEXT
             )
         """))
         connection.execute(text("""
             INSERT INTO official_notices VALUES
-                ('open','fst_000001','operation','열린 공지',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved'),
-                ('pending','fst_000001','operation','대기',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'pending'),
-                ('rejected','fst_000001','operation','거절',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'rejected'),
-                ('past','fst_000001','road_closure','종료',NULL,NULL,'2026-11-18T00:00:00+09:00','seoul_topis',NULL,NULL,'v1','approved'),
-                ('future','fst_000001','road_closure','예정',NULL,'2026-11-20T00:00:00+09:00',NULL,'seoul_topis',NULL,NULL,'v2','approved'),
-                ('different','fst_000002','operation','타 축제',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved')
+                ('open','fst_000001','operation','열린 공지',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved',NULL),
+                ('pending','fst_000001','operation','대기',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'pending',NULL),
+                ('rejected','fst_000001','operation','거절',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'rejected',NULL),
+                ('past','fst_000001','road_closure','종료',NULL,NULL,'2026-11-18T00:00:00+09:00','seoul_topis',NULL,NULL,'v1','approved',NULL),
+                ('future','fst_000001','road_closure','예정',NULL,'2026-11-20T00:00:00+09:00',NULL,'seoul_topis',NULL,NULL,'v2','approved',NULL),
+                ('different','fst_000002','operation','타 축제',NULL,NULL,NULL,'admin_manual',NULL,NULL,NULL,'approved',NULL)
         """))
     with TestClient(app) as client:
         response = client.get(_url("notices"))

@@ -16,6 +16,8 @@ from api.schemas.routes import (
     RouteStatus,
 )
 from api.services.festival_lookup import find_festival
+from api.services.notice_lookup import control_reader
+from api.services.notices import CONTROL_CHANGED_CODE, CONTROL_CHANGED_MESSAGE, ControlSnapshot
 from ulid import ULID
 
 _ALPHABET = string.ascii_letters + string.digits
@@ -112,6 +114,7 @@ def _register_route(
             scenario=scenario,
             status="queued" if scenario.startswith("async_") else final_status,
             updated_at=_now(),
+            control_version=control_reader().snapshot(festival.festival_id).version,
         )
         route_requests[route_id] = record
         route_request_keys[request_key] = route_id
@@ -125,10 +128,13 @@ def create_route(
     scenario: str,
 ) -> tuple[int, dict[str, object]]:
     record = _register_route(direction, request, body, scenario)
+    control = control_reader().snapshot(record.festival.festival_id)
+    if record.control_version != control.version:
+        return 200, _control_changed(record, control)
     if record.scenario == "overloaded":
         raise ApiError(503, "ROUTE_OVERLOADED", "경로 요청이 많아요. 잠시 후 다시 시도해 주세요.", True)
     if record.scenario in ("sync_ready", "sync_secondary"):
-        return 200, _ready_payload(record)
+        return 200, _ready_payload(record, control)
     return 202, {
         "route_request_id": record.route_request_id,
         "route_status": "queued",
@@ -161,16 +167,31 @@ def get_route(
         if not secrets.compare_digest(access_token.encode(), record.access_token.encode()):
             raise ApiError(403, "FORBIDDEN", "이 경로를 조회할 수 없는 토큰입니다.")
 
+        control = control_reader().snapshot(record.festival.festival_id)
+        if record.control_version != control.version:
+            return _control_changed(record, control)
         if record.status == "queued":
             record.status = "processing"
             record.updated_at = _now()
         elif record.status == "processing":
             record.status = _FINAL_STATUSES[record.scenario]
             record.updated_at = _now()
-        return _status_payload(record)
+        return _status_payload(record, control)
 
 
-def _status_payload(record: RouteRecord) -> dict[str, object]:
+def _control_changed(record: RouteRecord, control: ControlSnapshot) -> dict[str, object]:
+    return {
+        "route_request_id": record.route_request_id,
+        "route_status": "unavailable",
+        "completed_valid_route": False,
+        "updated_at": _now(),
+        "is_mock": True,
+        "error": {"code": CONTROL_CHANGED_CODE, "message": CONTROL_CHANGED_MESSAGE, "retryable": True},
+        "notices": control.apply_to([CONTROL_CHANGED_MESSAGE], record.festival.festival_id),
+    }
+
+
+def _status_payload(record: RouteRecord, control: ControlSnapshot) -> dict[str, object]:
     status = record.status
     body: dict[str, object] = {
         "route_request_id": record.route_request_id,
@@ -180,7 +201,7 @@ def _status_payload(record: RouteRecord) -> dict[str, object]:
         "is_mock": True,
     }
     if status == "ready":
-        body.update(_ready_payload(record))
+        body.update(_ready_payload(record, control))
     elif status in ("queued", "processing"):
         body["retry_after_s"] = _RETRY_AFTER_S
     elif status in ("unavailable", "timed_out"):
@@ -243,7 +264,7 @@ def _candidate(
     }
 
 
-def _ready_payload(record: RouteRecord) -> dict[str, object]:
+def _ready_payload(record: RouteRecord, control: ControlSnapshot) -> dict[str, object]:
     request, festival = record.request, record.festival
     secondary = record.scenario == "sync_secondary"
     constraints = request.user_constraints
@@ -272,6 +293,8 @@ def _ready_payload(record: RouteRecord) -> dict[str, object]:
         "constraint_status": constraint_status,
         "coverage": {"scope": "national", "region_code": festival.region_code, "supported": True},
         "score_version": None,
-        "notices": [_CONTROL_NOTICE, _SECONDARY_NOTICE] if secondary else [_CONTROL_NOTICE],
+        "notices": control.apply_to(
+            [_CONTROL_NOTICE, _SECONDARY_NOTICE] if secondary else [_CONTROL_NOTICE], festival.festival_id,
+        ),
         "is_mock": True,
     }
