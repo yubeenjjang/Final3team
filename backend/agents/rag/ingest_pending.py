@@ -128,6 +128,13 @@ def store_pending_document(
                     raise RuntimeError("duplicate document could not be found")
                 if existing[1] != festival_id:
                     raise ValueError("existing source revision belongs to another festival")
+                cur.execute(
+                    "SELECT embedding_model, embedding_version FROM rag_chunks WHERE document_id = %s LIMIT 1",
+                    (existing[0],),
+                )
+                existing_embedding = cur.fetchone()
+                if existing_embedding != (embedding_model, embedding_version):
+                    raise ValueError("existing source revision needs a separate re-embedding workflow")
                 return str(existing[0]), False
             for index, (content, vector) in enumerate(zip(chunks, embeddings, strict=True)):
                 cur.execute("""
