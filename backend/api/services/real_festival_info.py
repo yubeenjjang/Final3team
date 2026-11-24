@@ -8,23 +8,25 @@ from typing import Any, Literal
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.errors import ApiError
-from api.providers import kma_weather, transit_arrivals, visit_forecast
+from api.providers import kma_weather, traffic_incidents, transit_arrivals, visit_forecast
 from api.providers.festival_source import FestivalSource, FestivalSourceError
 from api.providers.route_base import as_kst
 from api.repositories import festival_info as repository
 from api.repositories.festival_info import FacilityStation
 from api.schemas.festival_info import (
     Coverage, FailedWeatherForecast, InfoResponse, NoticeResponse, NoticeType, SourceError,
-    TransitArrival, TransitMode, TransitResponse, TransitStation, VisitForecast, VisitForecastResponse,
+    TrafficIncidentResponse, TrafficIncidentType, TransitArrival, TransitMode, TransitResponse,
+    TransitStation, VisitForecast, VisitForecastResponse,
     WeatherResponse,
 )
 from api.schemas.festivals import FestivalDetail
 from api.services.festival_lookup import find_festival
 
-ModeName = Literal["notices", "weather", "transit", "visit-forecast"]
+ModeName = Literal["notices", "weather", "transit", "traffic-incidents", "visit-forecast"]
 _PROVIDER_ENVS: dict[ModeName, str] = {
     "notices": "NOTICES_PROVIDER", "weather": "WEATHER_PROVIDER",
-    "transit": "TRANSIT_PROVIDER", "visit-forecast": "VISIT_FORECAST_PROVIDER",
+    "transit": "TRANSIT_PROVIDER", "traffic-incidents": "TRAFFIC_INCIDENT_PROVIDER",
+    "visit-forecast": "VISIT_FORECAST_PROVIDER",
 }
 _DB_ERRORS = (SQLAlchemyError, RuntimeError)
 _STALE_NOTICE = "정보가 오래됐어요"
@@ -254,6 +256,52 @@ class FestivalInfoService:
 
         arrivals = await asyncio.gather(*(enrich(row) for row in matching))
         return transit_arrivals.ArrivalReading(arrivals, observed_at)
+
+    async def traffic(
+        self, festival_id: str, radius_m: int, kind: TrafficIncidentType | None,
+    ) -> TrafficIncidentResponse:
+        festival = await self._festival(festival_id)
+        response = TrafficIncidentResponse(
+            festival_id=festival_id, coverage=_coverage(festival), source="police_incident", is_mock=False,
+        )
+        coordinates = _coordinates(festival)
+        if coordinates is None:
+            _unknown_location(response)
+            return response
+
+        async def fetch(
+            load: Callable[[FestivalSource], Awaitable[traffic_incidents.IncidentReading]],
+        ) -> traffic_incidents.IncidentReading | SourceError:
+            try:
+                return await load(self.source)
+            except FestivalSourceError as exc:
+                return exc.error
+
+        nationwide = [fetch(traffic_incidents.public_incidents)]
+        if traffic_incidents.utic_enabled():
+            nationwide.append(fetch(traffic_incidents.utic_incidents))
+        local = []
+        if festival.region_code == "SEOUL" and os.environ.get(traffic_incidents.SEOUL_KEY, "").strip():
+            local.append(fetch(traffic_incidents.topis_incidents))
+
+        results = await asyncio.gather(*nationwide, *local)
+        readings = [result for result in results if isinstance(result, traffic_incidents.IncidentReading)]
+        if not readings:
+            errors = [result for result in results if isinstance(result, SourceError)]
+            _mark_error(response, next((error for error in errors if error.retryable), errors[0]))
+            return response
+
+        response.source = readings[0].source
+        if response.source == "seoul_topis":
+            response.coverage = _coverage(festival, seoul_only=True)
+            response.notices.append("전국 교통 돌발을 확인할 수 없어 서울 TOPIS 정보만 표시해요.")
+        if local and isinstance(results[-1], SourceError):
+            response.notices.append("서울 TOPIS 정보를 가져오지 못했어요.")
+        response.observed_at = min(reading.observed_at for reading in readings)
+        response.items = traffic_incidents.nearby_incidents(readings, coordinates, radius_m, kind)
+        if self._now() - response.observed_at > timedelta(seconds=2 * traffic_incidents.INCIDENT_TTL_S):
+            _stale(response)
+        return response
 
     async def forecast(self, festival_id: str, days: int) -> VisitForecastResponse:
         festival = await self._festival(festival_id)

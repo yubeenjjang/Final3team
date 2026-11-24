@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from api.errors import ApiError
 from api.mocks.clock import MOCK_NOW
 from api.mocks.notices import NOTICES
+from api.providers.traffic_incidents import Incident, IncidentReading, nearby_incidents
 from api.schemas.festival_info import (
     CongestColor,
     CongestLevel,
@@ -14,6 +15,8 @@ from api.schemas.festival_info import (
     NoticeResponse,
     NoticeType,
     SourceError,
+    TrafficIncidentResponse,
+    TrafficIncidentType,
     TransitArrival,
     TransitMode,
     TransitResponse,
@@ -174,6 +177,33 @@ def get_weather(festival_id: str, scenario: str | None) -> WeatherResponse:
         else:
             response.data = data
             response.observed_at = data.observed_at
+    return response
+
+
+def get_traffic_incidents(
+    festival_id: str, radius_m: int, kind: TrafficIncidentType | None, scenario: str | None,
+) -> TrafficIncidentResponse:
+    festival = _find_festival(festival_id)
+    response = TrafficIncidentResponse(
+        festival_id=festival_id, coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
+        source="police_incident",
+    )
+    has_location = festival.lat is not None and festival.lng is not None
+    if not _can_supply_data(response, scenario, has_location=has_location):
+        return response
+    response.observed_at = MOCK_NOW - timedelta(minutes=3) if scenario == "stale" else MOCK_NOW
+    if festival_id == "fst_000001":
+        incident = Incident(
+            "control", "세종대로 임시 통제(모의)", 37.5759, 126.9771, MOCK_NOW,
+            MOCK_NOW + timedelta(hours=1), "police_incident", None,
+        )
+        assert festival.lat is not None and festival.lng is not None
+        response.items = nearby_incidents(
+            [IncidentReading("police_incident", response.observed_at, [incident])],
+            (festival.lat, festival.lng), radius_m, kind,
+        )
+    if scenario == "stale":
+        response.error = SourceError(code="SOURCE_STALE", message="정보가 오래됐어요", retryable=False)
     return response
 
 

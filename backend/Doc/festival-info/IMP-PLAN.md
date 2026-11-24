@@ -11,14 +11,15 @@ uv run --with-requirements backend/api/requirements.txt --with-requirements back
 ## Claude 실호출
 
 1. 루트에서 `DATA_GO_KR_SERVICE_KEY`와 `SEOUL_SUBWAY_API_KEY`가 이미 주입된 비밀 환경을 사용합니다. DB 접속에는 기존 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER_USERNAME`, `DB_USER_PASSWORD`를 사용합니다. A29 스냅샷을 쓰려면 `DB_SERVICE_USERNAME`·`DB_SERVICE_PASSWORD`도 주입합니다. 서울 버스는 공공데이터포털의 서울 정류소 조회·버스도착정보 두 서비스가 승인된 키가 필요합니다.
-2. A07은 006까지 적용된 DB에서 승인 공지가 있는 공개 축제를 선택합니다. A26은 `facilities`에서 반경 내 유효 역, 서울 ARS ID, TAGO 노드가 있는 축제를 각각 선택합니다. A29는 해당 축제의 `venue_name`과 공급원 `tAtsNm`이 일치하고 지역 코드가 확인된 연결만 준비합니다. 연결 파일은 `VISIT_FORECAST_MAPPING_FILE`에 지정하고, 다음 구조로 축제별 한 행을 저장합니다.
+2. A07은 006까지 적용된 DB에서 승인 공지가 있는 공개 축제를 선택합니다. A26은 `facilities`에서 반경 내 유효 역, 서울 ARS ID, TAGO 노드가 있는 축제를 각각 선택합니다. A29는 해당 축제의 `venue_name`과 공급원 `tAtsNm`이 일치하고 지역 코드가 확인된 연결을 검토합니다. 연결 파일은 `VISIT_FORECAST_MAPPING_FILE`에 지정하고, 승인된 축제마다 다음 구조로 한 행을 저장합니다.
 
 ```json
 {
   "fst_EXAMPLE": {
     "attraction": "SEA LIFE 부산아쿠아리움",
     "area_code": "26",
-    "district_code": "26350"
+    "district_code": "26350",
+    "approved": true
   }
 }
 ```

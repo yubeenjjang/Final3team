@@ -6,7 +6,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from functools import cached_property
 from time import monotonic
-from typing import Any, cast
+from typing import Any, Protocol, cast
 from urllib.parse import quote, unquote
 from xml.etree import ElementTree
 
@@ -37,21 +37,17 @@ class FestivalSourceError(Exception):
         super().__init__(message)
 
 
-class FestivalSource:
-    def __init__(
-        self, *, transport: httpx2.AsyncBaseTransport | None = None,
-        now: Callable[[], datetime] = lambda: datetime.now(KST),
-        clock: Callable[[], float] = monotonic,
-    ) -> None:
-        self._transport = transport
-        self.now = now
+class SourceCache(Protocol):
+    async def cached[T](
+        self, source: str, target: str, ttl: float, load: Callable[[], Awaitable[T]],
+    ) -> T: ...
+
+
+class MemorySourceCache:
+    def __init__(self, clock: Callable[[], float]) -> None:
         self._clock = clock
         self._cache: OrderedDict[tuple[str, str], tuple[float, Any]] = OrderedDict()
         self._inflight: dict[tuple[str, str], asyncio.Task[Any]] = {}
-
-    @cached_property
-    def _quota(self) -> QuotaGuard:
-        return QuotaGuard(now=self.now, info=True)
 
     async def cached[T](
         self, source: str, target: str, ttl: float, load: Callable[[], Awaitable[T]],
@@ -87,9 +83,35 @@ class FestivalSource:
         finally:
             self._inflight.pop(key, None)
 
+
+class _SourceXMLTreeBuilder(ElementTree.TreeBuilder):
+    def doctype(self, name: str, pubid: str | None, system: str | None) -> None:
+        raise ValueError("공급원 XML에 DTD가 포함되어 있습니다.")
+
+
+class FestivalSource:
+    def __init__(
+        self, *, transport: httpx2.AsyncBaseTransport | None = None,
+        now: Callable[[], datetime] = lambda: datetime.now(KST),
+        clock: Callable[[], float] = monotonic, cache: SourceCache | None = None,
+    ) -> None:
+        self._transport = transport
+        self.now = now
+        self._cache = cache if cache is not None else MemorySourceCache(clock)
+
+    @cached_property
+    def _quota(self) -> QuotaGuard:
+        return QuotaGuard(now=self.now, info=True)
+
+    async def cached[T](
+        self, source: str, target: str, ttl: float, load: Callable[[], Awaitable[T]],
+    ) -> T:
+        return await self._cache.cached(source, target, ttl, load)
+
     async def request[T](
-        self, source: QuotaProvider, endpoint: str, parse: Callable[[dict[str, Any]], T], *,
+        self, source: QuotaProvider, endpoint: str, parse: Callable[[dict[str, Any]], T] | None = None, *,
         params: dict[str, str | int | float] | None = None, key_env: str = DATA_KEY,
+        key_param: str = "serviceKey", parse_xml: Callable[[ElementTree.Element], T] | None = None,
     ) -> T:
         raw_key = os.environ.get(key_env, "").strip()
         if not raw_key:
@@ -99,12 +121,12 @@ class FestivalSource:
             url = endpoint.replace("{key}", quote(key, safe=""))
         else:
             url = endpoint
-            params = {**(params or {}), "serviceKey": key}
+            params = {**(params or {}), key_param: key}
 
         for attempt in range(2):
             try:
                 response = await self._send(source, url, params)
-                return self._parse(response, parse)
+                return self._parse(response, parse, parse_xml)
             except FestivalSourceError as exc:
                 delay = exc.retry_delay if exc.retry_delay is not None else _RETRY_DELAY_S
                 # 긴 Retry-After는 요청을 붙들지 않고 호출자에게 일시 오류를 반환한다.
@@ -134,7 +156,10 @@ class FestivalSource:
             except (httpx2.RequestError, httpx2.InvalidURL, UnicodeError):
                 raise FestivalSourceError("공급원 요청에 실패했어요.", http=True) from None
 
-    def _parse[T](self, response: httpx2.Response, parse: Callable[[dict[str, Any]], T]) -> T:
+    def _parse[T](
+        self, response: httpx2.Response, parse: Callable[[dict[str, Any]], T] | None,
+        parse_xml: Callable[[ElementTree.Element], T] | None,
+    ) -> T:
         status = response.status_code
         if status != 200:
             raise FestivalSourceError(
@@ -146,12 +171,17 @@ class FestivalSource:
             try:
                 body = response.json()
             except ValueError:
-                root = ElementTree.fromstring(response.content)
+                parser = ElementTree.XMLParser(target=_SourceXMLTreeBuilder())
+                root = ElementTree.fromstring(response.content, parser=parser)
+                for node in root.iter():
+                    node.tag = node.tag.rsplit("}", 1)[-1]
                 code = root.findtext(".//returnReasonCode")
                 if code is not None:
                     raise _result_error(code)
-                raise ValueError
-            if not isinstance(body, dict):
+                if parse_xml is None:
+                    raise ValueError
+                return parse_xml(root)
+            if not isinstance(body, dict) or parse is None:
                 raise ValueError
             common_error = body.get("OpenAPI_ServiceResponse")
             if isinstance(common_error, dict):

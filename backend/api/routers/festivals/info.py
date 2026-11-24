@@ -2,9 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header, Path, Query, Request
 
+from api.providers.traffic_incidents import DEFAULT_RADIUS_M, MAX_RADIUS_M, MIN_RADIUS_M
 from api.schemas.festival_info import (
-    CrowdResponse, NoticeResponse, NoticeType, RealCrowdResponse, TransitMode,
-    TransitResponse, VisitForecastResponse, WeatherResponse,
+    CrowdResponse, NoticeResponse, NoticeType, RealCrowdResponse, TrafficIncidentResponse,
+    TrafficIncidentType, TransitMode, TransitResponse, VisitForecastResponse, WeatherResponse,
 )
 from api.schemas.festivals import FESTIVAL_ID_PATTERN
 from api.services import mock_festival_info, real_festival_info, seoul_crowd
@@ -51,6 +52,21 @@ async def get_transit(
         result = await real_festival_info.get_service().transit(festival_id, mode, radius_m, limit)
     else:
         result = mock_festival_info.get_transit(festival_id, mode, radius_m, limit, scenario)
+    request.state.result_status = result.status
+    return result
+
+
+@router.get("/{festival_id}/traffic-incidents")
+async def get_traffic_incidents(
+    request: Request, festival_id: FestivalId,
+    radius_m: Annotated[int, Query(ge=MIN_RADIUS_M, le=MAX_RADIUS_M)] = DEFAULT_RADIUS_M,
+    kind: Annotated[TrafficIncidentType | None, Query(alias="type")] = None,
+    scenario: Scenario = None,
+) -> TrafficIncidentResponse:
+    if real_festival_info.uses_real_info("traffic-incidents"):
+        result = await real_festival_info.get_service().traffic(festival_id, radius_m, kind)
+    else:
+        result = mock_festival_info.get_traffic_incidents(festival_id, radius_m, kind, scenario)
     request.state.result_status = result.status
     return result
 

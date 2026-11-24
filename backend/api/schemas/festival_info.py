@@ -30,6 +30,8 @@ class SourceError(BaseModel):
 
 InfoStatus = Literal["ok", "stale", "unavailable", "unsupported", "unverified"]
 TransitMode = Literal["all", "subway", "bus"]
+TrafficIncidentType = Literal["accident", "construction", "event", "control"]
+TrafficIncidentSource = Literal["police_incident", "seoul_topis"]
 
 
 class InfoResponse(BaseModel):
@@ -123,6 +125,21 @@ class TransitStation(BaseModel):
 
 class TransitResponse(InfoResponse):
     stations: list[TransitStation] = Field(default_factory=list)
+
+
+class TrafficIncident(BaseModel):
+    type: TrafficIncidentType
+    title: str
+    lat: float
+    lng: float
+    distance_m: float
+    start_at: datetime | None
+    end_at: datetime | None
+    source: TrafficIncidentSource
+
+
+class TrafficIncidentResponse(InfoResponse):
+    items: list[TrafficIncident] = Field(default_factory=list)
 
 
 class VisitForecastDay(BaseModel):

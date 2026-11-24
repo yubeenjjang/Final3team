@@ -14,7 +14,9 @@ _FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
 _FRIENDS_PATH = re.compile(r"(/api/v1/(?:users/search|friend-requests|me/friend-requests|me/friends))/?")
 _FRIEND_ACTION_PATH = re.compile(r"/api/v1/friend-requests/[^/]+/[^/]+/?")
 _FRIEND_ITEM_PATH = re.compile(r"(/api/v1/me/(?:friends|blocks))/[^/]+/?")
-_FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
+_FESTIVAL_INFO_PATH = re.compile(
+    r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|traffic-incidents|visit-forecast)/?"
+)
 _COMPANION_PATH = re.compile(
     r"/api/v1/(?:festivals/[^/]+/companion-posts|companion-posts(?:/[^/]+(?:/[^/]+)?)?"
     r"|companion-applications/[^/]+/[^/]+)/?"

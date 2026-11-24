@@ -14,6 +14,7 @@ from api.providers.route_base import KST, as_kst
 QuotaProvider = Literal[
     "tmap", "kakao", "kakao_local", "seoul_citydata", "kma", "seoul_subway",
     "seoul_bus_arrival", "seoul_bus_station", "tago_stop", "tago_bus", "visit_forecast", "region_demand",
+    "police_incident", "police_utic", "seoul_topis",
 ]
 
 _LIMITS: dict[QuotaProvider, tuple[str, str]] = {
@@ -30,6 +31,9 @@ _INFO_LIMITS: dict[QuotaProvider, tuple[str, str]] = {
     "seoul_bus_station": ("SEOUL_BUS_STATION_DAILY_LIMIT", "1000"),
     "visit_forecast": ("VISIT_FORECAST_DAILY_LIMIT", "1000"),
     "region_demand": ("REGION_DEMAND_DAILY_LIMIT", "1000"),
+    "police_incident": ("POLICE_INCIDENT_DAILY_LIMIT", "2880"),
+    "police_utic": ("UTIC_DAILY_LIMIT", "2880"),
+    "seoul_topis": ("SEOUL_TOPIS_DAILY_LIMIT", "2880"),
 }
 _LOGGER = logging.getLogger(__name__)
 

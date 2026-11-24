@@ -127,7 +127,9 @@ _REAL_FESTIVAL_PATHS = re.compile(r"^/api/v1/festivals(/fst_[0-9A-Za-z]{6,26})?/
 _HEALTH_PATH = re.compile(r"^/api/v1/health/?$")
 _REAL_ROUTE_PATHS = re.compile(r"^/api/v1/routes/(return|visit)(/[^/]+)?/?$")
 _REAL_CROWD_PATH = re.compile(r"^/api/v1/festivals/[^/]+/crowd/?$")
-_FESTIVAL_INFO_PATH = re.compile(r"^/api/v1/festivals/[^/]+/(notices|weather|transit|visit-forecast)/?$")
+_FESTIVAL_INFO_PATH = re.compile(
+    r"^/api/v1/festivals/[^/]+/(notices|weather|transit|traffic-incidents|visit-forecast)/?$"
+)
 
 
 def _auth_data_endpoint(path: str) -> str | None:
