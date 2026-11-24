@@ -166,6 +166,26 @@ echo "T016e PASS: 사전 검사에서 되돌리기 충돌 1건 발견 및 되돌
 "${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique.sql
 "${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
 
+echo "## 5-4. 017 축제 증가율·신호 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 017_festival_trends_signal.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_017_festival_trends_signal.sql
+if trend_down_check=$(
+  cat tests_017_festival_trends_signal.sql 017_festival_trends_signal_down.sql |
+    "${PSQL[@]}" -q -v applied=true -v probe_down=true -f - 2>&1
+); then
+  echo "T017e FAIL: 004 제약에 맞지 않는 행이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -Eq 'ERROR:.*festival_trends_check1' <<< "$trend_down_check"; then
+  printf 'T017e FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$trend_down_check"
+  exit 1
+fi
+echo "T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 017_festival_trends_signal_down.sql
+"${PSQL[@]}" -q -v applied=false -v probe_down=false -f - < tests_017_festival_trends_signal.sql
+"${PSQL_TX[@]}" -q < 017_festival_trends_signal.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_017_festival_trends_signal.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
