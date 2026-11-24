@@ -19,12 +19,11 @@ from api.errors import (
 )
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
-from api.request_logs import auth_endpoint, private_endpoint, request_logger
-import api.routers.accounts.favorites as favorites, api.routers.festivals.info as info
+from api.request_logs import auth_endpoint, me_endpoint, private_endpoint, request_logger
 from api.routers import health
-from api.routers.accounts import auth
+from api.routers.accounts import auth, favorites, users
 from api.routers.assistant import chatbot
-from api.routers.festivals import catalog
+from api.routers.festivals import catalog, info
 from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
 from api.services.real_festival_info import uses_real_info
@@ -74,7 +73,7 @@ async def add_response_headers(
             raise
         # The server traceback can contain input values from an unexpected error.
         response = await handle_unexpected_error(request, error)
-        if uses_auth_db() and auth_endpoint(request.url.path):
+        if uses_auth_db() and (auth_endpoint(request.url.path) or me_endpoint(request.url.path)):
             del response.headers["X-Mock"]
         request_logger.error(
             "endpoint=%s request_id=%r http_status=500 error=INTERNAL_SERVER_ERROR",
@@ -103,7 +102,7 @@ async def add_response_headers(
         response.headers["X-Mock"] = "true"
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
-        or auth_endpoint(request.url.path)
+        or auth_endpoint(request.url.path) or me_endpoint(request.url.path)
         or _FESTIVAL_INFO_PATH.match(request.url.path)
     ):
         del response.headers["X-Mock"]
@@ -129,11 +128,12 @@ def _serves_real_data(request: Request) -> bool:
         (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
-        or (uses_auth_db() and auth_endpoint(path) is not None)
+        or (uses_auth_db() and (auth_endpoint(path) is not None or me_endpoint(path) is not None))
         or (info_path is not None and uses_real_info(info_path[1]))
     )
 
 
 for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
-for module in (info, favorites): app.include_router(module.router, prefix="/api/v1")
+for module in (info, favorites, users):
+    app.include_router(module.router, prefix="/api/v1")

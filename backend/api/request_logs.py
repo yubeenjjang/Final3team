@@ -3,6 +3,8 @@ import re
 
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
 _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
+_ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
+_FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
 _FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
@@ -13,6 +15,15 @@ def auth_endpoint(path: str) -> str | None:
     return match[1] if match else None
 
 
+def me_endpoint(path: str) -> str | None:
+    match = _ME_PATH.fullmatch(path)
+    if match:
+        return match[1]
+    if _FAVORITE_ITEM_PATH.fullmatch(path):
+        return "/api/v1/me/favorites/{festival_id}"
+    return None
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -20,7 +31,7 @@ def private_endpoint(path: str) -> str | None:
     info = _FESTIVAL_INFO_PATH.fullmatch(path)
     if info:
         return "/api/v1/festivals/{festival_id}/" + info[1]
-    return auth_endpoint(path)
+    return auth_endpoint(path) or me_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):
