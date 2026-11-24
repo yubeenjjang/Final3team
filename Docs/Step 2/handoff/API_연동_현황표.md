@@ -33,7 +33,7 @@
 | A02 검색 → A03 상세 | 2026-11-23 15:40 KST, 학원 노트북 API의 실제 TourAPI 적재 DB. 서울 진행·예정 22건 중 DDP 건축투어를 선택했고, 같은 ID의 상세가 HTTP 200·`is_mock:false`로 응답했습니다. [실제 응답 발췌][festival-db-evidence]에는 공개 행사 필드만 들어 있습니다. 전체 응답 원본 캡처는 필요합니다. | 실제 DB |
 | A04 귀가 → A05 상태 조회 | 같은 실행에서 실제 A04가 TMAP `ready`로 동기 완료했습니다. 처리 중·실패 등 A05 응답은 모의 시나리오에서 확인했습니다. [11/23 실행 기록](../evidence/first_flow_2026-11-23/result.json) | 정상 귀가는 실제 TMAP. 처리 중·실패를 시연할 때는 모의 A04에서 접수해 모의 A05를 조회 |
 | A02 → A03 → A04 → A05 DB 통합(P18) | 11/24 집 PC 일회용 DB에서 같은 시험 축제와 모의 공급원 응답으로 접수·처리·저장·조회·만료를 확인했습니다. 화면·워커 연결은 예정입니다. [귀가 경로 구현 계획](../../../backend/Doc/route-providers/IMP-PLAN.md#step4-db-저장) | 화면 연결 검증은 12/8 첫 시연에서 확인 |
-| A10 혼잡 | 2026-11-23, 학원 노트북의 `ohyun` W89 백엔드(`380d178`에서 기능 도입, 17:20 공유 기준 `3a5d8c6`)를 학원망 맥북 Safari에서 직접 조회했습니다. 응답은 숭례문 `status:"ok"`, `source:"seoul_citydata"`, `is_mock:false`, 관측 시각 16:40 KST를 확인했습니다. 서버에서 실행 중이던 정확한 커밋은 응답에 남아 있지 않습니다. `origin/dayoung` 설계서 A-8·A-10(`4cb1932`, `85b3828`)은 직접 API 조회와 Agent의 저장 필드 재생을 기록합니다. Agent가 학원 서버를 직접 부르는 전체 시험은 확인이 필요합니다. | 혼잡을 보여 주는 경우 **모의 값**(`is_mock:true`). 11/24 `eec0ed3`의 승인 매핑은 0건 |
+| A10 혼잡 | 2026-11-23, 학원 노트북의 `ohyun` W89 백엔드(`380d178`에서 기능 도입, 17:20 공유 기준 `3a5d8c6`)를 학원망 맥북 Safari에서 직접 조회했습니다. (11/23 기록, 숭례문 파수의식은 11/24 축제 범위 밖으로 제외) 응답은 숭례문 `status:"ok"`, `source:"seoul_citydata"`, `is_mock:false`, 관측 시각 16:40 KST를 확인했습니다. 서버에서 실행 중이던 정확한 커밋은 응답에 남아 있지 않습니다. `origin/dayoung` 설계서 A-8·A-10(`4cb1932`, `85b3828`)은 직접 API 조회와 Agent의 저장 필드 재생을 기록합니다. Agent가 학원 서버를 직접 부르는 전체 시험은 확인이 필요합니다. | 혼잡을 보여 주는 경우 **모의 값**(`is_mock:true`). 11/24 `eec0ed3`의 승인 매핑은 0건 |
 | A07 공지·A09 날씨·A06 AI 질문 | 현행 연결은 모의입니다. | 화면에 포함하면 **모의 값** 표시 |
 
 [festival-db-evidence]: ../evidence/first_flow_2026-11-23/festival_db_responses.json
@@ -81,4 +81,4 @@
 | 11/24 | 강사 11/23 일지 피드백에 따라 A02·A03 응답 발췌, A10 학원망 실호출 범위, 첫 시연 모의 구간 표시 | 권오현 |
 | 11/24 | `ohyun` `f24671e` 기준 011·012·P18·T25a·b 로컬 검증 결과와 화면·워커 확인 범위 갱신 | 권오현 |
 
-11/24 기준 커밋은 `ohyun`의 `f24671e`입니다. 집 PC 일회용 `pgvector/pgvector:pg17`에서 `Docs/Step 2/db/run_tests.sh` PASS 표기 164건(011·012 적용·되돌리기·재적용, T25a·b 복원 포함)을 확인했습니다. 001~012 적용 후 루트 `python -m pytest backend/tests -m db -q`는 **12개 통과**했고, 오프라인 전체 `python -m pytest backend/tests -q`는 **380개 통과·16개 건너뜀**입니다. AWS 검증은 예정입니다. [11/24 SQL 로그](../db/results_2026-11-24.log)
+11/24 기준 커밋은 `ohyun`의 `241b3ba`입니다. 집 PC 일회용 `pgvector/pgvector:pg17`에서 `Docs/Step 2/db/run_tests.sh` PASS 표기 175건(001~014 적용, 011~014 되돌리기·재적용, T25a~c 복원 포함)을 확인했습니다. 001~014 적용 후 루트 `python -m pytest backend/tests -m db -q`는 **16개 통과**했고, 오프라인 전체 `python -m pytest backend/tests -q`는 **424개 통과·20개 건너뜀**입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](../db/results_2026-11-24.log)
