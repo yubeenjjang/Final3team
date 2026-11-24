@@ -502,6 +502,8 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | `page_size` | 응답 | int | 예 | 요청에 적용한 페이지 크기 |
 | `is_mock` | 응답 | boolean | 예 | 모의 목록이면 `true`, 수집 DB 목록이면 `false` |
 
+**A02·A03 서울시 보강 구현 상태** · OA-15486에서 확정 일치한 TourAPI 축제의 빈 공식 홈페이지·요금을 보강합니다. `source`는 `tourapi`, A03 `source_ref`는 TourAPI contentid입니다. 불확실한 건은 A24 검토 대기로 두며 서울시 이미지 URL은 검토 근거로 보관합니다.
+
 ### 2-4. 축제 상세: `GET /api/v1/festivals/{festival_id}` (A03) — 필드 명세
 
 A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 404 `FESTIVAL_NOT_FOUND`로 응답합니다.
@@ -1655,7 +1657,7 @@ Content-Type: application/json
 
 #### A23. 축제 수집 작업 이력 `GET /api/v1/admin/ingestion-jobs`
 
-**구현 상태** · `api.jobs.scheduler`가 매일 06:00 KST 회차에 KST 기준 올해 1월 1일부터 기존 DB 수집 경로를 실행합니다. 수집 상태와 집계는 `ingestion_jobs`에 기록합니다. [예약 실행 예시](../../backend/Doc/jobs/IMP-PLAN.md)
+**구현 상태** · `api.jobs.scheduler`가 매일 06:00 KST 회차에 KST 기준 올해 1월 1일부터 기존 DB 수집 경로를 실행합니다. 같은 06:00 회차에 `SEOUL_CULTURE_ENABLED=true`면 서울시 문화행사 축제 보강 수집도 실행합니다. 수집 상태와 집계는 `ingestion_jobs`에 기록하며 서울시 날짜 오류는 `DATE_INVALID`로 확인합니다. [예약 실행 예시](../../backend/Doc/jobs/IMP-PLAN.md)
 
 | 항목 | 명세 |
 |---|---|
@@ -1696,6 +1698,8 @@ Content-Type: application/json
 | 오류 | 401 / 403 / 422 | 401 / 403 / 404 `QUEUE_ITEM_NOT_FOUND` / 409 `ALREADY_REVIEWED` / 422 `VALIDATION_ERROR` |
 | 처리 규칙 | 생성 시각과 대기열 ID 내림차순 | 승인 시 `value` 또는 `proposed_value`를 적용한 뒤 EV01 축제 및 좌표 조건을 확인하고, 아직 게시되지 않았다면 `published_at`을 설정합니다. 거절은 축제를 그대로 두고, 숨김은 `review_status='hidden'`으로 바꾸고 게시 시각을 비웁니다. 모두 처리자·시각과 `festival_change_history` 한 줄을 기록합니다. |
 | 구현 상태 | `AUTH_PROVIDER=db`에서 역할 확인 후 `noldaga_service`로 조회합니다. | 축제 행과 대기열 행을 잠가 같은 건의 결정을 한 번 반영합니다. 기본 모의 모드는 메모리 예시와 `X-Mock: true`를 사용하며, 시연용 운영자 인증은 서버 설정 `MOCK_ADMIN_REVIEW_TOKEN`으로 활성화합니다. |
+
+**서울시 보강 구현 상태** · 미확인 축제는 `class_unverified`, 중복이 불확실한 축제는 `duplicate`, 관리자 수정과 충돌하는 보강값은 `conflict`로 검토합니다.
 
 **A24 GET 목록 요청·응답 (200)**
 
@@ -3535,6 +3539,8 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 
 ## 13. 외부 데이터 공급원과 지역 범위 (11/18 회의 반영)
 
+**OA-15486 구현 상태** · `culturalEventInfo`의 축제 분류만 수집하고, 정규화한 제목·겹치는 기간·500m 이내 좌표로 TourAPI 축제를 확인합니다. 정기 실행은 기본 비활성입니다. [src2 명세](../../backend/Doc/src2/SPEC.md)
+
 > 키 발급 가이드·키 정리표의 기준 목록입니다. **실제 키 값은 이 문서에 적지 않습니다.** `scope`는 데이터가 존재하는 지역이고, 1차에 실제로 켜는 지역은 0-2절(D-022: 전국 데이터 = 전국, 지역별 데이터 = 서울만)을 따릅니다.
 
 | 데이터 | 공급원 | `scope`(데이터가 있는 지역) | 실시간 | 쓰는 API | 회의 결정 |
@@ -3990,6 +3996,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-25 | 서울시 문화행사 축제 보강, A23 수집 이력·A24 검토 격리, A02·A03 출처 계약을 연결했습니다(2-3·6-2·13절). |
 | v0.5 | 2026-11-24 | A28 경찰청·UTIC·서울 TOPIS 어댑터, 반경·병합·캐시를 연결하고 A29 승인 매핑 설정과 서울빛초롱축제 후보 근거를 기록했습니다(6-2절). |
 | v0.5 | 2026-11-24 | A74·A75 이벤트 연결, A76 신고 접수·일일 한도, A77 운영자 열람 기록과 조치를 구현했습니다(6-4-6·18-2). |
 | v0.5 | 2026-11-24 | A55·A56의 관리자 등록·수정·게시, A24 중복·수집 충돌 대기열 및 공개 축제 `admin` 출처를 연결했습니다(6-6절). |
