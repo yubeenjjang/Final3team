@@ -69,6 +69,31 @@ def sweep(db: Session, now: datetime) -> dict[str, int]:
     """), cutoff).rowcount
     friends = delete_expired_requests(db)
     messages, notifications = delete_expired_chat(db)
-    threads = _delete_expired_checkpoints(db, now - timedelta(days=7))
-    return {"route_requests": removed, "incident_routes": redacted, "friend_requests": friends,
-            "messages": messages, "notifications": notifications, "checkpoint_threads": threads}
+    week_ago = now - timedelta(days=7)
+    threads = _delete_expired_checkpoints(db, week_ago)
+    refresh = db.execute(text("""
+        DELETE FROM public.refresh_tokens WHERE GREATEST(expires_at, revoked_at) <= :cutoff
+    """), {"cutoff": week_ago}).rowcount
+    snapshots = db.execute(text("""
+        DELETE FROM public.realtime_snapshots WHERE received_at <= :cutoff
+    """), {"cutoff": week_ago}).rowcount
+    cache = db.execute(text("""
+        DELETE FROM public.route_cache_entries WHERE created_at <= :cutoff
+    """), cutoff).rowcount
+    trends = db.execute(text("""
+        DELETE FROM public.festival_trends WHERE crawled_at <= :cutoff
+    """), cutoff).rowcount
+    metrics = db.execute(text("""
+        DELETE FROM public.route_query_metrics WHERE phase = 'live' AND window_at <= :cutoff
+    """), cutoff).rowcount
+    assistant_runs = db.execute(text("""
+        UPDATE public.assistant_runs
+        SET message = NULL, answer = NULL, result = NULL, purged_at = :now
+        WHERE purged_at IS NULL AND queued_at <= :cutoff
+    """), {**cutoff, "now": now}).rowcount
+    return {
+        "route_requests": removed, "incident_routes": redacted, "friend_requests": friends,
+        "messages": messages, "notifications": notifications, "checkpoint_threads": threads,
+        "refresh_tokens": refresh, "realtime_snapshots": snapshots, "route_cache_entries": cache,
+        "festival_trends": trends, "route_query_metrics": metrics, "assistant_runs": assistant_runs,
+    }

@@ -12,7 +12,7 @@ router = APIRouter(prefix="/reports")
 
 @router.post("", status_code=201)
 async def submit(request: schema.ReportCreate, user: ChatUser, auth: AuthenticatedSession) -> schema.ReportCreated:
-    target = rules.target_id(request)
+    target = rules.target_id(request, user.user_id)
     if auth is None:
         return await run_in_threadpool(mock_reports.mock_reports.submit, user.user_id, request, target)
     room = await repository.visible_target_room(auth[1], request.target_type, target)

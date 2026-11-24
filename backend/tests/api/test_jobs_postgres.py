@@ -1,7 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Event
 from uuid import uuid4
 
@@ -187,3 +187,92 @@ def test_postgres_checkpoints_expire_by_latest_thread_activity(jobs_engine):
             assert set(db.execute(text(f"SELECT thread_id FROM langgraph.{table}")).scalars()) == {
                 values["active"], values["queued"],
             }
+
+
+def test_postgres_daily_retention_cutoffs_and_worker_independent_purge(jobs_engine):
+    suffix = uuid4().hex[:12]
+    args = {"uid": uuid4(), "festival": f"fst_{suffix}", "source": f"test_{suffix}", "key": suffix}
+    with Session(jobs_engine) as db:
+        db.execute(text("SET LOCAL ROLE noldaga_service"))
+        db.execute(text("""
+            INSERT INTO public.users (user_id, email, password_hash)
+            VALUES (:uid, :key || '@example.test', 'fixture')
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.festivals (festival_id, title, region_code)
+            VALUES (:festival, '보존 시험', 'SEOUL')
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.data_sources (source_id, name, scope, is_realtime)
+            VALUES (:source, '보존 시험', 'national', true)
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.refresh_tokens (token_id, user_id, token_hash, expires_at, revoked_at)
+            VALUES ('rt_' || :key || 'old', :uid, :key || 'old', now() - interval '168 hours', NULL),
+                   ('rt_' || :key || 'new', :uid, :key || 'new', now() - interval '167 hours', NULL),
+                   ('rt_' || :key || 'revoked', :uid, :key || 'revoked', now() - interval '8 days', now())
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.realtime_snapshots
+              (source_id, data_type, target_type, target_id, received_at, payload, payload_hash, sample_kind)
+            VALUES (:source, 'weather', 'festival', 'old', now() - interval '168 hours', '{}', 'old', 'mock'),
+                   (:source, 'weather', 'festival', 'new', now() - interval '167 hours', '{}', 'new', 'mock')
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.route_cache_entries (cache_key, festival_id, route_hash, provider, created_at, valid_until)
+            VALUES (:key || 'old', :festival, 'old', 'mock_adapter', now() - interval '720 hours', now()),
+                   (:key || 'new', :festival, 'new', 'mock_adapter', now() - interval '719 hours', now())
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.festival_trends (source_id, crawled_at, raw_title, source_rank, match_status)
+            VALUES (:source, now() - interval '720 hours', '만료', 1, 'unmatched'),
+                   (:source, now() - interval '719 hours', '유효', 1, 'unmatched')
+        """), args)
+        db.execute(text("""
+            INSERT INTO public.route_query_metrics
+              (phase, window_at, offered_requests, accepted_count, valid_completed_count, rejections, timeouts,
+               errors, unique_route_keys, backend_execution_count, shared_request_count, cache_hits, is_mock)
+            SELECT phase, now() - age, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, true
+            FROM (VALUES ('live', interval '720 hours'), ('live', interval '719 hours'),
+                         ('fault', interval '720 hours')) AS sample(phase, age)
+        """))
+        db.execute(text("""
+            INSERT INTO public.assistant_runs
+              (run_id, request_id, user_id, conversation_id, queued_at, run_status, run_kind,
+               message, answer, result)
+            SELECT 'run_' || :key || suffix, :key || suffix, :uid, 'cv_' || :key, now() - age,
+                   'succeeded', 'visit_course', '질문', '답변', '{}'::jsonb
+            FROM (VALUES ('old', interval '720 hours'), ('new', interval '719 hours')) AS sample(suffix, age)
+        """), args)
+
+        now = db.scalar(text("SELECT now()"))
+        counts = retention.sweep(db, now)
+        tables = ("refresh_tokens", "realtime_snapshots", "route_cache_entries", "festival_trends",
+                  "route_query_metrics", "assistant_runs")
+        assert all(counts[table] >= 1 for table in tables)
+        assert db.scalars(text("""
+            SELECT token_hash FROM public.refresh_tokens WHERE user_id = :uid ORDER BY token_hash
+        """), args).all() == [suffix + "new", suffix + "revoked"]
+        assert db.scalars(text("""
+            SELECT target_id FROM public.realtime_snapshots WHERE source_id = :source
+        """), args).all() == ["new"]
+        assert db.scalars(text("""
+            SELECT cache_key FROM public.route_cache_entries WHERE festival_id = :festival
+        """), args).all() == [suffix + "new"]
+        assert db.scalars(text("""
+            SELECT raw_title FROM public.festival_trends WHERE source_id = :source
+        """), args).all() == ["유효"]
+        assert db.execute(text("""
+            SELECT phase, window_at FROM public.route_query_metrics
+             WHERE window_at IN (now() - interval '719 hours', now() - interval '720 hours')
+             ORDER BY phase
+        """)).all() == [("fault", now - timedelta(hours=720)), ("live", now - timedelta(hours=719))]
+        assert db.execute(text("""
+            SELECT run_status, message, answer, result, purged_at FROM public.assistant_runs
+             WHERE user_id = :uid ORDER BY queued_at
+        """), args).all() == [
+            ("succeeded", None, None, None, now),
+            ("succeeded", "질문", "답변", {}, None),
+        ]
+        repeated = retention.sweep(db, now)
+        assert all(repeated[table] == 0 for table in tables)

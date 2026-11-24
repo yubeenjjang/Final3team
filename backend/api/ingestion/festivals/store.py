@@ -16,6 +16,7 @@ from api.ingestion.festivals.normalize import (
     CLASS_UNVERIFIED, COORDS_OUT_OF_RANGE, FESTIVAL_CATEGORY, FESTIVAL_CLASS, KST, NOT_FESTIVAL_CLASS,
     FestivalRecord,
 )
+from api.ingestion.seoul_culture.normalize import SOURCE_ID as SEOUL_SOURCE_ID, SUPPLEMENT_FIELDS
 
 SOURCE_ID = "tourapi"
 PRESENCE_FIELD = "source_presence"
@@ -44,7 +45,8 @@ INGESTION_JOBS = table(
 )
 FESTIVAL_SOURCES = table(
     "festival_sources", column("festival_id"), column("source_id"), column("source_item_id"),
-    column("raw_checksum"), column("fetched_at"), column("last_job_id"),
+    column("raw_checksum"), column("fetched_at"), column("last_job_id"), column("source_url"),
+    column("source_image_url"),
 )
 FESTIVALS = table(
     "festivals", *(column(name) for name in FESTIVAL_FIELDS), column("festival_id"),
@@ -57,6 +59,7 @@ FESTIVAL_CHANGE_HISTORY = table(
 )
 FESTIVAL_REVIEW_QUEUE = table(
     "festival_review_queue", column("festival_id"), column("reason"), column("approval_status"),
+    column("proposed_value", JSONB(none_as_null=True)),
 )
 SOURCE_FESTIVALS = FESTIVAL_SOURCES.join(
     FESTIVALS, FESTIVAL_SOURCES.c.festival_id == FESTIVALS.c.festival_id
@@ -142,6 +145,8 @@ def _write_history(
     previous: Mapping[str, FieldValue],
     changes: Mapping[str, FieldValue],
     now: datetime,
+    *,
+    source_id: str = SOURCE_ID,
 ) -> None:
     connection.execute(FESTIVAL_CHANGE_HISTORY.insert(), [
         {
@@ -149,12 +154,30 @@ def _write_history(
             "field": name,
             "before_value": _json_value(previous[name]),
             "after_value": _json_value(value),
-            "source_id": SOURCE_ID,
+            "source_id": source_id,
             "actor": "ingestion",
             "changed_at": now,
         }
         for name, value in changes.items()
     ])
+
+
+def _preserve_supplements(
+    connection: Connection, previous: Mapping[str, FieldValue], values: dict[str, FieldValue],
+) -> None:
+    # TourAPI가 새 값을 주면 채택하고, 빈 응답이면 서울시가 마지막으로 채운 값을 보존한다.
+    blanks = [field for field in SUPPLEMENT_FIELDS if field in values and not values[field] and previous[field]]
+    if not blanks:
+        return
+    history = FESTIVAL_CHANGE_HISTORY.c
+    writers = connection.execute(
+        select(history.field, history.source_id).where(
+            history.festival_id == previous["festival_id"], history.field.in_(blanks),
+        ).distinct(history.field).order_by(history.field, history.change_id.desc())
+    )
+    for field, source_id in writers:
+        if source_id == SEOUL_SOURCE_ID:
+            values[field] = previous[field]
 
 
 def _queue_review(connection: Connection, festival_id: str, reason: str) -> None:
@@ -290,6 +313,7 @@ def _upsert(
             ):
                 values.update(review_status="pending", published_at=None)
         values = {name: values[name] for name in fields}
+    _preserve_supplements(connection, previous, values)
     changes = changed_fields(previous, values)
     conflicts = protect_admin_edits(connection, festival_id, previous, changes)
     if (

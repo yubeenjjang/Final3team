@@ -48,7 +48,7 @@ class MockFriends:
         return next((row for row in self.requests.values()
                      if row.status == "pending" and row.pair == pair), None)
 
-    def _blocked(self, actor: UUID, other: UUID) -> bool:
+    def is_blocked(self, actor: UUID, other: UUID) -> bool:
         return (actor, other) in self.blocks or (other, actor) in self.blocks
 
     def _resolve(self, row: _Request, status: RequestStatus) -> FriendRequestResult:
@@ -84,7 +84,7 @@ class MockFriends:
             if user.disabled or user.display_name.lower() != nickname.lower():
                 continue
             other = UUID(user.user_id)
-            if actor == other or self._blocked(actor, other):
+            if actor == other or self.is_blocked(actor, other):
                 break
             pair = frozenset((actor, other))
             pending = self._pending(pair)
@@ -101,7 +101,7 @@ class MockFriends:
     def create_request(self, actor: UUID, other: UUID) -> FriendRequestResult:
         if actor == other or _display_name(other) is None:
             raise rules.user_not_found()
-        if self._blocked(actor, other):
+        if self.is_blocked(actor, other):
             raise rules.blocked()
         pair = frozenset((actor, other))
         if pair in self.friendships:
@@ -122,7 +122,7 @@ class MockFriends:
         if row is None:
             raise rules.request_not_found()
         rules.check_request_action(actor, row.sender, row.recipient, row.status, action)
-        if action == "accept" and self._blocked(row.sender, row.recipient):
+        if action == "accept" and self.is_blocked(row.sender, row.recipient):
             raise rules.blocked()
         return self._resolve(row, ACTION_STATUS[action])
 

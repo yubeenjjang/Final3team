@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session
 from ulid import ULID
 
 from api.auth.tokens import unauthorized
+from api.repositories.friends import is_blocked, lock_users
 from api.repositories.notifications import add as add_notifications
 from api.schemas import companions as schema
 from api.services import companion_rules as rules
+from api.services.friends import blocked
 from api.services.companion_chat import ChatRooms, append_system_message
 
 _PUBLIC_FESTIVAL = """
@@ -107,14 +109,17 @@ class CompanionWrites:
     def __init__(self, db: Session, actor_id: UUID):
         self.db = db
         self.actor_id = actor_id
+
+    def _lock_actor(self) -> None:
         # Serialize the actor with A80, and allow other transactions' FK checks.
-        active = db.scalar(text("""
+        active = self.db.scalar(text("""
             SELECT status = 'active' FROM public.users WHERE user_id = :actor FOR SHARE
-        """), {"actor": actor_id})
+        """), {"actor": self.actor_id})
         if not active:
             raise unauthorized()
 
     def locked_post(self, post_id: str) -> Row:
+        self._lock_actor()
         post = self.db.execute(text("""
             SELECT post_id, festival_id, author_id, room_id, meet_at, capacity, approved_count,
                    status, recruitment_closed_at
@@ -139,6 +144,7 @@ class CompanionWrites:
         rules.validate_meeting(meet_at, festival.start_date, festival.end_date, now)
 
     def create_post(self, request: schema.PostCreate) -> schema.PostCreated:
+        self._lock_actor()
         self.validate_meeting(request.festival_id, request.meet_at, rules.now_utc())
         post_id = "cpo_" + str(ULID())
         room_id = ChatRooms.create_companion_room(self.db, self.actor_id)
@@ -167,9 +173,18 @@ class CompanionWrites:
         return schema.PostChanged(post_id=post_id, status=status)
 
     def create_application(self, post_id: str, request: schema.ApplicationCreate) -> schema.ApplicationCreated:
+        author_id = self.db.scalar(text("""
+            SELECT author_id FROM public.companion_posts WHERE post_id = :post_id
+        """), {"post_id": post_id})
+        if author_id is None:
+            raise rules.not_found()
+        # Use the same user lock order as A49/A50, before taking the post lock.
+        lock_users(self.db, self.actor_id, author_id)
         post = self.locked_post(post_id)
         rules.check_application(post.author_id, self.actor_id, post.status)
         rules.require_active(post.status, post.meet_at, rules.now_utc())
+        if is_blocked(self.db, self.actor_id, post.author_id):
+            raise blocked()
         application_id = self.db.scalar(text("""
             INSERT INTO public.companion_applications (application_id, post_id, applicant_id, message)
             VALUES (:application_id, :post_id, :actor, :message)
@@ -184,14 +199,18 @@ class CompanionWrites:
 
     def decide_application(self, application_id: str, action: schema.ApplicationAction) -> schema.ApplicationChanged:
         params = {"application_id": application_id}
-        post_id = self.db.scalar(text("""
-            SELECT post_id FROM public.companion_applications WHERE application_id = :application_id
-        """), params)
-        if post_id is None:
+        candidate = self.db.execute(text("""
+            SELECT a.post_id, a.applicant_id, p.author_id
+            FROM public.companion_applications a JOIN public.companion_posts p USING (post_id)
+            WHERE a.application_id = :application_id
+        """), params).one_or_none()
+        if candidate is None:
             raise rules.not_found()
+        if action == "approve" and candidate.author_id == self.actor_id:
+            lock_users(self.db, self.actor_id, candidate.applicant_id)
 
-        # All companion writes take the post lock first, including capacity edits and cancellations.
-        post = self.locked_post(post_id)
+        # Capacity edits and application changes take the post lock before any application lock.
+        post = self.locked_post(candidate.post_id)
         application = self.db.execute(text("""
             SELECT applicant_id, status FROM public.companion_applications
             WHERE application_id = :application_id FOR UPDATE
@@ -204,6 +223,8 @@ class CompanionWrites:
         post_status = post.status
         status = {"approve": "approved", "reject": "rejected", "cancel": "cancelled"}[action]
         if action == "approve":
+            if is_blocked(self.db, self.actor_id, application.applicant_id):
+                raise blocked()
             rules.require_active(post.status, post.meet_at, rules.now_utc())
             rules.require_approval_slot(post.status, post.approved_count, post.capacity)
             post_status = self.db.scalar(text("""
@@ -211,7 +232,7 @@ class CompanionWrites:
                 SET approved_count = approved_count + 1,
                     status = CASE WHEN approved_count + 1 = capacity THEN 'full' ELSE 'open' END
                 WHERE post_id = :post_id RETURNING status
-            """), {"post_id": post_id})
+            """), {"post_id": post.post_id})
         self.db.execute(text("""
             UPDATE public.companion_applications SET status = :status, decided_at = clock_timestamp()
             WHERE application_id = :application_id

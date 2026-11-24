@@ -145,13 +145,17 @@ async def tago_arrivals(client: FestivalSource, city_code: str, node_id: str) ->
     )
 
 
-def _seoul_items(body: dict[str, Any]) -> list[dict[str, Any]]:
+def seoul_items(body: dict[str, Any]) -> list[dict[str, Any]]:
     code = str(body["msgHeader"]["headerCd"])
     if code == "4":
         return []
     if code != "0":
         raise FestivalSourceError(retryable=code == "1")
-    rows = item_list((body.get("msgBody") or {}).get("itemList"))
+    return item_list((body.get("msgBody") or {}).get("itemList"))
+
+
+def _seoul_route_items(body: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = seoul_items(body)
     if any(not _string(row.get("rtNm")) for row in rows):
         raise ValueError
     return rows
@@ -211,17 +215,17 @@ def _seoul_eta(message: str | None) -> int | None:
     return None
 
 
-def _bus_crowding(row: dict[str, Any]) -> str:
-    if str(row.get("rerdie_Div1")) == "4":
-        return _BUS_CROWDING.get(str(row.get("reride_Num1")), "unverified")
-    return "unverified"
+def seoul_bus_crowding(row: dict[str, Any], arrival_order: int = 1) -> str | None:
+    if str(row.get(f"rerdie_Div{arrival_order}")) == "4":
+        return _BUS_CROWDING.get(str(row.get(f"reride_Num{arrival_order}")))
+    return None
 
 
 async def seoul_station_rows(client: FestivalSource, ars_id: str) -> tuple[list[dict[str, Any]], datetime]:
     async def load() -> tuple[list[dict[str, Any]], datetime]:
         return await client.request(
             "seoul_bus_station", _SEOUL_STATION,
-            lambda body: (_seoul_items(body), as_kst(client.now())),
+            lambda body: (_seoul_route_items(body), as_kst(client.now())),
             params={"arsId": ars_id, "resultType": "json"},
         )
 
@@ -232,7 +236,7 @@ async def seoul_route_rows(client: FestivalSource, route_id: str) -> list[dict[s
     return await client.cached(
         "seoul_bus_arrival", route_id, ARRIVAL_TTL_S,
         lambda: client.request(
-            "seoul_bus_arrival", _SEOUL_ROUTE, _seoul_items,
+            "seoul_bus_arrival", _SEOUL_ROUTE, _seoul_route_items,
             params={"busRouteId": route_id, "resultType": "json"},
         ),
     )
@@ -242,5 +246,5 @@ def seoul_bus_arrival(row: dict[str, Any], matched: bool) -> TransitArrival:
     message = _message(row.get("arrmsg1"))
     return TransitArrival(
         line=str(row["rtNm"]), direction=_string(row.get("dir")), eta_s=_seoul_eta(message), message=message,
-        crowding=_bus_crowding(row) if matched else "unverified",
+        crowding=(seoul_bus_crowding(row) if matched else None) or "unverified",
     )

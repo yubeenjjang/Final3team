@@ -103,7 +103,7 @@ def lock_users(db: Session, actor: UUID, other: UUID) -> str | None:
     return states.get(other)
 
 
-def _blocked(db: Session, actor: UUID, other: UUID) -> bool:
+def is_blocked(db: Session, actor: UUID, other: UUID) -> bool:
     return db.scalar(text("""
         SELECT EXISTS (
             SELECT 1 FROM public.user_blocks
@@ -139,7 +139,7 @@ def create_request(actor: UUID, other: UUID) -> FriendRequestResult:
     with service_db_session() as db:
         if lock_users(db, actor, other) != "active":
             raise rules.user_not_found()
-        if _blocked(db, actor, other):
+        if is_blocked(db, actor, other):
             raise rules.blocked()
         pair = _pair(actor, other)
         if db.scalar(text("SELECT 1 FROM public.friendships WHERE user_a = :a AND user_b = :b"), pair):
@@ -178,7 +178,7 @@ def act_on_request(actor: UUID, other: UUID, request_id: str, action: RequestAct
         if action == "accept":
             if other_status != "active":
                 raise rules.request_not_found()
-            if _blocked(db, actor, other):
+            if is_blocked(db, actor, other):
                 raise rules.blocked()
         return _resolve(db, request_id, ACTION_STATUS[action], pair, row.from_user)
 

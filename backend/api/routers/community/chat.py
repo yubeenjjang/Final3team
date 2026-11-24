@@ -1,9 +1,10 @@
-from typing import Annotated
+from typing import Annotated, cast, get_args
 
-from fastapi import APIRouter, Path, Query, Response
+from fastapi import APIRouter, Depends, Path, Query, Response
 from starlette.concurrency import run_in_threadpool
 
 from api.deps import AuthenticatedSession
+from api.errors import ApiError
 from api.realtime import chat_socket as realtime
 from api.repositories import chat as repository
 from api.schemas.chat import (
@@ -16,6 +17,13 @@ from api.services.chat import ChatUser
 router = APIRouter()
 RoomPath = Annotated[str, Path(pattern=ROOM_ID_PATTERN)]
 QuerySeq = Annotated[int, Query(ge=0, le=MAX_BIGINT)]
+_ROOM_ACTIONS = get_args(Action)
+
+
+def room_action(action: Annotated[str, Path(json_schema_extra={"enum": list(_ROOM_ACTIONS)})]) -> Action:
+    if action not in _ROOM_ACTIONS:
+        raise ApiError(404, "NOT_FOUND", "요청한 주소를 찾을 수 없습니다.")
+    return cast(Action, action)
 
 
 @router.get("/me/chat-rooms")
@@ -59,7 +67,7 @@ async def mark_read(room_id: RoomPath, request: ReadRoom, user: ChatUser) -> Res
 
 # Place the literal /read and /invitations POST routes before /{action}.
 @router.post("/chat-rooms/{room_id}/{action}")
-async def act(room_id: RoomPath, action: Action, user: ChatUser) -> dict:
+async def act(room_id: RoomPath, action: Annotated[Action, Depends(room_action)], user: ChatUser) -> dict:
     store = repository.ChatRooms if user.claims else mock_chat.mock_rooms
     status, _ = await run_in_threadpool(store.act, user.user_id, room_id, action)
     await realtime.publish(realtime.room_topic(room_id))

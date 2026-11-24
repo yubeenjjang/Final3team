@@ -109,3 +109,30 @@ def test_mock_withdrawal_clears_account_sessions_and_owned_data(client, monkeypa
     assert client.post(f"{AUTH}/login", json=credentials).status_code == 401
     assert client.get(f"{ME}/favorites", headers=other).json()["total"] == 1
     assert client.get(f"{ME}/festival-preferences", headers=other).json()["scenarios"] == ["pet"]
+
+
+@pytest.mark.parametrize("invalid", ["  ", " 가 ", "닉\x00네임", "닉\x85네임", "닉네임\t", " " + "가" * 13])
+def test_signup_and_profile_share_nickname_validation(client, monkeypatch, invalid):
+    monkeypatch.setenv("AUTH_PROVIDER", "mock")
+    headers, _, _ = register_and_login(client, "Member")
+    response = client.post("/api/v1/auth/signup", json={
+        "email": "invalid-name@example.test", "password": PASSWORD,
+        "display_name": invalid, "birth_year": 2000, "gender": "male",
+    })
+    changed = client.patch(ME + "/profile", headers=headers, json={"display_name": invalid})
+    for rejected in (response, changed):
+        assert rejected.status_code == 422
+        assert rejected.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_profile_trims_before_length_and_duplicate_check(client, monkeypatch):
+    monkeypatch.setenv("AUTH_PROVIDER", "mock")
+    headers, _, _ = register_and_login(client, "First")
+    register_and_login(client, "Second")
+    duplicate = client.patch(ME + "/profile", headers=headers, json={"display_name": "  sEcOnD  "})
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "NICKNAME_TAKEN"
+    name = "가" * 12
+    updated = client.patch(ME + "/profile", headers=headers, json={"display_name": f"  {name}  "})
+    assert updated.status_code == 200
+    assert updated.json()["display_name"] == name

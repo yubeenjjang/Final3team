@@ -30,13 +30,20 @@ def duplicate_report() -> ApiError:
     return ApiError(409, "REPORT_ALREADY_SUBMITTED", "오늘 이미 이 대상을 신고했습니다.")
 
 
-def target_id(request: schema.ReportCreate) -> str:
+def cannot_block_staff() -> ApiError:
+    return ApiError(403, "FORBIDDEN", "일반 사용자 계정만 정지할 수 있습니다.")
+
+
+def target_id(request: schema.ReportCreate, actor: UUID) -> str:
     value = request.target_id
     if request.target_type == "user":
         try:
-            return str(UUID(value))
+            target = UUID(value)
         except ValueError:
             raise target_not_found() from None
+        if target == actor:
+            raise ApiError(400, "VALIDATION_ERROR", "본인 계정은 신고할 수 없습니다.")
+        return str(target)
     if request.target_type == "chat_message":
         if re.fullmatch(r"[0-9]{1,19}", value) and 0 < int(value) <= MAX_BIGINT:
             return str(int(value))

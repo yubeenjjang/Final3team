@@ -145,7 +145,7 @@ def test_P4_normalizes_synthetic_itinerary(city: str, mode: str, fare: int) -> N
     assert candidate["distance_m"] == itinerary["totalDistance"]
     assert candidate["transfers"] == itinerary["transferCount"]
     assert candidate["mode_evidence"] == {
-        "bus_crowding": {"status": "unverified", "reason": "버스 혼잡 연결 전"}
+        "bus_crowding": {"status": "unverified", "reason": "버스 혼잡을 확인하지 않았어요."}
     }
     legs = candidate["legs"]
     assert [leg["mode"] for leg in legs] == ["walk", mode, "walk"]
