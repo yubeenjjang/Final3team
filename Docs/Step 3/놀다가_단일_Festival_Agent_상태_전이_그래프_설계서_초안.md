@@ -31,7 +31,7 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
 |---|---|---|
 | 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 학원망에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
-| 서울 주변 혼잡 | 서울시 API의 `is_mock:false` 응답을 Safari에서 확인하고 필드를 Agent에 재생했다. 11/24 직접 HTTP 호출은 `is_mock:false`였지만 `unsupported`로 끝나 실제 혼잡값 제공 성공은 아니다(A-11). | 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. 실제 API 응답을 확인한 사실과 실제 혼잡값 제공 시연을 구분한다. |
+| 서울 주변 혼잡 | 서울시 API의 `is_mock:false` 응답을 Safari에서 확인하고 필드를 Agent에 재생했다. 11/24 직접 HTTP 호출은 `is_mock:false`였지만 `unsupported`로 끝나 실제 혼잡값 제공 성공은 아니다(A-11). 오현님은 이후 새 공개 축제 ID로 실제 `status:ok` API 응답을 확인했다고 보고했다(A-12). | 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. API 직접 조회와 Festival Agent 직접 연결 결과를 구분한다. |
 | 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
 
 서버 응답의 `is_mock` 값을 유지해 답변에 반영한다. 시연 환경의 자료 모드는 실제 실행 직전에 다시 확인한다.
@@ -377,13 +377,13 @@ W24 확인 순서는 다음과 같다.
 
 학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <API 주소> --crowd-festival-id <서울 축제 ID>`를 실행하도록 준비했다. 축제 검색·상세는 실제 DB 응답을 요구하고, 혼잡은 `is_mock:false`인지와 Agent 종료 상태·대체값 표시를 대조한다. `unsupported`·`unavailable`은 기록하지만 혼잡 조회 성공으로 세지 않는다. 실행 전 서버의 `CROWD_PROVIDER=real` 및 축제 DB 모드가 활성화됐는지 확인해야 한다.
 
-첫 시험 ID 후보는 오현님 11/23 조사표의 진행 중인 서울 축제 **2026 숭례문 파수의식** `fst_01M835BYKKNJ8CZP9RP09ST18D`다. 조사표의 구역 연결은 당시 참고 초안이므로, 현재 API의 축제 존재 여부와 반경 1km 판정은 실행 응답으로 다시 확인한다. **프로젝트 코드가 있고 학원망에 접속되는 컴퓨터**에서, API 주소가 `http://192.100.200.242:3000/api/v1`로 유지된다면 `backend/`를 기준으로 다음을 실행한다.
+재시험 ID는 오현님이 11/24 학원 서버에서 실제 `status:ok`를 확인한 **서울빛초롱축제** `fst_01M835B57450M888RBNEFVRWWA`다. 11/24 공개 범위가 축제(EV01)로 좁혀져 이전 후보 숭례문 파수의식(EV03)은 제외됐다. **프로젝트 코드가 있고 학원망에 접속되는 컴퓨터**에서, API 주소가 `http://192.100.200.242:3000/api/v1`로 유지된다면 `backend/`를 기준으로 다음을 실행한다. 실행기는 혼잡 조회 대상 ID의 공개 상세 조회도 확인하며, `--require-crowd-answered`는 실제 혼잡 답변이 없으면 실패한다.
 
 ```powershell
-uv run --with-requirements agents/requirements.txt python -m agents.check_festival_live --base-url http://192.100.200.242:3000/api/v1 --crowd-festival-id fst_01M835BYKKNJ8CZP9RP09ST18D
+uv run --with-requirements agents/requirements.txt python -m agents.check_festival_live --base-url http://192.100.200.242:3000/api/v1 --crowd-festival-id fst_01M835B57450M888RBNEFVRWWA --require-crowd-answered
 ```
 
-현재 집 컴퓨터에서는 위 학원 API의 축제 목록 조회가 5초 안에 연결되지 않아 이 시험을 실행하지 못했다. 맥북에서 Safari로 API를 확인하는 것만으로는 Windows의 Festival Agent 전체 E2E가 되지 않는다. `is_mock:false`와 `agent_outcome=answered`가 모두 확인돼야 실제 혼잡 조회 성공으로 기록한다. 평균 대체값이면 답변에 같은 요일·시간대 평균 표시가 있어야 한다.
+이전 집 컴퓨터 시험에서는 학원 API의 축제 목록 조회가 5초 안에 연결되지 않았다. 맥북에서 Safari로 API를 확인하는 것만으로는 Festival Agent 전체 E2E가 되지 않는다. `is_mock:false`와 `agent_outcome=answered`가 모두 확인돼야 실제 혼잡 조회 성공으로 기록한다. 평균 대체값이면 답변에 같은 요일·시간대 평균 표시가 있어야 한다.
 
 ### A-8. 학원망 Safari 실제 혼잡 API 응답 확인 (2026-11-23)
 
@@ -412,6 +412,14 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 같은 실행의 혼잡 출력은 `festival_id=fst_01M835BYKKNJ8CZP9RP09ST18D, provider_status=unsupported, agent_outcome=unsupported, is_estimate=False`였다. 실행기는 혼잡 응답도 `is_mock:false`인지 검사했으므로 이는 모의 값이 아닌 **실제 API의 미지원 판정**이다. Agent가 이를 `unsupported`로 안내하는 분기는 확인됐지만, 실제 혼잡 수준을 `answered`로 제공하는 W24 사례는 아직 통과하지 않았다. `check_festival_live.py`는 `unsupported`에서도 정상 종료하므로 프로세스 종료만으로 혼잡값 제공 성공이라 판단하지 않는다.
 
 `origin/ohyun`의 `61301f9` 기준 `backend/api/data/seoul_crowd_mapping.json`에는 승인된 후보 연결이 0개다. 이것이 현재 서버의 `unsupported` 원인인지는 서버의 배포 버전·매핑 설정을 확인해야 한다. 전날 같은 축제의 서울시 혼잡 API `status:ok` 응답을 확인한 기록(A-8)과 오늘 결과가 달라졌으므로, 승인 연결 상태와 서버 설정을 확인한 뒤 같은 명령으로 재시험한다. 다른 축제 ID를 임의로 바꿔 성공 사례로 기록하지 않는다.
+
+### A-12. EV01 공개 범위 변경과 재시험 대상 (2026-11-24)
+
+오현님 보고에 따르면 W89는 승인된 매핑만 실제 혼잡을 제공하며, 기존 실행 당시 승인 0건이 숭례문 `unsupported`의 원인이었다. 이어서 공개 범위를 축제(EV01)로 바꾸면서 숭례문 파수의식(EV03)과 페인터즈(공연)는 공개 목록에서 제외됐다. 오현님은 학원 서버 `ohyun-web aa9036e`에서 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 `is_mock:false`, `status:ok`, 주변 구역 응답을 확인했다고 전달했다. 이는 **API 담당자의 직접 조회 보고**이며 다영님 Festival Agent의 새 ID 직접 연결 결과는 아직 아니다.
+
+따라서 A-7의 재시험 명령을 새 ID와 `--require-crowd-answered`로 갱신했다. 실연결 실행 결과의 공개 상세 조회·혼잡 상태·Agent 결과·관측 시각·대체값 여부를 확인한 뒤 이 절에 기록한다. A-8~A-11의 과거 실행 기록은 당시 결과로 유지한다.
+
+같은 날 집 Windows에서 새 명령을 실행했으나 첫 `ongoing` 검색이 5초 안에 응답하지 않아 `TOOL_TIMEOUT`으로 종료됐다. 학원망 서버에 닿지 못한 결과이며 **새 축제 ID의 공개 상세나 Agent 혼잡 답변을 검증한 결과가 아니다.** 학원망에 접속한 맥북에서 동일 명령을 다시 실행해야 한다.
 
 ## 부록 B. 제출 전 확인할 결정
 

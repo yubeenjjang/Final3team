@@ -120,7 +120,7 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertIn("지원하지 않습니다", result.answer)
 
     def test_long_real_festival_id_is_reused_with_mock_crowd_labeled(self):
-        festival_id = "fst_01M835BPX17Y44VEDJM1VMZ3N6"
+        festival_id = "fst_01M835B57450M888RBNEFVRWWA"
         item = {"festival_id": festival_id, "name": "축제", "source": "tourapi", "last_synced_at": "2026-11-23T11:57:22+09:00"}
         calls = []
         def tool(name, args):

@@ -21,25 +21,26 @@ MODEL = "text-embedding-3-small"
 DIMENSIONS = 1024
 AS_OF = datetime.fromisoformat("2026-11-24T12:00:00+09:00")
 OUTPUT = Path(__file__).with_name("sample_eval_results.json")
+LANTERN_ID = "fst_01M835B57450M888RBNEFVRWWA"
 
 DOCUMENTS = [
     {
         "id": "D1",
-        "festival": "sungnyemun",
-        "text": "숭례문 파수의식은 숭례문 광장에서 월요일을 제외하고 10시부터 15시 40분까지 진행한다. 기상 상황에 따라 취소될 수 있다.",
-        "effective_to": None,
-        "source_url": "https://royalguard.kr/sungnyemun_process",
+        "festival": LANTERN_ID,
+        "text": "2026 서울빛초롱축제는 12월 11일부터 2027년 1월 31일까지 청계광장에서 삼일교까지 열린다. 관람 시간은 매일 18시부터 23시까지이며 무료다.",
+        "effective_to": "2027-02-01T00:00:00+09:00",
+        "source_url": "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=983",
     },
     {
         "id": "D2",
-        "festival": "painters",
-        "text": "페인터즈 광화문 전용관은 서울시 중구 정동길 3 경향아트힐 1층에 있다. 공연은 하루 세 번 14시, 17시, 20시에 열리고 러닝타임은 75분이다.",
-        "effective_to": None,
-        "source_url": "https://www.thepainters.co.kr/",
+        "festival": "fixture_seoul_winter",
+        "text": "서울윈터페스티벌은 2026년 12월 11일부터 2027년 1월 31일까지 광화문광장 등 여러 장소에서 열린다. 서울빛초롱축제도 포함된 통합 축제다.",
+        "effective_to": "2027-02-01T00:00:00+09:00",
+        "source_url": "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=373",
     },
     {
         "id": "D3",
-        "festival": "mokdong_bbq",
+        "festival": "fixture_mokdong_bbq",
         "text": "2026 목동깨비시장 깨비야간 BBQ페스티벌은 원래 11월 14일에서 11월 21일로 변경되어 13시부터 21시까지 열렸다.",
         "effective_to": "2026-11-22T00:00:00+09:00",
         "source_url": "https://youth.seoul.go.kr/infoData/sprtInfo/view.do?key=2309130006&sprtInfoId=75640",
@@ -47,16 +48,16 @@ DOCUMENTS = [
 ]
 
 QUESTIONS = [
-    ("Q01", "sungnyemun", "파수의식은 월요일에도 하나요?", "D1"),
-    ("Q02", "sungnyemun", "어디서 몇 시까지 진행하나요?", "D1"),
-    ("Q03", "painters", "하루에 몇 번, 몇 시에 공연하나요?", "D2"),
-    ("Q04", "painters", "공연장 주소와 러닝타임은 무엇인가요?", "D2"),
-    ("Q05", "sungnyemun", "페인터즈 광화문 공연은 몇 시에 하나요?", None),
-    ("Q06", "painters", "숭례문 파수의식은 월요일에도 하나요?", None),
-    ("Q07", "mokdong_bbq", "2026년 11월 25일에 가도 축제를 즐길 수 있나요?", None),
-    ("Q08", "sungnyemun", "오늘 비 때문에 행사가 취소됐나요?", None),
-    ("Q09", "sungnyemun", "지금 숭례문 앞은 얼마나 혼잡한가요?", None),
-    ("Q10", "sungnyemun", "유료 좌석을 예약할 수 있나요?", None),
+    ("Q01", LANTERN_ID, "서울빛초롱축제는 언제 시작하나요?", "D1"),
+    ("Q02", LANTERN_ID, "서울빛초롱축제는 어디에서 몇 시까지 볼 수 있나요?", "D1"),
+    ("Q03", "fixture_seoul_winter", "서울윈터페스티벌은 어디에서 열리나요?", "D2"),
+    ("Q04", "fixture_seoul_winter", "서울윈터페스티벌 기간은 언제인가요?", "D2"),
+    ("Q05", LANTERN_ID, "서울윈터페스티벌의 다른 프로그램도 알려줘", None),
+    ("Q06", "fixture_seoul_winter", "서울빛초롱축제 관람 시간은 몇 시인가요?", None),
+    ("Q07", "fixture_mokdong_bbq", "2026년 11월 25일에 가도 축제를 즐길 수 있나요?", None),
+    ("Q08", LANTERN_ID, "오늘 비 때문에 서울빛초롱축제가 취소됐나요?", None),
+    ("Q09", LANTERN_ID, "지금 축제 주변은 얼마나 혼잡한가요?", None),
+    ("Q10", LANTERN_ID, "유료 좌석을 예약할 수 있나요?", None),
 ]
 
 
@@ -157,7 +158,7 @@ def main() -> int:
 
     OUTPUT.write_text(
         json.dumps(
-            {"model": MODEL, "dimensions": DIMENSIONS, "as_of": AS_OF.isoformat(), "usage": usage, "scope": "three paraphrased snippets; D3 is a fixed expired fixture; no DB or answer generation", "results": results},
+            {"model": MODEL, "dimensions": DIMENSIONS, "as_of": AS_OF.isoformat(), "usage": usage, "scope": "D1 public EV01; D2 and D3 isolated fixtures; no DB or answer generation", "results": results},
             ensure_ascii=False,
             indent=2,
         ),
