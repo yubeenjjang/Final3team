@@ -1313,8 +1313,8 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A66~A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (6-4-5) | FR-COM09·15~17·20 | 최종 — 권오현 |
 | **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user·admin | **알림·신고·탈퇴**(6-4-6). 마이페이지는 6-4-6절 | FR-COM21~24 | 최종 — 권오현 |
 | **A78·A79** | GET·PATCH / GET | `/api/v1/me/profile`, `/api/v1/me/companion-activity` | user | **본인 프로필·내 동행 내역**(6-4-6) | FR-COM22 | `ohyun-me` 구현 |
-| **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩과 대한민국 구석구석 점수를 60:40으로 합산해 정렬(6-2) | 11/24 신유빈 B안·권오현 확정(기획서 FR 추가 필요) | 최종 — 담당 신유빈 |
-| **A81** | GET | `/api/v1/festivals/{festival_id}/posts` | 없음 | **요즘 올라온 글**. 축제 상세에서 네이버 블로그·뉴스·카페의 최신 글 링크와 출처 표시(6-2) | 11/24 한태경 제안·권오현 채택 | 최종 — API 신유빈(W125)·화면 정예진(W127) |
+| **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩과 대한민국 구석구석 점수를 60:40으로 합산해 정렬(6-2) | FR-REC17, 11/24 신유빈 B안·권오현 확정 | 최종 — 담당 신유빈 |
+| **A81** | GET | `/api/v1/festivals/{festival_id}/posts` | 없음 | **요즘 올라온 글**. 축제 상세에서 네이버 블로그·뉴스·카페의 최신 글 링크와 출처 표시(6-2) | FR-REC18, 11/24 한태경 제안·권오현 채택 | 최종 — API 신유빈(W125)·화면 정예진(W127) |
 | **A40** | GET | `/api/v1/festivals/discover` | 없음 | 고정 시드 기반 전체 축제 둘러보기 | 〃 | 설계안 |
 | **A41** | GET | `/api/v1/festivals/recent` | 없음 | 최초 공개일 기준 최신 등록 | 〃 | 설계안 |
 | A22 | POST | `/api/v1/admin/simulations/crowd` | operator (시험 환경만) | 혼잡 API 500·stale·본문 오류 모의 (v2.5 보존) | FR-H20 | 보조 |
@@ -1966,8 +1966,8 @@ Content-Type: application/json
 | 기능 | 기획 FR | API | 계약 상태 | 명세 확정 | DB | 구현 (담당) | 검증 |
 |---|---|---|---|---|---|---|---|
 | 맞춤 추천(취향·추천·인기·둘러보기·최신) | FR-REC01~16 | A36~A41 | 상세 작성(6-4) · 담당 확정(11/24 팀 결정) | W112 · 11/20 → 남은 상세는 W123 전(11/30) | **DDL·시험 완료**(005 `user_festival_preferences`·`festival_tags`·`festival_engagement_daily`, T29~T31) | **신유빈**(11/20 GitHub 협업 규칙 `recommendations.py` 담당) — WBS W124·W125 담당 표기는 협업 규칙에 맞춰 갱신 | W128 12/17–18 |
-| **지금 핫한 축제** | 기획서 FR 추가 필요 | **A42** | 데이터랩·구석구석 점수 60:40 합산(6-2) | 11/24 신유빈 B안·권오현 확정 | `festival_trends`(004·017) | 신유빈 API · 정예진 화면(W125·W127 범위) | W128 |
-| **요즘 올라온 글** | 축제 상세 | **A81** | 블로그·뉴스·카페 최신 결과 표시(6-2) | 11/24 한태경 제안·권오현 채택 | Redis `posts:{festival_id}` | 신유빈 API W125 12/03–04 · 정예진 화면 W127 12/09–11 | W128 |
+| **지금 핫한 축제** | FR-REC17 | **A42** | 데이터랩·구석구석 점수 60:40 합산(6-2) | 11/24 신유빈 B안·권오현 확정 | `festival_trends`(004·017) | 신유빈 API · 정예진 화면(W125·W127 범위) | W128 |
+| **요즘 올라온 글** | FR-REC18 | **A81** | 블로그·뉴스·카페 최신 결과 표시(6-2) | 11/24 한태경 제안·권오현 채택 | Redis `posts:{festival_id}` | 신유빈 API W125 12/03–04 · 정예진 화면 W127 12/09–11 | W128 |
 | 동행 모집·신청·승인·만남 장소·종료 | FR-COM01~11·18~19 | **A57~A65** | **상세 작성**(6-4-4, 정원 잠금 승인·재신청 규칙) | 11/20 | **DDL·시험 완료**(007 `companion_posts`·`companion_applications`·`meeting_places`, T36·T37) | W115 12/03–07, W117 12/09–10 (R03) | W128 |
 | 친구 검색·신청·삭제·차단 | FR-COM12~14 | **A43~A50** | **상세 작성**(6-4-3). 친구 추천은 범위 밖(후보) | 11/20 | **DDL·시험 완료**(005 `friend_requests`·`friendships`·`user_blocks`, 닉네임 중복 금지 009, T32~T33·T43) | W118 12/03–04 (R03) | W128 |
 | 채팅(동행방·1:1·단체)·채팅 탭 | FR-COM09·15~17·20 | **A66~A73 + WebSocket** | **상세 작성**(6-4-5) · 전송 방식 = WebSocket(11/20 협업 규칙) | 11/20 | **DDL·시험 완료**(007 `chat_rooms`·`chat_members`·`chat_messages`, T37·T38·T41) | W116 12/03–08 (R03 권오현 — 협업 규칙도 권오현), W119 12/09–10 (R03) | W128 |
@@ -2525,8 +2525,8 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | 관심 축제 저장 | FR-A08 | `favorites/` (정예진) | A11~A13 (`accounts/favorites.py`, 권오현) | `save_favorite` | `favorites` | T1·T2·T21~T23 | B ✅ / A·D ⬜ |
 | 회원가입·로그인 | FR-A, D-037 | `auth/`, `me/` (정예진) | A32~A35 (`accounts/auth.py`·`users.py`, 권오현) | — | `users`·`profiles`·`refresh_tokens` + Redis `revoked:*` | T12·T16·T21 | B 🔶 권한만 / A ⬜ |
 | 취향 고르기·맞춤 추천 | FR-REC01~16 | `onboarding/`, `recommendations/` (정예진) | A36~A41 (`festivals/recommendations.py`, 신유빈) | — | `user_festival_preferences`·`festival_tags`·`festival_engagement_daily`(005) | T29~T31, REC-TC-01~07 | B ✅ / A·C·D(태그 LLM 검증) ⬜ |
-| 지금 핫한 축제 | (기획서 FR 추가 필요) | `recommendations/` (정예진) | A42 데이터랩·구석구석 점수 60:40 합산(신유빈, 6-2) | — | `festival_trends`(004·017) | T27, T017, W128 | A·B·C ⬜ |
-| 요즘 올라온 글 | 축제 상세 | `festivals/[festivalId]/` (정예진) | A81 네이버 블로그·뉴스·카페 검색(신유빈, 6-2) | — | Redis `posts:{festival_id}` | W128(제목·게시일 필터, 출처·실패 표시) | A·B·C ⬜ |
+| 지금 핫한 축제 | FR-REC17 | `recommendations/` (정예진) | A42 데이터랩·구석구석 점수 60:40 합산(신유빈, 6-2) | — | `festival_trends`(004·017) | T27, T017, W128 | A·B·C ⬜ |
+| 요즘 올라온 글 | FR-REC18 | `festivals/[festivalId]/` (정예진) | A81 네이버 블로그·뉴스·카페 검색(신유빈, 6-2) | — | Redis `posts:{festival_id}` | W128(제목·게시일 필터, 출처·실패 표시) | A·B·C ⬜ |
 | 친구 추가·차단 | FR-COM12~14 | `friends/` (정예진) | A43~A50 (`community/friends.py`, 권오현) | — | `friend_requests`·`friendships`·`user_blocks`(005) | T32·T33, COM-TC | B ✅ / A ⬜ |
 | AI 방문 코스 | FR-P01·P03 | `assistant/` 방문 코스 (이수언) | A51 → A06-1 (`assistant/chatbot.py` 권오현) → Festival 에이전트(한다영) | `get_festival`·`get_facilities`·`get_official_notices`·`get_crowd` | `assistant_runs`(`run_kind`·`result`, 006) | T34 | B ✅ / A·D ⬜ |
 | 공지·축제 관리(관리자) | FR-O06·D05·D12·O10 | `admin/operations/`(이수언), `admin/festival-management/`(정예진) | A52~A56, A23·A24 | — | `official_notices`·`notice_events`(006)·`festival_change_history`·`festival_review_queue` | T35, T6·T15(이력 추가만) | B ✅ / A ⬜ |
