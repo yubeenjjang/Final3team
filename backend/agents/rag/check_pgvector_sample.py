@@ -14,6 +14,7 @@ import sys
 import time
 
 from agents.rag.evaluate_sample import AS_OF, DIMENSIONS, DOCUMENTS, MODEL, QUESTIONS, embed
+from agents.rag.search import search_festival_evidence
 
 
 def vector_literal(values: list[float]) -> str:
@@ -57,16 +58,20 @@ def main() -> int:
                 return 2
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
             cur.execute("""
-                CREATE TEMP TABLE rag_documents_test (
+                CREATE TEMP TABLE rag_documents (
                     document_id text PRIMARY KEY,
                     festival_id text NOT NULL,
                     source_url text NOT NULL,
+                    publisher text,
+                    published_at timestamptz,
+                    effective_from timestamptz,
                     approval_status text NOT NULL,
                     effective_to timestamptz
                 ) ON COMMIT PRESERVE ROWS
             """)
             cur.execute(f"""
-                CREATE TEMP TABLE rag_chunks_test (
+                CREATE TEMP TABLE rag_chunks (
+                    chunk_id text NOT NULL,
                     document_id text NOT NULL,
                     content text NOT NULL,
                     embedding vector({DIMENSIONS}) NOT NULL,
@@ -74,7 +79,7 @@ def main() -> int:
                     embedding_version text NOT NULL
                 ) ON COMMIT PRESERVE ROWS
             """)
-            cur.execute("CREATE INDEX rag_chunks_test_hnsw ON rag_chunks_test USING hnsw (embedding vector_cosine_ops)")
+            cur.execute("CREATE INDEX rag_chunks_scratch_hnsw ON rag_chunks USING hnsw (embedding vector_cosine_ops)")
 
             api_key = getpass.getpass("OpenAI API key (hidden; not saved): ").strip()
             if not api_key:
@@ -90,22 +95,22 @@ def main() -> int:
 
             for index, doc in enumerate(DOCUMENTS):
                 cur.execute(
-                    "INSERT INTO rag_documents_test VALUES (%s, %s, %s, 'approved', %s)",
+                    "INSERT INTO rag_documents (document_id, festival_id, source_url, approval_status, effective_to) VALUES (%s, %s, %s, 'approved', %s)",
                     (doc["id"], doc["festival"], doc["source_url"], doc["effective_to"]),
                 )
                 cur.execute(
-                    "INSERT INTO rag_chunks_test VALUES (%s, %s, %s::vector, %s, %s)",
-                    (doc["id"], doc["text"], vector_literal(vectors[index]), MODEL, "sample-v1"),
+                    "INSERT INTO rag_chunks VALUES (%s, %s, %s, %s::vector, %s, %s)",
+                    (f"{doc['id']}-C1", doc["id"], doc["text"], vector_literal(vectors[index]), MODEL, "sample-v1"),
                 )
 
             # Duplicate a valid vector with pending status so approval filtering
             # has a positive control even though its similarity is high.
             cur.execute(
-                "INSERT INTO rag_documents_test VALUES ('D4_PENDING', %s, %s, 'pending', %s)",
+                "INSERT INTO rag_documents (document_id, festival_id, source_url, approval_status, effective_to) VALUES ('D4_PENDING', %s, %s, 'pending', %s)",
                 (DOCUMENTS[0]["festival"], DOCUMENTS[0]["source_url"], DOCUMENTS[0]["effective_to"]),
             )
             cur.execute(
-                "INSERT INTO rag_chunks_test VALUES ('D4_PENDING', %s, %s::vector, %s, %s)",
+                "INSERT INTO rag_chunks VALUES ('D4-C1', 'D4_PENDING', %s, %s::vector, %s, %s)",
                 (DOCUMENTS[0]["text"], vector_literal(vectors[0]), MODEL, "sample-v1"),
             )
 
@@ -113,35 +118,23 @@ def main() -> int:
             query_seconds = 0.0
             for index, (question_id, festival_id, _question, expected) in enumerate(QUESTIONS):
                 started = time.monotonic()
-                cur.execute("""
-                    SELECT d.document_id, d.festival_id,
-                           ROUND((1 - (c.embedding <=> %s::vector))::numeric, 4)
-                    FROM rag_chunks_test AS c
-                    JOIN rag_documents_test AS d ON d.document_id = c.document_id
-                    WHERE d.approval_status = 'approved'
-                      AND d.festival_id = %s
-                      AND (d.effective_to IS NULL OR %s::timestamptz < d.effective_to)
-                      AND c.embedding_model = %s
-                      AND c.embedding_version = 'sample-v1'
-                    ORDER BY c.embedding <=> %s::vector
-                    LIMIT 5
-                """, (
-                    vector_literal(vectors[len(DOCUMENTS) + index]),
-                    festival_id,
-                    AS_OF,
-                    MODEL,
-                    vector_literal(vectors[len(DOCUMENTS) + index]),
-                ))
-                rows = cur.fetchall()
+                rows = search_festival_evidence(
+                    connection,
+                    festival_id=festival_id,
+                    query_vector=vectors[len(DOCUMENTS) + index],
+                    as_of=AS_OF,
+                    embedding_model=MODEL,
+                    embedding_version="sample-v1",
+                )
                 query_seconds += time.monotonic() - started
-                ids = [row[0] for row in rows]
+                ids = [row["document_id"] for row in rows]
                 valid = (
                     (expected is None or (ids and ids[0] == expected))
                     and (question_id != "Q07" or not rows)
                     and "D4_PENDING" not in ids
-                    and all(row[1] == festival_id for row in rows)
+                    and all(row["festival_id"] == festival_id for row in rows)
                 )
-                print(f"{question_id}: ranked={[(row[0], float(row[2])) for row in rows]}, filters_ok={valid}")
+                print(f"{question_id}: ranked={[(row['document_id'], round(1 - row['cosine_distance'], 4)) for row in rows]}, filters_ok={valid}")
                 passed += bool(valid)
             print(f"pgvector filters/retrieval: {passed}/{len(QUESTIONS)}; model={MODEL}; dimensions={DIMENSIONS}")
             print(f"embedding_seconds={embedding_seconds}, query_seconds={round(query_seconds, 3)}, usage={usage}")

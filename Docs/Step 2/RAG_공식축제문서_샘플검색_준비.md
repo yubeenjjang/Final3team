@@ -102,7 +102,7 @@ LIMIT 5;
 
 ### 다음 확인: 별도 pgvector 시험 DB
 
-현재 저장소에는 `rag_documents`·`rag_chunks` 스키마와 HNSW 인덱스 정의가 있지만 공식 안내문 승인·적재·검색 API는 아직 구현되지 않았다. 운영 DB에 D1·D2를 승인된 자료로 직접 넣지 않는다. `backend/agents/rag/check_pgvector_sample.py`는 이름이 `rag_scratch`인 **별도 시험 DB**에만 접속하고 임시 테이블을 만든다. D1·D2, 만료된 D3, 미승인 대조 문서 D4를 넣어 축제 ID·기간·승인·모델 버전 필터와 pgvector 코사인 정렬을 확인한다. 임시 행은 연결 종료 후 사라진다. 이 결과는 운영 DB 적재·승인 또는 실제 서비스 RAG 검증으로 기록하지 않는다.
+현재 저장소에는 `rag_documents`·`rag_chunks` 스키마와 HNSW 인덱스 정의가 있지만 공식 안내문 승인·적재·검색 API는 아직 구현되지 않았다. 운영 DB에 D1·D2를 승인된 자료로 직접 넣지 않는다. `backend/agents/rag/search.py`에 **실제 테이블 이름을 사용하는 읽기 전용 검색 함수**를 추가했다. 선택 축제 ID·승인·효력기간·임베딩 모델/버전을 SQL에서 제한하고 출처·본문·코사인 거리를 반환한다. 답변 생성과 근거 채택은 이 함수의 범위 밖이다. `backend/agents/rag/check_pgvector_sample.py`는 이름이 `rag_scratch`인 **별도 시험 DB**에만 접속하고 실제 테이블 이름을 가진 임시 테이블을 만든다. D1·D2, 만료된 D3, 미승인 대조 문서 D4를 넣어 같은 검색 함수를 확인한다. 임시 행은 연결 종료 후 사라진다. 이 결과는 운영 DB 적재·승인 또는 실제 서비스 RAG 검증으로 기록하지 않는다.
 
 ```bash
 docker run --name noldaga-rag-scratch --rm -e POSTGRES_DB=rag_scratch -e POSTGRES_PASSWORD=rag_sample_only -p 127.0.0.1:55432:5432 -d pgvector/pgvector:pg17
@@ -115,3 +115,5 @@ docker run --name noldaga-rag-scratch --rm -e POSTGRES_DB=rag_scratch -e POSTGRE
 **11/24 실행 결과:** 별도 `rag_scratch` DB에서 pgvector 코사인 검색과 승인·축제 ID·만료·모델 버전 필터 시험 **10/10 통과**. Q01·Q02는 D1(각 0.6717·0.7276), Q03·Q04는 D2(각 0.6761·0.6731)가 검색됐다. Q05·Q06은 선택 축제의 문서만 남아 다른 축제 문서가 제외됐고, Q07은 만료된 D3이 제외됐다. 같은 벡터를 가진 미승인 D4도 결과에 포함되지 않았다. Q08~Q10은 D1을 검색했으나 답변 근거 채택·보류는 검사하지 않았다. 임베딩 호출 1.403초, DB 질의 10건 합계 0.037초였고 API 사용량은 입력 509토큰이었다. 이 수치는 임시 테이블의 작은 표본에서 얻었으며 운영 부하·응답 시간이나 HNSW 인덱스 사용 계획을 입증하지 않는다.
 
 이 결과는 **별도 DB에서 실제 SQL·pgvector를 실행한 검증**이다. 서비스의 `rag_documents`·`rag_chunks`에 공식 문서를 수집·승인·적재한 결과가 아니며, 실제 서비스 RAG 검색 API와 답변 생성도 미구현·미검증 상태다. 다음 구현 단계는 공식 문서 수집·승인 경로, 본 테이블 적재, 동일 필터를 쓰는 검색 API, 근거가 부족할 때의 답변 보류 순이다.
+
+**후속 코드 확인:** 위 10/10 결과는 분리된 SQL을 사용한 첫 시험이다. `search.py` 함수를 시험 실행기에 연결한 변경은 아직 pgvector에서 재실행하지 않았으므로, 같은 명령으로 재시험한 뒤 새 함수의 통과 결과를 별도로 기록한다.
