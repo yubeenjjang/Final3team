@@ -2,7 +2,7 @@
 
 - 기준: DB 스키마 설계서 v0.3.3(5절 `festivals`·`festival_sources`·`ingestion_jobs`·`festival_change_history`·`data_sources`), API 설계문서 v0.3.3(0-1 지역 코드, 2-4 A02·A03, 10절 TourAPI). **이 SPEC에 필요한 것을 옮겨 두었으니 구현 때 설계서 전체를 읽지 않는다.** 다른 점은 `IMP-PLAN.md` '메모'에 적는다.
 - 요구 번호는 `I1`~. 시험 이름에 번호를 넣는다(예: `test_I4_region_merged_gwangju`).
-- 명령은 `backend/`에서. 시험: `uv run --offline --with-requirements api/requirements.txt pytest tests/ingestion tests/api -q`.
+- 저장소 루트 공통 시험은 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
 - import 기준 `backend/` (`from api.providers.tourapi import …`).
 
 ## 0. 실제 데이터에서 확인한 것 (11/23 Claude 실호출, 2026-01-01 이후 시작 870건)
@@ -100,7 +100,7 @@
    - 있고 체크섬 다르면: 바뀐 칸만 UPDATE + 칸마다 `festival_change_history`(`actor='ingestion'`, before/after JSONB) → updated
    - 공개 판정: `approved`면 `published_at`이 비어 있을 때만 지금 시각, `pending`이면 `published_at=NULL`. **관리자가 `hidden`으로 바꾼 축제는 수집이 다시 공개하지 않는다.**
 3. 끝: `ingestion_jobs` 건수(scanned·inserted·updated·rejected)·`ended_at`·status(`success` / 오류 있으면 `partial` / 목록 실패면 `failed`)·`error`(JSONB, 키 없음).
-- **확인(DB 시험, `pytest -m db`, 환경변수 없으면 건너뜀 — Claude가 로컬 도커로 실행):** 첫 저장 → inserted N · 같은 입력 재실행 → inserted 0·updated 0·축제 수 그대로 · 제목 바꾼 입력 → updated 1·history 1행 · `hidden` 축제는 재수집 뒤에도 `hidden` · `ingestion_jobs` 2행 · `festival_id` 재실행 뒤 같음.
+- **확인(DB 시험)**은 일회용 DB의 `TEST_DB_URL`을 설정하고 루트 공통 시험 명령에 `-m db`를 추가해 실행한다. 첫 저장 → inserted N · 같은 입력 재실행 → inserted 0·updated 0·축제 수 그대로 · 제목 바꾼 입력 → updated 1·history 1행 · `hidden` 축제는 재수집 뒤에도 `hidden` · `ingestion_jobs` 2행 · `festival_id` 재실행 뒤 같음.
 
 ### I11. 바뀐 축제만 상세 다시 받기
 - `collect --db`: 목록을 받은 뒤 DB의 `festival_sources`와 비교해, **목록 `modifiedtime`이 저장된 `source_updated_at`보다 새롭거나 새 축제일 때만** 상세 2종을 부른다. 나머지는 저장된 상세 칸을 그대로 쓴다.

@@ -1,7 +1,6 @@
 import os
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import date, timedelta
 from pathlib import Path
 from threading import Event
@@ -9,13 +8,13 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, text
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, create_engine, event, text
 
 from api.ingestion.db import create_ingestion_engine
 from api.main import app
 from api.repositories.route_store import TOKEN_TTL, RouteStore, token_hash
 from api.services import festival_store, real_routes
+from shared.db import session as db_sessions
 from tests.routes.test_p9_real_routes import Clock, FakeProvider, FakeQuota
 
 pytestmark = pytest.mark.db
@@ -75,14 +74,12 @@ def festival_id(route_engine: Engine) -> Iterator[str]:
 
 
 def use_db(route_engine, app_engine, monkeypatch, clock, tmap, kakao):
-    @contextmanager
-    def service_session():
-        with Session(route_engine) as session, session.begin():
-            if session.execute(text("SELECT current_user")).scalar_one() != "noldaga_service":
-                session.execute(text("SET LOCAL ROLE noldaga_service"))
-            yield session
+    @event.listens_for(route_engine, "begin")
+    def use_service_role(connection):
+        connection.exec_driver_sql("SET LOCAL ROLE noldaga_service")
 
-    store = RouteStore(service_session)
+    monkeypatch.setattr(db_sessions, "_service_engine", lambda: route_engine)
+    store = RouteStore()
     monkeypatch.setenv("ROUTE_PROVIDER", "real")
     monkeypatch.setenv("ROUTE_STORE", "db")
     monkeypatch.setenv("FESTIVAL_DATA", "db")

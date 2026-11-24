@@ -23,7 +23,7 @@
 - 공급원 HTTP·본문 오류, 다른 코드, 형식 오류, 제한 시간, 일일 예산 소진과 KST 날짜 변경 확인
 - 구역 캐시 만료, 동시 요청 병합, 정상 모의와 `source_error`·`stale` 시나리오 확인
 - 실제 A10의 헤더, 기존 응답 키 및 Festival Agent 분기 유지 확인
-- `backend/`에서 `uv run --offline --with-requirements api/requirements.txt python -m pytest`로 전체 실행
+- 저장소 루트에서 `codex/_COMMON.md`의 공통 명령으로 전체 실행
 
 ## 결정 기록
 

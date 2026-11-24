@@ -2898,10 +2898,12 @@ HTTP 202
 
 ### 17-3. 저장·캐시 규칙 ↔ 실제 코드 (강사 11/20 API 2)
 
-실제 경로 모드에서 `ROUTE_STORE` 기본값은 `memory`입니다. `db` 선택 시 011 적용 DB를 사용합니다. `FESTIVAL_DATA=db`이면 A02·A03과 같은 축제로 A04 접수·처리 상태·결과 저장, A05 재조회까지 이어집니다. 이 연결은 **구현 완료·DB 시험 재실행 대기**입니다.
+실제 경로 모드에서 `ROUTE_STORE` 기본값은 `memory`입니다. `db` 선택 시 011 적용 DB에서 공통 서비스 세션으로 A04 요청과 결과를 저장하고 A05 토큰 해시와 결과를 조회합니다. `FESTIVAL_DATA=db`이면 A02·A03과 같은 축제를 사용합니다. 서비스 계정 설정과 마이그레이션 파일 선택은 [귀가 경로 SPEC](../../backend/Doc/route-providers/SPEC.md#8-step5-공통-db-연결과-시험-명령)에 기록했습니다.
 코드 경로는 `backend/` 기준입니다. 메모리 모드는 `tests/routes/test_p9_real_routes.py`, 한도는 `test_p8_quota.py`, DB 모드 단위·통합 시험은 각각 `test_p16_route_store.py`·`test_p18_route_store_db.py`를 사용합니다.
 
-11/24 전체 오프라인 pytest 377개 중 365개 통과, DB 표시 12개 건너뜀(P18 4개 포함). 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
+팀 공통 시험은 저장소 루트의 `python -m pytest backend/tests -q`입니다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
+
+11/24 공통 명령으로 380개 통과, 16개 건너뜀, 하위 시험 2개 통과를 확인했습니다. 건너뛴 시험에는 P18의 일회용 DB 시험 4개가 포함됩니다.
 
 | 규칙(5절·9절) | 현재 동작(코드 기준, 11/23) | 시험 함수 | 구현 예정(언제·누가) |
 |---|---|---|---|
