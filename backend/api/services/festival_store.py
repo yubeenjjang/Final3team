@@ -6,13 +6,16 @@ from functools import lru_cache
 from sqlalchemy import URL, Engine, RowMapping, case, create_engine, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
-from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY, KST
+from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY, FESTIVAL_CLASS, KST
 from api.ingestion.festivals.store import FESTIVAL_SOURCES, FESTIVALS, SOURCE_ID
 from api.schemas.festivals import FestivalDetail, FestivalListItem, FestivalPage, FestivalQuery
 
 _F = FESTIVALS.c
 _SOURCE = FESTIVAL_SOURCES.c
-_PUBLIC = (_F.category == FESTIVAL_CATEGORY, _F.review_status == "approved", _F.published_at.is_not(None))
+_PUBLIC = (
+    _F.category == FESTIVAL_CATEGORY, _F.source_class_level2 == FESTIVAL_CLASS,
+    _F.review_status == "approved", _F.published_at.is_not(None),
+)
 _IMAGE_CREDIT = "한국관광공사"
 _SORT_ORDERS = {
     "start_date": _F.start_date.asc().nulls_last(),
