@@ -159,13 +159,13 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | **전달** | `Authorization: Bearer <access_token>` |
 | **검증** | 서명·만료·발급자 → 로그아웃한 토큰(`revoked:{jti}`) 아닌지 → 역할(`profiles.role`, JWT와 다르면 DB 우선) → 자원 소유권 |
 | **오류** | 401 `UNAUTHORIZED`(누구인지 모름: 토큰 누락·만료·폐기) / 403 `FORBIDDEN`(누구인지는 알지만 권한 없음: 역할 부족·타인 자원) |
-| **역할** | `anonymous`(비로그인) / `user`(일반 회원) / `operator`(운영자: 사건·지표 조회, 부하 시뮬레이션, 복구 조치 승인) / `admin`(operator 권한 + 축제 데이터 승인·수정) / `service`(백엔드 내부 작업·에이전트 실행용, 외부 노출 없음) |
+| **역할** | `anonymous`(비로그인) / `user`(일반 회원) / `operator`(운영자: 사건·지표 조회, 부하 시뮬레이션, 복구 조치 승인, A24 축제 검토) / `admin`(operator 권한 + 축제 등록·수정 등 관리자 전용 기능) / `service`(백엔드 내부 작업·에이전트 실행용, 외부 노출 없음) |
 | **운영자 화면 DB 조회** | FastAPI가 운영자 권한을 확인하고 서버 계정 `noldaga_service`를 경유해서만 조회합니다(11/24 팀 결정, 04 문서 3절) |
 | **역할 저장 위치** | 역할은 DB `profiles.role`과 서버가 발급한 JWT로만 판단합니다. **요청 본문·대화 내용의 "관리자예요"는 권한으로 인정하지 않습니다** (BFCL NLD-27) |
 | **DB 쪽 2차 안전장치** | API 서버는 요청마다 DB에 사용자 ID를 넘기고(`SET LOCAL app.user_id`), DB는 접속 역할·컬럼 권한·RLS로 본인 것만 보이게 막습니다(04 문서 3절) |
 | **로그인 없이 쓰는 API** | 축제 목록·상세·공지·시설·지도 표시·날씨·교통·혼잡 조회, 귀가·가는 길 경로 조회·상태 조회, 챗봇 질문 |
 | **로그인 필요** (`user`) | 관심 축제 저장·해제·목록, 후기(Should), 취향(A36·A37), 친구(A43~A50), 동행 글 작성·신청(A58~A65), 채팅(A66~A73), 알림(A74·A75), 신고(A76), 비밀번호 변경·탈퇴(A80) — 6절 '권한' 칸이 `user`인 API 전부 |
-| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A24·A52~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
+| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A52~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
 | **비로그인 경로 요청 보호** | 상태 조회는 로그인 여부와 관계없이 `route_request_id` + 요청 시 발급한 `route_access_token`(로그인 JWT와 별개)으로 본인만 조회. 짧은 수명 적용은 DB·Redis 연결 때 구현(2-2절). IP·세션 단위 요청 수 제한 |
 
 
@@ -1317,7 +1317,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A41** | GET | `/api/v1/festivals/recent` | 없음 | 최초 공개일 기준 최신 등록 | 〃 | 설계안 |
 | A22 | POST | `/api/v1/admin/simulations/crowd` | operator (시험 환경만) | 혼잡 API 500·stale·본문 오류 모의 (v2.5 보존) | FR-H20 | 보조 |
 | A23 | GET | `/api/v1/admin/ingestion-jobs` | admin | 축제 수집 작업 이력·오류 | FR-O09, D01 | 최종 |
-| A24 | GET/POST | `/api/v1/admin/festivals/review-queue` | admin | 중복·충돌 축제 검토·승인 | FR-D12/D14, O10 | 최종 |
+| A24 | GET/POST | `/api/v1/admin/festivals/review-queue` | operator·admin | 축제 검토 대기열 조회·결정 | FR-D12/D14, O10 | 최종 |
 | **A25** | POST | `/api/v1/routes/visit` (+ `GET /api/v1/routes/visit/{id}`) | 없음 | **축제 가는 길** (2-5절) | FR-R(기본 왕복), **D-015** | 최종 |
 | **A26** | GET | `/api/v1/festivals/{festival_id}/transit` | 없음 | 주변 지하철역·버스 정류장 **실시간 도착**. 지하철 실시간은 서울만, 버스는 서울 = 서울시 버스도착정보·서울 밖 = TAGO | **D-010·D-012** | 최종 |
 | **A27** | — | — | — | 실시간 주차 빈자리 제외. 주차장 위치는 A08 `parking` | 11/24 팀 결정 | **채택 안 함(11/24)** |
@@ -1378,7 +1378,7 @@ Content-Type: application/json
 
 | 코드 | HTTP | 의미 |
 |---|---|---|
-| `VALIDATION_ERROR` | 422 | 입력 형식 오류(Pydantic) |
+| `VALIDATION_ERROR` | 422 | 입력 형식 오류(Pydantic) 또는 A24 게시 조건 미충족 |
 | `UNAUTHORIZED` / `FORBIDDEN` | 401 / 403 | 인증 없음·만료 / 권한 부족·타인 자원 |
 | `RATE_LIMITED` | 429 | 요청 수 제한 초과 |
 | `DB_POOL_TIMEOUT` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
@@ -1677,23 +1677,24 @@ Content-Type: application/json
 | `items[].rejected` | 응답 | int | 예 | 제외 건수 |
 | `items[].error` | 응답 | JSON 또는 null | 예 | 페이지별 오류 요약, 키 값 제외. 수집 코드에서 제외한 항목의 기록은 배열로 저장 |
 
-#### A24. 중복·충돌 축제 검토 `GET`·`POST /api/v1/admin/festivals/review-queue`
+#### A24. 축제 검토 대기열 `GET`·`POST /api/v1/admin/festivals/review-queue`
 
 | 항목 | GET (목록) | POST (처리) |
 |---|---|---|
-| 권한 | admin | admin |
-| 입력 | 쿼리 `approval_status`(기본 `pending`)·`reason`(`duplicate`·`conflict`·`missing_location`·`date_unclear`)·`page` | 본문 `{queue_id: int, decision: "approve"·"reject", value?: object, note?: string≤200}` |
-| 응답 | 200 `{items[] {queue_id, festival_id, festival_name, reason, proposed_value, approval_status, created_at}, total, …}` | 200 `{queue_id, approval_status, applied: bool}` |
-| 오류 | 401 / 403 / 422 | 401 / 403 / 404 `QUEUE_ITEM_NOT_FOUND` / 409 `ALREADY_REVIEWED` / 422 |
-| 처리 규칙 | — | `approve`면 `value`(없으면 `proposed_value`)를 `festivals`에 반영하고 `festival_change_history`(`actor='admin'`)에 한 줄. `reject`면 축제는 그대로. 처리자·시각을 `reviewer`·`reviewed_at`에 기록. 축제를 물리 삭제하지 않음(숨김은 `review_status='hidden'`) |
+| 권한 | operator·admin | operator·admin |
+| 입력 | `approval_status`·`reason`·`page`·`page_size` | `{queue_id, decision, value?, note}` |
+| 응답 | 200 `{items, total, page, page_size}` | 200 `{queue_id, approval_status, applied}` |
+| 오류 | 401 / 403 / 422 | 401 / 403 / 404 `QUEUE_ITEM_NOT_FOUND` / 409 `ALREADY_REVIEWED` / 422 `VALIDATION_ERROR` |
+| 처리 규칙 | 생성 시각과 대기열 ID 내림차순 | 승인 시 `value` 또는 `proposed_value`를 적용한 뒤 EV01 축제 및 좌표 조건을 확인하고, 아직 게시되지 않았다면 `published_at`을 설정합니다. 거절은 축제를 그대로 두고, 숨김은 `review_status='hidden'`으로 바꾸고 게시 시각을 비웁니다. 모두 처리자·시각과 `festival_change_history` 한 줄을 기록합니다. |
+| 구현 상태 | `AUTH_PROVIDER=db`에서 역할 확인 후 `noldaga_service`로 조회합니다. | 축제 행과 대기열 행을 잠가 같은 건의 결정을 한 번 반영합니다. 기본 모의 모드는 메모리 예시와 `X-Mock: true`를 사용하며, 시연용 운영자 인증은 서버 설정 `MOCK_ADMIN_REVIEW_TOKEN`으로 활성화합니다. |
 
 **A24 GET 목록 요청·응답 (200)**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `approval_status` | query | string | 아니요 | `pending`(기본)·`approved`·`rejected` |
-| `reason` | query | string | 아니요 | `duplicate`·`conflict`·`missing_location`·`date_unclear` |
-| `page` | query | int | 아니요 | 조회할 페이지 번호 |
+| `reason` | query | string | 아니요 | `duplicate`·`conflict`·`missing_location`·`date_unclear`·`not_festival_class`·`class_unverified`·`missing_from_source`·`coords_out_of_range` |
+| `page` / `page_size` | query | int | 아니요 | 1부터, 기본값 1·20. 페이지 크기 최대 100 |
 | `items` | 응답 | array<object> | 예 | 검토 대기열 항목 |
 | `items[].queue_id` | 응답 | int (64비트) | 예 | `festival_review_queue.queue_id` |
 | `items[].festival_id` | 응답 | string | 예 | 검토 대상 축제 ID |
@@ -1703,18 +1704,21 @@ Content-Type: application/json
 | `items[].approval_status` | 응답 | string | 예 | `pending`·`approved`·`rejected` |
 | `items[].created_at` | 응답 | string(date-time) | 예 | 검토 항목 생성 시각 |
 | `total` | 응답 | int | 예 | 필터 적용 후 전체 건수 |
+| `page` / `page_size` | 응답 | int | 예 | 요청에 적용한 페이지 번호와 크기 |
 
 **A24 POST 처리 요청·응답 (200)**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `queue_id` | body | int (64비트) | 예 | 처리할 대기열 ID |
-| `decision` | body | string | 예 | `approve`·`reject` |
-| `value` | body | object | 아니요 | 승인 시 적용 값, 생략하면 `proposed_value` |
-| `note` | body | string | 아니요 | 검토 메모, 200자 이하 |
+| `decision` | body | string | 예 | `approve`·`reject`·`hide` |
+| `value` | body | object | 아니요 | 승인 시 적용할 축제 필드. 생략하면 `proposed_value`를 사용합니다. |
+| `note` | body | string | 예 | 공백을 제거한 뒤 1~200자의 결정 사유. `reason`도 같은 필드명으로 받습니다. |
 | `queue_id` | 응답 | int (64비트) | 예 | 처리한 대기열 ID |
-| `approval_status` | 응답 | string | 예 | `approved`·`rejected` |
-| `applied` | 응답 | boolean | 예 | 축제에 변경 사항을 실제 반영했는지 표시 |
+| `approval_status` | 응답 | string | 예 | 승인 `approved`, 거절·숨김 `rejected` |
+| `applied` | 응답 | boolean | 예 | 축제 행에 변경 사항을 실제 반영했는지 표시 |
+
+승인에 필요한 좌표는 위도 33~39, 경도 124~132입니다. 주소와 위경도 모두 없는 축제는 2-3절의 공개 조건을 따릅니다. 담당자는 분류·좌표 등 확인한 축제 필드를 `value`로 보완할 수 있습니다. 서버는 ID·검토 상태·게시 시각을 직접 관리합니다.
 
 #### A25. 축제 가는 길 `POST /api/v1/routes/visit` + `GET /api/v1/routes/visit/{route_request_id}`
 
@@ -3952,6 +3956,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | A24의 검토 필터·사유 필수·승인·거절·숨김, 운영자 권한과 서비스 계정 처리 명세를 구현과 맞췄습니다(6-2절). |
 | v0.5 | 2026-11-24 | 한태경 님 W64 Docker 검토를 반영해 A01에 앱 계정의 1초 DB 점검과 503 상태 응답을 추가하고 pytest를 시험 전용 의존성으로 옮겼습니다. |
 | v0.5 | 2026-11-24 | A02·A03의 EV01 검증, 미분류 보류와 카카오 좌표 보정, 주소 없는 축제의 좌표 NULL 응답을 반영했습니다. |
 | v0.5 | 2026-11-24 | A32~A35 PostgreSQL 인증과 DB-19 RLS 연결을 구현하고 토큰 수명·폐기·로그인 한도·로그 차단을 코드와 시험에 연결했습니다. |

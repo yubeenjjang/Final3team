@@ -100,6 +100,9 @@ def test_I16_I17_same_scope_missing_and_reappearance_keep_review(
 
     with db_engine.connect() as connection:
         assert connection.execute(text(
+            "SELECT reason, approval_status FROM festival_review_queue"
+        )).one() == ("missing_from_source", "pending")
+        assert connection.execute(text(
             "SELECT error #> '{listing,ids}' FROM ingestion_jobs WHERE job_id = :job"
         ), {"job": missing_job}).scalar_one() == []
         history = dict(connection.execute(text(

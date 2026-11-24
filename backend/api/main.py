@@ -19,9 +19,10 @@ from api.errors import (
 )
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
-from api.request_logs import auth_endpoint, me_endpoint, private_endpoint, request_logger
+from api.request_logs import ADMIN_REVIEW_PATH, auth_endpoint, me_endpoint, private_endpoint, request_logger
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
+from api.routers.admin import festival_review
 from api.routers.assistant import chatbot
 from api.routers.festivals import catalog, info
 from api.routers.festivals.catalog import uses_festival_db
@@ -73,7 +74,9 @@ async def add_response_headers(
             raise
         # The server traceback can contain input values from an unexpected error.
         response = await handle_unexpected_error(request, error)
-        if uses_auth_db() and (auth_endpoint(request.url.path) or me_endpoint(request.url.path)):
+        if uses_auth_db() and (
+            auth_endpoint(request.url.path) or me_endpoint(request.url.path) or endpoint == ADMIN_REVIEW_PATH
+        ):
             del response.headers["X-Mock"]
         request_logger.error(
             "endpoint=%s request_id=%r http_status=500 error=INTERNAL_SERVER_ERROR",
@@ -103,7 +106,7 @@ async def add_response_headers(
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
         or auth_endpoint(request.url.path) or me_endpoint(request.url.path)
-        or _FESTIVAL_INFO_PATH.match(request.url.path)
+        or _FESTIVAL_INFO_PATH.match(request.url.path) or endpoint == ADMIN_REVIEW_PATH
     ):
         del response.headers["X-Mock"]
     if endpoint is not None:
@@ -130,12 +133,12 @@ def _serves_real_data(request: Request) -> bool:
         or (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
-        or (uses_auth_db() and (auth_endpoint(path) is not None or me_endpoint(path) is not None))
+        or (uses_auth_db() and (auth_endpoint(path) or me_endpoint(path) or path.rstrip("/") == ADMIN_REVIEW_PATH))
         or (info_path is not None and uses_real_info(info_path[1]))
     )
 
 
 for module in (health, catalog, routes, chatbot, auth):
     app.include_router(module.router, prefix="/api/v1")
-for module in (info, favorites, users):
+for module in (info, favorites, users, festival_review):
     app.include_router(module.router, prefix="/api/v1")

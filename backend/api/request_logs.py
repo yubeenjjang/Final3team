@@ -7,6 +7,8 @@ _ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-
 _FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
 _FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
 
+ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
+
 request_logger = logging.getLogger("uvicorn.error.api_requests")
 
 
@@ -31,6 +33,8 @@ def private_endpoint(path: str) -> str | None:
     info = _FESTIVAL_INFO_PATH.fullmatch(path)
     if info:
         return "/api/v1/festivals/{festival_id}/" + info[1]
+    if path.rstrip("/") == ADMIN_REVIEW_PATH:
+        return ADMIN_REVIEW_PATH
     return auth_endpoint(path) or me_endpoint(path)
 
 

@@ -22,6 +22,7 @@ def db_engine() -> Iterator[Engine]:
         with engine.begin() as connection:
             # 수집 계정(noldaga_service)에는 TRUNCATE 권한이 없어서 DELETE로 비운다(외래 키 순서).
             for table in (
+                "festival_review_queue",
                 "festival_change_history",
                 "festival_sources",
                 "festivals",
