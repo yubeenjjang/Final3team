@@ -2,6 +2,7 @@
 
 This does not query PostgreSQL or test answer generation. It uses short,
 paraphrased excerpts from the official pages listed in the W27 prep document.
+The first two documents use verified public festival IDs; D3 is an expired fixture.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ DIMENSIONS = 1024
 AS_OF = datetime.fromisoformat("2026-11-24T12:00:00+09:00")
 OUTPUT = Path(__file__).with_name("sample_eval_results.json")
 LANTERN_ID = "fst_01M835B57450M888RBNEFVRWWA"
+CHEONGGYE_ID = "fst_01M835BMB1QD1DFYQEN3GR8FVK"
 
 DOCUMENTS = [
     {
@@ -33,10 +35,10 @@ DOCUMENTS = [
     },
     {
         "id": "D2",
-        "festival": "fixture_seoul_winter",
-        "text": "서울윈터페스티벌은 2026년 12월 11일부터 2027년 1월 31일까지 광화문광장 등 여러 장소에서 열린다. 서울빛초롱축제도 포함된 통합 축제다.",
-        "effective_to": "2027-02-01T00:00:00+09:00",
-        "source_url": "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=373",
+        "festival": CHEONGGYE_ID,
+        "text": "청계천의 빛은 2026년 12월 11일부터 31일까지 서울 청계광장에서 열린다. 관람 시간은 매일 18시부터 22시까지이며 무료다. 꿈빛기차 체험과 시민의 꿈 메시지 영상이 있다.",
+        "effective_to": "2027-01-01T00:00:00+09:00",
+        "source_url": "https://www.mcst.go.kr/site/s_culture/festival/festivalView.jsp?pRo=8&pSeq=13572",
     },
     {
         "id": "D3",
@@ -50,10 +52,10 @@ DOCUMENTS = [
 QUESTIONS = [
     ("Q01", LANTERN_ID, "서울빛초롱축제는 언제 시작하나요?", "D1"),
     ("Q02", LANTERN_ID, "서울빛초롱축제는 어디에서 몇 시까지 볼 수 있나요?", "D1"),
-    ("Q03", "fixture_seoul_winter", "서울윈터페스티벌은 어디에서 열리나요?", "D2"),
-    ("Q04", "fixture_seoul_winter", "서울윈터페스티벌 기간은 언제인가요?", "D2"),
-    ("Q05", LANTERN_ID, "서울윈터페스티벌의 다른 프로그램도 알려줘", None),
-    ("Q06", "fixture_seoul_winter", "서울빛초롱축제 관람 시간은 몇 시인가요?", None),
+    ("Q03", CHEONGGYE_ID, "청계천의 빛은 어디에서 열리나요?", "D2"),
+    ("Q04", CHEONGGYE_ID, "청계천의 빛은 몇 시까지 볼 수 있나요?", "D2"),
+    ("Q05", LANTERN_ID, "청계천의 빛은 몇 시에 끝나나요?", None),
+    ("Q06", CHEONGGYE_ID, "서울빛초롱축제 관람 시간은 몇 시인가요?", None),
     ("Q07", "fixture_mokdong_bbq", "2026년 11월 25일에 가도 축제를 즐길 수 있나요?", None),
     ("Q08", LANTERN_ID, "오늘 비 때문에 서울빛초롱축제가 취소됐나요?", None),
     ("Q09", LANTERN_ID, "지금 축제 주변은 얼마나 혼잡한가요?", None),
@@ -158,7 +160,7 @@ def main() -> int:
 
     OUTPUT.write_text(
         json.dumps(
-            {"model": MODEL, "dimensions": DIMENSIONS, "as_of": AS_OF.isoformat(), "usage": usage, "scope": "D1 public EV01; D2 and D3 isolated fixtures; no DB or answer generation", "results": results},
+            {"model": MODEL, "dimensions": DIMENSIONS, "as_of": AS_OF.isoformat(), "usage": usage, "scope": "D1 and D2 linked to public EV01 IDs; D3 isolated expired fixture; no DB or answer generation", "results": results},
             ensure_ascii=False,
             indent=2,
         ),
