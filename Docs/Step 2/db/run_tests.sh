@@ -231,6 +231,14 @@ echo "## 5-8. 021_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용
 "${PSQL_TX[@]}" -q < 021_chat.sql
 "${PSQL[@]}" -q -f - < tests_021_chat.sql
 
+echo "## 5-9. 022_jobs 정기 작업 회차·경로 요청 보존 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_jobs.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_jobs.sql
+"${PSQL_TX[@]}" -q < 022_jobs_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_022_jobs.sql
+"${PSQL_TX[@]}" -q < 022_jobs.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_jobs.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
