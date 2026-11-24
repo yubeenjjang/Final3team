@@ -217,6 +217,13 @@ echo "T019d PASS: 새 사유로 처리한 결정이 있으면 되돌리기 차�
 "${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_019_admin-review.sql
 "${PSQL_TX[@]}" -q < 019_admin-review.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_019_admin-review.sql
+echo "## 5-6. 019 동행 수동 마감·보존 RLS 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 019_companions.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_019_companions.sql
+"${PSQL_TX[@]}" -q < 019_companions_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_019_companions.sql
+"${PSQL_TX[@]}" -q < 019_companions.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_019_companions.sql
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore

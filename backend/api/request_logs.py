@@ -9,6 +9,10 @@ _FRIENDS_PATH = re.compile(r"(/api/v1/(?:users/search|friend-requests|me/friend-
 _FRIEND_ACTION_PATH = re.compile(r"/api/v1/friend-requests/[^/]+/[^/]+/?")
 _FRIEND_ITEM_PATH = re.compile(r"(/api/v1/me/(?:friends|blocks))/[^/]+/?")
 _FESTIVAL_INFO_PATH = re.compile(r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|visit-forecast)/?")
+_COMPANION_PATH = re.compile(
+    r"/api/v1/(?:festivals/[^/]+/companion-posts|companion-posts(?:/[^/]+(?:/[^/]+)?)?"
+    r"|companion-applications/[^/]+/[^/]+)/?"
+)
 
 ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
 
@@ -39,6 +43,22 @@ def friends_endpoint(path: str) -> str | None:
     return match[1] + "/{user_id}" if match else None
 
 
+def companion_endpoint(path: str) -> str | None:
+    if not _COMPANION_PATH.fullmatch(path):
+        return None
+    if path.startswith("/api/v1/festivals/"):
+        return "/api/v1/festivals/{festival_id}/companion-posts"
+    parts = path.rstrip("/").split("/")
+    if parts[3] == "companion-applications":
+        return "/api/v1/companion-applications/{application_id}/{action}"
+    if len(parts) == 4:
+        return "/api/v1/companion-posts"
+    detail = "/api/v1/companion-posts/{post_id}"
+    if len(parts) == 5:
+        return detail
+    return detail + ("/" + parts[5] if parts[5] in {"applications", "meeting-place"} else "/{action}")
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -48,7 +68,7 @@ def private_endpoint(path: str) -> str | None:
         return "/api/v1/festivals/{festival_id}/" + info[1]
     if path.rstrip("/") == ADMIN_REVIEW_PATH:
         return ADMIN_REVIEW_PATH
-    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path)
+    return auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):
