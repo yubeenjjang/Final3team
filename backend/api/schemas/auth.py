@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
+from api.schemas.common import DisplayName
+
 _EMAIL_LOCAL = re.compile(r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$")
 _EMAIL_LABEL = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 
@@ -15,7 +17,7 @@ class LoginRequest(BaseModel):
 
 class SignupRequest(LoginRequest):
     email: str = Field(max_length=254)
-    display_name: str = Field(min_length=2, max_length=12)
+    display_name: DisplayName
     birth_year: int = Field(ge=1900)
     gender: Literal["male", "female"]
 
@@ -32,11 +34,6 @@ class SignupRequest(LoginRequest):
         ):
             raise ValueError("이메일 형식을 확인해 주세요.")
         return value.lower()
-
-    @field_validator("display_name", mode="before")
-    @classmethod
-    def strip_display_name(cls, value: object) -> object:
-        return value.strip() if isinstance(value, str) else value
 
     @field_validator("birth_year")
     @classmethod

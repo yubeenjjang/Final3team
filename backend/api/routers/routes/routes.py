@@ -4,12 +4,13 @@ from fastapi import APIRouter, Header, Path, Query, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from api.deps import Authorization
 from api.schemas.routes import (
     ROUTE_REQUEST_ID_PATTERN,
     ReturnRouteRequest,
     VisitRouteRequest,
 )
-from api.services import bus_crowding, mock_routes, real_routes
+from api.services import bus_crowding, mock_routes, real_routes, route_rate_limit
 from api.services.mock_routes import create_route, get_route
 
 router = APIRouter()
@@ -29,7 +30,9 @@ async def submit_return_route(
     request: Request,
     route: ReturnRouteRequest,
     scenario: ScenarioHeader = "async_ready",
+    authorization: Authorization = None,
 ) -> JSONResponse:
+    await run_in_threadpool(route_rate_limit.enforce, request.client.host if request.client else "unknown", authorization)
     submitted_body = await request.json()
     if real_routes.uses_real_routes():
         service = real_routes.get_service()
@@ -73,7 +76,9 @@ async def submit_visit_route(
     request: Request,
     route: VisitRouteRequest,
     scenario: ScenarioHeader = "async_ready",
+    authorization: Authorization = None,
 ) -> JSONResponse:
+    await run_in_threadpool(route_rate_limit.enforce, request.client.host if request.client else "unknown", authorization)
     submitted_body = await request.json()
     if real_routes.uses_real_routes():
         status, body = await real_routes.get_service().create_route("visit", route, submitted_body)

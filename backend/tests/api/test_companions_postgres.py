@@ -192,3 +192,26 @@ def test_db_manual_close_and_automatic_end(client, companion_sample):
             SELECT p.status, p.ended_at, r.read_only_at FROM public.companion_posts p
             JOIN public.chat_rooms r USING (room_id) WHERE p.post_id = :post_id
         """), result).one() == ("ended", cutoff, cutoff)
+
+
+def test_db_companion_apply_and_approval_check_blocks(client, companion_sample):
+    engine, people, result = companion_sample
+    (owner, owner_id, _), (first, first_id, _), (second, second_id, _) = people
+    applications = f"{POSTS}/{result['post_id']}/applications"
+    pending = client.post(applications, headers=first).json()["application_id"]
+
+    assert client.put(f"/api/v1/me/blocks/{owner_id}", headers=first).status_code == 200
+    assert client.put(f"/api/v1/me/blocks/{second_id}", headers=owner).status_code == 200
+    assert_error(client.post(applications, headers=second), 409, "BLOCKED")
+    assert_error(client.post(f"{APPLICATIONS}/{pending}/approve", headers=owner), 409, "BLOCKED")
+    with engine.begin() as db:
+        assert db.scalar(text("""
+            SELECT approved_count FROM public.companion_posts WHERE post_id = :post_id
+        """), result) == 0
+        assert db.scalars(text("""
+            SELECT application_id FROM public.companion_applications
+            WHERE post_id = :post_id AND status = 'pending'
+        """), result).all() == [pending]
+        assert db.scalar(text("""
+            SELECT count(*) FROM public.chat_members WHERE room_id = :room_id AND status = 'joined'
+        """), result) == 1

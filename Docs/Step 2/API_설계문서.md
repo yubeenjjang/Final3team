@@ -165,7 +165,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | **DB 쪽 2차 안전장치** | API 서버는 요청마다 DB에 사용자 ID를 넘기고(`SET LOCAL app.user_id`), DB는 접속 역할·컬럼 권한·RLS로 본인 것만 보이게 막습니다(04 문서 3절) |
 | **로그인 없이 쓰는 API** | 축제 목록·상세·공지·시설·지도 표시·날씨·교통·혼잡 조회, 귀가·가는 길 경로 조회·상태 조회, 챗봇 질문 |
 | **로그인 필요** (`user`) | 관심 축제 저장·해제·목록, 후기(Should), 취향(A36·A37), 친구(A43~A50), 동행 글 작성·신청(A58~A65), 채팅(A66~A73), 알림(A74·A75), 신고(A76), 비밀번호 변경·탈퇴(A80) — 6절 '권한' 칸이 `user`인 API 전부 |
-| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A55~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
+| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A55~A56은 `admin`만**(6절 '권한' 칸). A77 신고 조회·처리는 두 역할 모두 허용. 역할 검사는 라우터 의존성 하나(`require_role`)로 |
 | **비로그인 경로 요청 보호** | 상태 조회는 로그인 여부와 관계없이 `route_request_id` + 요청 시 발급한 `route_access_token`(로그인 JWT와 별개)으로 본인만 조회. 짧은 수명 적용은 DB·Redis 연결 때 구현(2-2절). IP·세션 단위 요청 수 제한 |
 
 
@@ -182,7 +182,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 
 | API | 요청 | 정상 응답 | 검증·처리 규칙 | 오류 | 구현 상태 |
 |---|---|---|---|---|---|
-| **A32** `POST /auth/signup` | `{email, password, display_name, birth_year, gender}` **모두 필수**(시나리오 S03, 11/20 결정) — 이메일 형식·254자 이하, 비밀번호 8~64자(영문·숫자 포함), **닉네임(`display_name`) 2~12자·대소문자 무시 중복 불가**, 출생연도 1900~올해, 성별 `male`·`female`, 닉네임은 앞뒤 공백 제거 후 검사 | **201** `{user_id, display_name}` (로그인은 따로 A33) | 이메일은 소문자로 바꿔 비교. 비밀번호는 argon2id로 해시만 저장. **한 트랜잭션**에서 `users`(status `active`) + `profiles`(role `user`, 닉네임·출생연도·성별) 생성. 나이·성별은 **동행 신청 때 그 모집 글 작성자에게만** 보임(A61, DB `app_applicant_profile`) | 422 형식 / 409 `EMAIL_ALREADY_EXISTS`·`NICKNAME_TAKEN` / 429 | DB에 계정·프로필을 한 트랜잭션으로 저장 |
+| **A32** `POST /auth/signup` | `{email, password, display_name, birth_year, gender}` **모두 필수**(시나리오 S03, 11/20 결정) — 이메일 형식·254자 이하, 비밀번호 8~64자(영문·숫자 포함), **닉네임(`display_name`) 2~12자·대소문자 무시 중복 불가**, 출생연도 1900~올해, 성별 `male`·`female`, 닉네임은 제어문자를 거부하고 앞뒤 공백 제거 후 길이를 검사 | **201** `{user_id, display_name}` (로그인은 따로 A33) | 이메일은 소문자로 바꿔 비교. 비밀번호는 argon2id로 해시만 저장. **한 트랜잭션**에서 `users`(status `active`) + `profiles`(role `user`, 닉네임·출생연도·성별) 생성. 나이·성별은 **동행 신청 때 그 모집 글 작성자에게만** 보임(A61, DB `app_applicant_profile`) | 422 형식 / 409 `EMAIL_ALREADY_EXISTS`·`NICKNAME_TAKEN` / 429 | DB에 계정·프로필을 한 트랜잭션으로 저장 |
 | **A33** `POST /auth/login` | `{email, password}` | **200** `{access_token, token_type:"bearer", expires_in:1800, refresh_token, refresh_expires_at, user:{user_id, display_name, role}}` | 계정 `status='active'`만. 실패 이유를 구분하지 않음(이메일 존재 여부 노출 금지). 성공 시 `users.last_login_at`, `refresh_tokens`에 **해시만** 저장(14일) | 401 `INVALID_CREDENTIALS` / 403 `ACCOUNT_DISABLED` / 429 `RATE_LIMITED` / 503 `AUTH_CHECK_UNAVAILABLE` | DB에 로그인 시각·Refresh 해시 저장, IP별 로그인 제한 |
 | **A34** `POST /auth/refresh` | `{refresh_token}` | **200** A33과 같은 토큰 묶음(새 Access + **새 Refresh**) | **교체 방식**: `refresh:lock:{token_id}`(5초)로 동시 교체 방지 → 기존 행 `revoked_at` 기록 → 새 행 추가(한 트랜잭션). **이미 폐기된 Refresh가 다시 오면 재사용으로 보고 그 사용자의 Refresh 전부 폐기** | 401 `REFRESH_INVALID`(없음·만료) / 401 `REFRESH_REUSED`(재사용 — 다시 로그인) / 409 `REFRESH_IN_PROGRESS`(잠금 중) / 503 `AUTH_CHECK_UNAVAILABLE` | DB 트랜잭션으로 교체·재사용 폐기 |
 | **A35** `POST /auth/logout` | 헤더 Access JWT + 본문 `{refresh_token}` | **204** | 그 Refresh 행 `revoked_at` + Access의 `jti`를 `revoked:{jti}`(남은 수명만큼)에 넣음 → 이 기기만 로그아웃. 전체 기기 로그아웃은 탈퇴(A80)와 Refresh 재사용 감지 때만 | 401 / 503 `AUTH_CHECK_UNAVAILABLE` | 본인 Refresh 폐기, Access jti 만료까지 차단 |
@@ -193,7 +193,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 |---|---|---|---|---|
 | `email` | body | string | 예 | 254자 이하, 이메일 형식, 로컬 부분 64자 이하, 점으로 구분된 도메인 레이블 2개 이상, 소문자로 정규화 |
 | `password` | body | string (SecretStr) | 예 | 8~64자, 영문과 숫자를 각각 1개 이상 포함 |
-| `display_name` | body | string | 예 | 앞뒤 공백 제거 후 2~12자, 대소문자 무시 중복 불가 |
+| `display_name` | body | string | 예 | 제어문자 없이 앞뒤 공백 제거 후 2~12자, 대소문자 무시 중복 불가 |
 | `birth_year` | body | int | 예 | 1900 이상 올해 이하 |
 | `gender` | body | string | 예 | `male`·`female` |
 | `user_id` | 응답 | string (UUID) | 예 | 생성된 사용자 ID |
@@ -1329,7 +1329,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A55~A56** | POST/PATCH | `/api/v1/admin/festivals`, `/{festival_id}` | admin | 축제 직접 등록·수정·게시, 변경 이력 (6-6) | FR-D12·O10 | 최종 — 권오현 |
 | **A57~A65** | — | `/api/v1/festivals/{id}/companion-posts`, `/api/v1/companion-posts`(+`/{id}`, `/applications`, `/meeting-place`, `/{action}`), `/api/v1/companion-applications/{id}/{action}` | 공개·user | **동행**: 모집 목록·작성·신청·승인(정원 잠금)·만남 장소·종료/취소 (6-4-4) | FR-COM01~11·18·19 | 최종 — 권오현 |
 | **A66~A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (6-4-5) | FR-COM09·15~17·20 | 최종 — 권오현 |
-| **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user·admin | **알림·신고·탈퇴**(6-4-6). 마이페이지는 6-4-6절 | FR-COM21~24 | 최종 — 권오현 |
+| **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user / A77은 operator·admin | **알림·신고·탈퇴**(6-4-6). 마이페이지는 6-4-6절 | FR-COM21~24 | 최종 — 권오현 |
 | **A78·A79** | GET·PATCH / GET | `/api/v1/me/profile`, `/api/v1/me/companion-activity` | user | **본인 프로필·내 동행 내역**(6-4-6) | FR-COM22 | `ohyun-me` 구현 |
 | **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩과 대한민국 구석구석 점수를 60:40으로 합산해 정렬(6-2) | 11/24 신유빈 B안·권오현 확정(기획서 FR 추가 필요) | 최종 — 담당 신유빈 |
 | **A81** | GET | `/api/v1/festivals/{festival_id}/posts` | 없음 | **요즘 올라온 글**. 축제 상세에서 네이버 블로그·뉴스·카페의 최신 글 링크와 출처 표시(6-2) | 11/24 한태경 제안·권오현 채택 | 최종 — API 신유빈(W125)·화면 정예진(W127) |
@@ -1346,7 +1346,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A30** | GET | `/api/v1/data-sources` | 없음 | 데이터 공급원별 **지원 지역·실시간 여부·마지막 수집 시각** (화면의 '미지원' 안내·관리자 확인용) | D-016, 데이터 조사 | 최종 |
 
 - **A36~A42 경로 규칙:** FastAPI에서 `/festivals/recommended`·`/popular`·`/discover`·`/recent`·`/trending` 같은 **고정 경로를 `/festivals/{festival_id}`보다 먼저 등록**하고, `festival_id`는 `^fst_` 형식을 검사합니다(라우터 작성 규칙·테스트 항목).
-- **동행·채팅(신규 필수):** A57~A73으로 상세 작성(6-4-4·6-4-5, 채팅은 WebSocket), 권한은 11/20 권한 기준안(04 문서 7-1). **채팅 경로 규칙:** `/chat-rooms/{room_id}/invitations`·`/read`·`/messages`를 `/{action}`(A69)보다 **먼저 등록**하고, `action`은 `accept`·`decline`·`leave`만 받음(그 밖은 404). **친구는 A43~A50으로 상세 작성(6-4-3).** 친구 검색은 **닉네임 정확히 일치**(닉네임은 겹치지 않음, 친구 코드 없음, 이메일·전화번호 검색 안 함 — 11/20 결정, 009).
+- **동행·채팅(신규 필수):** A57~A73으로 상세 작성(6-4-4·6-4-5, 채팅은 WebSocket), 권한은 11/20 권한 기준안(04 문서 7-1). **채팅 경로 규칙:** `/chat-rooms/{room_id}/invitations`·`/read`·`/messages`를 `/{action}`(A69)보다 **먼저 등록**하고, `action`은 `accept`·`decline`·`leave`만 받음(그 밖은 404 `NOT_FOUND`). **친구는 A43~A50으로 상세 작성(6-4-3).** 친구 검색은 **닉네임 정확히 일치**(닉네임은 겹치지 않음, 친구 코드 없음, 이메일·전화번호 검색 안 함 — 11/20 결정, 009).
 
 **추천 API(A36~A42·A81) 담당은 신유빈**입니다. A42·A81 화면은 정예진이 담당합니다.
 
@@ -1808,7 +1808,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `radius_m`: 500~10000, 기본 2000 / `type`: 선택 `accident`·`construction`·`event`·`control` |
 | 공급원 | 경찰청 교통돌발(UTIC, 전국, XML) + 서울 TOPIS(서울 보강, XML) |
-| 구현 상태 | 기본 모의. `TRAFFIC_INCIDENT_PROVIDER=real`은 포털 호출 주소·키를 설정한 전국 경찰청과, 서울 일반 키를 설정한 TOPIS를 조회합니다. UTIC는 `UTIC_ENABLED` 기본 꺼짐이며 허용망에서 별도 키로 켭니다. 오프라인 XML 시험과 60초 메모리 캐시를 연결했습니다. 포털 오퍼레이션 주소·실호출과 경로별 근거 연결은 확인 예정입니다. [info2 명세](../../backend/Doc/info2/SPEC.md) |
+| 구현 상태 | 기본 모의. `TRAFFIC_INCIDENT_PROVIDER=real`은 포털 호출 주소·키를 설정한 전국 경찰청과, 서울 일반 키를 설정한 TOPIS를 조회합니다. UTIC는 `UTIC_ENABLED` 기본 꺼짐이며 허용망에서 별도 키로 켭니다. 오프라인 XML 시험(고장 차량 `A02` 포함)과 60초 메모리 캐시를 연결했습니다. 포털 오퍼레이션 주소·실호출과 경로별 근거 연결은 확인 예정입니다. [info2 명세](../../backend/Doc/info2/SPEC.md) |
 | 규칙 | 경찰청은 지역 필터 없이 **전국 전체가 와서 서버가 반경으로 거름**(11/19: 전국 118건). 날짜가 "2026년 11월 19일 16시 22분" 문자열이라 어댑터가 ISO 시각으로 바꿈. TOPIS 좌표 `grs80tm_x/y`는 GRS80 TM → 위경도 변환. 두 공급원에 같은 사건이 있으면 거리 100m 이내이고 발생 시간이 겹치면 하나로 합침(9-1 ⑧). 캐시 1분. 경로 근거(`area_evidence.traffic_incidents`)도 이 데이터를 씀 |
 
 **A28 쿼리 필드**
@@ -1820,7 +1820,7 @@ Content-Type: application/json
 
 | 응답 `items[]` | 타입 | 원본 | 설명 |
 |---|---|---|---|
-| `type` | string | 경찰청 `incidenteTypeCd`(1 사고 `accident`·2 공사 `construction`·3 행사 `event`·5 통제 `control`) / TOPIS `acc_type` | |
+| `type` | string | 경찰청 `incidenteTypeCd`(1 사고 `accident`·2 공사 `construction`·3 행사 `event`·5 통제 `control`) / TOPIS `acc_type` | TOPIS `A02`(고장 차량)는 `accident`로 변환 |
 | `title` | string | 경찰청 `incidentTitle` / TOPIS `acc_info` | |
 | `lat`·`lng`·`distance_m` | number | 경찰청 `locationDataY`·`locationDataX` / TOPIS 변환값 | |
 | `start_at`·`end_at` | string | 경찰청 `startDate`·`endDate` / TOPIS `occr_*`·`exp_clr_*` | null 가능 |
@@ -2203,7 +2203,7 @@ Content-Type: application/json
 **구현 상태 (itest)** — 글 작성부터 승인 뒤 장소 조회까지 이어서 호출하고 대기자의 장소 접근 차단을 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
 
 
-**구현 상태** · A57~A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
+**구현 상태** · A57~A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. A60 신청과 A62 승인은 양방향 차단 관계를 검사하고 `409 BLOCKED`로 거부합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
 
 시간당 정기 작업이 기본 `meet_at + 12시간`에 도달한 글을 자동 종료하고 방을 읽기 전용으로 전환합니다. 종료·취소 시각부터 72시간이 지나면 동행 내용을 정리합니다.
 
@@ -2213,9 +2213,9 @@ Content-Type: application/json
 | **A58** `POST /api/v1/companion-posts` | `{festival_id, meet_at, capacity(1~10, 작성자 제외), age_pref?, gender_pref?, memo?(≤500)}` | 201 `{post_id, room_id}` | user. `meet_at`은 **축제 기간 안의 미래 시각만**(400 `MEET_AT_INVALID`, FR-COM03). 한 트랜잭션: 동행방(`companion`) 만들기 + 작성자 방장 입장 + 글 저장, 만남 장소는 처음 '미정'(FR-COM04) | 401 / 400 / 404 / 422 |
 | **A59** `GET /api/v1/companion-posts/{post_id}` | — | A57 한 건 + `my_application_status` | 공개 | 404 |
 | **A58 보완** `PATCH /api/v1/companion-posts/{post_id}` | `meet_at`·`capacity`·`age_pref`·`gender_pref`·`memo` 중 1개 이상 | 200 `{post_id, status}` | 작성자만. 일정 검증은 A58과 같으며 정원은 승인 인원 이상이어야 함. `age_pref`·`memo`의 null은 기존 값 제거. 수동 마감은 정원 변경 뒤에도 유지 | 401 / 400 `MEET_AT_INVALID` / 403 / 404 / 409 `CAPACITY_FULL`·`POST_CLOSED` / 422 |
-| **A60** `POST /api/v1/companion-posts/{post_id}/applications` | `{message?(≤200)}` | 201 `{application_id, status:"pending"}` | user. 본인 글·마감·종료 글 거부, **대기·승인·거절 기록이 있으면 재신청 불가, 취소했으면 재신청 가능**(DB 부분 UNIQUE, T36a). 작성자에게 알림 | 401 / 403 `OWN_POST` / 404 / 409 `APPLICATION_EXISTS`·`POST_CLOSED` |
+| **A60** `POST /api/v1/companion-posts/{post_id}/applications` | `{message?(≤200)}` | 201 `{application_id, status:"pending"}` | user. 본인 글·마감·종료 글 거부, **대기·승인·거절 기록이 있으면 재신청 불가, 취소했으면 재신청 가능**(DB 부분 UNIQUE, T36a). 차단 관계면 신청 거부. 작성자에게 알림 | 401 / 403 `OWN_POST` / 404 / 409 `APPLICATION_EXISTS`·`POST_CLOSED`·`BLOCKED` |
 | **A61** `GET /api/v1/companion-posts/{post_id}/applications` | `status` | `{items[] {application_id, applicant_display_name, applicant_age, applicant_gender, message, status, created_at}}` — `applicant_age`는 서버가 출생연도로 계산한 나이(올해 − 출생연도), 출생연도 자체는 보내지 않음. 대기·승인 중인 신청만, 탈퇴자는 '알 수 없음' — 신청 화면에서 '닉네임·나이·성별이 작성자에게 보여요'를 미리 알림(S07) | **작성자만**(나이·성별은 DB `app_applicant_profile`, T43b·c)(신청자는 A59의 자기 상태만, RLS T37c) | 401 / 403 |
-| **A62** `POST /api/v1/companion-applications/{application_id}/{action}` | `action`: `approve`·`reject`(작성자) / `cancel`(신청자, 승인 전만) | 200 `{application_id, status, post_status}` | `approve`는 **한 트랜잭션**: `SELECT … FOR UPDATE`로 글을 잠그고 정원 확인 → 신청 승인 → `approved_count+1`(정원 넘으면 DB가 거부, T36c) → 방 멤버 입장 → 시스템 메시지 → 정원이 차면 `full`(FR-COM06·07). 승인·거절 알림. **친구는 자동 추가 안 함**(FR-COM13) | 401 / 403 / 404 / 409 `CAPACITY_FULL`·`APPLICATION_NOT_PENDING`·`POST_CLOSED` |
+| **A62** `POST /api/v1/companion-applications/{application_id}/{action}` | `action`: `approve`·`reject`(작성자) / `cancel`(신청자, 승인 전만) | 200 `{application_id, status, post_status}` | `approve`는 **한 트랜잭션**: `SELECT … FOR UPDATE`로 글을 잠그고 정원 확인 → 신청 승인 → `approved_count+1`(정원 넘으면 DB가 거부, T36c) → 방 멤버 입장 → 시스템 메시지 → 정원이 차면 `full`(FR-COM06·07). 차단 관계면 승인 거부. 승인·거절 알림. **친구는 자동 추가 안 함**(FR-COM13) | 401 / 403 / 404 / 409 `CAPACITY_FULL`·`APPLICATION_NOT_PENDING`·`POST_CLOSED`·`BLOCKED` |
 | **A63** `PUT /api/v1/companion-posts/{post_id}/meeting-place` | `{name, address?, lat?, lng?, guide?}` (좌표 없이 이름·주소만도 가능 — 지도 오류 시 텍스트) | 200 `{post_id, updated_at}` | **작성자만**. 바꾸면 시스템 메시지 + 참여자 알림 `meeting_place_changed`(FR-COM10·11) | 401 / 403 / 422 |
 | **A64** `GET /api/v1/companion-posts/{post_id}/meeting-place` | — | `{name, address, lat, lng, guide, updated_at}` 없으면 `{status:"undecided"}` | **작성자·승인 참여자만**(RLS, T37a·f) | 401 / 403 |
 | **A65** `POST /api/v1/companion-posts/{post_id}/{action}` | `action`: `close`(모집 마감)·`end`(종료)·`cancel`(만남 전 취소) | 200 `{post_id, status}` | 작성자만. 수동 마감은 `full`로 표시. 만남 시각 + 12시간(임시 `COMPANION_AUTO_END_H`)이 지나면 자동 `end`. 종료·취소 → 동행방 **읽기 전용**(`read_only_at`) → '지난 동행'(FR-COM18·19) → 3일 뒤 내용 정리(04 문서 7-0) | 401 / 403 / 404 / 409 `POST_CLOSED` |
@@ -2300,7 +2300,7 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 **구현 상태 (itest)** — 동시 1:1 방 생성, WebSocket 발신, 마지막 수신 순번으로 HTTP 재조회, 차단 전후 방 상태를 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md)
 
 
-**구현 상태 (ohyun-chat)** — A66~A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
+**구현 상태 (ohyun-chat)** — A66~A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. A69는 정의되지 않은 동작에 `404 NOT_FOUND`를 반환합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
 
 정기 작업이 30일 지난 친구 채팅과 종료 72시간이 지난 동행방의 메시지 본문을 비우고 삭제 시각을 기록합니다. DB는 메시지 순서를 보존합니다.
 
@@ -2309,7 +2309,7 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | **A66** `GET /api/v1/me/chat-rooms` | `filter`: `all`·`companion`·`friend`·`past` | `{items[] {room_id, room_type, name, status, last_message_at, unread_count, my_status}}` — 없으면 `items:[]` + `empty_hint`("동행을 찾거나 친구를 추가해 보세요", FR-COM20) | user, 내가 `invited`·`joined`인 방만(RLS) | 401 |
 | **A67** `POST /api/v1/chat-rooms` | 1:1 `{type:"direct", friend_id}` / 단체 `{type:"friend_group", name(1~40), invitee_ids[2~19]}` | 201 `{room_id}` (열린 1:1 방이 이미 있으면 **200 + 기존 `room_id`**) | user. **실제 친구만**(`friendships`), 차단 관계 제외(FR-COM14·15). 차단 해제 뒤 닫힌 방은 재사용하지 않으며 새 대화에는 새 방 생성(11/24 팀 결정, DB 6-8). 단체방은 만든 사람이 방장, 나머지는 `invited` | 401 / 403 `NOT_FRIENDS`·`BLOCKED` / 422 |
 | **A68** `POST /api/v1/chat-rooms/{room_id}/invitations` | `{invitee_ids[]}` | 200 | 단체방 **방장만**, 친구만, 동행방에는 초대 불가(FR-COM08). 초대 알림 | 401 / 403 / 409 |
-| **A69** `POST /api/v1/chat-rooms/{room_id}/{action}` | `accept`·`decline`(초대받은 사람) / `leave`(멤버) | 200 `{room_id, my_status}` | `accept` 하면 그때부터(`joined_at`) 메시지가 보임 — **이전 메시지는 안 보임**(FR-COM16, T38f). 방장이 나가면 **가장 먼저 들어온 멤버가 방장**(FR-COM17). 동행방은 `leave` 대신 신청 취소·종료 흐름 | 401 / 403 / 409 |
+| **A69** `POST /api/v1/chat-rooms/{room_id}/{action}` | `accept`·`decline`(초대받은 사람) / `leave`(멤버) | 200 `{room_id, my_status}` | `accept` 하면 그때부터(`joined_at`) 메시지가 보임 — **이전 메시지는 안 보임**(FR-COM16, T38f). 방장이 나가면 **가장 먼저 들어온 멤버가 방장**(FR-COM17). 동행방은 `leave` 대신 신청 취소·종료 흐름 | 401 / 403 / 404 `NOT_FOUND`(지원하지 않는 동작) / 409 |
 | **A70** `PATCH /api/v1/chat-rooms/{room_id}` | `{name}` | 200 | 단체방 방장만(FR-COM17) | 401 / 403 / 422 |
 | **A71** `GET /api/v1/chat-rooms/{room_id}/messages` | `after_seq`(재접속: 마지막으로 받은 순서 이후) · `before_seq`(위로 스크롤) · `limit`(≤100) | `{items[] {message_id, seq, sender_id, sender_display_name, msg_type, body, created_at}, has_more}` | `joined` 멤버만, **입장 뒤 메시지만**(RLS, T37g). 차단으로 닫힌 1:1 방의 메시지는 차단 해제 뒤에도 제공하지 않음. 최근 100개는 Redis에서, 없으면 DB(Redis 장애여도 DB로 답함). **Redis에서 읽어도 서버가 DB와 같은 규칙으로 거름**: 지금 `joined`인지, 내 `joined_at` 이후인지, 숨김(`deleted_at`) 아닌지, 차단한 사람 메시지인지. 메시지 숨김(A77)·보존 정리·방 종료 때 `chat:recent:{room_id}`에서도 지움 | 401 / 403 |
 | **A72** `POST /api/v1/chat-rooms/{room_id}/read` | `{seq}` | 204 | 내 `last_read_seq`만 앞으로(뒤로 안 감) → `unread_count` | 401 / 403 |
@@ -2425,7 +2425,7 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 
 **구현 상태 (ohyun-chat)** — A74·A75를 구현했습니다. 본인의 알림을 조회하고 읽음 처리합니다. WebSocket은 `{"type":"notification","notification":{...}}`으로 새 알림을 전달합니다.
 
-**구현 상태 (ohyun-notify)** — A74·A75에 동행 신청·승인, 친구 신청·수락, 채팅 초대 알림을 연결했습니다. A76은 접수 시 대상 권한과 KST 날짜 기준 중복을 확인합니다. A77은 `operator`·`admin`이 서비스 계정으로 조회·처리합니다. 첫 상세 조회에서 `reviewing`으로 전환하며, 바로 처리하면 같은 트랜잭션에서 `reviewing`을 거칩니다. 채팅 신고 상세는 신고 사유를 열람 이유로 기록한 뒤 응답합니다. 사용자 차단은 계정을 `disabled`로 전환합니다.
+**구현 상태 (ohyun-notify)** — A74·A75에 동행 신청·승인, 친구 신청·수락, 채팅 초대 알림을 연결했습니다. A76은 접수 시 대상 권한과 KST 날짜 기준 중복을 확인합니다. A77은 `operator`·`admin`이 서비스 계정으로 조회·처리합니다. 첫 상세 조회에서 `reviewing`으로 전환하며, 바로 처리하면 같은 트랜잭션에서 `reviewing`을 거칩니다. 채팅 신고 상세는 신고 사유를 열람 이유로 기록한 뒤 응답합니다. `block_user`는 일반 사용자 계정만 `disabled`로 전환합니다. A78은 A32와 같은 닉네임 검증을 사용합니다.
 
 **마이페이지 API** — 관심 축제(A11~A13), 축제 취향(A36·A37), 본인 프로필(A78), 내 동행 내역(A79), 탈퇴(A80)를 제공합니다. A78·A79는 `ohyun-me` 구현 범위에 포함하며 11/24 이전 명세의 경로와 응답을 사용합니다. `AUTH_PROVIDER=db`에서 실제 DB를 사용하며 기본은 모의 모드입니다. 모의 동행 내역은 빈 배열입니다. 운영 공지·이용약관은 고정 문서 링크를 사용합니다.
 
@@ -2433,9 +2433,9 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 |---|---|---|---|---|
 | **A74** `GET /api/v1/me/notifications` | `unread_only`·`page` | `{items[] {notification_id, type, ref_type, ref_id, created_at, read_at}, unread_count}` | user, 본인 것만(RLS, T39c). **앱 안 알림만**(외부 푸시는 범위 밖, FR-COM21). 화면은 WebSocket 연결 중이면 `notification` 이벤트로도 받음 | 401 |
 | **A75** `POST /api/v1/me/notifications/read` | `{ids[]}` 또는 `{all: true}` | 204 | 읽음 칸만 바꿈(T39a·b) | 401 |
-| **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 KST 날짜 기준 하루 1회(9-1 ⑧). 방 신고는 현재 입장한 멤버, 메시지 신고는 해당 메시지 열람 권한이 있는 멤버만 접수. 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
-| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | operator·admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 시험은 18-2절에 연결. 메시지 숨김은 `chat_messages.deleted_at`으로 처리하고 다음 이력 조회에서 제외, 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
-| **A78** `GET`·`PATCH /api/v1/me/profile` | PATCH `{display_name?}` (닉네임 변경 가능, 2~12자·중복 검사) | `{user_id, display_name, birth_year, gender, onboarding_status}` (출생연도·성별은 본인 화면용. 다른 사람에게는 **동행 신청 때 그 글 작성자에게만 나이·성별**이 보임 — A61) | user, 본인만. 이메일·전화번호·나이·성별은 다른 사람에게 보이지 않음(FR-COM22) | 401 / 409 `NICKNAME_TAKEN` / 422 |
+| **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 KST 날짜 기준 하루 1회(9-1 ⑧). 방 신고는 현재 입장한 멤버, 메시지 신고는 해당 메시지 열람 권한이 있는 멤버만 접수. 신고자는 자기 신고만 봄(T40d) | 400 `VALIDATION_ERROR`(본인 계정 신고) / 401 / 404 / 409 |
+| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | operator·admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 시험은 18-2절에 연결. 메시지 숨김은 `chat_messages.deleted_at`으로 처리하고 다음 이력 조회에서 제외, 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임). `block_user`는 대상의 `profiles.role='user'`일 때만 가능 | 401 / 403 `FORBIDDEN`(운영자·관리자 계정 정지 거부) / 404 |
+| **A78** `GET`·`PATCH /api/v1/me/profile` | PATCH `{display_name?}` (A32와 같은 닉네임 규칙으로 변경) | `{user_id, display_name, birth_year, gender, onboarding_status}` (출생연도·성별은 본인 화면용. 다른 사람에게는 **동행 신청 때 그 글 작성자에게만 나이·성별**이 보임 — A61) | user, 본인만. 이메일·전화번호·나이·성별은 다른 사람에게 보이지 않음(FR-COM22) | 401 / 409 `NICKNAME_TAKEN` / 422 |
 | **A79** `GET /api/v1/me/companion-activity` | `type`: `posts`·`applications` | 200 `{items[]}`, 조회 유형별 항목 필드는 아래 A79 표 | user, 본인 내역(작성 글 또는 보낸 신청), 생성 최신순 | 401 / 422 |
 | **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(DB 설계서 7-0 ②): Refresh 토큰·관심·취향·알림·친구 신청·관계·차단 행 삭제, 진행 중 동행 글·신청 취소, 채팅방 퇴장과 방장 승계, 챗봇 질문·답변·방문 코스 결과 삭제, 프로필 개인정보 NULL, 계정 이메일·비밀번호 해시 덮어쓰기와 `status='deleted'`. 같은 DB에 LangGraph 체크포인트 테이블이 있으면 본인 대화 상태도 함께 삭제. 커밋 뒤 현재 Access의 `jti`를 폐기하며 모든 기기의 Access는 계정 상태 검사에서 거부. 열린 WebSocket 종료는 채팅 연결 구현 시 연동. 메시지는 화면에서 작성자 ‘알 수 없음’으로 표시하고 본문은 방 보존 정책을 따름. 백업에서 복원하면 탈퇴 목록으로 다시 지움 | 401 / 403 `PASSWORD_MISMATCH` / 422 |
 
@@ -2500,7 +2500,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `display_name` | body | string | PATCH 선택 | 2~12자, 대소문자 무시 중복 검사(009) |
+| `display_name` | body | string | PATCH 선택 | 제어문자 없이 앞뒤 공백 제거 후 2~12자. 정규화한 닉네임으로 대소문자 무시 중복 검사(009) |
 | `user_id` | 응답 | string (UUID) | 예 | 본인 사용자 ID |
 | `display_name` | 응답 | string 또는 null | 예 | 본인 닉네임 |
 | `birth_year` | 응답 | int 또는 null | 예 | 본인 출생연도, 009 저장 범위 1900~2100(A32 가입은 1900~올해) |
@@ -2969,7 +2969,7 @@ HTTP 202
 | 4 | 요청 본문 | 아래 필드 명세 |
 | 5 | 검증·권한 | 형식 422 → 요청 수 제한 429 → 같은 `request_id`면 처음 만든 `run_id`, 본문이 다르면 409 `IDEMPOTENCY_CONFLICT` → `conversation_id`가 있으면 그 대화의 주인인지(로그인: JWT `sub`, 비로그인: `X-Run-Access-Token`) 확인, 아니면 403. **질문 안의 "나는 관리자"는 권한이 아님**(1절) — 운영 도구(`get_incident` 등)는 이 API로 실행된 에이전트에게 주지 않음 |
 | 6 | 정상 응답 | **202** `{run_id, run_status:"queued", status_url, events_url, run_access_token, retry_after_s}` — 답변은 아직 없음 |
-| 7 | 오류 응답 | 401(토큰이 왔는데 무효) / 403 `FORBIDDEN`(남의 대화) / 409 `IDEMPOTENCY_CONFLICT` / 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED` / 503 `AI_AGENT_FAILED`(작업 등록 자체 실패 — 큐·DB 장애. 이때도 A02~A05는 독립 동작) |
+| 7 | 오류 응답 | 401 `UNAUTHORIZED`(무효 Access 또는 만료된 경로 조회 토큰) / 403 `FORBIDDEN`(남의 대화) / 409 `IDEMPOTENCY_CONFLICT` / 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED` / 503 `AI_AGENT_FAILED`(작업 등록 자체 실패 — 큐·DB 장애. 이때도 A02~A05는 독립 동작) |
 | 8 | 실행 규칙 | API는 **작업 기록(DB) + 큐 등록만** 하고 바로 응답(수 ms~수십 ms). 큐에는 `run_id`만 넣고 질문 원문은 넣지 않음(워커가 DB에서 읽음). 워커는 작업을 **선점(claim)** 한 뒤 실행(같은 작업 두 번 실행 방지). 실행 제한은 **시도 1회당 30초**(넘으면 그 시도 실패), 재시도 1회(5초 뒤)를 포함해 **최대 65초** — 넘으면 `failed`·`AI_AGENT_FAILED`. LLM 429·5xx·시간 초과만 **같은 `run_id`로 1회** 재시도(`retrying`, 5초 뒤), 나머지는 재시도 없음. 워커가 실행 중에 죽어 `running`이 70초를 넘으면 정리 작업이 `failed`로 바꿈. 숫자는 모두 9-1절 기준표 |
 
 **요청 필드 명세**
@@ -3049,6 +3049,8 @@ HTTP 202
 - 남의 작업 조회는 403입니다. 강사 자료 05쪽은 '없거나 조회가 허용되지 않는 작업'을 404로 묶는 방식도 소개하는데, 우리는 `run_id`가 추측하기 어려운 ULID이고 토큰 만료 안내(401)와 구분하려고 403을 유지합니다.
 
 #### A06-2. `GET /api/v1/assistant/runs/{run_id}/events` — 진행 이벤트(SSE)
+
+**구현 상태 (review-fix)** — 로그인 스트림은 Access JWT 만료 시각을 따릅니다. 진행·답변·종료 이벤트 전 WebSocket과 같은 세션 검사로 로그아웃 또는 비활성 여부를 확인하고, 인증이 무효화됐으면 연결을 닫습니다.
 
 - `text/event-stream`. 워커가 노드가 끝날 때마다 발행한 이벤트를 API가 중계합니다(에이전트 사고 과정 가시화).
 - 이벤트 4종: `{"type":"step","node":"supervisor"}` · `{"type":"token","text":"…"}`(선택) · `{"type":"done"}` · `{"type":"failed","code":"AI_AGENT_FAILED"}`. `done`·`failed` 뒤 연결을 닫습니다.
@@ -3325,6 +3327,8 @@ BFCL 30문항의 원본은 한다영 브랜치에 있으며, 채점에는 API �
 | `TMAP_PAID_PLAN` (결정 항목 이름) | **유료 전환 안 함** | Free 10건/일(오류 포함), 한도 도달 시 카카오 2차(1,000건/일). 부하 시험은 모의 응답 | 확정(11/24 팀 결정) | 11/24 | 한태경 |
 | 수집 공급원 하루 한도 (참고, 외부 고정) | TourAPI·서울 버스도착·서울 정류소 1,000건/일(기능별) · 서울 실시간 지하철 1,000회/일 · 기상청·TAGO·표준데이터 10,000건/일 · 서울 일반 키 제한 없음(1회 1,000건) · 카카오 장소 검색 100,000건/일 | 수집 워커·실시간 조회 | 1,000건 공급원은 **DB 적재 후 조회**(요청 때 직접 부르지 않음) | 11/20 확인 | 한태경 |
 | `AUTH_RATE_LIMIT_PER_MIN` | 10회/분 (IP당) | 로그인 A33(1-1절) | 확정(11/24 팀 결정) | 11/24 | 권오현 |
+
+**구현 상태 (review-fix)** — A04·A25의 공개 POST는 IP와 로그인 세션별 `rl:route` 메모리 카운터를 공유합니다. 한도 초과 시 공통 `429 RATE_LIMITED`와 다음 분까지의 초를 `Retry-After`로 반환합니다. 내부 서비스 호출은 공개 라우터를 거치지 않습니다.
 
 **⑥ 토큰·잠금·중복 실행 방지 키의 수명**
 
@@ -4031,6 +4035,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-25 | review-fix로 SSE 인증, 경로 제출 한도, 닉네임 검증, 동행 차단, 신고 권한·본인 신고 검증, 채팅 경로 오류, TOPIS A02를 반영했습니다. |
 | v0.5 | 2026-11-25 | 서울시 문화행사 축제 보강, A23 수집 이력·A24 검토 격리, A02·A03 출처 계약을 연결했습니다(2-3·6-2·13절). |
 | v0.5 | 2026-11-24 | A28 경찰청·UTIC·서울 TOPIS 어댑터, 반경·병합·캐시를 연결하고 A29 승인 매핑 설정과 서울빛초롱축제 후보 근거를 기록했습니다(6-2절). |
 | v0.5 | 2026-11-24 | A74·A75 이벤트 연결, A76 신고 접수·일일 한도, A77 운영자 열람 기록과 조치를 구현했습니다(6-4-6·18-2). |

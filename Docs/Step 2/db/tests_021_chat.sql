@@ -1,3 +1,8 @@
+\if :{?applied}
+\else
+\set applied true
+\endif
+
 BEGIN;
 
 INSERT INTO public.users (user_id, email, password_hash) VALUES
@@ -20,6 +25,7 @@ INSERT INTO public.chat_messages (room_id, seq, msg_type, body, created_at) VALU
  ('crm_T02101', 3, 'system', '입장 후', now()),
  ('crm_T02102', 1, 'system', '만료된 동행방', now() - interval '5 days');
 
+\if :applied
 SET LOCAL ROLE noldaga_app;
 SET LOCAL app.user_id = '01900000-0000-0000-0000-000000000002';
 DO $$
@@ -56,4 +62,25 @@ BEGIN
   END IF;
 END $$;
 \echo 'T021a~c PASS: 입장 시각·보존·비회원·차단 해제 뒤 RLS 및 새 방 생성'
+\else
+DO $$
+BEGIN
+  -- One outer statement shares its timestamp with both checks.
+  UPDATE public.chat_rooms SET read_only_at = statement_timestamp() - interval '72 hours' + interval '1 microsecond'
+  WHERE room_id = 'crm_T02102';
+  SET LOCAL ROLE noldaga_app;
+  PERFORM set_config('app.user_id', '01900000-0000-0000-0000-000000000002', true);
+  IF NOT EXISTS (SELECT 1 FROM public.chat_messages WHERE room_id = 'crm_T02102') THEN
+    RAISE EXCEPTION 'T021d FAIL: 되돌리기 후 72시간 직전 메시지 미노출';
+  END IF;
+  RESET ROLE;
+  UPDATE public.chat_rooms SET read_only_at = statement_timestamp() - interval '72 hours'
+  WHERE room_id = 'crm_T02102';
+  SET LOCAL ROLE noldaga_app;
+  IF EXISTS (SELECT 1 FROM public.chat_messages WHERE room_id = 'crm_T02102') THEN
+    RAISE EXCEPTION 'T021d FAIL: 되돌리기 후 정확히 72시간 지난 메시지 노출';
+  END IF;
+END $$;
+\echo 'T021d PASS: 되돌리기 후 72시간 경계에서 채팅 이력 RLS 적용'
+\endif
 ROLLBACK;

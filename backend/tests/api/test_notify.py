@@ -148,3 +148,27 @@ def test_daily_limit_and_non_chat_actions(client, review, clock, mock_chat_state
     assert client.get(f"{POSTS}/{post}", headers=a).status_code == 200
     another = submit(client, a, "companion_post", post).json()["report_id"]
     assert decide(client, review, another, "dismiss").json()["status"] == "dismissed"
+
+
+def test_cannot_report_own_account(client, review):
+    uid, headers = signup(client, 0)
+    rejected = submit(client, headers, "user", uid.upper())
+    assert rejected.status_code == 400
+    assert rejected.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert client.get(ADMIN, headers=review).json()["items"] == []
+
+
+@pytest.mark.parametrize("role", ["operator", "admin"])
+def test_report_moderation_rejects_staff_before_updating_account(role):
+    from unittest.mock import Mock
+    from uuid import uuid4
+
+    from api.errors import ApiError
+    from api.repositories.reports import _apply_action
+
+    db = Mock()
+    db.scalar.side_effect = [1, role]
+    with pytest.raises(ApiError) as denied:
+        _apply_action(db, str(uuid4()), "block_user", uuid4())
+    assert (denied.value.status, denied.value.code) == (403, "FORBIDDEN")
+    db.execute.assert_not_called()

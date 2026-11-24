@@ -11,8 +11,8 @@
     <grs80tm_x>197977.12495093857</grs80tm_x><grs80tm_y>452994.9334457042</grs80tm_y>
   </row>
   <row>
-    <acc_type>A01</acc_type>
-    <acc_info>세종대로 별도 사고</acc_info>
+    <acc_type>A02</acc_type>
+    <acc_info>세종대로 별도 고장 차량</acc_info>
     <link_id>1000000100</link_id>
     <occr_date>20261119</occr_date><occr_time>180000</occr_time>
     <exp_clr_date>20261119</exp_clr_date><exp_clr_time>1930</exp_clr_time>

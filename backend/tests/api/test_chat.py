@@ -201,3 +201,12 @@ def test_room_and_ticket_require_authentication(client, mock):
     with client.websocket_connect(f"{BASE}/ws/chat") as ws, pytest.raises(WebSocketDisconnect) as exc:
         ws.receive_json()
     assert exc.value.code == 4401
+
+
+def test_unknown_room_action_is_not_found(client, mock):
+    _, headers = signup(client, 0)
+    path = f"{ROOMS}/crm_FIXTURE/send"
+    for authorization in ({}, headers):
+        response = client.post(path, headers=authorization)
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "NOT_FOUND"

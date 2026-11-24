@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from api.schemas.common import DisplayName
+
 Scenario = Literal["family_relaxed", "friends_activity", "couple_photo", "pet", "solo"]
 OnboardingStatus = Literal["pending", "completed", "skipped"]
 ActivityType = Literal["posts", "applications"]
@@ -32,7 +34,7 @@ class FestivalPreferences(BaseModel):
 class ProfileUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    display_name: str = Field(default_factory=str, min_length=2, max_length=12)
+    display_name: DisplayName = ""
 
 
 class Profile(BaseModel):

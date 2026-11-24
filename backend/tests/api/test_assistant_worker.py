@@ -181,7 +181,8 @@ def test_postgres_sse_drains_each_notification_packet(monkeypatch):
 
     async def receive():
         access = assistant.RunAccess(uuid4())
-        return [event async for event in job_events._postgres_events("run_000001", access, queued)]
+        events = job_events._postgres_events("run_000001", access, queued, assistant.now() + assistant.TOKEN_TTL)
+        return [event async for event in events]
 
     packets = asyncio.run(receive())
     assert len(packets) == 5

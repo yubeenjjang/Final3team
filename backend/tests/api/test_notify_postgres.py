@@ -112,3 +112,35 @@ def test_postgres_report_scope_concurrency_rls_and_audit(client, database, monke
     finally:
         with engine.begin() as db:
             db.execute(text("DELETE FROM public.reports WHERE reporter_id = :uid"), {"uid": reporter})
+
+
+@pytest.mark.parametrize("reviewer_role", ["operator", "admin"])
+def test_postgres_staff_cannot_be_suspended_by_a77(client, database, reviewer_role):
+    engine, (reporter, operator, admin, reviewer), (reporter_headers, _, _, review_headers) = database
+    with engine.begin() as db:
+        for uid, role in ((operator, "operator"), (admin, "admin"), (reviewer, reviewer_role)):
+            db.execute(text("UPDATE public.profiles SET role = :role WHERE user_id = :uid"), {"uid": uid, "role": role})
+    try:
+        rejected = submit(client, reporter_headers, "user", str(reporter).upper())
+        assert rejected.status_code == 400 and rejected.json()["error"]["code"] == "VALIDATION_ERROR"
+        report_ids = [submit(client, reporter_headers, "user", uid).json()["report_id"] for uid in (operator, admin)]
+        assert client.get(ADMIN, headers=review_headers).status_code == 200
+        denied = _concurrent(
+            lambda: decide(client, review_headers, report_ids[0], "block_user"),
+            lambda: decide(client, review_headers, report_ids[1], "block_user"),
+        )
+        for response in denied:
+            assert response.status_code == 403 and response.json()["error"]["code"] == "FORBIDDEN"
+        with engine.begin() as db:
+            assert db.scalars(text("SELECT status FROM public.users WHERE user_id = ANY(:ids)"),
+                              {"ids": [operator, admin]}).all() == ["active", "active"]
+            reports = db.execute(text("""
+                SELECT status, handled_by, handled_at FROM public.reports WHERE reporter_id = :uid
+            """), {"uid": reporter}).all()
+            assert reports == [("received", None, None)] * 2
+            assert db.scalar(text("""
+                SELECT count(*) FROM public.report_moderation WHERE report_id = ANY(:ids)
+            """), {"ids": report_ids}) == 0
+    finally:
+        with engine.begin() as db:
+            db.execute(text("DELETE FROM public.reports WHERE reporter_id = :uid"), {"uid": reporter})
