@@ -11,6 +11,7 @@ from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.sql.selectable import ScalarSelect
 from ulid import ULID
 
+from api.ingestion.festivals.admin_edits import DATE_FIELDS, protect_admin_edits
 from api.ingestion.festivals.normalize import (
     CLASS_UNVERIFIED, COORDS_OUT_OF_RANGE, FESTIVAL_CATEGORY, FESTIVAL_CLASS, KST, NOT_FESTIVAL_CLASS,
     FestivalRecord,
@@ -290,6 +291,27 @@ def _upsert(
                 values.update(review_status="pending", published_at=None)
         values = {name: values[name] for name in fields}
     changes = changed_fields(previous, values)
+    conflicts = protect_admin_edits(connection, festival_id, previous, changes)
+    if (
+        conflicts.intersection((*LOCATION_FIELDS, *DATE_FIELDS)) and "review_status" in values
+        and previous["review_status"] != "hidden"
+        and not (previous["source_presence"] and previous["review_status"] == "pending")
+    ):
+        # 게시 판단은 수집 제안 대신 실제로 저장될 날짜·위치와 분류를 사용합니다.
+        effective = {**previous, **changes}
+        valid_location = effective["address"] is None or (
+            effective["latitude"] is not None and effective["longitude"] is not None
+        )
+        publishable = (
+            effective["category"] == FESTIVAL_CATEGORY and effective["source_class_level2"] == FESTIVAL_CLASS
+            and effective["start_date"] is not None and effective["end_date"] is not None and valid_location
+        )
+        for field in PUBLICATION_FIELDS:
+            changes.pop(field, None)
+        changes.update(changed_fields(previous, {
+            "review_status": "approved" if publishable else "pending",
+            "published_at": (previous["published_at"] or now) if publishable else None,
+        }))
     if not has_required_fields and not changes:
         return None
     connection.execute(FESTIVALS.update().where(FESTIVALS.c.festival_id == festival_id).values(

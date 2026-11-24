@@ -17,7 +17,7 @@ from api.auth import service, state
 from api.auth.tokens import AccessClaims, read_access_token, unauthorized, uses_auth_db
 from api.errors import ApiError
 from api.mocks.store import auth_lock
-from api.request_logs import ADMIN_REPORTS_PATH, ADMIN_REVIEW_PATH, admin_notice_endpoint
+from api.request_logs import ADMIN_REPORTS_PATH, ADMIN_REVIEW_PATH, admin_festival_endpoint, admin_notice_endpoint
 from api.services.mock_auth import authenticated_access
 from shared.db.session import user_db_session
 
@@ -85,9 +85,27 @@ def _mock_operator(authorization: str | None, setting: str) -> CurrentUser:
     )
 
 
+def _mock_admin_user(authorization: str | None) -> CurrentUser:
+    scheme, _, token = (authorization or "").partition(" ")
+    if scheme.lower() == "bearer":
+        configured = os.environ.get("MOCK_ADMIN_FESTIVALS_TOKEN", "").encode()
+        if len(configured) >= 32 and secrets.compare_digest(configured, token.encode()):
+            return CurrentUser(AccessClaims(UUID(int=1), "mock-admin-festivals", 0), "admin", True)
+        configured = os.environ.get("MOCK_ADMIN_REVIEW_TOKEN", "").encode()
+        if len(configured) >= 32 and secrets.compare_digest(configured, token.encode()):
+            return CurrentUser(AccessClaims(UUID(int=0), "mock-admin-review", 0), "operator", True)
+    with auth_lock:
+        _, session = authenticated_access(authorization, datetime.now(timezone.utc))
+    return CurrentUser(
+        AccessClaims(UUID(session.user_id), "mock-user", int(session.expires_at.timestamp())), "user", True,
+    )
+
+
 async def get_current_user(
     auth: AuthenticatedSession, request: Request, authorization: Authorization = None,
 ) -> CurrentUser | None:
+    if not uses_auth_db() and admin_festival_endpoint(request.url.path):
+        return await run_in_threadpool(_mock_admin_user, authorization)
     setting = _MOCK_OPERATOR_TOKENS.get(request.url.path.rstrip("/"))
     if setting is None and admin_notice_endpoint(request.url.path) is not None:
         setting = _MOCK_OPERATOR_TOKENS[ADMIN_REVIEW_PATH]

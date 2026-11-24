@@ -24,7 +24,9 @@ _COMPANION_PATH = re.compile(
 
 _ADMIN_NOTICE_PATH = re.compile(r"/api/v1/admin/notices(?:/[^/]+(?:/(review|end))?)?/?")
 
-ADMIN_REVIEW_PATH = "/api/v1/admin/festivals/review-queue"
+ADMIN_FESTIVALS_PATH = "/api/v1/admin/festivals"
+ADMIN_REVIEW_PATH = ADMIN_FESTIVALS_PATH + "/review-queue"
+_ADMIN_FESTIVAL_DETAIL = re.compile(ADMIN_FESTIVALS_PATH + r"/[^/]+")
 REPORTS_PATH = "/api/v1/reports"
 ADMIN_REPORTS_PATH = "/api/v1/admin/reports"
 REPORT_PATHS = frozenset((REPORTS_PATH, ADMIN_REPORTS_PATH))
@@ -90,6 +92,15 @@ def admin_notice_endpoint(path: str) -> str | None:
     return base + "/{notice_id}" + ("/" + match[1] if match[1] else "")
 
 
+def admin_festival_endpoint(path: str) -> str | None:
+    path = path.rstrip("/")
+    if path in (ADMIN_FESTIVALS_PATH, ADMIN_REVIEW_PATH):
+        return path
+    if _ADMIN_FESTIVAL_DETAIL.fullmatch(path):
+        return ADMIN_FESTIVALS_PATH + "/{festival_id}"
+    return None
+
+
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
@@ -100,7 +111,7 @@ def private_endpoint(path: str) -> str | None:
     normalized = path.rstrip("/")
     if normalized in REPORT_PATHS or normalized == ADMIN_REVIEW_PATH:
         return normalized
-    return admin_notice_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):

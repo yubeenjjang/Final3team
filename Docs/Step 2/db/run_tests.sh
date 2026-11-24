@@ -244,6 +244,28 @@ echo "## 5-9. 022_notice 공식 공지 통제 버전 적용·되돌리기·재�
 "${PSQL_TX[@]}" -q < 022_notice_down.sql
 "${PSQL_TX[@]}" -q < 022_notice.sql
 "${PSQL[@]}" -q -f - < tests_022_notice.sql
+echo "## 5-9. 022_admin-festivals 관리자 등록·변경 이력 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_admin-festivals.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_admin-festivals.sql
+if admin_festivals_down_check=$(
+  {
+    echo "INSERT INTO public.festivals (festival_id, title, region_code) VALUES ('fst_T22002', '축제', 'SEOUL');"
+    echo "INSERT INTO public.festival_change_history (festival_id, field, actor, changed_at, reason, actor_user_id) VALUES ('fst_T22002', 'title', 'admin', now(), '보존', '22220000-0000-0000-0000-000000000001');"
+    cat 022_admin-festivals_down.sql
+  } | "${PSQL_TX[@]}" -q 2>&1
+); then
+  echo "T022d FAIL: 운영 감사 이력이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -Fq '022_admin-festivals: 등록·수정 감사 이력이 있습니다' <<< "$admin_festivals_down_check"; then
+  printf 'T022d FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$admin_festivals_down_check"
+  exit 1
+fi
+echo "T022d PASS: 관리자 감사 이력이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 022_admin-festivals_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_022_admin-festivals.sql
+"${PSQL_TX[@]}" -q < 022_admin-festivals.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_admin-festivals.sql
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
