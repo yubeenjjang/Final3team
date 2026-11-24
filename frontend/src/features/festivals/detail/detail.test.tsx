@@ -144,7 +144,9 @@ describe("F7 festival detail", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "찜하기" }));
-    expect(pushMock).toHaveBeenCalledWith(
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "로그인하기" })).toHaveAttribute(
+      "href",
       "/auth/login?next=%2Ffestivals%2Ffst_000001",
     );
   });

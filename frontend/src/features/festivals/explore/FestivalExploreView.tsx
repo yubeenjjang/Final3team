@@ -1,7 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { RotateCcw, Search, X } from "lucide-react";
+import { LoginPromptSheet } from "@/components/LoginPromptSheet";
+import { useIsSignedIn } from "@/components/RequireAuth";
+import { useFestivalFavorites } from "@/features/accounts/favorites/useFestivalFavorites";
 import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
 import { FestivalCard } from "./FestivalCard";
@@ -14,7 +17,35 @@ import {
 
 const PAGE_SIZE = 20;
 
+function SignedInFestivalCards({ items }: { items: FestivalListItem[] }) {
+  const ids = useMemo(() => items.map((item) => item.festival_id), [items]);
+  const { savedIds, busyIds, error, toggle } = useFestivalFavorites(ids);
+
+  return (
+    <>
+      {error ? (
+        <p role="alert" className="text-xs font-medium text-brand">
+          {error}
+        </p>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3">
+        {items.map((item) => (
+          <FestivalCard
+            key={item.festival_id}
+            item={item}
+            isFavorite={savedIds?.has(item.festival_id) ?? false}
+            favoriteDisabled={!savedIds || busyIds.has(item.festival_id)}
+            onToggleFavorite={(festivalId) => void toggle(festivalId)}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function FestivalExploreView() {
+  const signedIn = useIsSignedIn();
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [region, setRegion] = useState<RegionFilter>("ALL");
@@ -280,11 +311,19 @@ export function FestivalExploreView() {
         </div>
       ) : (
         <section className="space-y-3">
-          <div className="grid grid-cols-1 gap-3">
-            {items.map((item) => (
-              <FestivalCard key={item.festival_id} item={item} />
-            ))}
-          </div>
+          {signedIn ? (
+            <SignedInFestivalCards items={items} />
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {items.map((item) => (
+                <FestivalCard
+                  key={item.festival_id}
+                  item={item}
+                  onToggleFavorite={() => setLoginPromptOpen(true)}
+                />
+              ))}
+            </div>
+          )}
 
           {errorMessage ? (
             <p className="text-center text-xs font-medium text-brand">
@@ -306,6 +345,12 @@ export function FestivalExploreView() {
           ) : null}
         </section>
       )}
+
+      <LoginPromptSheet
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        nextPath="/festivals"
+      />
     </div>
   );
 }

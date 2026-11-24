@@ -92,6 +92,26 @@ export function getApiBase(): string {
   return DEFAULT_API_BASE;
 }
 
+export function getWsUrl(
+  path: string,
+  query?: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const base = getApiBase().replace(/^http(s?):\/\//i, "ws$1://");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = `${base}${normalizedPath}`;
+  if (!query) {
+    return url;
+  }
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  }
+  const serialized = params.toString();
+  return serialized ? `${url}?${serialized}` : url;
+}
+
 export function createRequestId(): string {
   const bytes = new Uint8Array(REQUEST_ID_LENGTH);
   if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
@@ -437,6 +457,14 @@ export function apiPut<T>(
   options?: Omit<ApiRequestOptions, "method" | "body">,
 ): Promise<T> {
   return apiFetch<T>(path, { ...options, method: "PUT", body });
+}
+
+export function apiPatch<T>(
+  path: string,
+  body?: unknown,
+  options?: Omit<ApiRequestOptions, "method" | "body">,
+): Promise<T> {
+  return apiFetch<T>(path, { ...options, method: "PATCH", body });
 }
 
 export function apiDelete<T = void>(
