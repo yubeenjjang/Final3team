@@ -1,7 +1,7 @@
 import asyncio
-import hashlib
 import hmac
 import json
+import re
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -27,6 +27,7 @@ from api.providers.route_base import (
     make_candidate,
 )
 from api.providers.tmap import TmapClient
+from api.schemas.routes import ReturnRouteRequest, VisitRouteRequest
 from api.services import real_routes
 from . import FIXTURES, TEST_KEY
 
@@ -270,10 +271,73 @@ def test_P10_cache_key_uses_hmac_and_rounded_coordinates(routes: Routes) -> None
     assert original["route_candidates"] == second["route_candidates"]
     assert len(routes.tmap.queries) == 1
     key, = routes.service._cache
-    departure_bucket = int(routes.clock.now.timestamp()) // 300
-    encoded = f"return|37.5759,126.9768|37.5000,126.9000|transit|fastest|{departure_bucket}".encode()
-    assert key == hmac.new(b"TEST_KEY_DO_NOT_USE", encoded, hashlib.sha256).hexdigest()
+    assert re.fullmatch(r"v2:[0-9a-f]{64}", key)
     assert all(coordinate not in key for coordinate in ("37.5759", "126.9768", "37.5000", "126.9000"))
+
+
+@pytest.mark.parametrize("conditions", [
+    {"user_constraints": {"with_child": True}},
+    {"user_constraints": {"wheelchair": True}},
+    {"user_constraints": {"max_walk_m": 0}},
+    {"route_preference": "min_walk"},
+    {"travel_mode": "walk"},
+])
+def test_P23_cache_and_idempotency_distinguish_request_conditions(routes: Routes, conditions) -> None:
+    first = _body(routes.client.post(_RETURN, json=_BODY), 200)
+    same = _body(routes.client.post(_RETURN, json={
+        **_BODY, "request_id": "same-conditions", "departure": "now",
+        "user_constraints": {"max_walk_m": None, "wheelchair": False, "with_child": False},
+    }), 200)
+    assert len(routes.tmap.queries) == 1
+    assert routes.service._records[first["route_request_id"]].route_key == (
+        routes.service._records[same["route_request_id"]].route_key
+    )
+
+    different = _body(routes.client.post(_RETURN, json={
+        **_BODY, **conditions, "request_id": "different-conditions",
+    }), 200)
+    assert routes.service._records[different["route_request_id"]].route_key != (
+        routes.service._records[first["route_request_id"]].route_key
+    )
+    assert len(routes.tmap.queries) == 2
+    conflict = _body(routes.client.post(_RETURN, json={**_BODY, **conditions}), 409)
+    assert conflict["error"]["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+def test_P23_route_key_includes_direction_departure_control_and_provider(routes: Routes) -> None:
+    async def keys():
+        request = ReturnRouteRequest(**_BODY)
+        query = RouteQuery((37.5759, 126.9768), (37.5, 126.9), routes.clock.now)
+        service = routes.service
+        record = service._new_record("return", request, "", "", "", "")
+        key = service._route_key(record, query, "tmap")
+        assert key == service._route_key(record, query, "tmap")
+        assert key != service._route_key(record, query, "kakao")
+
+        with_control = real_routes.RealRouteService(control_version="notice-2")
+        assert key != with_control._route_key(record, query, "tmap")
+        record.direction = "visit"
+        record.request = VisitRouteRequest(**request.model_dump())
+        assert key != service._route_key(record, query, "tmap")
+        record.direction = "return"
+        record.request = request
+        record.depart_at += timedelta(minutes=5)
+        assert key != service._route_key(record, query, "tmap")
+
+        encoded = {
+            "direction": "return", "festival_id": "fst_000001",
+            "origin_type": "festival", "destination_type": "place",
+            "origin": ["37.5759", "126.9768"], "destination": ["37.5000", "126.9000"],
+            "travel_mode": "transit", "route_preference": "fastest",
+            "user_constraints": {"with_child": False, "wheelchair": False, "max_walk_m": None},
+            "departure": "now", "departure_bucket": int(routes.clock.now.timestamp()) // 300,
+            "control_version": "none", "provider": "tmap",
+        }
+        normalized = json.dumps(encoded, sort_keys=True, separators=(",", ":"))
+        expected = hmac.digest(TEST_KEY.encode(), f"route-key-v2:{normalized}".encode(), "sha256").hex()
+        assert key == f"v2:{expected}"
+
+    asyncio.run(keys())
 
 
 def test_P10_five_concurrent_requests_share_one_tmap_call(routes: Routes) -> None:
@@ -302,6 +366,20 @@ def test_P10_five_concurrent_requests_share_one_tmap_call(routes: Routes) -> Non
     assert all(response["route_status"] == "ready" for response in ready)
     assert len(routes.tmap.queries) == 1
     assert routes.quota.calls == ["tmap"]
+
+
+def test_P23_kakao_fallback_uses_its_own_provider_key(routes: Routes) -> None:
+    routes.clock.now -= timedelta(minutes=1)
+    tmap = _body(routes.client.post(_RETURN, json=_BODY), 200)
+    routes.clock.now += timedelta(seconds=61)
+    routes.tmap.error = "temporary"
+    kakao = _body(routes.client.post(_RETURN, json={**_BODY, "request_id": "kakao-fallback"}), 200)
+
+    assert (tmap["provider"], kakao["provider"]) == ("tmap", "kakao")
+    assert routes.service._records[tmap["route_request_id"]].route_key != (
+        routes.service._records[kakao["route_request_id"]].route_key
+    )
+    assert not routes.service._cache
 
 
 def test_P11_secondary_response_is_only_available_on_sync_post(routes: Routes) -> None:
