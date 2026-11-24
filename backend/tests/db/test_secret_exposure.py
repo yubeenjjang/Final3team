@@ -60,7 +60,9 @@ RULES = {
     # 공급원 키 형태: TMAP appKey, 카카오 KakaoAK, 공공데이터 serviceKey
     "공급원_키형태": re.compile(r"(?i)(?:appkey['\"]?\s*[:=]\s*['\"]?|KakaoAK\s+|serviceKey=)([A-Za-z0-9%+/=_\-]{20,})"),
 }
-PLACEHOLDER = re.compile(r"(?i)^(<.*>|\$\{?.*|\{\{.*|x{3,}|\*{3,}|\.\.\.|changeme|none|null|true|false|test|example)$|"
+# 값 전체가 자리표시인 경우만 넘긴다. `{이름}`은 f-string·format 자리표시(고정 문자가 섞이면 잡음).
+PLACEHOLDER = re.compile(r"(?i)^(<.*>|\$\{?.*|\{\{.*|\{[A-Za-z_][\w.]*(?:\[[^\]]*\])?(?:![rsa])?(?::[^}]*)?\}|"
+                         r"x{3,}|\*{3,}|\.\.\.|changeme|none|null|true|false|test|example)$|"
                          r"(test|fake|dummy|example|sample|placeholder|your[_-]|xxxx|<|\$\{)", re.I)
 
 
@@ -98,6 +100,10 @@ def find_committed_secrets(diff_text: str) -> list[str]:
     ("+_STARTUP_SECRET = secrets.token_bytes(32)", "backend/api/x.py", 0),
     ("+headers = {'Authorization': 'KakaoAK 0123456789abcdef0123456789abcdef'}", "backend/api/kakao.py", 1),
     ("+_TOKEN_HEADER = 'X-Route-Access-Token'", "backend/tests/x.py", 0),
+    # 코드에서 실행 때 채우는 자리표시(f-string·format)는 값이 아니다 (11/24 SEC-05 파일 오탐으로 추가)
+    ("+dsn = f\"postgresql://postgres:{migration_pw}@127.0.0.1:9/noldaga\"", "backend/tests/x.py", 0),
+    ("+dsn = 'postgresql://{user}:{password}@{host}/{db}'.format(**v)", "backend/api/x.py", 0),
+    ("+dsn = f\"postgresql://postgres:Zk3pQ9wLx2{suffix}@db/noldaga\"", "backend/api/x.py", 1),  # 고정 값이 섞이면 잡음
 ])
 def test_sec02_detector_rules(line, path, hits):
     """검사 규칙이 실제 비밀값 형태는 잡고, 자리표시·시험값·코드 표현식은 넘기는지."""
