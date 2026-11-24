@@ -46,12 +46,8 @@
       },
       "status": {
         "type": "string",
-        "enum": [
-          "upcoming",
-          "ongoing",
-          "ended",
-          "cancelled"
-        ]
+        "pattern": "^(upcoming|ongoing|ended|cancelled)(,(upcoming|ongoing|ended|cancelled))*$",
+        "description": "상태 하나 또는 쉼표로 구분한 여러 상태. 예: ongoing,upcoming."
       },
       "page_size": {
         "type": "integer",
