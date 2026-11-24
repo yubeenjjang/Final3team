@@ -9,9 +9,9 @@
 |---|---|---|---|---|---|---|
 | ★ A02 축제 목록·검색 | `GET /festivals` | **실제 ✅ 11/23** (`FESTIVAL_DATA=db`, 기본은 모의) | — | TourAPI 전국 축제 870건(공개 869) | — | ✅ |
 | ★ A03 축제 상세 | `GET /festivals/{id}` | **실제 ✅ 11/23** (`FESTIVAL_DATA=db`) | — | TourAPI 상세(소개·입장료는 원본에 있을 때만) | — | ✅ |
-| ★ A04·A05 귀가 경로 | `POST /routes/return` → `GET /routes/return/{id}` | 기본 모의 · 실제 모드(`ROUTE_PROVIDER=real`) 막차 처리 구현 | **11/27** | TMAP 1차 · 카카오 2차 | W36 | ✅ (토큰으로 본인 요청만) |
-| A25 가는 길 | `POST /routes/visit` → `GET /routes/visit/{id}` | 기본 모의 · 실제 모드 막차 처리 구현 | 11/27 (A04와 같은 코드) | 같음 | W36 | ✅ |
-| A10 혼잡(서울만) | `GET /festivals/{id}/crowd` | **실제(`CROWD_PROVIDER=real`)**, 기본 모의 | — | 서울시 실시간 인구데이터 · 1km 이내 최대 3곳 | W89 | ✅ |
+| ★ A04·A05 귀가 경로 | `POST /routes/return` → `GET /routes/return/{id}` | 기본 모의 · 실제 모드 막차 및 `ROUTE_STORE=db` 연결 구현, DB 시험 재실행 대기 | **11/27** | TMAP 1차 · 카카오 2차 | W36 · 강사 DB 4 | 접수는 비회원 가능. DB 상태 조회 토큰은 접수 후 10분 유효 |
+| A25 가는 길 | `POST /routes/visit` → `GET /routes/visit/{id}` | 기본 모의 · 실제 모드 막차 및 DB 저장 구현, DB 시험 재실행 대기 | 11/27 (A04와 같은 코드) | 같음 | W36 | A04·A05와 같음 |
+| A10 주변 지역 혼잡(서울만) | `GET /festivals/{id}/crowd` | 기본 모의 · 승인된 연결만 실제 조회 가능 | 매핑과 HTTP 전송 확인 후 | 서울시 실시간 인구 관측값 · 승인 구역 중 1km 이내 최대 3곳 | W89 | ✅ |
 | A09 날씨 | `GET /festivals/{id}/weather` | 모의 | 11/30 | 기상청 단기예보 | W34 | ✅ |
 | A07 공지·통제 | `GET /festivals/{id}/notices` | 모의 | 12/10 | 공식 공지 수집 | 유빈 11/23 일정 | ✅ |
 | A08 주변 시설 | — | **없음** | 12/09 | — | 유빈 11/23 일정 | — |
@@ -23,7 +23,8 @@
 - 실제 전환 뒤에도 **모의 서버는 남겨** 둡니다(시험·시연 예비용, `APP_ENV≠prod`).
 
 - **11/23 추가:** A02 `status`에 여러 값(`status=ongoing,upcoming`) — 화면에서 끝난 축제를 빼고 부를 때. 기존 한 값 사용법은 그대로.
-- **11/23:** DB 모드에서도 귀가·공지·날씨·혼잡·관심·AI 질문이 **실제 축제 ID**를 받습니다. A10은 실제 모드에서 구역별 혼잡을 제공합니다.
+- **11/23:** DB 모드에서도 귀가·공지·날씨·혼잡·관심·AI 질문이 **실제 축제 ID**를 받습니다.
+- **11/24 W89:** A10의 화면 문구는 ‘주변 지역 혼잡’입니다. 실연동 승인 0건이며 대체 평균은 표시에서 제외합니다. [시연 후보와 승인 기준](../../../backend/Doc/seoul-crowd/SPEC.md)
 
 ## 2. 귀가 조회 상태값 — 화면이 구분해야 할 것
 | `route_status` | 뜻 | 화면 | `completed_valid_route` |
@@ -43,6 +44,7 @@
 | `ROUTE_SECONDARY_SYNC_ONLY` | 2차(카카오) 결과는 저장할 수 없어 **나중 조회로 줄 수 없음** | true | 잠시 뒤 다시 조회해 주세요 | `async_secondary_sync_only` · `sync_secondary` 뒤 재조회 *(6단계 추가)* |
 | `ROUTE_NO_RESULT` | 조건에 맞는 경로 없음 또는 TMAP 후보 모두 운행 종료 | **false** | 조건에 맞는 경로가 없어요 / 지금은 대중교통으로 갈 수 없어요 | `async_no_result` *(6단계)* |
 | `ROUTE_QUOTA_EXCEEDED` | 공급원 하루 한도 소진 | **false** | 공식 교통 안내를 확인해 주세요 | `async_quota_exceeded` *(6단계)* |
+| `ROUTE_ACCESS_EXPIRED` (200 `unavailable`) | DB 접수 10분 후 동일 `request_id`·본문 재전송. 기존 경로 ID 반환 | **false** | 경로 조회 시간이 지났어요. 새 요청 ID로 다시 요청해 주세요 | — |
 | `ROUTE_INVALID` (400) | 목적지를 못 찾음 | false | 목적지를 찾을 수 없어요 | 목적지에 `없는곳` |
 | `FESTIVAL_LOCATION_UNKNOWN` (400) | 축제 좌표 없음 | false | 축제 위치를 확인할 수 없어요 | `fst_000006` |
 
@@ -62,3 +64,7 @@
 | 11/23 | 처음 작성. 6단계(2차 공급원·오류 시나리오) 모의 서버 반영 | 권오현 |
 | 11/23 | A02·A03 실제 DB 조회(TourAPI 870건), 여러 상태 필터, 실제 축제 ID로 귀가 등 연결 | 권오현 |
 | 11/23 | W36 STEP3 막차 처리와 합성 응답 시험 반영(기본 모의 유지) | 권오현 |
+| 11/23 | STEP4 011 및 A04/A05 DB 저장 구현. 일회용 DB에서 같은 축제로 연속 검증 대기 | 권오현 |
+| 11/24 | A04·A25 토큰 만료 뒤 재전송 응답 명시, P18 축제 시험 데이터·조회 계정 수정 | 권오현 |
+
+11/24 백엔드 전체 오프라인 pytest 377개 중 **365개 통과, DB 표시 12개 건너뜀(P18 4개 포함)**. 11/23 밤 로컬 DB는 SQL·백업 로그 PASS 156건, 백엔드 DB 시험 9개 통과·3개 실패였습니다. 수정 후 **DB 시험 재실행 대기**입니다. [귀가 경로 구현 계획](../../../backend/Doc/route-providers/IMP-PLAN.md#step4-db-저장)

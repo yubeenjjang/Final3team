@@ -1,6 +1,6 @@
 # SPEC — W89 서울 축제 주변 지역 혼잡 연결
 
-기준은 [API 설계문서 A10](../../../Docs/Step%202/API_설계문서.md)의 A10 절과 `api/schemas/festival_info.py`, `api/services/mock_festival_info.py`의 현재 응답입니다. 2026-11-23 KST 조사 결과입니다.
+기준은 [API 설계문서 A10](../../../Docs/Step%202/API_설계문서.md)의 A10 절과 11/23 KST 조사입니다. 11/24 요청에 따라 승인된 매핑만 실제 연결하고, 공급원의 대체 평균은 응답에서 제외합니다.
 
 ## 0. 서울시 공급원 조사
 
@@ -33,44 +33,55 @@
 
 ## 1. P1 — 공식 구역과 거리
 
-- 11/23 권오현 결정. 강사 11/17의 지원 장소 확인만으로 임의 축제 혼잡과 연결할 수 없다는 피드백을 반영해, 축제 근처 **공식 구역의 집계 혼잡**을 안내합니다.
-- `festival_lookup.find_festival`로 공개 축제를 확인합니다. 서울 밖, 좌표 없음, 1,000m 이내 구역 없음은 각각 `outside_seoul`, `missing_coordinates`, `no_nearby_areas` 사유로 `unsupported`를 반환합니다.
+- `festival_lookup.find_festival`로 공개 축제를 확인합니다. 서울 밖, 유효 좌표 없음, 승인 매핑 없음, 반경 내 승인 구역 없음은 각각 `outside_seoul`, `missing_coordinates`, `no_approved_mapping`, `no_nearby_areas` 사유로 `unsupported`를 반환합니다. 이 경우 공급원과 호출 예산에 접근하지 않습니다.
+- 실연동 승인 기준은 [매핑 JSON](../../api/data/seoul_crowd_mapping.json) `schema_version:1`의 `festivals[].candidates[].approved: true`입니다. 최상위 `approved`는 조사 집계입니다. 축제 ID와 승인 당시의 서울 지역·좌표·장소명·주소가 현재 조회 결과와 일치해야 합니다. 행사장·주 출입구·안내 범위를 확인한 뒤 근거·승인자·일시를 기록하고 해당 구역의 승인 표식을 갱신합니다. 승인 데이터는 배포 후 프로세스를 다시 시작해 읽습니다.
 - `api/data/seoul_areas.json`의 공식 121개 구역을 순수 파이썬으로 읽습니다. WGS84의 위·경도 좌표를 축제 위치 기준 국소 평면에서 미터로 환산한 뒤 다각형 경계의 선분까지 최단거리를 계산합니다. 구역 안과 경계 위는 0m이며 내부 링의 빈 공간은 경계까지 거리를 계산합니다. JSON의 검증 기록에서 원본 경계와의 오차 상한은 약 3.5m입니다.
-- 1,000m를 포함해 필터링하고 거리 오름차순, 동률이면 구역 코드순으로 세 곳까지 선택합니다. 비교는 반올림 전 거리이며 응답의 `distance_m`는 소수점 한 자리까지 제공합니다. 양의 거리는 최소 0.1m로 표시합니다.
-- [연결표](mapping_draft.md)와 [JSON 초안](../../api/data/seoul_crowd_mapping.json)은 폐기된 대표 구역 승인 방식의 1단계 참고 자료입니다.
+- 공식 목록에서 승인 코드만 고른 뒤 1,000m 이내에서 거리순, 동률이면 구역 코드순으로 최대 세 곳을 선택합니다. 비교는 반올림 전 거리이며 `distance_m`는 소수점 한 자리와 최소 양의 거리 0.1m를 사용합니다.
+
+### 2026-11-24~2027-01-31 시연 후보
+
+11/23에 저장한 공개 A02 일정·A03 장소와 서울시 121구역의 경계를 대조했습니다. 양 끝 날짜를 포함해 일정이 겹치는 21건 중 확정 후보가 세 곳입니다. 세 곳 모두 A03 좌표가 수리되지 않은 공식 구역 한 곳 내부에 있고 경계에서 25m보다 멉니다. 거리는 행사장 대표 좌표에서 구역 경계까지의 안쪽 여유입니다. 실연동 승인 건수는 0건입니다. [연결표](mapping_draft.md#확정-후보-48건) · [매핑 JSON](../../api/data/seoul_crowd_mapping.json)
+
+| 시연 순위 | 축제 | 개최 기간 | A03 행사 장소 | 서울시 구역 | 근거와 선정 이유 |
+|---|---|---|---|---|---|
+| 대표 | 2026 숭례문 파수의식 | 2026-01-01 ~ 2026-12-31 | 숭례문 광장, 중구 세종대로 40 | `POI131` 숭례문 | 단일 구역 내부 131.0m. 행사 광장과 집계 지명이 같고 12월 말까지 진행돼 안내 범위를 설명하기 쉽습니다. |
+| 예비 1 | 국악공연 진연 | 2026-01-01 ~ 2026-12-31 | 진연, 종로구 인사동5길 10 | `POI078` 인사동 | 단일 구역 내부 191.5m로 세 후보 중 경계 여유가 가장 큽니다. 12월 말까지 진행됩니다. |
+| 예비 2 | 《소장품, 시대의 장면들》 | 2026-10-16 ~ 2026-12-06 | 아르코미술관 제1·2전시실, 종로구 동숭길 3 | `POI054` 혜화역 | 단일 구역 내부 82.6m. 건물과 전시실이 특정되며 12월 6일까지 시연할 수 있습니다. |
+
+12월 31일 이후 일정이 있는 확정 후보는 저장 자료에 없습니다. 대표와 예비의 실제 연동 및 1월 시연 장소는 사용자 확인이 필요합니다.
 
 ## 2. P2 — 공급원과 유효성
 
-- 선택한 구역별 `AREA_CD`로 `citydata_ppltn`에 요청합니다. 연결·본문 읽기를 포함한 총 제한 시간은 3초입니다. 리다이렉트를 따르지 않으며 프로그램 로그와 응답에서 키를 가립니다.
+- 선택한 구역별 `AREA_CD`로 `citydata_ppltn`에 요청합니다. 연결·본문 읽기의 총 제한 시간은 **기본 3초, 운영값 확인 필요**입니다. 리다이렉트를 따르지 않으며 프로그램 로그와 응답에서 키를 가립니다.
 - 결과 코드는 `RESULT` 객체 또는 최상위 객체에서 `"RESULT.CODE"`를 우선 읽고, 없거나 비어 있으면 `"CODE"`를 읽습니다. 성공 코드 `INFO-000`과 함께 `SeoulRtd.citydata_ppltn`에 요청 구역과 일치하는 결과 1개가 있어야 합니다.
 - 필수 문자열·허용 혼잡 등급·0 이상 정수 인구 범위(최소≤최대)·서울 기준 시각 `PPLTN_TIME`·`REPLACE_YN`의 `N`/`Y`를 검증합니다. 미래 기준 시각은 실패입니다.
 - HTTP·본문 코드·형식·타임아웃은 해당 구역 `unavailable`과 `SOURCE_RESULT_ERROR`로 처리합니다. 자체 재시도는 없고 키 오류, 키 미설정, 일일 한도 소진은 `retryable:false`입니다.
-- `REPLACE_YN=Y`는 최근 4주 같은 요일·시간대 평균입니다. `is_estimate:true`로 반환하고 ‘실시간 자료가 없어 최근 4주 같은 시간대 평균이에요’를 표시합니다.
+- `REPLACE_YN=Y`는 `unavailable` 구역으로 처리합니다. 집계값, 등급, 기준 시각, 대체값 안내를 응답에 싣거나 캐시하지 않습니다. 다른 승인 구역의 관측값은 표시할 수 있습니다.
 
 ## 3. P3 — A10 응답
 
 - 기존 `is_mock`, `festival_id`, `status`, `coverage`, `source`, `observed_at`, `notices`, `error`, `areas`를 유지합니다. `coverage.supported`는 지역 지원 여부입니다. `source`는 `seoul_citydata`입니다.
 - 실제 모드의 `areas[0]`과 최상위 `observed_at`은 조회에 성공한 가장 가까운 구역으로 채웁니다. 기존 구역 필드를 유지하며 `relation_type`은 0m `contains`, 그 밖은 `adjacent`입니다. 실제 조회의 `forecast`는 빈 배열입니다. `observed_at`은 KST ISO 8601입니다.
-- 실제 모드에 `nearby_areas`, `is_estimate`, `unsupported_reason`, `source_url`을 추가합니다. 목록 원소는 `area_code`, `area_name`, `distance_m`, `status`, `data`(기존 구역 모양), `is_estimate`, `error`를 갖습니다. 실패한 구역은 `status:"unavailable"`, `data:null`, `is_estimate:null`과 오류를 갖습니다. 최상위 `is_estimate`는 `areas[0]`에 대응하며 자료가 없으면 `null`입니다.
-- `notices`는 ‘축제 근처 지역 혼잡(서울시 실시간 도시데이터)’, 구역명·거리·기준 시각, ‘행사장 안 혼잡과 다를 수 있어요’를 제공합니다. 관측값과 대체값 모두 출처는 ‘출처 서울특별시 · 2026년 서울시 인구데이터 (OA-21778)’이며, 데이터셋 링크는 `source_url`로 제공합니다. 대체 자료의 제목은 ‘축제 근처 지역 혼잡(서울시 4주 평균)’입니다. 오래된 자료에는 경과 안내를 붙입니다.
+- 실제 모드의 `nearby_areas`, `is_estimate`, `unsupported_reason`, `source_url`을 유지합니다. 목록 원소는 `area_code`, `area_name`, `distance_m`, `status`, `data`(기존 구역 모양), `is_estimate`, `error`를 갖습니다. 관측값은 `is_estimate:false`이고, 자료가 없는 구역은 `status:"unavailable"`, `data:null`, `is_estimate:null`과 오류를 갖습니다. 최상위 `is_estimate`는 `areas[0]`에 대응하며 자료가 없으면 `null`입니다.
+- 관측 데이터 안내는 ‘주변 지역 혼잡(서울시 실시간 도시데이터)’으로 시작하고, 구역명·거리·기준 시각·‘행사장 안 혼잡과 다를 수 있어요’를 포함합니다. 출처는 ‘출처 서울특별시 · 2026년 서울시 인구데이터 (OA-21778)’이며 데이터셋 링크는 `source_url`에 있습니다. `stale`에는 경과 안내를 붙입니다. 기본 모의 자료는 ‘주변 지역 혼잡(모의 데이터)’으로 안내합니다.
 
 | 경우 | A10 | Festival Agent 현재 분기 |
 |---|---|---|
 | 일부 이상 조회에 성공 | 200 `ok` 또는 가장 가까운 성공 자료가 오래됐으면 `stale`. 실패 구역은 목록에 상태 유지 | `answered` |
-| 서울 밖, 좌표 없음, 주변에 구역 없음 | 200 `unsupported`, `areas:[]`, `error:null`, `unsupported_reason` | `unsupported` |
+| 서울 밖, 좌표 없음, 승인 매핑 없음, 반경 내 승인 구역 없음 | 200 `unsupported`, `areas:[]`, `error:null`, `unsupported_reason` | `unsupported` |
 | 선택한 모든 구역 조회 실패 | 200 `unavailable`, `areas:[]`, `SOURCE_RESULT_ERROR` | `unavailable` |
 | 축제 ID 형식 오류 / 공개 축제 없음 | 422 / 404 `FESTIVAL_NOT_FOUND` | 도구 오류 처리 |
 
-`answered`는 에이전트 결과값이고 `source_error`는 모의 입력 시나리오입니다. 에이전트는 기존 `areas[0]`으로 응답합니다. 거리·여러 구역·대체값 안내를 에이전트 답변에 표시하려면 새 필드나 `notices`를 소비해야 합니다.
+`answered`는 에이전트 결과값이고 `source_error`는 모의 입력 시나리오입니다. 에이전트는 기존 `areas[0]`으로 응답합니다. 거리나 여러 구역을 표시할 화면은 `nearby_areas`와 `notices`를 읽습니다.
 
 ## 4. P4 — 캐시와 하루 호출 예산
 
-- 검증한 관측값과 대체값을 구역별 60초 동안 프로세스 메모리에 캐시합니다. 같은 구역의 동시 요청은 합칩니다. 시간 초과와 실패는 캐시하지 않습니다.
-- 읽을 때마다 관측 시각을 확인합니다. 공식 갱신은 5분이며 일반적인 자료 시차를 고려해 기준 시각에서 **45분 초과**이면 `stale`입니다. 만료 후 신규 조회가 실패하면 그 구역은 `unavailable`입니다.
-- `api/providers/quota.py`의 잠금·원자적 파일 교체·80% 초과 경고를 재사용합니다. `CROWD_SEOUL_DAILY_LIMIT` 기본값은 KST 기준 하루 1,000회입니다. 공급원 호출을 시작할 때 예약하고 실패 호출도 셉니다. 캐시 적중·병합 합류·미지원은 추가 차감 없이 처리합니다. `CROWD_QUOTA_FILE` 기본값은 `./.crowd_quota.json`이며 여러 프로세스는 같은 파일을 공유할 수 있습니다.
+- 검증한 관측값을 구역별 **기본 60초, 운영값 확인 필요**로 프로세스 메모리에 캐시합니다. 같은 구역의 동시 요청은 합칩니다. 시간 초과와 실패는 캐시하지 않습니다.
+- 읽을 때마다 관측 시각을 확인합니다. 공식 갱신은 5분이고 통상 제공 시차가 있으므로 기준 시각에서 **기본 45분 초과, 운영값 확인 필요**이면 `stale`입니다. 만료 후 신규 조회가 실패하면 그 구역은 `unavailable`입니다.
+- `api/providers/quota.py`의 잠금·원자적 파일 교체·80% 초과 경고를 재사용합니다. `CROWD_SEOUL_DAILY_LIMIT`은 **기본 KST 하루 1,000회, 운영값 확인 필요**입니다. 공급원 호출을 시작할 때 예약하고 실패 호출도 셉니다. 캐시 적중·병합 합류·미지원은 추가 차감 없이 처리합니다. `CROWD_QUOTA_FILE` 기본값은 `./.crowd_quota.json`이며 여러 프로세스는 같은 파일을 공유할 수 있습니다.
 
 ## 5. P5 — 모의/실제 전환과 시험
 
-- `CROWD_PROVIDER` 기본값은 `mock`입니다. 기존 응답과 `X-Mock-Scenario`의 `source_error`·`stale`을 유지합니다.
-- `real`에서만 서버의 `SEOUL_OPEN_API_KEY`를 읽고 공급원을 호출합니다. 실제 모드 A10은 `is_mock:false`이고 `X-Mock`이 없습니다.
-- `tests/crowd/`의 고정 파일·가짜 HTTP·가짜 시각으로 검증하고 `backend/`에서 전체 `python -m pytest`를 실행합니다.
+- `CROWD_PROVIDER` 기본값은 `mock`입니다. 기존 내장 고정 자료와 응답 키, `X-Mock-Scenario`의 `source_error`·`stale`을 유지합니다.
+- `real`에서 승인 조건을 통과한 구역만 서버의 `SEOUL_OPEN_API_KEY`로 호출합니다. 실제 모드 A10은 `is_mock:false`이고 `X-Mock`이 없습니다. 공식 HTTP 전송 허용 여부는 **사용자 확인 필요**입니다. 승인 구역과 전송 조건이 확인된 뒤 운영에서 `real`로 전환합니다.
+- `tests/crowd/`의 저장된 고정 파일·가짜 HTTP·가짜 시각으로 검증하고 `backend/`에서 전체 `python -m pytest`를 실행합니다.

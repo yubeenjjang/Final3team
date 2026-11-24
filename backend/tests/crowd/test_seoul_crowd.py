@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -13,13 +13,15 @@ from api.main import app
 from api.mocks.store import festivals
 from api.providers import seoul_citydata
 from api.providers.seoul_citydata import SeoulCityData
-from api.services import seoul_crowd
+from api.schemas.festivals import FestivalDetail
+from api.services import seoul_crowd, seoul_crowd_mapping
 from api.services.seoul_areas import SeoulArea, SeoulAreaCatalog, load_catalog
 from api.services.seoul_crowd import SeoulCrowdService
 
 _FESTIVAL = "fst_000001"
 _URL = f"/api/v1/festivals/{_FESTIVAL}/crowd"
 _NOW = datetime.fromisoformat("2026-11-19T17:26:00+09:00")
+_REPLACEMENT_NOW = datetime.fromisoformat("2026-11-23T15:55:00+09:00")
 _TEST_KEY = "TEST_KEY_DO_NOT_USE"
 _LEGACY_KEYS = {"is_mock", "festival_id", "status", "coverage", "source", "observed_at",
                 "notices", "error", "areas"}
@@ -57,14 +59,34 @@ def _service(handler: Callable, **kwargs) -> SeoulCrowdService:
     return SeoulCrowdService(provider, **({"now": lambda: _NOW} | kwargs))
 
 
+def _mapping(festival: FestivalDetail, decisions: dict[str, bool]) -> dict:
+    return festival.model_dump(include={"festival_id", "region_code", "lat", "lng", "venue_name", "address"}) | {
+        "candidates": [{"area_code": code, "approved": approved} for code, approved in decisions.items()]
+    }
+
+
+@pytest.fixture
+def write_mappings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Callable[..., None]]:
+    path = tmp_path / "mapping.json"
+    monkeypatch.setattr(seoul_crowd_mapping, "_MAPPING_PATH", path)
+
+    def write(*entries: dict) -> None:
+        path.write_text(json.dumps({"schema_version": 1, "festivals": entries}), encoding="utf-8")
+        seoul_crowd_mapping._load_mappings.cache_clear()
+
+    yield write
+    seoul_crowd_mapping._load_mappings.cache_clear()
+
+
 @pytest.fixture(autouse=True)
-def defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, write_mappings: Callable[..., None]) -> None:
     monkeypatch.setenv("SEOUL_OPEN_API_KEY", _TEST_KEY)
     monkeypatch.setenv("CROWD_QUOTA_FILE", str(tmp_path / "crowd.json"))
     monkeypatch.delenv("CROWD_SEOUL_DAILY_LIMIT", raising=False)
     monkeypatch.delenv("CROWD_PROVIDER", raising=False)
     monkeypatch.setenv("FESTIVAL_DATA", "mock")
     _set_areas(monkeypatch, (_area("POI009"),))
+    write_mappings(_mapping(festivals[_FESTIVAL], {"POI009": True}))
 
 
 def _set_areas(monkeypatch: pytest.MonkeyPatch, areas: tuple[SeoulArea, ...]) -> None:
@@ -92,12 +114,12 @@ def test_P5_default_mock_keeps_headers_and_legacy_response(monkeypatch, scenario
     assert response.json().keys() == _LEGACY_KEYS
     assert response.json()["is_mock"] is True
     assert response.json()["status"] == status
+    if status in {"ok", "stale"}:
+        assert any(notice.startswith("주변 지역 혼잡(모의 데이터)") for notice in response.json()["notices"])
 
 
-@pytest.mark.parametrize("fixture", ["observed", "replacement"])
-def test_P2_P3_real_headers_legacy_keys_and_labels(monkeypatch, fixture) -> None:
-    now = _NOW if fixture == "observed" else datetime.fromisoformat("2026-11-23T15:55:00+09:00")
-    service = _service(lambda _: httpx2.Response(200, json=_body(fixture)), now=lambda: now)
+def test_P2_P3_real_headers_legacy_keys_and_labels(monkeypatch) -> None:
+    service = _service(_observed)
     monkeypatch.setattr(seoul_crowd, "get_service", lambda: service)
     monkeypatch.setenv("CROWD_PROVIDER", "real")
     with TestClient(app) as client:
@@ -122,18 +144,41 @@ def test_P2_P3_real_headers_legacy_keys_and_labels(monkeypatch, fixture) -> None
     assert body["areas"][0]["forecast"] == []
     assert "행사장 안 혼잡과 다를 수 있어요" in body["notices"]
     assert "출처 서울특별시 · 2026년 서울시 인구데이터 (OA-21778)" in body["notices"]
-    label = "축제 근처 지역 혼잡(서울시 실시간 도시데이터)"
-    is_estimate = fixture == "replacement"
-    assert body["is_estimate"] is is_estimate and area["is_estimate"] is is_estimate
-    assert any(label in notice for notice in body["notices"]) is not is_estimate
-    assert any("최근 4주 같은 시간대 평균이에요" in notice for notice in body["notices"]) is is_estimate
+    assert body["is_estimate"] is False and area["is_estimate"] is False
+    assert any(notice.startswith("주변 지역 혼잡(서울시 실시간 도시데이터)") for notice in body["notices"])
+
+
+def test_P2_replacement_values_are_neither_returned_nor_cached(monkeypatch) -> None:
+    calls = 0
+
+    def send(request: httpx2.Request) -> httpx2.Response:
+        nonlocal calls
+        calls += 1
+        return httpx2.Response(200, json=_body("replacement")) if calls == 1 else _observed(request)
+
+    service = _service(send, now=lambda: _REPLACEMENT_NOW)
+    monkeypatch.setattr(seoul_crowd, "get_service", lambda: service)
+    monkeypatch.setenv("CROWD_PROVIDER", "real")
+    with TestClient(app) as client:
+        first = client.get(_URL)
+        second = client.get(_URL)
+    assert first.status_code == 200
+    body = first.json()
+    assert body["status"] == "unavailable" and body["error"]["retryable"]
+    assert body["areas"] == [] and body["observed_at"] is None and body["is_estimate"] is None
+    assert [area["status"] for area in body["nearby_areas"]] == ["unavailable"]
+    (area,) = body["nearby_areas"]
+    assert area["data"] is None and area["is_estimate"] is None
+    assert "4주" not in first.text
+    assert second.json()["status"] == "stale" and calls == 2
 
 
 @pytest.mark.parametrize(
     ("changes", "reason"), [
         ({"region_code": "BUSAN"}, "outside_seoul"),
         ({"lat": None}, "missing_coordinates"),
-        ({"lat": 37.7, "lng": 127.1}, "no_nearby_areas"),
+        ({"lat": 37.7, "lng": 127.1}, "no_approved_mapping"),
+        ({"address": "다른 장소"}, "no_approved_mapping"),
     ],
 )
 def test_P1_unsupported_without_provider_call(monkeypatch, changes, reason) -> None:
@@ -144,6 +189,43 @@ def test_P1_unsupported_without_provider_call(monkeypatch, changes, reason) -> N
     assert response.status == "unsupported" and response.unsupported_reason == reason
     assert not response.areas and not response.nearby_areas and response.error is None
     assert response.coverage.supported is (reason != "outside_seoul")
+    assert not service._quota._path.exists()
+
+
+def test_P1_approved_area_outside_radius_keeps_reason(monkeypatch) -> None:
+    _set_areas(monkeypatch, (_area("POI009", offset=0.05), _area("POI008")))
+    service = _service(_unexpected)
+    response = asyncio.run(service.get_crowd(_FESTIVAL))
+    assert response.status == "unsupported" and response.unsupported_reason == "no_nearby_areas"
+    assert not service._quota._path.exists()
+
+
+def test_P1_saved_candidate_cannot_call_without_approval(monkeypatch) -> None:
+    mapping_path = Path(__file__).resolve().parents[2] / "api" / "data" / "seoul_crowd_mapping.json"
+    monkeypatch.setattr(seoul_crowd_mapping, "_MAPPING_PATH", mapping_path)
+    saved = json.loads(mapping_path.read_text(encoding="utf-8"))
+    candidate = next(
+        entry for entry in saved["festivals"]
+        if entry["decision"] == "candidate" and not any(area["approved"] for area in entry["candidates"])
+    )
+    location_fields = {"festival_id", "region_code", "lat", "lng", "venue_name", "address"}
+    festival = festivals[_FESTIVAL].model_copy(update={key: candidate[key] for key in location_fields})
+    assert festival.festival_id in seoul_crowd_mapping._load_mappings()
+    monkeypatch.setattr(seoul_crowd, "find_festival", lambda _: festival)
+    service = _service(_unexpected)
+    response = asyncio.run(service.get_crowd(festival.festival_id))
+    assert response.status == "unsupported" and response.unsupported_reason == "no_approved_mapping"
+    assert not service._quota._path.exists()
+
+
+def test_P1_string_approval_does_not_enable_real_lookup() -> None:
+    path = seoul_crowd_mapping._MAPPING_PATH
+    body = path.read_text(encoding="utf-8").replace('"approved": true', '"approved": "true"')
+    path.write_text(body, encoding="utf-8")
+    service = _service(_unexpected)
+    response = asyncio.run(service.get_crowd(_FESTIVAL))
+    assert response.status == "unsupported" and response.unsupported_reason == "no_approved_mapping"
+    assert not service._quota._path.exists()
 
 
 @pytest.mark.parametrize(
@@ -231,16 +313,23 @@ def test_P2_key_does_not_escape_through_logs_or_public_messages(caplog) -> None:
     assert _TEST_KEY not in response.model_dump_json()
 
 
-def test_P3_partial_failure_preserves_order_and_uses_nearest_success(monkeypatch) -> None:
+@pytest.mark.parametrize("failure", ["http_error", "replacement"])
+def test_P3_partial_failure_preserves_order_and_uses_nearest_success(monkeypatch, write_mappings, failure) -> None:
     codes = ["POI009", "POI008", "POI007", "POI006"]
     areas = tuple(_area(code, index * 0.001) for index, code in enumerate(codes))
-    _set_areas(monkeypatch, areas[::-1])
+    unapproved = _area("POI005")
+    _set_areas(monkeypatch, areas[::-1] + (unapproved,))
+    write_mappings(_mapping(festivals[_FESTIVAL], dict.fromkeys(codes, True) | {unapproved.code: False}))
     calls = set()
 
     def send(request: httpx2.Request) -> httpx2.Response:
         code = _request_area(request)
         calls.add(code)
-        return httpx2.Response(503) if code == codes[0] else _observed(request)
+        if code != codes[0]:
+            return _observed(request)
+        if failure == "replacement":
+            return httpx2.Response(200, json=_reading_for(code, "replacement"))
+        return httpx2.Response(503)
 
     response = asyncio.run(_service(send).get_crowd(_FESTIVAL))
     assert [area.area_code for area in response.nearby_areas] == codes[:3]
@@ -304,9 +393,12 @@ def test_P3_positive_distance_below_rounding_threshold_stays_adjacent(
         assert nearby.status == "unavailable"
 
 
-def test_P4_concurrent_same_area_merges_across_festivals(monkeypatch) -> None:
-    festival = festivals[_FESTIVAL]
-    monkeypatch.setattr(seoul_crowd, "find_festival", lambda _: festival)
+def test_P4_concurrent_same_area_merges_across_festivals(monkeypatch, write_mappings) -> None:
+    first_festival = festivals[_FESTIVAL]
+    second_festival = first_festival.model_copy(update={"festival_id": "fst_000002"})
+    by_id = {festival.festival_id: festival for festival in (first_festival, second_festival)}
+    monkeypatch.setattr(seoul_crowd, "find_festival", by_id.get)
+    write_mappings(*(_mapping(festival, {"POI009": True}) for festival in by_id.values()))
 
     async def check() -> None:
         started = asyncio.Event()

@@ -52,8 +52,8 @@
 |---|---|---|---|---|
 | 1 | 축제 검색→상세→귀가 요청→상태 조회를 **먼저 실제로 실행**, 상태값·응답 예시, 모의/실제 구간 표시 | 🟡 일부 | **17절**(17-1·17-5), 2-2 A04·A05 | **완료** — 같은 실제 축제 ID로 A02→A03→A04 실행 및 동기 `ready` 확인, 모의 A04→A05로 처리 중·실패 상태값과 응답 증빙. 실제 A05는 A04에서 200으로 끝나 호출 생략. **남은 것** — 추천·동행·채팅 순서·담당·완료 기준 합의(1′), 화면 연결(12/8 첫 시연), 11/27 상태 전이 설계에 정상·실패·종료 경로 연결 |
 | 1' | 추천·동행·채팅 첫 시연/후속 순서·담당·완료 기준 합의 | 🟡 일부 | 19절(결정 반영 기록), 12/8 시연 범위는 신유빈 11/23 공지(축제→상세→귀가) | 동행·채팅은 12월(팀 합의 대기) |
-| 2 | 공급원별 저장·캐시 규칙을 **실제 처리 코드**와 맞춤, 동기 전용(카카오)·비동기 구분, 합성 예시 ≠ 실제 증거 | 🟡 일부 | **17-3절**(코드·시험 대응, 현재 동작과 예정 구분), 5절 막차 규칙, 17-4(합성 예시와 실제 호출 기록 구분) | `backend/api/services/real_routes.py`, 시험 `backend/tests/routes/test_p9_real_routes.py`. **남은 것:** A05 24시간 만료(`retryable=false`), `route_key` 추가 입력, 요청 원문 메모리 정리는 구현 예정(17-3) |
-| 3 | 위치·대화 정보 최소 전달·열람자·로그 항목 구분, 허용/차단 시험 | 🟡 일부 | **18절** | **남은 것** — 만료·삭제 뒤 장소 원문 검사, 에이전트 입력 제한과 A77 관리자 열람 범위·기록 시험 |
+| 2 | 공급원별 저장·캐시 규칙을 **실제 처리 코드**와 맞춤, 동기 전용(카카오)·비동기 구분, 합성 예시 ≠ 실제 증거 | 🟡 일부 | **17-3절**(코드·시험 대응, 현재 동작과 예정 구분), 5절 막차 규칙, 17-4(합성 예시와 실제 호출 기록 구분) | DB 모드 A05 24시간 만료(`retryable=false`)와 요청 원문 비보관 구현 완료·**DB 시험 재실행 대기**(P18). `route_key` 추가 입력·Redis 라벨 연동은 후속(17-3) |
+| 3 | 위치·대화 정보 최소 전달·열람자·로그 항목 구분, 허용/차단 시험 | 🟡 일부 | **18절** | **완료** — 백엔드 A04·A05·장소 검색·A10 로그 시험. **남은 것** — 만료·삭제 뒤 메모리·DB·Redis의 장소 원문 검사(권오현), 에이전트 도구 입력 제한 시험(한다영), A77 관리자 열람 범위·기록 시험 |
 | 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **남은 것** — 신유빈 님 동의 4건 외 검토자 확인, `yubeen`의 D1 공통 DB 연결·`RESET ALL` 병합 및 연결 시험 |
 | 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보·전체(개인 경로 6곳 → 저장소 경로 또는 공유본 안내) | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.4 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
 
@@ -182,7 +182,7 @@
 | 2 | **요청 헤더** | `Content-Type: application/json`(필수) · `X-Request-ID: req_…`(선택, 없으면 서버 생성) · `Authorization`(선택, 로그인 사용자면) |
 | 3 | **경로·쿼리** | 없음 |
 | 4 | **요청 본문** | 아래 '요청 필드 명세'와 예시 |
-| 5 | **검증·권한** | 형식은 3절 `ReturnRouteRequest`(422). 서버 검사: 축제 존재(404) → 출발이 축제 장소면 축제 좌표 있음(400 `FESTIVAL_LOCATION_UNKNOWN`) → 목적지 해석(400 `ROUTE_INVALID`) → 같은 `request_id`면 같은 결과, 본문이 다르면 409. 인증 없음(anonymous 허용), 요청 수 제한(429) |
+| 5 | **검증·권한** | 형식은 3절 `ReturnRouteRequest`(422). 같은 `request_id`·본문이면 기존 요청으로 응답하고 본문이 다르면 409. 새 요청은 축제 존재(404) → 출발이 축제 장소면 축제 좌표 있음(400 `FESTIVAL_LOCATION_UNKNOWN`) → 목적지 해석(400 `ROUTE_INVALID`)을 검사. 인증 없음(anonymous 허용), 요청 수 제한(429) |
 | 6 | **정상 응답** | `200` 제한 시간 안에 끝남(`ready` 또는 `unavailable`) / `202` 아직 처리 중(`queued`·`processing`, 상태 조회 URL·짧은 수명 `access_token` 제공) |
 | 7 | **오류 응답** | 아래 '오류 응답 표' |
 | 8 | **실행 규칙** | **동기 대기 3초**(넘으면 그때까지의 상태로 202 반환, 처리는 계속) · **전체 처리 제한 10초**(넘으면 `route_status=timed_out` — 202 뒤에는 A05로 확인, 3초 안에 판정되면 504) (모두 임시) · 길찾기 어댑터 1회 호출 상한 TMAP 5초·카카오 3초(9-1절) · 1차 공급원 실패 때 **2차 공급원으로 1회** — **어떤 응답을 실패로 보고 넘길지는 10-3 표가 유일한 기준**(시간 초과·429·5xx·403 키 오류·TMAP `result.status` 12~14 등). 단 카카오(2차)는 **동기 3초 안에 끝날 때만** 결과를 줄 수 있으므로, 1차가 3초 안에 실패하지 않으면(예: 5초 시간 초과) 202 뒤 `ROUTE_SECONDARY_SYNC_ONLY`로 끝냄(5절) · 우리 요청 잘못(400/404/409/422)은 재시도 없음 · 같은 `request_id`는 처음 만든 `route_request_id`를 돌려줌(멱등) · 9절 |
@@ -229,6 +229,8 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | `departure` | body | string | 아니요 | — | `now`만(예약 출발은 후속) | 출발 시각 |
 
 **정상 응답 필드 명세 (200)** — 202는 아래 '처리 중 응답' 필드만 돌려줍니다
+
+아래 경로 상세 필드는 `ready` 기준입니다. DB 모드에서 조회 토큰 만료 후 같은 `request_id`와 본문을 보내면 기존 `route_request_id`, `route_status=unavailable`, `completed_valid_route=false`, `error`(`code`, `message`, `retryable`), `updated_at`, `is_mock`, `notices`를 반환합니다.
 
 | 필드 | 타입 | 빈값 | 설명 |
 |---|---|---|---|
@@ -331,6 +333,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 | HTTP | 코드 | 발생 조건 | 재시도 |
 |---|---|---|---|
+| 200 | `ROUTE_ACCESS_EXPIRED` (`error.code`) | DB 모드에서 접수 10분 이후 같은 `request_id`·본문 재전송. 기존 `route_request_id`와 `route_status=unavailable`을 반환하며 조회 토큰·후보·폴링 URL은 생략 | 아니요(새 `request_id`로 새로 접수) |
 | 400 | `ROUTE_INVALID` | 목적지를 찾을 수 없음, 공급원이 지원하지 않는 수단 | 아니요(입력 수정) |
 | 404 | `FESTIVAL_NOT_FOUND` | 없는 `festival_id` | 아니요 |
 | 409 | `IDEMPOTENCY_CONFLICT` | 같은 `request_id`에 다른 본문 | 아니요 |
@@ -344,6 +347,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | 504 | `ROUTE_TIMEOUT` | 제한 시간 초과(`route_status=timed_out`) | 예(같은 `request_id`로 1회) |
 
 **규칙**
+- DB 모드에서 같은 `request_id`·본문을 재전송해도 최초 접수 시각과 `route_request_id`를 유지합니다. 조회 권한이 만료되면 `ROUTE_ACCESS_EXPIRED`로 새 접수를 안내합니다. 경로를 다시 조회하려면 새 `request_id`를 보냅니다. A05는 만료된 토큰에 401을 반환합니다.
 - `user_constraints`(아이 동반·휠체어 등)를 검증할 데이터가 없으면 `constraint_status`에 `not_verifiable`로 표시하고, "확실히 이용 가능"이라고 답하지 않습니다 (FR-R10, BFCL NLD-13·21).
 - 혼잡 자료가 지역 단위뿐이면 "가장 덜 붐비는 경로"라고 판정하지 않습니다. `area_evidence`로 구역 혼잡만 보여 줍니다 (BFCL NLD-22).
 - 목적지 원문은 DB에 저장하지 않습니다. DB에는 **서버 비밀키를 섞은 HMAC 해시**만(30일), 화면 표시 이름은 **Redis에 24시간**만 둡니다(04 문서 7-0 보존표·마이그레이션 004 — 11/20 한태경 검토 반영).
@@ -354,13 +358,13 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | # | 칸 | 명세 |
 |---|---|---|
 | 1 | 호출 목적 | 202로 접수된 귀가 요청의 처리 상태·결과 확인 (FR-R14). 화면 폴링, Route Agent(`get_route_request_status`) |
-| 2 | 요청 헤더 | `X-Request-ID`(선택) · `X-Route-Access-Token: rrt_…`(필수, 요청 때 받은 조회 토큰, 짧은 수명 적용은 예정) |
+| 2 | 요청 헤더 | `X-Request-ID`(선택) · `X-Route-Access-Token: rrt_…`(필수, 요청 때 받은 조회 토큰, DB 모드에서 접수 후 10분 유효) |
 | 3 | 경로·쿼리 | `route_request_id`: string, 필수, `^rr_[0-9A-Za-z]{6,26}$` |
 | 4 | 요청 본문 | 없음 |
-| 5 | 검증·권한 | 형식 오류 422 · 토큰 없음·만료 401 · 다른 요청의 토큰 403 · 없는 ID 404. **현재 코드(11/23):** 토큰 없음만 401이고 **만료 검사는 없음**(토큰은 서버 메모리에 서버가 꺼질 때까지 남음). 10분 만료(`ROUTE_TOKEN_TTL_MIN`)는 Redis·DB 저장으로 바꿀 때 구현 예정(17-3) |
+| 5 | 검증·권한 | 형식 오류 422 · 토큰 없음·만료 401 · 다른 요청의 토큰 403 · 없는 ID 404. `ROUTE_STORE=db`는 접수 후 10분에 만료한다. 기본 메모리 모드는 토큰 누락을 검사한다(17-3) |
 | 6 | 정상 응답 | **200** — 요청 처리가 실패했어도 '조회'는 성공이므로 200. 실패는 `route_status`·`error`로 알림(수업 가이드 S29). 경로는 `ready`일 때만 `route_candidates`에 담음 |
 | 7 | 오류 응답 | 401 `UNAUTHORIZED` / 403 `FORBIDDEN` / 404 `ROUTE_REQUEST_NOT_FOUND` / 422 `VALIDATION_ERROR` |
-| 8 | 실행 규칙 | 조회만 함(멱등). 폴링 간격 2초·최대 5회(임시), 그 뒤엔 '확인 불가' 안내 |
+| 8 | 실행 규칙 | 조회는 멱등이며 DB 모드는 조회 중 만료된 TMAP 본문을 정리할 수 있음. 폴링 간격 2초·최대 5회(임시), 그 뒤엔 '확인 불가' 안내 |
 
 **상태별 응답 예시 (모두 200)**
 
@@ -395,7 +399,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 - 화면과 Route Agent는 `completed_valid_route=true`일 때만 경로를 안내합니다.
 - **`ROUTE_RESULT_EXPIRED` — 현재 동작(코드 기준, 11/23):** TMAP 경로 결과는 서버 메모리에 **60초**만 둡니다. 60초가 지나 A05로 조회하면 `route_status=unavailable`, `error.code=ROUTE_RESULT_EXPIRED`, **`retryable=true`**("경로가 만료됐어요. 다시 조회해 주세요.")입니다(`real_routes.py`, 시험 `test_P11_expiry_removes_shared_tmap_body_for_all_ids`).
-- **구현 예정(경로 결과 DB 저장 연결 — 마이그레이션 011 뒤, 권오현):** DB에 남긴 TMAP 경로 내용이 **24시간 정리 규칙으로 지워진 뒤**(`route_results.purged_at` 있음) 조회하면 같은 코드에 `retryable=false`로 돌려줄 계획입니다. 그때 이 줄과 6절 표를 함께 고칩니다.
+- **DB 모드(011, 시험 재실행 대기):** 유효 토큰 조회 시 24시간이 지난 TMAP 후보와 근거를 정리하고 `purged_at`을 기록합니다. 정리된 결과는 `ROUTE_RESULT_EXPIRED`와 `retryable=false`로 답합니다. 정상 흐름에서는 조회 토큰이 먼저 만료됩니다. 만료 뒤에는 새 `request_id`로 경로를 요청합니다.
 
 ### 2-3. 축제 검색: `GET /api/v1/festivals` (A02) — 필드 명세
 
@@ -829,7 +833,7 @@ class AssistantQueryRequest(BaseModel):                         # A06 (7-6)
 - **조회 성공 = `ok:true`**입니다. 경로 처리가 실패해도(`unavailable`·`timed_out`·`rejected`) 도구는 성공이고, 실패 이유는 `data.error`에 있습니다(A05가 200인 것과 같음).
 - 요청 토큰(`X-Route-Access-Token`)은 **도구 인자로 받지 않습니다.** 래퍼가 같은 대화(`run_id`)에서 `request_return_route`가 받은 토큰을 서버 쪽 실행 상태에서 꺼내 붙입니다. 다른 대화의 `route_request_id`면 토큰이 없어 `FORBIDDEN`입니다(타인 요청 조회 차단, PLAN-TC-01).
 - 폴링 상한: 2초 간격·최대 5회(9절 제한값). 넘으면 "확인 불가"로 답합니다.
-- 실패 코드: `ROUTE_REQUEST_NOT_FOUND` / `FORBIDDEN` / `UNAUTHORIZED`(토큰 만료 → 같은 `request_id`로 `request_return_route` 다시 호출) / `TOOL_TIMEOUT`.
+- 실패 코드: `ROUTE_REQUEST_NOT_FOUND` / `FORBIDDEN` / `UNAUTHORIZED`(DB 모드의 토큰 만료 → 새 `request_id`로 `request_return_route` 다시 호출) / `TOOL_TIMEOUT`.
 
 **④ `get_incident`** — 감싸는 API: A15 `GET /api/v1/admin/incidents/{incident_id}` (service 권한, 운영자 맥락)
 
@@ -999,7 +1003,7 @@ class AssistantQueryRequest(BaseModel):                         # A06 (7-6)
 ```json
 {
   "name": "get_crowd",
-  "description": "축제 좌표에서 1km 이내 서울시 공식 구역의 지역 혼잡을 본다. 집계 구역과 자료 시각을 밝히고 행사장 안 혼잡과 다를 수 있다고 안내한다. status가 unsupported면 이 축제 주변 지역의 혼잡 정보가 미지원이라고 답한다.",
+  "description": "축제에 연결이 승인된 서울시 공식 구역의 주변 지역 혼잡을 본다. 집계 구역과 자료 시각을 밝히고 행사장 안 혼잡과 다를 수 있다고 안내한다. status가 unsupported면 이 축제 주변 지역의 혼잡 정보가 미지원이라고 답한다.",
   "parameters": {
     "type": "object",
     "properties": {
@@ -1131,9 +1135,9 @@ Route Query Service → 1차 TMAP 대중교통 어댑터 (제한 5초, 출발·�
 - **좌표 순서:** TMAP 경로선(`passShape.linestring`, `steps[].linestring`)은 **`"경도,위도 경도,위도"`** 순서이고 카카오맵 지도는 `LatLng(위도, 경도)`입니다. 어댑터가 **내부 형식 `[위도, 경도]`로 바꿔서** 돌려주므로 화면은 순서를 신경 쓰지 않습니다(좌표계는 둘 다 WGS84라 변환은 필요 없음). TMAP으로 받은 경로는 카카오 길찾기 화면(`landingURL`)을 쓸 수 없어서 **경로선·정류장 마커·안내 문구를 화면이 직접 그립니다**.
 - **막차:** TMAP 응답의 `service`(1 운행 중 / 0 운행 종료)로 `service_running`을 정합니다. **구간마다 대표 노선 `service`와 대체 노선 `lane[].service` 중 하나라도 1이면 그 구간은 운행 중**으로 보고, 응답 `legs[].line`에 확인된 운행 중 노선 이름(lane 포함, 예: '수도권1호선(급행)')을 보여 줍니다(11/20 한태경 재확인: 광화문→서울역 17시 경로2의 대표 노선 `수도권1호선`=0, 같은 구간 lane `수도권1호선(급행)`=1 — 시간대 문제가 아니라 재현됨). 모두 0인 구간이 있으면 `notices`에 '운행이 끝난 구간이 있어요'를 넣습니다. **그런 구간이 있는 후보는 유효 경로로 세지 않습니다** — 남은 후보가 없으면 `route_status=unavailable`, `ROUTE_NO_RESULT`('지금은 대중교통으로 갈 수 없어요'), `completed_valid_route=false`. 운행 정보가 없는 공급원(카카오)은 `service_running: null`로 두고 '막차 확인 불가'를 표시합니다.
   - **코드 반영(11/23, W36 일부):** TMAP 후보가 모두 운행 종료로 제외되면 카카오로 전환하지 않고 HTTP 200, `unavailable`, `ROUTE_NO_RESULT`, `retryable=false`로 반환합니다. TMAP 운행 정보가 누락되거나 해석할 수 없으면 종료가 확인된 구간이 없는 후보를 유지하고 `service_running=null`로 표시합니다. 대체 노선 키·노선명의 원본 필드는 [SPEC P13](../../backend/Doc/route-providers/SPEC.md#p13-tmap-후보-판정)에 확인 필요로 기록했습니다.
-- **TMAP 약관 — 받은 데이터는 저장 후 24시간 넘게 쓸 수 없음:** 지금은 TMAP 경로를 서버 메모리에 60초만 둡니다(`valid_until`). Redis 캐시와 DB 연결은 예정이며, DB에 남길 경로 내용은 **24시간 안에 지우는** 정책을 적용합니다(DB 설계서 7절). 원본 JSON 근거 파일도 24시간 안에 필드만 확인하고 지우며, 강사님 제출용 근거는 **키·좌표를 바꾼 합성 예시와 메타데이터**로 남깁니다.
+- **TMAP 약관 — 받은 데이터는 저장 후 24시간 넘게 쓸 수 없음:** 서버 메모리 캐시는 60초입니다(`valid_until`). 011 DB 모드는 TMAP 요약에 **24시간 안에 지우는** 정책을 적용합니다(DB 설계서 7-0절). Redis 연결과 주기 정리 실행 주체는 확인 중입니다. 원본 JSON 근거 파일도 24시간 안에 필드만 확인하고 지우며, 강사님 제출용 근거는 **키·좌표를 바꾼 합성 예시와 메타데이터**로 남깁니다.
 - **카카오맵 결과는 A04의 동기 응답(3초 안)에서만 전달합니다.** 카카오 개발자 답변상 임시 캐싱도 허용되지 않아, 이미 202로 접수한 요청의 결과를 나중에 A05로 돌려줄 수 없습니다. 그래서 202 이후 1차(TMAP)가 실패하면 A05는 `route_status=unavailable`, 오류 `ROUTE_SECONDARY_SYNC_ONLY`('다시 조회해 주세요')로 답하고 사용자가 새로 요청하면 2차를 동기로 부릅니다. **이 문제가 풀리기 전에는 2차 공급원을 쓴 비동기 복구를 '복구 완료'로 세지 않습니다**(11/19 정예진 님 피드백).
-- **카카오맵 응답은 저장·캐시하지 않습니다** — **카카오 공식 답변(데브톡 6/29, 11/20 한태경 확인): 다른 회사 지도 위 표시는 가능, 단 실시간 호출만·저장 불가.** 그래서 Redis 60초 캐시에도 카카오 결과는 넣지 않습니다(04 문서 7-0 ①). DB 연결 뒤에도 2차 응답은 출처·시각만 남길 계획입니다(DB 설계서 6-1). 카카오 장소 검색 결과(이름·좌표)도 같은 규칙 — 목적지 라벨 `route:label`에는 **사용자가 입력한 문자열만** 넣습니다.
+- **카카오맵 응답은 저장·캐시하지 않습니다** — **카카오 공식 답변(데브톡 6/29, 11/20 한태경 확인): 다른 회사 지도 위 표시는 가능, 단 실시간 호출만·저장 불가.** 그래서 Redis 60초 캐시에도 카카오 결과는 넣지 않습니다(04 문서 7-0 ①). 011 DB 모드에서는 `route_requests`의 상태와 오류 코드만 기록하고 `route_results` 행은 만들지 않습니다(DB 설계서 6-1). 카카오 장소 검색 결과(이름·좌표)도 같은 규칙 — 목적지 라벨 `route:label`에는 **사용자가 입력한 문자열만** 넣습니다.
 - TMAP 1차를 고른 이유(D-038): 정류장 ID·좌표(버스 혼잡 연결), 출발·도착 도보 포함, 출발 시각 지정(`searchDttm`), 초과 단가 0.88원/건. 카카오맵은 하루 1,000건 무료라 2차·개발 초기 검증에 씁니다.
 
 
@@ -1166,7 +1170,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | A07 | GET | `/api/v1/festivals/{festival_id}/notices` | 없음 | 공식 운영 공지·교통통제(무정차·우회 등). `type` 필터 | FR-F05/F13 | 최종 |
 | A08 | GET | `/api/v1/festivals/{festival_id}/facilities` | 없음 | **지도 표시용 주변 시설**(`categories` 여러 개, `radius_m`). **1차 10종**: 화장실·주차장 위치·병원·응급실·지하철역·버스 정류장·자전거 존·택시 승강장(**둘 다** 전국 통합 공급원·좌표가 확인되면 전국, 없으면 검증된 서울 공급원으로, **위치 안내만** — 실시간 대여 가능 수·택시 호출 제외)·맛집·주변 관광지 (**보류**: 물품보관함¹·약국²). 공급원 미확인 항목은 `status:"unverified"`(0-3절) | FR-F04/F11, **D-014** | 최종 |
 | A09 | GET | `/api/v1/festivals/{festival_id}/weather` | 없음 | 축제 위치 날씨·예보(발표 시각 포함, 기상청 전국) | FR-F09, D-012 | 최종 |
-| A10 | GET | `/api/v1/festivals/{festival_id}/crowd` | 없음 | 서울시 공식 구역 중 축제에서 1km 이내 최대 3곳의 지역 혼잡 | FR-F02/F14, D-010 | 보조(서울만) |
+| A10 | GET | `/api/v1/festivals/{festival_id}/crowd` | 없음 | 축제에 연결이 승인된 서울시 공식 구역 중 1km 이내 최대 3곳의 주변 지역 혼잡 | FR-F02/F14, D-010 | 보조(서울만) |
 | A11 | GET | `/api/v1/me/favorites` | user | 내 관심 축제 목록 | FR-A08 | 최종 |
 | A12 | PUT | `/api/v1/me/favorites/{festival_id}` | user | 관심 저장(이미 있으면 그대로 200) | FR-A08 | 최종 |
 | A13 | DELETE | `/api/v1/me/favorites/{festival_id}` | user | 관심 해제 | FR-A08 | 최종 |
@@ -1260,7 +1264,8 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | `SIMULATION_RUNNING` | 409 | 이미 실행 중인 부하 시험 (A20) |
 | `SIMULATION_NOT_FOUND` | 404 | 없는 `simulation_id` (A16·A21·A31) |
 | `RUN_NOT_FOUND` | 404 | 없는 챗봇 작업 `run_id` (A06-1·A06-2) |
-| `ROUTE_RESULT_EXPIRED` | 200 (A05의 `error`) | **현재:** 메모리 60초 캐시 만료, `retryable=true` → 다시 조회. **예정:** DB의 TMAP 경로 내용이 24시간 정리로 지워진 뒤, `retryable=false`(2-2) |
+| `ROUTE_RESULT_EXPIRED` | 200 (A05의 `error`) | **현재:** 메모리 60초 캐시 만료, `retryable=true` → 다시 조회. **DB 모드:** 24시간 정리된 TMAP 결과는 `retryable=false`(2-2) |
+| `ROUTE_ACCESS_EXPIRED` | 200 (A04·A25 POST의 `error`) | DB 모드에서 접수 10분 이후 동일 요청 재전송. 기존 `route_request_id`를 반환, `retryable=false`(2절) |
 | `TOOL_TIMEOUT` | — (도구 출력) | 도구 호출 제한 시간 초과 (4-5) |
 | `ROUTE_SECONDARY_SYNC_ONLY` | 200 (A05의 `error`) | 2차(카카오맵) 결과는 저장할 수 없어 비동기로 전달 불가 → 새로 요청 (5절) |
 | `ROUTE_CONTROL_UNVERIFIED` | 200 (경고) | 경로는 있으나 공식 통제 반영 여부 확인 불가 — 오류가 아니라 `notices`에 표시 |
@@ -1363,18 +1368,18 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | 항목 | 현재 동작 |
 |---|---|
 | 쿼리 | 없음 |
-| 실제/모의 | `CROWD_PROVIDER=real`이면 서울시 `citydata_ppltn`을 호출하고 `is_mock:false`를 반환합니다. 기본 `mock`은 기존 응답과 `X-Mock`을 유지합니다. |
-| 반경 | 축제 좌표에서 공식 121개 구역 경계까지 최단거리를 잽니다. 구역 안과 경계 위는 0m입니다. 1km 이내에서 가까운 순으로 최대 3곳을 선택하며, 동률이면 구역 코드순입니다. |
-| 미지원 | 실제 모드는 서울 밖·좌표 없음·반경 내 구역 없음에 각각 `unsupported_reason:"outside_seoul"`·`"missing_coordinates"`·`"no_nearby_areas"`와 `status:"unsupported"`를 반환합니다. |
-| 구역 실패 | 일부가 실패하면 `nearby_areas`에 실패 상태와 오류를 남기고 성공 자료를 제공합니다. 모두 실패하면 200 `unavailable` 및 `SOURCE_RESULT_ERROR`입니다. HTTP 200 본문 오류, 요청 구역 불일치 및 형식 오류도 조회 실패입니다. |
-| 호출 제한 | 구역별 3초 제한, 60초 메모리 캐시, 같은 구역의 동시 요청 병합을 적용합니다. 실패와 시간 초과는 캐시하지 않습니다. KST 일일 호출 예산 `CROWD_SEOUL_DAILY_LIMIT`의 기본값은 1,000회입니다. 기준 시각에서 45분 초과하면 `stale`입니다. |
+| 실제/모의 | 기본 `mock`은 저장된 모의 자료와 `X-Mock`을 사용합니다. `CROWD_PROVIDER=real`은 `is_mock:false`를 반환하며 승인된 매핑만 서울시 `citydata_ppltn`에 요청합니다. |
+| 반경 | 승인된 공식 구역 경계까지 최단거리를 잽니다. 구역 안과 경계 위는 0m입니다. 1km 이내에서 가까운 순으로 최대 3곳을 선택하며, 동률이면 구역 코드순입니다. |
+| 미지원 | 서울 밖·좌표 없음·승인 매핑 없음·반경 내 승인 구역 없음은 각각 `outside_seoul`·`missing_coordinates`·`no_approved_mapping`·`no_nearby_areas`를 `unsupported_reason`에 넣고 `status:"unsupported"`를 반환합니다. |
+| 구역 실패 | 일부가 실패하면 `nearby_areas`에 실패 상태와 오류를 남기고 관측값이 있는 구역을 제공합니다. 모두 실패하면 200 `unavailable` 및 `SOURCE_RESULT_ERROR`입니다. HTTP 200 본문 오류, 요청 구역 불일치, 형식 오류, 공급원 대체 평균도 조회 실패로 처리합니다. |
+| 호출 제한 | 기본값은 구역별 3초 제한, 60초 메모리 캐시, KST 일일 예산 `CROWD_SEOUL_DAILY_LIMIT` 1,000회, 기준 시각에서 45분 초과 시 `stale`입니다. 같은 구역의 요청은 병합하고 실패는 캐시하지 않습니다. 운영값은 확인이 필요합니다. |
 
 기존 `areas[0]`과 최상위 `observed_at`은 조회에 성공한 가장 가까운 구역 값입니다. 성공 구역이 없으면 `areas:[]`, `observed_at:null`입니다. 최상위 `status`는 지원 여부 및 전체 조회 결과를 반영하고, 성공 시에는 `areas[0]`의 `ok` 또는 `stale`을 따릅니다.
 
 | 실제 모드 추가 필드 | 타입 | 설명 |
 |---|---|---|
 | `nearby_areas` | array | 거리순으로 선택한 최대 3곳. 각 항목은 `area_code`, `area_name`, `distance_m`(m, 소수점 한 자리), `status`(`ok`·`stale`·`unavailable`), `data`(아래 기존 구역 모양 또는 `null`), `is_estimate`, `error`를 가집니다. 실패 시 `data`·`is_estimate`는 `null`입니다. |
-| `is_estimate` | bool 또는 null | `areas[0]`의 대체 여부입니다. 각각의 구역에도 같은 뜻으로 표시합니다. 관측값 `false`, `REPLACE_YN=Y`인 대체값 `true`, 자료가 없으면 `null`입니다. |
+| `is_estimate` | bool 또는 null | `areas[0]` 및 각 구역에서 관측값을 제공하면 `false`, 제공할 자료가 없으면 `null`입니다. |
 | `unsupported_reason` | string 또는 null | 실제 모드 미지원 사유입니다. |
 | `source_url` | string | 서울특별시의 OA-21778 데이터셋 주소입니다. |
 
@@ -1388,7 +1393,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | `observed_at` | string | `PPLTN_TIME`을 KST ISO 8601로 변환한 기준 시각 |
 | `forecast` | array | 실제 모드는 빈 배열. 모의 응답의 기존 예보는 유지합니다. |
 
-`notices`는 관측값을 **축제 근처 지역 혼잡(서울시 실시간 도시데이터)**으로 안내하고 구역 이름·축제에서의 거리·기준 시각·출처와 **“행사장 안 혼잡과 다를 수 있어요”**를 제공합니다. 대체값은 최근 4주 같은 요일·시간대 평균이며 제목을 **축제 근처 지역 혼잡(서울시 4주 평균)**으로 표시하고 **“실시간 자료가 없어 최근 4주 같은 시간대 평균이에요”**를 붙입니다. 성별·연령 비율은 응답과 저장에서 제외합니다.
+`notices`는 관측값을 **주변 지역 혼잡(서울시 실시간 도시데이터)**으로 안내하고 구역 이름·축제에서의 거리·기준 시각·출처와 **“행사장 안 혼잡과 다를 수 있어요”**를 제공합니다. 공급원의 4주 대체 평균은 응답과 캐시에서 제외합니다. 성별·연령 비율도 응답과 저장에서 제외합니다. 시연 후보와 실연동 승인 절차는 [W89 명세](../../backend/Doc/seoul-crowd/SPEC.md)에 있습니다.
 
 #### A11~A13. 관심 축제 (로그인 필요)
 
@@ -2375,7 +2380,7 @@ HTTP 202
 |---|---|---|---|---|---|
 | `ACCESS_JWT_TTL_MIN` / `REFRESH_TTL_DAYS` | 30분 / 14일 | 1절 인증 | 임시 | W16 · 11/20 | 한태경·권오현 |
 | `REVOKED_TTL` | Access 남은 수명 | `revoked:{jti}` | 설계 고정 | — | 권오현 |
-| `ROUTE_TOKEN_TTL_MIN` / `ROUTE_REQ_TTL_MIN` | 10분 / 10분 | `route:token`(A05 토큰)·`route:req`(빠른 상태) | 임시 | W16 · 11/20 | 권오현 |
+| `ROUTE_TOKEN_TTL_MIN` / `ROUTE_REQ_TTL_MIN` | 10분 / 10분 | Redis의 `route:token`·`route:req` 예정값. 현재 DB 모드는 `submitted_at` 기준 A05 토큰 10분을 적용 | 임시 | W16 · 11/20 | 권오현 |
 | `RUN_TOKEN_TTL_MIN` | 10분 | `run_access_token`(A06-1·A06-2) | 임시 | W16 · 11/20 | 권오현 |
 | `ROUTE_INFLIGHT_TTL_S` | **12초** (= `ROUTE_TOTAL_TIMEOUT_S` + 2초) | `route:inflight`(동일 요청 병합) | 임시 — **v0.3의 5초에서 고침**(아래 대조) | W96 · 12/04 | 신유빈 |
 | `POLICY_ACTIVE_TTL` | `stop_condition.max_minutes` + 60초 | `policy:route:active`(켜진 조치) | 임시 — **v0.3 '없음'에서 고침**(아래 대조) | W48 · 12/04 | 신유빈 |
@@ -2681,7 +2686,7 @@ HTTP 202
 | FR | 기능 | 기획서 우선순위 | 설계 위치 (API 절 / DB) | 상태 |
 |---|---|---|---|---|
 | FR-F01 | 전국 축제 검색·상세 | Must | A02·A03 (2-3·2-4) / `festivals` | ✅ |
-| FR-F02 | 선택 축제 주변 실시간 혼잡 | Must·서울만 | A10 공식 구역의 관측값·대체값 (6-2) | ✅ |
+| FR-F02 | 선택 축제 주변 실시간 혼잡 | Must·서울만 | A10 승인 구역의 관측값 (6-2) | ✅ |
 | FR-F03 | 혼잡과 위험·공식 통제 분리 | Must | A10 "지역 혼잡 ≠ 길 혼잡"·A07 공지와 응답 분리 (6-2, 2절 규칙) | ✅ |
 | FR-F04 | 지도 주변시설 표시 | Must(확보된 범위) | A08 (6-2) / `facilities` | ✅ |
 | FR-F05 | 축제 공식 운영 공지 | Must | A07 (6-2) / `official_notices` | ✅ |
@@ -2689,7 +2694,7 @@ HTTP 202
 | FR-F10 | 전국 복수 축제 지도·검색 | Must | A02 `bbox`·지도 범위 (2-3) | ✅ |
 | FR-F11 | 병원·응급실 정보 | Must | A08 `hospital`·`emergency` (6-2) / `facilities` | ✅ |
 | FR-F13 | 교통 돌발·공식 통제 | Must(검증 가능 범위) | A28 (6-2)·경로 근거 `area_evidence` (2절) | ✅ |
-| FR-F14 | 축제-혼잡 관측 지역 매핑 | Must·서울만 | A10 공식 구역 경계 1km 이내 최대 3곳 (6-2) | ✅ |
+| FR-F14 | 축제-혼잡 관측 지역 매핑 | Must·서울만 | A10 승인된 공식 구역 경계 1km 이내 최대 3곳 (6-2) | ✅ |
 | FR-F15 | 축제 상태·기간 필터 | Must | A02 `status`·`date_from`·`date_to` (2-3) | ✅ |
 | FR-F16 | 교통수단 실시간 도착 | Must(최종·검증된 지원 범위) | A26 (6-2) — 지하철 서울만, 버스 서울/TAGO | ✅ |
 | FR-F17 | 관광지 방문 집중 예측 | Must(최종·검증된 지원 범위) | A29 (6-2) / `realtime_snapshots`(`visit_forecast`) | ✅ |
@@ -2873,18 +2878,23 @@ HTTP 202
 - TMAP 경로는 24시간 이내 삭제, 카카오는 저장 금지라 **응답 원본은 화면에서 요약만 보고 버렸습니다.** 시험은 한태경 님 **합성 예시**(`evidence/responses/합성예시_*`)를 씁니다.
 
 ### 17-3. 저장·캐시 규칙 ↔ 실제 코드 (강사 11/20 API 2)
-시험 파일은 모두 `backend/tests/routes/test_p9_real_routes.py`(한도는 `backend/tests/routes/test_p8_quota.py`)이고, 아래 함수 이름은 그 파일 안 이름입니다. 코드 경로는 `backend/` 기준입니다.
+
+실제 경로 모드에서 `ROUTE_STORE` 기본값은 `memory`입니다. `db` 선택 시 011 적용 DB를 사용합니다. `FESTIVAL_DATA=db`이면 A02·A03과 같은 축제로 A04 접수·처리 상태·결과 저장, A05 재조회까지 이어집니다. 이 연결은 **구현 완료·DB 시험 재실행 대기**입니다.
+코드 경로는 `backend/` 기준입니다. 메모리 모드는 `tests/routes/test_p9_real_routes.py`, 한도는 `test_p8_quota.py`, DB 모드 단위·통합 시험은 각각 `test_p16_route_store.py`·`test_p18_route_store_db.py`를 사용합니다.
+
+11/24 전체 오프라인 pytest 377개 중 365개 통과, DB 표시 12개 건너뜀(P18 4개 포함). 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
 
 | 규칙(5절·9절) | 현재 동작(코드 기준, 11/23) | 시험 함수 | 구현 예정(언제·누가) |
 |---|---|---|---|
-| TMAP 결과 캐시, 만료 뒤 A05는 `ROUTE_RESULT_EXPIRED` | `api/services/real_routes.py` 메모리 캐시 60초(`valid_until`). 60초 뒤 A05 → `ROUTE_RESULT_EXPIRED`, **`retryable=true`** | `test_P11_expiry_removes_shared_tmap_body_for_all_ids` | DB 24시간 정리(`purged_at`) 뒤 `retryable=false` — 경로 결과 DB 저장 연결(011 뒤), 권오현 |
-| **카카오 결과는 A04 동기(3초 안) 응답에서만**, 메모리에도 본문 안 남김 | 동기 대기 3초 안에만 전달, 재조회는 `ROUTE_SECONDARY_SYNC_ONLY`. 202 뒤 1차 실패면 카카오를 부르지 않음 | `test_P11_secondary_response_is_only_available_on_sync_post`, `test_P11_secondary_in_flight_at_202_is_never_replayed`, `test_P11_slow_primary_returns_202_then_finishes_in_background` | — |
+| TMAP 결과 캐시, 만료 뒤 A05는 `ROUTE_RESULT_EXPIRED` | `memory`는 60초 캐시 만료 뒤 **`retryable=true`**. `db`는 후보 요약을 저장하며 24시간 조회 정리 또는 주기 정리 뒤 **`retryable=false`** | `test_P11_expiry_removes_shared_tmap_body_for_all_ids`, P18 DB 시험 재실행 대기 | 주기 정리 실행 주체 확인 필요(신유빈) |
+| **카카오 결과는 A04 동기(3초 안) 응답에서만**, 메모리에도 본문 안 남김 | 동기 대기 3초 안에만 전달, 재조회는 `ROUTE_SECONDARY_SYNC_ONLY`. 202 뒤 1차 실패면 카카오를 부르지 않음. DB 결과 행 없음 | `test_P11_secondary_response_is_only_available_on_sync_post`, `test_P11_secondary_in_flight_at_202_is_never_replayed`, `test_P11_slow_primary_returns_202_then_finishes_in_background` | — |
 | 같은 조건 요청 병합(singleflight) | 처리 중인 같은 `route_key`를 기다림 | `test_P10_five_concurrent_requests_share_one_tmap_call` | — |
 | 전체 처리 10초 제한 | 넘으면 `timed_out`, 병합 대기도 풀림 | `test_P11_overall_deadline_times_out_and_releases_flight` | — |
 | 하루 한도(TMAP 10·카카오 1,000), 부르기 **전에** 셈, 다 쓰면 그 공급원 중지 | `api/providers/quota.py`, 환경변수 `ROUTE_TMAP_DAILY_LIMIT`·`ROUTE_KAKAO_DAILY_LIMIT`·`ROUTE_KAKAO_LOCAL_DAILY_LIMIT`(9-1 '현재 코드 기준') | `test_p8_quota.py`(한도·날짜·동시성), `test_P10_quota_skips_route_provider_calls` | 센 횟수를 Redis `quota:*`로 — W36, 권오현 |
 | `route_key`에 원문 좌표 없음(HMAC) | `ROUTE_KEY_SECRET` HMAC-SHA256. **입력은 방향·출발/도착 좌표(소수 4자리)·`travel_mode`·`route_preference`·5분 구간뿐.** 비밀키가 없으면 서버가 켜질 때 임의 키 | `test_P10_cache_key_uses_hmac_and_rounded_coordinates` | `user_constraints`·통제 버전·공급원은 아직 키에 없음. 이 값만 다른 요청은 같은 키를 쓸 수 있음. 조건 반영·복구 조치(W48 12/04) 전에 키에 추가 — 권오현 (DB 설계서 4절) |
-| 장소 검색어·좌표는 처리 중에만 사용(18-1) | 실경로 서비스는 **요청 본문·검색어·좌표·조회 토큰을 서버 메모리에 두며 만료 처리가 없음**. TMAP 결과 본문만 60초 뒤 지움. 이 코드에서 요청 원문을 DB·로그에 쓰는 경로는 확인되지 않음 | 없음 | 요청 기록 10분 뒤 삭제(`ROUTE_TOKEN_TTL_MIN`)와 '만료 뒤 메모리·로그·DB·Redis에 원문 없음' 시험 — Redis·DB 저장 연결 때, 권오현 |
-| A05 조회 토큰 10분 만료(401) | 만료 검사 없음(토큰 없음만 401) | `backend/tests/api/test_step2_routes.py`의 `test_R12_lookup_validates_id_and_token_without_advancing_state`(모의 API, 다른 토큰 403) | 위와 같이 Redis·DB 저장 연결 때 |
+| 장소 검색어·좌표(18-1) | `memory`는 기존 요청 기록을 프로세스에 보관. `db`는 장소·본문 HMAC만 기록하고 처리 뒤 요청 원문을 보관하지 않음. A05는 정류장 좌표·경로선·사용자 장소 원문이 빠진 요약을 반환 | P16 단위 시험, P18 DB 시험 재실행 대기 | Redis 라벨과 사용자 장소 표시 연동은 후속 |
+| A05 조회 토큰 10분 만료(401) | `db`는 서비스 계정으로 요청을 읽고 해시를 비교하며, 토큰은 접수 10분 뒤 만료. `memory`는 기존 토큰 규칙 적용 | P16 단위 시험, P18 DB 시험 재실행 대기 | API 서비스 계정 설정 방식 확인 필요(신유빈) |
+| A04 동일 요청 재전송(멱등) | DB 모드에서 조회 토큰 만료 후에도 기존 `route_request_id`를 유지하고 `200 unavailable`·`ROUTE_ACCESS_EXPIRED` 반환 | P17 단위 시험, P18 DB 시험 재실행 대기 | — |
 | 막차: 운행 종료 후보 제외, 카카오 `service_running:null` | TMAP은 종료 후보를 제외하고 남은 후보만 `ready`. 모두 종료면 HTTP 200 · `unavailable` · `ROUTE_NO_RESULT` · `retryable=false`. 카카오는 동기 응답에서 `null` + '막차 확인 불가' | `test_P13_tmap_all_candidates_running`, `test_P13_tmap_excludes_ended_candidates`, `test_P14_tmap_service_ended_after_202`, `test_P14_kakao_last_service_unknown_in_sync_response` (합성 고정 파일) | 대체 노선 목록·노선명 원본 필드 확인(P13) |
 | 2차로 답해도 '자동 복구'로 세지 않음 | `provider_tier=secondary` 표시만 | — | 복구 판정은 7절(구현 전) |
 
@@ -2956,7 +2966,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | 정보 | 쓰는 기능 | 도구·공급원이 받는 것 | 결과를 볼 수 있는 사람 | 로그·DB에 남기는 것 | 하지 않는 것 |
 |---|---|---|---|---|---|
 | 축제 장소 좌표 | 축제 상세·지도·귀가 출발 | 공개 정보 그대로 | 모두 | 그대로 | — |
-| **사용자 출발·도착 장소**(검색어·좌표) | 귀가·가는 길(A04·A25)만 | 카카오 장소 검색(검색어)·TMAP/카카오 경로(좌표) — **그 요청 처리 중에만**(공급원에 보내는 것 기준. 단 **현재 코드는 서버 메모리의 요청 기록에 원문이 서버가 꺼질 때까지 남음** — 정리는 예정, 17-3) | 요청한 본인(A05 조회 토큰, 로그인 여부 공통) | 예정 저장 정책: DB에는 장소 **HMAC 해시**만(009), 라벨은 Redis 24시간. 현재 `route_key`는 HMAC. 로그 정책: `route_request_id`·공급원·상태·오류 코드만 | 원문 좌표·검색어를 로그·DB·모델 프롬프트 기록에 남기지 않음, 다른 기능(추천·동행)에 재사용하지 않음 |
+| **사용자 출발·도착 장소**(검색어·좌표) | 귀가·가는 길(A04·A25)만 | 카카오 장소 검색(검색어)·TMAP/카카오 경로(좌표) — **그 요청 처리 중에만**(공급원에 보내는 것 기준. 메모리 모드의 요청 기록은 서버 종료까지 보관, DB 모드의 원문은 처리 중 사용, 17-3) | 요청한 본인(A05 조회 토큰, 로그인 여부 공통) | 예정 저장 정책: DB에는 장소 **HMAC 해시**만(009), 라벨은 Redis 24시간. 현재 `route_key`는 HMAC. 서버 로그에는 경로 템플릿·`X-Request-ID`·`route_request_id`·HTTP/처리 상태를 남김. 경로 공급원 호출 로그에는 공급원·HTTP 상태를 기록 | 원문 좌표·검색어를 로그·DB·모델 프롬프트 기록에 남기지 않음, 다른 기능(추천·동행)에 재사용하지 않음 |
 | 경로 결과(TMAP) | A04·A05 | — | 본인 | 현재 메모리 60초. 예정: Redis 캐시와 DB 24시간 내 삭제 | 24시간 넘게 보관 |
 | 경로 결과(카카오) | A04 동기 응답 | — | 본인 | **아무 데도 안 남김** | 캐시·재전달 |
 | 챗봇 질문(A06) | AI 질문 | 에이전트: 질문 문장 + 선택한 `festival_id` | 본인 | 마스킹한 질문(전화·이메일 등, DB 설계서 7-0) | 동행 채팅 원문·다른 사용자 정보를 프롬프트에 넣지 않음 |
@@ -2968,11 +2978,12 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 |---|---|---|
 | `route_key`에 좌표 문자열 없음 | ✅ 11/23 | `backend/tests/routes/test_p9_real_routes.py`의 `test_P10_cache_key_uses_hmac_and_rounded_coordinates` |
 | 서버 로그·수집 결과에 API 키 없음 | ✅ 11/23 | `tests/ingestion`(I1·I8), `tests/routes`(P2·P5) + 실제 실행 로그 검사 |
+| A04·A05·장소 검색·A10 서버 로그에 출발·도착 좌표(소수 4자리 이상)·장소 검색어·조회 토큰·키 원문 없음. 요청 ID와 HTTP/처리 상태는 기록 | ✅ 모의·실제 모드(가짜 전송) | `backend/tests/api/test_a3_log_redaction.py`. Python 로깅과 Uvicorn HTTP/1.1 접근·ASGI 추적 로그를 오프라인으로 캡처. 500 응답과 원문을 고의로 기록한 대조 시험도 통과 |
 | 다른 요청의 토큰으로 경로 조회 → 403 | ✅ | `backend/tests/api/test_step2_routes.py`의 `test_R12_lookup_validates_id_and_token_without_advancing_state` |
 | 게시 시각이 있어도 검토 대기 축제는 A02·A03에서 제외 | ✅ 수집 DB 시험 | `backend/tests/ingestion/test_i12_catalog_db.py`. 010 권한 시험 T010a~e는 별도이며 [수집 구현 계획 3단계 첫 문단](../../backend/Doc/festival-ingestion/IMP-PLAN.md#3단계--a02a03-db-조회-i12i13)에 통과 기록만 있음(DB 설계서 10-A-3) |
-| 장소 원문이 DB에 남지 않음(해시만) | 🟡 DB 시험(T44~T48 해시 칸) ✅, API→DB 저장 연결은 **마이그레이션 011 뒤** | DB 설계서 10절 |
+| 장소 원문이 DB에 남지 않음(해시만) | 🟡 DB 시험(T44~T48 해시 칸) ✅, API→DB 저장 연결은 **구현 완료·DB 시험 재실행 대기** | DB 설계서 10절 |
 | 에이전트 도구 입력에 채팅 원문·좌표가 없음 | ⬜ 예정 | 한다영 W24·W25(11/27) 도구 스키마 시험 |
-| 요청 만료·삭제 뒤 메모리·로그·DB·Redis에 장소 원문이 없음 | ⬜ 예정 | Redis·DB 저장 연결 때(17-3), 권오현. T44~T48은 해시 칸 옮김만 확인하고 원문 저장 여부는 확인하지 않음 |
+| 요청 만료·삭제 뒤 메모리·DB·Redis에 장소 원문이 없음 | ⬜ 예정 | 17-3, 권오현. T44~T48은 해시 칸 옮김만 확인하고 원문 저장 여부는 확인하지 않음 |
 | 관리자 채팅 열람은 신고된 메시지만(서버 검사 + `chat_admin_access` 기록) | ⬜ 예정 | 채팅·신고 구현(A77) 때. DB T40c는 열람 기록 삭제 차단만 확인 |
 
 ## 19. 결정 반영 기록 (강사 11/20 API 4)
@@ -2988,7 +2999,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | 끝난 축제 숨김 → A02 여러 상태 필터 `status=ongoing,upcoming` | ✅ | A02(2-3 필드 표·3절 모델), 시험 `backend/tests/api/test_i13_multi_status.py` | 권오현 / 검토 대기 | 11/23 |
 | 실제 축제 ID로 귀가·현장 정보 동작 | ✅ 시험 · 화면 확인 전 | 시험 `backend/tests/api/test_i14_festival_lookup.py` | 권오현 / 검토 대기 | 11/23 |
 | `route_key` HMAC | ✅ 좌표 HMAC · 🟡 추가 입력 예정 | 17-3, DB 설계서 4절 | 권오현 / 검토 대기 | 11/23 |
-| 귀가 조회 토큰 확인 칸(011 `access_token_hash TEXT NOT NULL`, 원본 토큰은 DB에 저장하지 않음). 로그인·비로그인 모두 A05 토큰 해시 비교, **`user_id` 칸은 두지 않음** | 🟡 신유빈이 토큰 해시 추가·검증 방식에 동의. `user_id` 미추가·기존 행 처리 확인 대기 | DB 설계서 4·8절. 권오현이 귀가 결과 DB 연결 전에 구현 | 권오현 / 신유빈(토큰 해시 방식) | 11/23 |
+| 귀가 조회 토큰 확인 칸(011 `access_token_hash TEXT NOT NULL`, 원본 토큰은 DB에 저장하지 않음). 로그인·비로그인 모두 A05 토큰 해시 비교, **`user_id` 칸은 두지 않음** | 🟡 신유빈이 토큰 해시 추가·검증 방식에 동의. `user_id` 없이 구현. **확인 필요(신유빈)** — 서비스 계정 접속 정보, 기존 행 처리, 24시간 정리 실행 주체 | DB 설계서 4·8절. 011과 A04·A05 구현 완료·DB 시험 재실행 대기. 기존 요청은 보존하고 토큰 조회 대상에서 제외. [STEP4 SPEC](../../backend/Doc/route-providers/SPEC.md#7-step4-db-저장-강사-db-피드백-4) | 권오현 / 신유빈(토큰 해시 방식) | 11/23 |
 | 축제 실제 수집 코드 = `api/ingestion/festivals/`(권오현), `tourapi_snapshot.py`(신유빈)는 증빙 파일 검증용 | ✅ 합의(11/23 신유빈) | 17-1 | 권오현 / 신유빈 | 11/23 |
 | 연결 반납 때 `RESET ALL`(앞 사용자 정보 남지 않게) | 🟡 `yubeen` 브랜치에 구현(`6f767d9`), `ohyun` 미병합 · **독립 재검증 DB-09 통과(11/23 한태경, PG16 일회용 DB, 추가 시험 8개 + `test_session.py` 6개, 수정 전 방식으로 결함 재현 대조군 포함)** · 남은 것: PG17(pgvector:pg17)로 같은 시험 재실행, `ohyun` 연결 | 코드 `backend/shared/db/connection.py`, 시험 `backend/tests/db/test_session.py` 6개(둘 다 `yubeen` 브랜치), DB 설계서 3절 ⑤ | 권오현(기록) / 신유빈·한태경 | 11/23 |
 | TMAP 유료 전환(결정 항목 `TMAP_PAID_PLAN` — 환경변수 아님) | ⬜ 미결정 | 9-2절, 바꾸면 환경변수 `ROUTE_TMAP_DAILY_LIMIT`(기본 10) 조정 | 팀 / 검토 대기 | 11/26 예정 |
@@ -3007,3 +3018,5 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.4 | 2026-11-23 | **강사 11/20 피드백 반영 재제출**: 0-A 반영표, 17절 첫 흐름 실제 실행(TourAPI 870건→DB→A02·A03, TMAP·카카오 실제 경로, 저장·캐시 규칙↔코드·시험), 18절 위치·대화 정보 전달 범위·차단 시험, 19절 결정 반영 기록, A02 `status` 여러 값(11/23), 개인 PC 경로 제거.<br>**교차 검토 반영(11/23, Codex·Gemini)**: 문서와 코드가 다른 곳을 현재 동작/구현 예정으로 나눔(A05 `ROUTE_RESULT_EXPIRED` 60초·`retryable=true`, 조회 토큰 만료 없음, `route_key` 입력 범위, 막차 후보 제외·카카오 `service_running`, 9-1 실제 환경변수·기본값, 장소 원문 메모리 보관), 0-A 1~5 🟡, A77 관리자 열람 = 신고된 메시지만, A02 여러 상태 규격(2-3·3절), 17-3 시험 함수명과 시험 수집 개수(DB 아닌 289 + DB 6), 19절 검토자 정리, 옛 BFCL 파일명·검토 기록 표 빈 줄 정리<br>**첫 흐름 연속 실행(11/23, 17-5절)** — 실제 축제 검색·상세와 TMAP 귀가 완료, 모의 A05 처리 중·실패 3종의 응답 요약 및 재실행 스크립트 추가. 0-A 1번은 화면 연결·후속 기능 합의·11/27 상태 전이 설계 연결이 남아 🟡 유지.<br>**W89 A10(11/23)** — 서울시 공식 구역 경계 1km 이내 최대 3곳, 실제 모드, 대체 평균 표시 및 기존 응답 호환을 반영했습니다. |
 | v0.4 | 2026-11-23 | **W36 STEP3 막차 처리**. TMAP 운행 종료 후보 제외·모두 종료 시 `ROUTE_NO_RESULT`, 카카오 `service_running:null`과 '막차 확인 불가'를 실제 모드 코드·합성 응답 시험에 반영(5절·17-3·19절). |
 | v0.3.3 | 2026-11-20 | **팀 답변 반영(11/20 오후)**: A42 `GET /api/v1/festivals/trending` 지금 핫한 축제(크롤링·LLM 없음·규칙 연결, 6-2, 6-1 크롤링 제외 범위 수정, 13절 공급원), A36 취향 값 5개, 6-3 결정 반영(추천 신유빈·채팅 WebSocket·동행 3일/친구 30일·채팅 열람 참여자·관리자·권한 기준안), 목적지 라벨을 DB에서 빼 Redis 24시간(`ROUTE_LABEL_TTL_H`)·장소 해시 HMAC, `TREND_CRAWL_SCHEDULE`, 태경님 남은 확인 일정(11/20·11/24·11/25), 증빙 파일명 실제와 맞춤(`합성예시_kakao-transit_*`), GitHub 업로드 상태(v0.3.2 `41c66a5`)  **추천·친구 상세(6-4)**: 축제 → 취향 5개 분류(규칙 후보 → LLM 검증 → 근거 문장이 원문에 그대로 있는지 코드 확인), 점수 `rec-0.1`, A36~A41 상세, **친구 API A43~A50**(친구 코드 검색·신청·수락·차단, 친구 추천은 범위 밖), DB 005 연결, 오류 코드 4개, `TAG_LLM_DAILY_MAX`  **강사 11/20 자료 「설계서 한 줄을 실제 동작으로 연결하기」 반영**: 6-5 기능 연결표(요구사항→화면→API→도구→DB→시험, 실행 범위 A~D 표시, 계약 담당·인계), A06-1 모의 응답 3가지(진행 중·완료·실패)  **기획서 필수 기능 전체 대조(15-1 추적표, Must 131개 모두 위치 연결)**: 빠져 있던 **A51 AI 방문 코스**(FR-P01·P03, 코스 검증 규칙)·**A52~A54 공식 공지 등록·수정·승인**(FR-O06·D05)·**A55~A56 축제 직접 등록·수정**(FR-D12·O10) 추가(6-6), DB 006 연결, 오류 코드 2개  **동행·채팅·알림·신고 상세(6-4-4~6-4-6)**: A57~A65 동행(정원 잠금 승인·재신청 규칙·만남 장소 권한·자동 종료), A66~A73 채팅 + WebSocket 메시지 형식(DB 저장 뒤 ACK, `client_message_id` 중복 방지, 방별 순서, 입장 뒤 메시지만, 초대 수락 전 차단, 방장 승계), A74~A80 알림·신고(관리자 열람 기록)·마이페이지·탈퇴, DB 007 연결, 9-1 채팅 제한값, 오류 코드, 15-1 추적표 FR-COM 전부 ✅ **제출 전 교차 검토 반영(15:00~16:30)**: Claude·Codex·agy 지적 중 문서 19건 — 범위·검토 기록·6절 범위표 옛 문장, 1절 권한표, **인증 A32~A35 상세(1-1)**, 2차 공급원 전환 기준(10-3 표 기준·동기 3초), 운행 종료 후보 제외, A06-1 `route_access_token`·`run_kind`·`result`, 에이전트 입출력 파일 경로 금지, 채팅 Redis 거르기·구독 해제·`notification` 이벤트·경로 등록 순서, A77 글 숨김, A80 탈퇴 목록·덮어쓰기, 12절 Supabase 문장, 14절 크롤링, 10-1·11절 완료 항목. **한태경 11/20 15:03**: 공식 한도(9-1 ⑤), TMAP 유료 전환 제약·오류 포함 셈, 카카오 공식 답변(저장 불가·타사 지도 표시 가능), 서울 정류장 OA-15067, 이미지 CSS 크기 조절, 15:48 최종 정리(`service`·`lane` 판단, SK 문의 11/20 발송, OA-15067 확인 완료, 관광공사 문의 안 함). **추천**: 취향 `pet_or_baby` → `pet`(아기 동반 제외, 반려견은 별도 칸 없이 취향 값 하나 — 기획서 11/20 15:32 main과 같음). **9-2절 추가(16:30)**: 경로 1회 비용·예상 운영비 계산식·빈칸 담당(강사 요청). **16:45**: 한태경 단가 확인(TMAP 0.88원 부가세 포함, 카카오 초과 11원·장소 검색 2원·지도 0.1원), 증빙 스크립트 카카오 저장 제거 ✅. 제출 뒤 처리 11-1절 **기능 상세 시나리오 반영(17:30, 신유빈 초안 + 사용자 결정)**: A04 `origin`(출발 위치 변경)·A25 `destination`(도착 변경), A32 닉네임·출생연도·성별 필수, A43 닉네임 정확히 일치 검색(친구 코드 삭제)·A78 닉네임 변경, A61 신청자 나이·성별(작성자만), A76 `chat_room` 신고, 앱 사용법 RAG — DB 009. 크롤링(A42)은 유지. **17:31 변경분 교차 검토(Claude·Codex·agy) 반영**: 닉네임 검색 차단 관계 제외, 3절 `Endpoint` 입력 모델, 9-2 카카오 최대 154,000원/일·유료 가정 표시, A61 나이(출생연도 대신), A77 `close_room`, `NICKNAME_TAKEN` 공통 오류, 나머지 11-1 #15 |
+| v0.4 | 2026-11-23 | **STEP4 귀가 DB 저장(강사 DB 4)**. 011·A04/A05 요청 상태·TMAP 요약 저장, 서비스 계정 토큰 확인·10분 만료, 카카오 동기 전용과 TMAP 정리 구현. 실제 DB 시험 재실행 대기(17-3·19절). |
+| v0.4 | 2026-11-23 | **강사 API 3 백엔드 로그 시험**. A04·A05·장소 검색·A10의 원문 차단과 요청 ID·상태 기록을 모의·실제 모드(가짜 전송)에서 검증하고 0-A·18절 갱신. |

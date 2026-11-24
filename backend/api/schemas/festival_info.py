@@ -114,5 +114,7 @@ class RealCrowdResponse(CrowdResponse):
     is_mock: Literal[False] = False
     nearby_areas: list[NearbyCrowdArea] = Field(default_factory=list)
     is_estimate: bool | None = None
-    unsupported_reason: Literal["outside_seoul", "missing_coordinates", "no_nearby_areas"] | None = None
+    unsupported_reason: Literal[
+        "outside_seoul", "missing_coordinates", "no_approved_mapping", "no_nearby_areas",
+    ] | None = None
     source_url: str

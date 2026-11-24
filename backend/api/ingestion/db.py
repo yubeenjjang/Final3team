@@ -7,7 +7,10 @@ class IngestionDBError(RuntimeError):
     pass
 
 
-def create_ingestion_engine(url: str | URL | None = None) -> Engine:
+def create_ingestion_engine(
+    url: str | URL | None = None, *,
+    pool_pre_ping: bool = False, pool_reset_on_return: str | None = "rollback",
+) -> Engine:
     if url is None:
         password = os.environ.get("DB_SERVICE_PASSWORD")
         if not password:
@@ -26,4 +29,7 @@ def create_ingestion_engine(url: str | URL | None = None) -> Engine:
             port=port,
             database=os.environ.get("DB_NAME", "noldaga"),
         )
-    return create_engine(url, hide_parameters=True)
+    return create_engine(
+        url, hide_parameters=True, pool_pre_ping=pool_pre_ping,
+        pool_reset_on_return=pool_reset_on_return,
+    )

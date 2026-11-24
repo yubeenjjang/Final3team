@@ -19,12 +19,11 @@ from api.schemas.festival_info import (
 )
 from api.services.festival_lookup import find_festival
 from api.services.seoul_areas import SeoulArea, load_catalog, nearby_areas
+from api.services.seoul_crowd_mapping import approved_area_codes
 
 _CACHE_SECONDS = 60
 _STALE_AFTER = timedelta(minutes=45)
-_OBSERVED_LABEL = "축제 근처 지역 혼잡(서울시 실시간 도시데이터)"
-_ESTIMATE_LABEL = "축제 근처 지역 혼잡(서울시 4주 평균)"
-_ESTIMATE_NOTICE = "실시간 자료가 없어 최근 4주 같은 시간대 평균이에요"
+_OBSERVED_LABEL = "주변 지역 혼잡(서울시 실시간 도시데이터)"
 _VENUE_NOTICE = "행사장 안 혼잡과 다를 수 있어요"
 
 
@@ -75,10 +74,16 @@ class SeoulCrowdService:
             response.unsupported_reason = "missing_coordinates"
             response.notices.append("축제 위치를 확인할 수 없어요.")
             return response
-        matches = nearby_areas(lat, lng, catalog.areas)
+        approved_codes = approved_area_codes(festival)
+        if not approved_codes:
+            response.unsupported_reason = "no_approved_mapping"
+            response.notices.append("이 축제는 승인된 주변 지역 혼잡 연결이 없어요.")
+            return response
+        approved_areas = tuple(area for area in catalog.areas if area.code in approved_codes)
+        matches = nearby_areas(lat, lng, approved_areas)
         if not matches:
             response.unsupported_reason = "no_nearby_areas"
-            response.notices.append("축제에서 1km 이내에 서울시 혼잡 집계 구역이 없어요.")
+            response.notices.append("축제에서 1km 이내에 승인된 주변 지역 혼잡 구역이 없어요.")
             return response
 
         response.nearby_areas = await asyncio.gather(
@@ -107,11 +112,8 @@ class SeoulCrowdService:
         ]
         for area in successful:
             assert area.data is not None
-            label = _ESTIMATE_LABEL if area.is_estimate else _OBSERVED_LABEL
             timestamp = area.data.observed_at.strftime("%Y-%m-%d %H:%M KST")
-            notice = f"{label} · {area.area_name} · {area.distance_m:g}m · 기준 {timestamp}"
-            if area.is_estimate:
-                notice += f" · {_ESTIMATE_NOTICE}"
+            notice = f"{_OBSERVED_LABEL} · {area.area_name} · {area.distance_m:g}m · 기준 {timestamp}"
             if area.status == "stale":
                 notice += " · 정보가 오래됐어요"
             response.notices.append(notice)
@@ -164,6 +166,8 @@ class SeoulCrowdService:
             except ValueError:
                 raise CityDataError("서울시 혼잡 조회 한도 설정을 확인해 주세요.", retryable=False) from None
             reading = await self._provider.fetch(area_code, quota)
+            if reading.is_estimate:
+                raise CityDataError("서울시 주변 지역 혼잡 관측 자료를 가져오지 못했어요.", retryable=True)
             if reading.observed_at > as_kst(self._now()):
                 raise CityDataError("서울시 혼잡 기준 시각을 확인할 수 없어요.", retryable=True)
             self._cache[area_code] = (self._clock() + _CACHE_SECONDS, reading)

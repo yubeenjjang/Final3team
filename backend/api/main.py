@@ -16,6 +16,7 @@ from api.errors import (
     handle_unexpected_error,
     handle_validation_error,
 )
+from api.request_logs import private_endpoint, request_logger
 import api.routers.accounts.favorites as favorites, api.routers.festivals.info as info
 from api.routers import health
 from api.routers.accounts import auth
@@ -56,7 +57,19 @@ async def add_response_headers(
         alphabet = string.ascii_letters + string.digits
         request_id = "req_" + "".join(secrets.choice(alphabet) for _ in range(26))
     request.state.request_id = request_id
-    response = await call_next(request)
+    endpoint = private_endpoint(request.url.path)
+    try:
+        response = await call_next(request)
+    except Exception as error:
+        if endpoint is None:
+            raise
+        # The server traceback can contain input values from an unexpected error.
+        response = await handle_unexpected_error(request, error)
+        request_logger.error(
+            "endpoint=%s request_id=%r http_status=500 error=INTERNAL_SERVER_ERROR",
+            endpoint, request_id,
+        )
+        return response
     if (
         response.status_code == 400
         and request.method == "OPTIONS"
@@ -79,6 +92,12 @@ async def add_response_headers(
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
     ):
         del response.headers["X-Mock"]
+    if endpoint is not None:
+        request_logger.info(
+            "endpoint=%s request_id=%r http_status=%d result_status=%s route_request_id=%s",
+            endpoint, request_id, response.status_code, getattr(request.state, "result_status", "-"),
+            getattr(request.state, "route_request_id", "-"),
+        )
     return response
 
 

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Path, Query
+from fastapi import APIRouter, Header, Path, Query, Request
 
 from api.schemas.festival_info import (
     CrowdResponse, NoticeResponse, NoticeType, RealCrowdResponse, WeatherResponse,
@@ -30,8 +30,11 @@ async def get_weather(festival_id: FestivalId, scenario: Scenario = None) -> Wea
 
 @router.get("/{festival_id}/crowd")
 async def get_crowd(
-    festival_id: FestivalId, scenario: Scenario = None,
+    request: Request, festival_id: FestivalId, scenario: Scenario = None,
 ) -> RealCrowdResponse | CrowdResponse:
     if seoul_crowd.uses_real_crowd():
-        return await seoul_crowd.get_service().get_crowd(festival_id)
-    return mock_festival_info.get_crowd(festival_id, scenario)
+        result = await seoul_crowd.get_service().get_crowd(festival_id)
+    else:
+        result = mock_festival_info.get_crowd(festival_id, scenario)
+    request.state.result_status = result.status
+    return result

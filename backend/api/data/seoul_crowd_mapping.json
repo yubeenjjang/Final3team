@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "usage_note": "참고용(승인 방식 폐기). 2026-11-23 권오현 반경 방식 결정 후 런타임에서 사용하지 않습니다.",
+  "usage_note": "2026-11-23 조사 자료. 실제 모드에서는 현재 축제 장소와 일치하는 후보 중 approved가 true인 공식 구역만 사용합니다. 최상위 approved는 조사 집계입니다.",
   "approved": false,
   "sources": {
     "seoul": {
