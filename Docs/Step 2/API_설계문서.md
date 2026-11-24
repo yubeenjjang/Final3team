@@ -54,7 +54,7 @@
 | 1' | 추천·동행·채팅 첫 시연/후속 순서·담당·완료 기준 합의 | 🟡 일부 | 19절(결정 반영 기록), 12/8 시연 범위는 신유빈 11/23 공지(축제→상세→귀가) | 추천 A36~A41 담당 신유빈 확정(협업 규칙). 후속 순서와 완료 기준은 별도 합의 |
 | 2 | 공급원별 저장·캐시 규칙을 **실제 처리 코드**와 맞춤, 동기 전용(카카오)·비동기 구분, 합성 예시 ≠ 실제 증거 | 🟡 일부 | **17-3절**(코드·시험 대응, 현재 동작과 예정 구분), 5절 막차 규칙, 17-4(합성 예시와 실제 호출 기록 구분) | **11/24 로컬 확인** — P18 A05 TMAP 만료(`retryable=false`)·카카오 결과 미저장·23시간 정리와 파생 값 삭제, 24시간 정리 명령 `python -m api.jobs.purge_route_results` 완료. **남은 것(막힌 이유)** — Redis 라벨 연동: 공통 Redis 연결(`backend/shared/redis.py`, 신유빈 담당)이 아직 빈 파일이라 연결 뒤 시험 · 정리 명령의 시간당 실행·실패 감시: W64·W65 AWS 구성(신유빈) |
 | 3 | 위치·대화 정보 최소 전달·열람자·로그 항목 구분, 허용/차단 시험 | 🟡 일부 | **18절** | **완료** — A04·A05·장소 검색·A10 로그 시험, A04 메모리 만료 후 장소 원문 검사, 일회용 DB 신규 행 원문 검사(P18, 11/24 DB 16개 통과), AI 실행기 결과에 경로 본문·토큰이 남지 않는 시험(한태경 tk `b7fd21a`). **남은 것(막힌 이유)** — Redis 원문 만료 시험: 공통 Redis 연결(신유빈) 뒤 · 에이전트 도구 입력 제한 시험: 한다영(Festival Agent 도구 연결 범위) · A77 관리자 열람 범위·기록 서버 시험: 신고·관리자 API가 12월 구현 범위(동행·채팅 W115~W128 뒤) |
-| 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **완료(11/24)** — `yubeen`의 D1 공통 DB 연결(`service_db_session`·`RESET ALL`)을 `ohyun`에 병합하고 A04·A05를 연결, 일회용 DB 시험 16개와 한태경 실DB 연결·권한 시험 17개(tk `649d50b`) 통과. A42 데이터랩 순위와 A81 요즘 올라온 글 계약 확정(6-2, 한태경 제안·권오현 채택). **남은 것** — 확정 정책의 구현·시험. 11/24 팀 결정 14건은 19절에 기록 |
+| 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **완료(11/24)** — `yubeen`의 D1 공통 DB 연결(`service_db_session`·`RESET ALL`)을 `ohyun`에 병합하고 A04·A05를 연결, 일회용 DB 시험 16개와 한태경 실DB 연결·권한 시험 17개(tk `649d50b`) 통과. A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다(6-2, 권오현 확정). **남은 것** — 확정 정책의 구현·시험. 11/24 팀 결정 14건은 19절에 기록 |
 | 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보(11/24 SQL·DB 시험 기준 `ohyun` `f689dee`)·전체 | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.5 제출 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
 
 ### 0-A-1. 강사 11/23 일지 피드백 중 백엔드 반영 (2026-11-24)
@@ -1302,7 +1302,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A57~A65** | — | `/api/v1/festivals/{id}/companion-posts`, `/api/v1/companion-posts`(+`/{id}`, `/applications`, `/meeting-place`, `/{action}`), `/api/v1/companion-applications/{id}/{action}` | 공개·user | **동행**: 모집 목록·작성·신청·승인(정원 잠금)·만남 장소·종료/취소 (6-4-4) | FR-COM01~11·18·19 | 최종 — 권오현 |
 | **A66~A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (6-4-5) | FR-COM09·15~17·20 | 최종 — 권오현 |
 | **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user·admin | **알림·신고·탈퇴**(6-4-6). 마이페이지는 비밀번호 변경·탈퇴·관심 축제(A11~A13) | FR-COM21~24 | 최종 — 권오현 |
-| **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩 검색어 트렌드 증가율 순으로 정렬하고, 신호가 없는 축제는 대한민국 구석구석 인기순으로 뒤에 표시(6-2) | 11/24 한태경 제안·권오현 채택(기획서 FR 추가 필요) | 최종 — 담당 신유빈 |
+| **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩과 대한민국 구석구석 점수를 60:40으로 합산해 정렬(6-2) | 11/24 신유빈 B안·권오현 확정(기획서 FR 추가 필요) | 최종 — 담당 신유빈 |
 | **A81** | GET | `/api/v1/festivals/{festival_id}/posts` | 없음 | **요즘 올라온 글**. 축제 상세에서 네이버 블로그·뉴스·카페의 최신 글 링크와 출처 표시(6-2) | 11/24 한태경 제안·권오현 채택 | 최종 — API 신유빈(W125)·화면 정예진(W127) |
 | **A40** | GET | `/api/v1/festivals/discover` | 없음 | 고정 시드 기반 전체 축제 둘러보기 | 〃 | 설계안 |
 | **A41** | GET | `/api/v1/festivals/recent` | 없음 | 최초 공개일 기준 최신 등록 | 〃 | 설계안 |
@@ -1418,7 +1418,7 @@ Content-Type: application/json
 | 티켓·예약·결제 | ❌ API 없음 | 회의 결정, 기획서 v2.9 예매 보류 |
 | 공연·전시 정보 | ❌ API 없음 | 축제만 다룸 |
 | 실시간 주차 빈자리(A27) | **채택 안 함(11/24)** | A08 시설에서 주차장 위치만 제공 |
-| 웹 크롤링 | **A42 '지금 핫한 축제'의 보조 출처**인 대한민국 구석구석에만 사용(11/24 권오현 결정) | 순위의 기본 출처는 네이버 데이터랩 검색어 트렌드입니다. 보조 출처는 약관·`robots.txt` 허용 범위에서 축제명·순위만 수집하며 원문은 저장하지 않음(6-2 A42). 축제 기본 정보·경로·실시간 정보는 계속 공식 API·공공데이터만 |
+| 웹 크롤링 | **A42 '지금 핫한 축제'의 점수 출처**인 대한민국 구석구석에만 사용(11/24 권오현 결정) | 네이버 데이터랩 검색어 트렌드와 함께 점수에 반영합니다. 구석구석은 약관·`robots.txt` 허용 범위에서 축제명·순위만 수집하며 원문은 저장하지 않음(6-2 A42). 축제 기본 정보·경로·실시간 정보는 계속 공식 API·공공데이터만 |
 | SNS 후기 현장 요약 | ⏸ 2차(나중에) | 메인 기능 아님 |
 | 정류장 눌러 버스 혼잡 보기, 자전거 추가 기능(따릉이 실시간 등) | ⏸ 나중에 | D-011, 회의록 ⚠9 |
 | 물품보관함·약국 지도 표시 | ⏸ 보류 | D-021 (회의 지도 목록 밖) |
@@ -1790,18 +1790,18 @@ Content-Type: application/json
 | `forecast.days[]` | array | `baseYmd`·`cnctrRate` | `{date, rate}` rate는 0~100 상대값 |
 | `region_demand` | object | `tarSjrnDsIxCd`·`tarSjrnDsIxNm`·`tarSjrnDsIxVal`·`baseYm`·`signguNm` | `{indicator, value, base_month, area_name}` 월 1회 갱신(지난달까지) |
 
-#### A42. 지금 핫한 축제 `GET /api/v1/festivals/trending` (11/24 한태경 제안·권오현 채택)
+#### A42. 지금 핫한 축제 `GET /api/v1/festivals/trending` (11/24 신유빈 B안·권오현 확정)
 
 | # | 칸 | 명세 |
 |---|---|---|
-| 1 | 호출 목적 | 축제 탭에 검색 관심이 늘어난 축제를 보여 줌. A39 인기는 서비스 내부 조회·관심 수를 사용 |
+| 1 | 호출 목적 | 축제 탭에 네이버 검색 관심 증가율과 구석구석 인기순으로 계산한 점수 상위 축제를 보여 줌. A39 인기는 서비스 내부 조회·관심 수를 사용 |
 | 2 | 요청 헤더 | `X-Request-ID`(선택). 인증 없음 |
 | 3 | 경로·쿼리 | `region` 선택(0-1절 코드, 기본 `ALL`) / `limit` 1~20(기본 10) |
 | 4 | 요청 본문 | 없음 |
 | 5 | 검증·권한 | 공개. 쿼리 형식 위반 시 422 |
-| 6 | 정상 응답 | 200 `{items[], crawled_at, source, status, partial_sources}`. 구석구석 단독 운영 시 `partial_sources: true`와 '일부 출처만 반영' 안내 |
+| 6 | 정상 응답 | 200 `{items[], crawled_at, source, status, partial_sources}`. 한 출처의 점수만 반영되면 `partial_sources: true`와 '일부 출처만 반영' 안내 |
 | 7 | 오류 응답 | 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED`. 공급원 수집 실패·한도 초과는 HTTP 200의 `status`로 표시 |
-| 8 | 실행 규칙 | `festival_trends`(004·017)에서 성공 회차의 `matched` 행을 조회. 공개 상태와 대상 기간을 확인하고 지역 필터 적용 후 순서대로 `limit`개 반환 |
+| 8 | 실행 규칙 | `festival_trends`(004·017)의 회차별 수집값으로 공개·대상 기간을 충족한 `matched` 축제의 점수를 계산. 지역 필터 적용 후 점수순으로 `limit`개 반환 |
 
 **A42 쿼리 필드**
 
@@ -1815,30 +1815,30 @@ Content-Type: application/json
 | 항목 | 내용 |
 |---|---|
 | 대상 | 게시된 축제 중 진행 중이거나 오늘부터 30일 이내에 시작하는 축제(KST) |
-| 기본 `trend_naver_datalab` | 네이버 데이터랩 검색어 트렌드(NAVER API HUB). 한도 월 50,000건, 사용량 약 월 1,200건. 키는 한태경 계정으로 발급(9-1) |
-| 검색어 묶음 | 축제별 정식 이름 위주로 구성. '빛축제' 같은 일반어의 단독 사용은 제외하고 이름이 비슷하면 지역명을 붙임. 한 요청에 축제 최대 4개 묶음과 공통 기준점 묶음('축제')을 포함. 기준점과 축제의 상대값(0~100)을 같은 요청에서 비교해 요청마다 다른 척도의 영향을 제거 |
-| 비교 기간·점수 | 수집일 전날까지의 최근 7일 일별 상대값 평균 ÷ 그 직전 7일 평균(KST). 같은 요청의 상대값으로 두 평균을 계산하고, 점수가 있으면 `trend_ratio`에 저장(`signal: ok`) |
-| 신호 없음 | 최근 7일 평균이 같은 요청의 기준점 최근 7일 평균 × `TREND_MIN_RELATIVE`(0.01)보다 작으면 `signal: no_signal`, 점수 `null`. 직전 7일 평균이나 기준점 평균이 0이면 비율을 계산할 수 없어 동일 처리 |
-| 보조 `trend_visitkorea` | 한국관광공사 대한민국 구석구석 축제 목록 인기순. 약관과 `robots.txt`가 허용하는지 확인한 뒤 축제명·순위(`source_rank`)만 크롤링. 요청 간격 1초 이상, 목록 소수 페이지만, 서비스명을 넣은 User-Agent, 일시 실패 시 재시도 1회(9-1 ②) |
-| 연결 | 데이터랩 묶음은 해당 DB 축제에 직접 연결. 구석구석은 정규화한 이름과 축제 기간으로 연결(`name_norm+period`, LLM 없음). 공백·괄호·“제n회” 정리 후 이름과 기간이 맞는 후보가 1개면 `matched`, 여럿이면 `ambiguous`, 없으면 `unmatched`. `match_rule`을 기록하고 `matched`만 표시 |
-| 정렬 | 점수가 있는 축제를 점수 내림차순으로 표시. 그 뒤에 `no_signal` 축제를 구석구석 인기순(`source_rank` 오름차순)으로 붙임. 보조 순위가 없는 `no_signal`은 맨 뒤에 배치. 같은 점수 또는 순위는 `festival_id` 오름차순. 시작 전 축제는 '곧 시작'을 표시할 수 있음 |
-| 갱신·실패 | `TREND_CRAWL_SCHEDULE`에 따라 6시간마다 수집. 회차마다 기준 시각(`crawled_at`)을 공유하고 출처별 작업은 A23 `ingestion_jobs`에 기록. 사용 중인 출처가 모두 성공한 회차를 공개. 수집 실패·한도 초과 또는 마지막 성공 이후 `TREND_STALE_H`(12시간) 초과 시 마지막 성공 순위와 그 기준 시각을 `status: stale`로 표시. 성공 이력이 없으면 `status: unavailable`, `items: []` |
-| 구석구석 단독 모드 | 데이터랩 유료 전환 등으로 데이터랩 수집을 끄면 매회 구석구석 인기순으로 표시(`source: visitkorea`, `partial_sources: true`, `score: null`, `signal: no_signal`). 단독 모드도 같은 실패·갱신 규칙 적용 |
+| 네이버 `trend_naver_datalab` ↔ `naver_datalab` | NAVER API HUB 검색어 트렌드 `POST /search-trend/v1/search`(9-1). 한도 월 50,000건 |
+| 검색어 묶음 | 정식 축제 이름 사용. 일반어 단독 사용은 제외하고 비슷한 이름에는 지역명 추가. 요청당 최대 5개 묶음(축제 최대 4개와 공통 기준점 '축제' 1개). 모든 요청에 같은 기준점 묶음을 포함해 상대값 척도를 맞춤 |
+| 네이버 점수 | 수집일 전날까지의 최근 7일 일별 상대값 평균 ÷ 직전 7일 평균(KST)을 `trend_ratio`로 저장. 같은 회차의 유효한 증가율 최댓값으로 나눠 0~1로 정규화. 최댓값이 0이거나 유효한 증가율이 없으면 네이버 점수는 결측 처리. 회차 최댓값은 지역·건수 필터 적용 전에 산정 |
+| 신호 없음 | 최근 7일 평균이 같은 요청의 기준점 최근 7일 평균 × `TREND_MIN_RELATIVE`(0.01)보다 작거나 직전 7일 평균·기준점 평균이 0이면 `signal: no_signal`, `trend_ratio: null`로 기록하고 네이버 점수를 결측 처리 |
+| 구석구석 `trend_visitkorea` ↔ `visitkorea` | 한국관광공사 대한민국 구석구석 축제 목록 인기순. 약관과 `robots.txt` 허용 확인 뒤 축제명·순위(`source_rank`)만 크롤링. 요청 간격 1초 이상, 목록 소수 페이지만, 서비스명을 넣은 User-Agent, 일시 실패 시 재시도 1회(9-1 ②) |
+| 구석구석 점수 | 1 − (`source_rank` − 1) / (같은 회차 구석구석 순위 개수). 순위 개수는 매칭·지역·건수 필터 적용 전 수집 목록 기준 |
+| 연결 | 데이터랩 묶음은 해당 DB 축제에 직접 연결. 구석구석은 정규화한 이름과 기간으로 연결(`name_norm+period`, LLM 없음). 공백·괄호·“제n회” 정리 후 후보가 1개면 `matched`, 여럿이면 `ambiguous`, 없으면 `unmatched`. `match_rule`을 기록하고 `matched`만 표시 |
+| 최종 점수·정렬 | 두 점수가 있으면 0.6 × 네이버 점수 + 0.4 × 구석구석 점수(`TREND_SCORE_WEIGHTS`, 9-1). 한쪽 점수가 없으면(`no_signal`, 수집 실패·한도 초과·오래됨 등) 있는 쪽 점수를 그대로 쓰고 `partial_sources: true`와 '일부 출처만 반영'을 표시. 두 점수 모두 없는 축제는 현재 목록에서 제외. 점수 내림차순, 동점이면 `festival_id` 오름차순. 시작 전 축제에는 '곧 시작' 표시 가능 |
+| 갱신·실패 | `TREND_CRAWL_SCHEDULE`에 따라 6시간마다 수집. 회차 기준 시각(`crawled_at`)을 공유하고 출처별 작업을 A23 `ingestion_jobs`에 기록. 수집 실패·한도 초과 또는 마지막 성공 12시간 초과(`TREND_STALE_H`)인 출처는 현재 점수에서 제외. 응답의 지역·건수 필터 적용 전에 두 출처 모두 현재 회차에서 사용할 점수가 없으면 마지막 성공 목록과 기준 시각을 `status: stale`로 반환. 성공 목록이 없으면 `status: unavailable`, `items: []` |
 | 보존 | `festival_trends` 30일(DB 설계서 7-0) |
 
 | 응답 필드 | 타입 | 빈값 | 설명 |
 |---|---|---|---|
 | `crawled_at` | string(date-time) | null 가능 | 표시한 성공 회차의 기준 시각. `stale`에서도 갱신 없이 그대로 반환. 성공 이력이 없으면 `null` |
-| `source` | string | null 가능 | 데이터랩만 반영 시 `naver_datalab`, 구석구석만 반영 시 `visitkorea`, 둘 다 반영 시 `combined`, 성공 이력 없음은 `null` |
+| `source` | string | null 가능 | 표시 목록의 `items[].sources` 합집합 기준. 데이터랩만 `naver_datalab`, 구석구석만 `visitkorea`, 둘 다 있으면 `combined`, 빈 목록은 `null` |
 | `status` | string | 불가 | `ok` 현재 회차, `stale` 마지막 성공 회차, `unavailable` 성공 이력 없음 |
-| `partial_sources` | boolean | 불가 | 한 출처로 구성한 회차면 `true`. 이전 회차를 보여 줄 때도 그 회차 값을 사용. 성공 이력 없음은 `false` |
+| `partial_sources` | boolean | 불가 | 표시 목록에 한 출처만 반영된 항목이 하나라도 있으면 `true`. `stale`이면 이전 목록 값을 사용하며 빈 목록은 `false` |
 | `items[].rank` | int | 불가 | 응답 표시 순서(1부터) |
 | `items[].festival_id`·`name`·`region_code`·`start_date`·`end_date`·`thumbnail_url`·`image_credit` | — | 썸네일 null 가능 | `festivals` 표시 필드 |
-| `items[].source_rank` | int | 가능 | 해당 축제의 구석구석 순위. 없으면 `null` |
+| `items[].source_rank` | int | 가능 | 점수에 반영한 구석구석 순위. 구석구석 점수를 반영하지 않으면 `null` |
 | `items[].crawled_at` | string(date-time) | 불가 | 해당 항목에 반영된 `festival_trends.crawled_at` 중 가장 최근 시각 |
-| `items[].score` | number | 가능 | `festival_trends.trend_ratio`(0 이상). `no_signal`이면 `null` |
-| `items[].signal` | string | 불가 | `ok` 또는 `no_signal` |
-| `items[].sources` | array<string> | 불가 | 근거 출처 코드 `naver_datalab`·`visitkorea`. DB의 `trend_naver_datalab`·`trend_visitkorea`에 대응 |
+| `items[].score` | number | 불가 | 0~1 최종 점수. 두 출처의 가중합 또는 사용 가능한 한쪽 점수 |
+| `items[].signal` | string | 불가 | 네이버 점수가 반영되면 `ok`, 사용할 수 없으면 `no_signal`. `no_signal`이어도 구석구석 점수는 반영 가능 |
+| `items[].sources` | array<string> | 불가 | 점수에 반영된 출처만 포함. `trend_naver_datalab` ↔ `naver_datalab`, `trend_visitkorea` ↔ `visitkorea` |
 | `items[].partial_sources` | boolean | 불가 | 항목에 출처 하나만 반영되면 `true` |
 
 #### A81. 요즘 올라온 글 `GET /api/v1/festivals/{festival_id}/posts` (11/24 한태경 제안·권오현 채택)
@@ -1848,7 +1848,8 @@ Content-Type: application/json
 | 항목 | 명세 |
 |---|---|
 | 요청 | 인증 없음. `X-Request-ID` 선택. 경로 변수만 받음 |
-| 결과 선별 | 제목의 검색 강조 마크업을 걷어낸 뒤 정식 축제 이름(`festivals.title`)이 제목에 정확히 포함되고, KST 게시일이 축제 시작일 30일 전 이후(경계일 포함)인 글만 반환. 시작일이 없으면 빈 목록. 블로그·뉴스·카페를 합쳐 최신순으로 최대 `POSTS_LIMIT`건(설정 범위 3~5, 기본 5), 조건 충족 글이 적으면 있는 만큼 표시 |
+| 공급원 | `GET /search/v1/blog`의 `postdate`(yyyyMMdd), `GET /search/v1/news`의 `pubDate`(KST로 변환), `GET /search/v1/cafearticle`(날짜 없음). `title`·`description`의 검색 강조 `<b>` 태그 제거(9-1) |
+| 결과 선별 | 태그를 제거한 제목에 정식 축제 이름(`festivals.title`)이 정확히 포함된 글을 선별. 블로그·뉴스는 KST 게시일이 축제 시작일 30일 전 이후(경계일 포함)인 글을 최신순으로 정렬하며, 시작일이 없으면 해당 두 출처의 글은 제외. 카페는 제목 정확 일치 조건만 적용하고 날짜가 있는 글 다음에 공급원 반환 순서로 표시. 세 출처를 합쳐 최대 `POSTS_LIMIT`건(설정 범위 3~5, 기본 5) |
 | 캐시 | 정상 결과의 제목·링크·게시일·출처 종류만 Redis `posts:{festival_id}`에 `POSTS_CACHE_TTL_S`(600초) 동안 저장. 글 목록의 영구 저장과 본문 저장은 하지 않음 |
 | 정상·실패 | HTTP 200. 정상 조회는 `status: ok`(결과가 없으면 `items: []`), 공급원 오류·한도 초과 시 `items: []`, `status: unavailable`, `retryable: true`. 실패 응답은 캐시하지 않음 |
 | 오류 | 404 `FESTIVAL_NOT_FOUND`(존재하지 않거나 공개되지 않은 축제), 422 `VALIDATION_ERROR`(경로 변수 형식 오류). 공통 오류 형식(6절) |
@@ -1859,10 +1860,10 @@ Content-Type: application/json
 | `festival_id` | path | string | 예 | `^fst_[0-9A-Za-z]{6,26}$`, 공개 축제 ID |
 | `status` | 응답 | string | 예 | `ok` 또는 `unavailable` |
 | `retryable` | 응답 | boolean | 예 | 공급원 실패 시 `true`, 정상 조회 시 `false` |
-| `items` | 응답 | array<object> | 예 | 최신순 글 목록 |
+| `items` | 응답 | array<object> | 예 | 게시일이 있는 글을 최신순으로 표시한 후 카페 글을 공급원 반환 순서로 표시 |
 | `items[].title` | 응답 | string | 예 | 원문 제목(평문) |
 | `items[].url` | 응답 | string(uri) | 예 | 원문 링크. 카페는 이 링크로 이동 |
-| `items[].published_date` | 응답 | string(date) | 예 | 게시일(ISO 8601, KST) |
+| `items[].published_date` | 응답 | string(date) 또는 null | 예 | 블로그·뉴스 게시일(ISO 8601, KST). 카페는 `null` |
 | `items[].source_type` | 응답 | string | 예 | `blog`·`news`·`cafe`. 화면에서 네이버 블로그·뉴스·카페로 출처 표시 |
 
 #### A30. 데이터 공급원 상태 `GET /api/v1/data-sources`
@@ -1932,7 +1933,7 @@ Content-Type: application/json
 | 기능 | 기획 FR | API | 계약 상태 | 명세 확정 | DB | 구현 (담당) | 검증 |
 |---|---|---|---|---|---|---|---|
 | 맞춤 추천(취향·추천·인기·둘러보기·최신) | FR-REC01~16 | A36~A41 | 상세 작성(6-4) · 담당 확정(11/24 팀 결정) | W112 · 11/20 → 남은 상세는 W123 전(11/30) | **DDL·시험 완료**(005 `user_festival_preferences`·`festival_tags`·`festival_engagement_daily`, T29~T31) | **신유빈**(11/20 GitHub 협업 규칙 `recommendations.py` 담당) — WBS W124·W125 담당 표기는 협업 규칙에 맞춰 갱신 | W128 12/17–18 |
-| **지금 핫한 축제** | 기획서 FR 추가 필요 | **A42** | 데이터랩 증가율·구석구석 인기순 보조(6-2) | 11/24 한태경 제안·권오현 채택 | `festival_trends`(004·017) | 신유빈 API · 정예진 화면(W125·W127 범위) | W128 |
+| **지금 핫한 축제** | 기획서 FR 추가 필요 | **A42** | 데이터랩·구석구석 점수 60:40 합산(6-2) | 11/24 신유빈 B안·권오현 확정 | `festival_trends`(004·017) | 신유빈 API · 정예진 화면(W125·W127 범위) | W128 |
 | **요즘 올라온 글** | 축제 상세 | **A81** | 블로그·뉴스·카페 최신 결과 표시(6-2) | 11/24 한태경 제안·권오현 채택 | Redis `posts:{festival_id}` | 신유빈 API W125 12/03–04 · 정예진 화면 W127 12/09–11 | W128 |
 | 동행 모집·신청·승인·만남 장소·종료 | FR-COM01~11·18~19 | **A57~A65** | **상세 작성**(6-4-4, 정원 잠금 승인·재신청 규칙) | 11/20 | **DDL·시험 완료**(007 `companion_posts`·`companion_applications`·`meeting_places`, T36·T37) | W115 12/03–07, W117 12/09–10 (R03) | W128 |
 | 친구 검색·신청·삭제·차단 | FR-COM12~14 | **A43~A50** | **상세 작성**(6-4-3). 친구 추천은 범위 밖(후보) | 11/20 | **DDL·시험 완료**(005 `friend_requests`·`friendships`·`user_blocks`, 닉네임 중복 금지 009, T32~T33·T43) | W118 12/03–04 (R03) | W128 |
@@ -2429,7 +2430,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | 관심 축제 저장 | FR-A08 | `favorites/` (정예진) | A11~A13 (`accounts/favorites.py`, 권오현) | `save_favorite` | `favorites` | T1·T2·T21~T23 | B ✅ / A·D ⬜ |
 | 회원가입·로그인 | FR-A, D-037 | `auth/`, `me/` (정예진) | A32~A35 (`accounts/auth.py`·`users.py`, 권오현) | — | `users`·`profiles`·`refresh_tokens` + Redis `revoked:*` | T12·T16·T21 | B 🔶 권한만 / A ⬜ |
 | 취향 고르기·맞춤 추천 | FR-REC01~16 | `onboarding/`, `recommendations/` (정예진) | A36~A41 (`festivals/recommendations.py`, 신유빈) | — | `user_festival_preferences`·`festival_tags`·`festival_engagement_daily`(005) | T29~T31, REC-TC-01~07 | B ✅ / A·C·D(태그 LLM 검증) ⬜ |
-| 지금 핫한 축제 | (기획서 FR 추가 필요) | `recommendations/` (정예진) | A42 데이터랩 증가율·구석구석 보조(신유빈, 6-2) | — | `festival_trends`(004·017) | T27, T017, W128 | A·B·C ⬜ |
+| 지금 핫한 축제 | (기획서 FR 추가 필요) | `recommendations/` (정예진) | A42 데이터랩·구석구석 점수 60:40 합산(신유빈, 6-2) | — | `festival_trends`(004·017) | T27, T017, W128 | A·B·C ⬜ |
 | 요즘 올라온 글 | 축제 상세 | `festivals/[festivalId]/` (정예진) | A81 네이버 블로그·뉴스·카페 검색(신유빈, 6-2) | — | Redis `posts:{festival_id}` | W128(제목·게시일 필터, 출처·실패 표시) | A·B·C ⬜ |
 | 친구 추가·차단 | FR-COM12~14 | `friends/` (정예진) | A43~A50 (`community/friends.py`, 권오현) | — | `friend_requests`·`friendships`·`user_blocks`(005) | T32·T33, COM-TC | B ✅ / A ⬜ |
 | AI 방문 코스 | FR-P01·P03 | `assistant/` 방문 코스 (이수언) | A51 → A06-1 (`assistant/chatbot.py` 권오현) → Festival 에이전트(한다영) | `get_festival`·`get_facilities`·`get_official_notices`·`get_crowd` | `assistant_runs`(`run_kind`·`result`, 006) | T34 | B ✅ / A·D ⬜ |
@@ -3134,9 +3135,10 @@ BFCL 30문항의 원본은 한다영 브랜치에 있으며, 채점에는 API �
 | `WS_TICKET_TTL_S` | 30초 | WebSocket 연결 표 | 1회용 표 | 임시 | W116(12/08) | 권오현 |
 | `CHAT_REDIS_RECENT` | 방당 최근 100개(24시간) | Redis 최근 메시지 | 빠른 조회(DB 7-0) | 확정(11/24 팀 결정) | 11/24 | 권오현 |
 | `TAG_LLM_DAILY_MAX` / `REC_WEIGHTS_VERSION` | 하루 300건 / `rec-0.1` | 축제 태그 LLM 검증 상한(6-4-1) / 추천 점수 가중치 묶음 | LLM 비용 상한 / 가중치 바꾸면 버전 올림 | 임시 | W27 모델 결정(11/25)·W124(12/02) | 신유빈 |
-| `TREND_CRAWL_SCHEDULE` / `TREND_STALE_H` | 6시간마다 / 12시간 | A42 수집 주기·신선도 기준 | 실패·한도 초과 또는 마지막 성공 12시간 초과 시 마지막 성공 회차를 `stale`로 표시(6-2) | 확정(11/24) | 11/24 | 신유빈 |
+| `TREND_CRAWL_SCHEDULE` / `TREND_STALE_H` | 6시간마다 / 12시간 | A42 수집 주기·신선도 기준 | 실패·한도 초과·12시간 초과는 출처별로 적용. 두 출처 모두 점수를 낼 수 없으면 마지막 성공 목록을 `stale`로 표시(6-2) | 확정(11/24) | 11/24 | 신유빈 |
+| `TREND_SCORE_WEIGHTS` | `naver_datalab: 0.6`, `visitkorea: 0.4` | A42 최종 점수 | 두 점수가 있을 때 가중합. 한쪽만 있으면 해당 점수 그대로 사용 | 확정(11/24 신유빈 B안·권오현 확정) | 11/24 | 신유빈 |
 | `TREND_MIN_RELATIVE` | 0.01 | A42 최근 7일 검색 신호 하한 | 같은 요청의 기준점('축제') 최근 7일 평균 대비 1% 미만은 `no_signal` | 확정(11/24) | 11/24 | 신유빈 |
-| `NAVER_API_HUB_KEY_ID` / `NAVER_API_HUB_KEY` | 서버 환경변수 | NAVER API HUB 데이터랩(A42)·검색(A81) 공용 | 인증 헤더 `X-NCP-APIGW-API-KEY-ID`·`X-NCP-APIGW-API-KEY`. 데이터랩 한도 월 50,000건, 월 사용량 약 1,200건 | 확정(11/24) | 11/24 | 한태경(계정·키 발급) |
+| `NAVER_API_HUB_KEY_ID` / `NAVER_API_HUB_KEY` | 서버 환경변수 | NAVER API HUB 데이터랩(A42)·검색(A81) 공용 | 인증 헤더 `X-NCP-APIGW-API-KEY-ID`·`X-NCP-APIGW-API-KEY`. 상세 명세는 13절 | 확정(11/24) | 11/24 | 한태경(계정·키 발급) |
 | `POSTS_LIMIT` | 5건(설정 범위 3~5) | A81 최신 글 표시 | 세 출처의 필터 통과 결과를 합쳐 최대 5건 | 확정(11/24) | 11/24 | 신유빈 |
 | `SIM_STOP_GRACE_S` | 2초 | A21 중단 후 새 요청 멈춤 | 시연 정지 버튼 | 임시 | W96 · 12/04 | 신유빈 |
 | `RECOVERY_DEFAULT_MAX_MIN` | 5분 | A19 `stop_condition` 기본값 | 7-5 재측정 한 번에 충분 | 임시 | W48 · 12/04 | 신유빈 |
@@ -3458,9 +3460,18 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | 지하철역·버스 정류장 위치 | 도시철도 노선정보·TAGO 정류소 | national | 아니요 | A08 | D-014 |
 | 방문 집중 예측·지역 수요 | 한국관광공사 (집중률 예측·관광 수요 강도) | national | 30일 예측 | A29 | D-018 |
 | 지도 | 카카오 지도 (프론트) | national | — | 화면 | D-035 |
-| 지금 핫한 축제(기본) | 네이버 데이터랩 검색어 트렌드(NAVER API HUB, `trend_naver_datalab`, 월 50,000건·사용량 약 월 1,200건, 한태경 계정 발급) | national | 6시간마다 · 최근 7일/직전 7일 검색 관심 비교 | A42 | 11/24 한태경 제안·권오현 채택 |
-| 지금 핫한 축제(보조) | 한국관광공사 대한민국 구석구석 축제 목록 인기순 크롤링(`trend_visitkorea`) | national | 6시간마다 · 축제명·순위 | A42 | 약관·`robots.txt` 허용 확인 후 수집 |
+| 지금 핫한 축제(네이버 60%) | 네이버 데이터랩 검색어 트렌드(NAVER API HUB, `trend_naver_datalab`, 월 50,000건, 한태경 계정 발급) | national | 6시간마다 · 최근 7일/직전 7일 검색 관심 비교 | A42 | 11/24 신유빈 B안·권오현 확정 |
+| 지금 핫한 축제(구석구석 40%) | 한국관광공사 대한민국 구석구석 축제 목록 인기순 크롤링(`trend_visitkorea`) | national | 6시간마다 · 축제명·순위 | A42 | 약관·`robots.txt` 허용 확인 후 수집 |
 | 요즘 올라온 글 | 네이버 검색 API(블로그·뉴스·카페, NAVER API HUB) | national | 조회 시 · Redis 10분 캐시 | A81 | 축제 상세에서 출처와 검색 결과 링크 표시 |
+
+**NAVER API HUB 연동(A42·A81, 한태경 11/24 16:09 명세)**
+
+| 항목 | 기준 |
+|---|---|
+| 기본 주소 | `https://naverapihub.apigw.ntruss.com` (HTTPS만 사용) |
+| 검색어 트렌드 | `POST /search-trend/v1/search`, `Content-Type: application/json`, `timeUnit: date`. 요청당 최대 5개 묶음(기준점 포함). 문서 간 차이가 있는 묶음당 키워드 수도 보수적으로 최대 5개 적용 |
+| 검색 | `GET /search/v1/blog`, `GET /search/v1/news`, `GET /search/v1/cafearticle`. `title`·`description`의 `<b>` 태그 제거. 문서 간 한도 차이에 따라 하루 25,000건을 세 검색 API 합산 상한으로 적용 |
+| 공통 실패 | 게이트웨이 `error.errorCode`·`error.message`·`error.details`, 검색 `errorCode`·`errorMessage`, 트렌드 `errMsg`·`errId`·`body` 세 형태를 같은 공급원 실패로 처리. 429는 한도 초과로 처리하고 A42·A81의 실패 응답은 6-2절 기준 적용 |
 
 한태경이 NAVER API HUB 신청 시 데이터랩의 A42 순위 산출과 검색 API의 A81 결과 표시 용도를 각각 약관에서 확인합니다.
 
@@ -3476,7 +3487,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | 새 지역 | 표준 입력 형태 + 지역별 전처리 어댑터 추가, `data_sources.enabled_region_codes`에 지역 추가 | 데이터가 없는 지역은 `unsupported` 유지(D-023) |
 | 새 공급원 | 같은 내부 형식의 어댑터 추가(0절 '공급원 어댑터') | 실호출로 확인 전에는 `unverified` |
 | 새 에이전트 도구 | 4절 표에 추가하고 BFCL 문항 추가 여부 결정 | 평가가 시작된 문항의 정답은 바꾸지 않음 |
-| 크롤링 보완(D-027, 멘토 권고) | **A42 '지금 핫한 축제' 보조 출처**인 대한민국 구석구석만 크롤링(11/24 권오현 결정, 6-2). 다른 기능으로 넓히면 같은 규칙(약관·`robots.txt` 허용 범위, 원문 저장 안 함) | 축제 정보의 정본은 계속 TourAPI |
+| 크롤링 보완(D-027, 멘토 권고) | **A42 '지금 핫한 축제' 점수 출처**인 대한민국 구석구석만 크롤링(11/24 권오현 결정, 6-2). 다른 기능으로 넓히면 같은 규칙(약관·`robots.txt` 허용 범위, 원문 저장 안 함) | 축제 정보의 정본은 계속 TourAPI |
 
 ---
 
@@ -3856,7 +3867,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 |---|---|---|---|
 | 1. TMAP 무료 유지 — Free 하루 10건(오류 포함), 한도 도달 시 카카오 2차(하루 1,000건). 부하 시험은 모의 응답. 유료 전환 안 함 | 확정(11/24 팀 결정) | 5·9-1·9-2·11절 | 11/24 신유빈 확인 |
 | 2. A27 실시간 주차 빈자리 — 채택 안 함(11/24). A08 시설에서 주차장 위치만 제공 | 확정(11/24 팀 결정) | 0-2·6-1·6-2·13절 | 11/24 신유빈 확인 |
-| 3. A42 데이터랩 검색 증가율 순위와 구석구석 인기순 보조·단독 운영을 적용. 6시간 수집, 실패·한도 초과·12시간 초과 시 마지막 성공 순위에 `stale` 표시. A81로 축제 상세에 네이버 검색 결과를 표시 | 확정(11/24 한태경 제안·권오현 채택) | 0-A·6·6-2·6-3·9-1·13절 | API 신유빈 · 화면 정예진 |
+| 3. A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 한쪽만 쓸 수 있으면 일부 출처 표시, 둘 다 사용할 수 없으면 마지막 성공 목록 또는 빈 목록 반환 | 확정(11/24 권오현) | 0-A·6·6-2·6-3·9-1·13절 | API 신유빈 · 화면 정예진 |
 | 4. 마이페이지 — 마이페이지 API는 비밀번호 변경·탈퇴·관심 축제만 제공. 운영 공지·이용약관은 고정 문서 링크(별도 API 없음) | 확정(11/24 팀 결정) | 1·6-4-6절 | 11/24 신유빈 확인 |
 | 5. TMAP 지도 표시 — TMAP 경로를 카카오 지도 위에 그림(①). 카카오 공식 답변(11/20)은 타사 지도 위 표시 허용, SK는 회신 없음. 경로 아래 **경로 정보: TMAP** 표기. SK가 금지 회신하면 TMAP 경로를 소요 시간·환승·정류장 목록으로 표시합니다. | 확정(11/24 팀 결정) | 5·11절 | 11/24 신유빈 확인 |
 | 6. 서울 혼잡 시연(W89) — 서울빛초롱축제(`fst_01M835B57450M888RBNEFVRWWA`) · 광화문·덕수궁 POI009, 시의회 앞 POI130, 명동 관광특구 POI003. 숭례문 파수의식은 TourAPI EV03 행사로 범위에서 제외 | 확정(11/24 팀 결정) | A10(6-2) | 11/24 신유빈 확인 |
@@ -3874,7 +3885,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
 | v0.5 | 2026-11-24 | DB 연결 대기 초과 오류를 `DB_POOL_TIMEOUT`(503, retryable, Retry-After 1, 신유빈 제안)으로 변경. |
-| v0.5 | 2026-11-24 | A42 데이터랩 검색 증가율·`no_signal`·구석구석 인기순 보조를 확정했습니다. 축제 상세의 네이버 검색 결과 표시 API A81과 Redis 10분 캐시를 추가했습니다(한태경 제안·권오현 채택). |
+| v0.5 | 2026-11-24 | A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정. 한태경 16:09 NAVER API HUB 명세와 A81 Redis 10분 캐시를 반영했습니다. |
 | v0.5 | 2026-11-24 | 11/24 신유빈 확인 팀 결정 14건 반영. |
 | v0.4 | 2026-11-24 | 축제 범위 확정. TourAPI `lclsSystm2=EV01`만 A02·A03에서 공개 대상으로 삼고 원본 분류 대응표를 추가했습니다. |
 | v0.4 | 2026-11-24 | 강사 11/23 일지 피드백 1·3·4 반영. 축제 재선택 종료와 혼잡·일시 오류 전이를 대조하고 실제 DB·혼잡 증빙 범위와 TMAP 7일 백업 제외 기준을 연결했습니다. |
