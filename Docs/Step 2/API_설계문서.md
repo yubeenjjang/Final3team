@@ -57,6 +57,8 @@
 | 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **완료(11/24)** — `yubeen`의 D1 공통 DB 연결(`service_db_session`·`RESET ALL`)을 `ohyun`에 병합하고 A04·A05를 연결, 일회용 DB 시험 16개와 한태경 실DB 연결·권한 시험 17개(tk `649d50b`) 통과. A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다(6-2, 권오현 확정). **남은 것** — 확정 정책의 구현·시험. 11/24 팀 결정 14건은 19절에 기록 |
 | 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보(11/24 SQL·DB 시험 기준 `ohyun` `f689dee`)·전체 | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.5 제출 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
 
+A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입·로그인·갱신·로그아웃과 인증 원문 로그 차단 시험은 1절·17-3절에 연결했습니다. Redis 연결 전에는 폐기·요청 제한 상태를 API 프로세스 메모리에 보관합니다.
+
 ### 0-A-1. 강사 11/23 일지 피드백 중 백엔드 반영 (2026-11-24)
 
 | # | 피드백 | 상태 | 반영 위치·근거 |
@@ -167,16 +169,20 @@
 | **비로그인 경로 요청 보호** | 상태 조회는 로그인 여부와 관계없이 `route_request_id` + 요청 시 발급한 `route_access_token`(로그인 JWT와 별개)으로 본인만 조회. 짧은 수명 적용은 DB·Redis 연결 때 구현(2-2절). IP·세션 단위 요청 수 제한 |
 
 
+**구현 상태** — 기본 `AUTH_PROVIDER=mock`은 모의 토큰을 발급합니다. `AUTH_PROVIDER=db`에서 A32~A35가 001~009를 적용한 PostgreSQL과 자체 JWT를 사용합니다. 가입·로그인·갱신 및 소유한 Refresh의 폐기에는 `service_db_session`을 사용합니다.
+
+**DB-19 연결** — 보호 API A35의 `get_current_user`와 요청용 `get_user_db` 의존성은 검증된 JWT의 `sub`를 `backend/shared/db/session.py`의 `user_db_session(user_id=sub)`에 넘겨 RLS를 적용합니다.
+
 ### 1-1. 인증 API 상세 (A32~A35, FR-A01~A04, D-037)
 
 공통: 경로 `/api/v1/auth/*`, 본문 JSON, 비밀번호·토큰 원문은 **로그에 남기지 않음**(04 문서 7-0 ⑤). 로그인 요청 수 제한은 IP당 분당 10회(`AUTH_RATE_LIMIT_PER_MIN`, 9-1 ⑤, 11/24 팀 결정). 오류 형식은 6절 공통 오류 응답과 같음.
 
-| API | 요청 | 정상 응답 | 검증·처리 규칙 | 오류 |
-|---|---|---|---|---|
-| **A32** `POST /auth/signup` | `{email, password, display_name, birth_year, gender}` **모두 필수**(시나리오 S03, 11/20 결정) — 이메일 형식·254자 이하, 비밀번호 8~64자(영문·숫자 포함), **닉네임(`display_name`) 2~12자·대소문자 무시 중복 불가**, 출생연도 1900~올해, 성별 `male`·`female`, 닉네임은 앞뒤 공백 제거 후 검사 | **201** `{user_id, display_name}` (로그인은 따로 A33) | 이메일은 소문자로 바꿔 비교. 비밀번호는 argon2id로 해시만 저장. **한 트랜잭션**에서 `users`(status `active`) + `profiles`(role `user`, 닉네임·출생연도·성별) 생성. 나이·성별은 **동행 신청 때 그 모집 글 작성자에게만** 보임(A61, DB `app_applicant_profile`) | 422 형식 / 409 `EMAIL_ALREADY_EXISTS`·`NICKNAME_TAKEN` / 429 |
-| **A33** `POST /auth/login` | `{email, password}` | **200** `{access_token, token_type:"bearer", expires_in:1800, refresh_token, refresh_expires_at, user:{user_id, display_name, role}}` | 계정 `status='active'`만. 실패 이유를 구분하지 않음(이메일 존재 여부 노출 금지). 성공 시 `users.last_login_at`, `refresh_tokens`에 **해시만** 저장(14일) | 401 `INVALID_CREDENTIALS` / 403 `ACCOUNT_DISABLED` / 429 |
-| **A34** `POST /auth/refresh` | `{refresh_token}` | **200** A33과 같은 토큰 묶음(새 Access + **새 Refresh**) | **교체 방식**: `refresh:lock:{token_id}`(5초)로 동시 교체 방지 → 기존 행 `revoked_at` 기록 → 새 행 추가(한 트랜잭션). **이미 폐기된 Refresh가 다시 오면 재사용으로 보고 그 사용자의 Refresh 전부 폐기** | 401 `REFRESH_INVALID`(없음·만료) / 401 `REFRESH_REUSED`(재사용 — 다시 로그인) / 409 `REFRESH_IN_PROGRESS`(잠금 중) |
-| **A35** `POST /auth/logout` | 헤더 Access JWT + 본문 `{refresh_token}` | **204** | 그 Refresh 행 `revoked_at` + Access의 `jti`를 `revoked:{jti}`(남은 수명만큼)에 넣음 → 이 기기만 로그아웃. 전체 기기 로그아웃은 탈퇴(A80)와 Refresh 재사용 감지 때만 | 401 |
+| API | 요청 | 정상 응답 | 검증·처리 규칙 | 오류 | 구현 상태 |
+|---|---|---|---|---|---|
+| **A32** `POST /auth/signup` | `{email, password, display_name, birth_year, gender}` **모두 필수**(시나리오 S03, 11/20 결정) — 이메일 형식·254자 이하, 비밀번호 8~64자(영문·숫자 포함), **닉네임(`display_name`) 2~12자·대소문자 무시 중복 불가**, 출생연도 1900~올해, 성별 `male`·`female`, 닉네임은 앞뒤 공백 제거 후 검사 | **201** `{user_id, display_name}` (로그인은 따로 A33) | 이메일은 소문자로 바꿔 비교. 비밀번호는 argon2id로 해시만 저장. **한 트랜잭션**에서 `users`(status `active`) + `profiles`(role `user`, 닉네임·출생연도·성별) 생성. 나이·성별은 **동행 신청 때 그 모집 글 작성자에게만** 보임(A61, DB `app_applicant_profile`) | 422 형식 / 409 `EMAIL_ALREADY_EXISTS`·`NICKNAME_TAKEN` / 429 | DB에 계정·프로필을 한 트랜잭션으로 저장 |
+| **A33** `POST /auth/login` | `{email, password}` | **200** `{access_token, token_type:"bearer", expires_in:1800, refresh_token, refresh_expires_at, user:{user_id, display_name, role}}` | 계정 `status='active'`만. 실패 이유를 구분하지 않음(이메일 존재 여부 노출 금지). 성공 시 `users.last_login_at`, `refresh_tokens`에 **해시만** 저장(14일) | 401 `INVALID_CREDENTIALS` / 403 `ACCOUNT_DISABLED` / 429 `RATE_LIMITED` / 503 `AUTH_CHECK_UNAVAILABLE` | DB에 로그인 시각·Refresh 해시 저장, IP별 로그인 제한 |
+| **A34** `POST /auth/refresh` | `{refresh_token}` | **200** A33과 같은 토큰 묶음(새 Access + **새 Refresh**) | **교체 방식**: `refresh:lock:{token_id}`(5초)로 동시 교체 방지 → 기존 행 `revoked_at` 기록 → 새 행 추가(한 트랜잭션). **이미 폐기된 Refresh가 다시 오면 재사용으로 보고 그 사용자의 Refresh 전부 폐기** | 401 `REFRESH_INVALID`(없음·만료) / 401 `REFRESH_REUSED`(재사용 — 다시 로그인) / 409 `REFRESH_IN_PROGRESS`(잠금 중) / 503 `AUTH_CHECK_UNAVAILABLE` | DB 트랜잭션으로 교체·재사용 폐기 |
+| **A35** `POST /auth/logout` | 헤더 Access JWT + 본문 `{refresh_token}` | **204** | 그 Refresh 행 `revoked_at` + Access의 `jti`를 `revoked:{jti}`(남은 수명만큼)에 넣음 → 이 기기만 로그아웃. 전체 기기 로그아웃은 탈퇴(A80)와 Refresh 재사용 감지 때만 | 401 / 503 `AUTH_CHECK_UNAVAILABLE` | 본인 Refresh 폐기, Access jti 만료까지 차단 |
 
 **A32 회원 가입 (201)**
 
@@ -189,7 +195,7 @@
 | `gender` | body | string | 예 | `male`·`female` |
 | `user_id` | 응답 | string (UUID) | 예 | 생성된 사용자 ID |
 | `display_name` | 응답 | string | 예 | 저장한 닉네임 |
-| `is_mock` | 응답 | boolean | 예 | 현재 모의 응답은 `true` |
+| `is_mock` | 응답 | boolean | 예 | 모의 모드는 `true`, DB 모드는 `false` |
 
 **A33 로그인·A34 갱신·A35 로그아웃 요청**
 
@@ -212,10 +218,10 @@
 | `user` | 응답 | object | 예 | 사용자 정보 |
 | `user.user_id` | 응답 | string (UUID) | 예 | 사용자 ID |
 | `user.display_name` | 응답 | string | 예 | 닉네임 |
-| `user.role` | 응답 | string | 예 | 현재 모의 응답은 `user`, 설계상 계정 역할은 1절 |
-| `is_mock` | 응답 | boolean | 예 | 현재 모의 응답은 `true` |
+| `user.role` | 응답 | string | 예 | 모의 모드는 `user`, DB 모드는 `profiles.role` |
+| `is_mock` | 응답 | boolean | 예 | 모의 모드는 `true`, DB 모드는 `false` |
 
-- **보호 API의 인증 순서:** 서명·만료·발급자 검증 → `revoked:{jti}` 확인 → 역할 확인. **Redis 장애로 `revoked` 확인이 안 되면** 읽기 API는 그대로 처리하고, 쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`(안전 쪽). 담당 권오현 · 확정 W16(11/20 초안, 구현 때 W18에서 시험).
+- **보호 API의 인증 순서:** 서명·만료·발급자 검증 → `revoked:{jti}` 확인 → 역할 확인. **Redis 장애로 `revoked` 확인이 안 되면** 읽기 API는 그대로 처리하고, 쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`(안전 쪽). DB 모드에서 같은 규칙을 현재 메모리 어댑터와 이후 Redis 어댑터의 인터페이스 오류에 적용합니다.
 - **탈퇴·정지 계정:** Access JWT가 남아 있어도 보호 API마다 `users.status='active'`를 확인합니다(탈퇴 직후 30분 동안 쓰는 것 방지).
 
 ---
@@ -1371,6 +1377,7 @@ Content-Type: application/json
 | `UNAUTHORIZED` / `FORBIDDEN` | 401 / 403 | 인증 없음·만료 / 권한 부족·타인 자원 |
 | `RATE_LIMITED` | 429 | 요청 수 제한 초과 |
 | `DB_POOL_TIMEOUT` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
+| `AUTH_CHECK_UNAVAILABLE` | 503 | 쓰기·관리자 인증 상태, 로그인 한도, 갱신 잠금 또는 로그아웃 차단을 확인할 수 없음. `retryable=true` |
 | `FESTIVAL_NOT_FOUND` | 404 | 없는 축제 ID |
 | `FESTIVAL_LOCATION_UNKNOWN` | 400 | 출발 또는 도착이 축제 장소인데 축제 좌표가 없음 |
 | `NICKNAME_TAKEN` | 409 | 닉네임이 이미 있음(대소문자 무시, A32 — DB `uq_profiles_nickname`) |
@@ -1448,6 +1455,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `type`: 선택, `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure` / `active_only`: bool, 기본 true(지금 효력 있는 것만) |
 | 출처 | 운영자가 등록·승인한 공지 + 서울 TOPIS 통제(10번, 서울만) |
+| 구현 상태 | 기본 모의. `NOTICES_PROVIDER=real`은 006 공지 스키마의 `official_notices`에서 승인된 축제 공지를 조회합니다. |
 | 규칙 | `approval_status='approved'`만 보여 줌(미승인은 경로 차단에도 안 씀). 축제 공지가 없어도 `status:"ok"`, `items:[]` — "확인할 수 있는 공지 자료가 없어요" |
 
 **A07 쿼리 필드**
@@ -1502,7 +1510,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | 없음 |
 | 규칙 | 축제 좌표 → **기상청 격자(nx, ny)로 변환**(변환식은 기상청 참고문서, 11/19 서울 60,127·부산 97,74로 확인). `base_time`은 1시간 전 정시. 캐시 10분 |
-| 지금 범위 | **초단기실황(현재 날씨)만 실호출 확인.** 예보(`forecast`)는 단기예보 API를 아직 부르지 않아 `unverified` — 담당 한태경, W36 전(11/26) |
+| 구현 상태 | 기본 모의. `WEATHER_PROVIDER=real`은 초단기실황·단기예보를 조회합니다. 11/19 초단기실황 실호출 기록과 단기예보 합성 예시로 변환을 확인했습니다. 단기예보 실제 연결은 확인 예정입니다. |
 
 | 응답 필드 | 타입 | 원본(기상청) | 설명 |
 |---|---|---|---|
@@ -1511,7 +1519,7 @@ Content-Type: application/json
 | `precipitation_mm` | number | `RN1` | 1시간 강수량 |
 | `precipitation_type` | string | `PTY` 0~7 | `none`·`rain`·`rain_snow`·`snow`·`drizzle`·`drizzle_snow`·`snow_flurry`(코드 0·1·2·3·5·6·7) |
 | `grid` | object | `nx`·`ny` | 변환 결과 |
-| `forecast` | object | — | `{status:"unverified"}` (위 '지금 범위') |
+| `forecast` | object | `baseDate`·`baseTime`, `fcstDate`·`fcstTime`, `TMP`·`PCP`·`PTY` | 모의 `{status:"unverified"}`. 실제 성공은 `status`(`ok`·`stale`), 발표 시각 `issued_at`, `items[]`(`forecast_at`, `temperature_c`, `precipitation_mm`, `precipitation_type`). 예보 조회 실패는 `{status:"unavailable",error}`. |
 
 #### A10. 혼잡 구역 `GET /api/v1/festivals/{festival_id}/crowd` (서울만)
 
@@ -1718,6 +1726,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `mode`: `all`(기본)·`subway`·`bus` / `radius_m`: 100~1000, 기본 500 / `limit`: 정류장·역 최대 10 |
 | 공급원 | 지하철: 서울 지하철 실시간(서울만) / 버스: **서울 = 서울시 버스도착정보 15000314, 서울 밖 = TAGO** |
+| 구현 상태 | 기본 모의. `TRANSIT_PROVIDER=real`은 적재한 역·정류장을 기준으로 조회합니다. 공급원 응답 fixture 검증을 마쳤으며, 실제 키와 시연 대상 시설로 연결 확인 예정입니다. |
 | 규칙 | 주변 역·정류장 목록은 A08 위치 데이터에서 찾고, 도착 정보만 실시간으로 부름. 지하철 `barvlDt`가 0이어도 도착 전일 수 있어 **`arvlMsg2` 문구를 함께** 줌. 서울 버스 `itemCount`는 0으로 와서 **건수로 쓰지 않음**. TAGO `resultCode` 99는 일시 오류로 재시도. 캐시 30초 |
 
 **A26 쿼리 필드**
@@ -1737,7 +1746,7 @@ Content-Type: application/json
 | `arrivals[].eta_s` | int | 지하철 `barvlDt` / TAGO `arrtime` / 서울 버스는 `arrmsg1` 문구에서 계산(못 하면 null) | 도착까지 초 |
 | `arrivals[].message` | string | 지하철 `arvlMsg2` / 서울 버스 `arrmsg1` | 공급원 문구 그대로 |
 | `arrivals[].remaining_stops` | int | TAGO `arrprevstationcnt` | 남은 정류장 |
-| `arrivals[].crowding` | string | 서울 버스 `reride_Num1`(`rerdie_Div1`=4일 때: 3 `여유`·4 `보통`·5 `혼잡`) | **서울 버스만**, 교통수단 선택 근거(D-033). 나머지 null |
+| `arrivals[].crowding` | string | 서울 버스 `reride_Num1`(`rerdie_Div1`=4일 때: 3 `여유`·4 `보통`·5 `혼잡`) | **서울 버스만**, 교통수단 선택 근거(D-033). 짝을 확인할 수 없으면 `unverified`, 서울 버스 이외에는 null |
 | `observed_at` | string | 지하철 `recptnDt` / 수신 시각 | |
 
 - 수도권 노선(인천·경기 역) 포함 여부는 미확인(부평 미호출) → 서울 역만 `ok`로 표시, 담당 한태경 · W36 전(11/26).
@@ -1776,6 +1785,7 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `days`: 1~30, 기본 7 |
 | 공급원 | 한국관광공사 관광지 집중률 예측 15128555 + 지역별 관광 수요 강도 15151868 |
+| 구현 상태 | 기본 모의. `VISIT_FORECAST_PROVIDER=real`은 축제↔관광지 매핑이 확인된 경우에 조회합니다. 메모리 일일 캐시와 선택적 `VISIT_FORECAST_STORE=db` 적재를 구현했습니다. 실제 키와 매핑을 적용한 확인은 예정입니다. |
 | 규칙 | **실시간 혼잡이 아니라 상대값(0~100) 예측**이므로 다른 이름·색으로 표시(D-018). 축제 장소와 이름이 맞는 관광지(`tAtsNm`)가 있을 때만 `forecast`를 주고, 없으면 `forecast.status:"unsupported"`("이 축제 장소의 예측 자료가 없어요"). 관광 수요 강도는 **시군구 코드와 지표 코드를 함께 넣어야** 값이 옴(문서엔 선택값, 11/19 확인). 하루 1회 수집해 `realtime_snapshots`(`visit_forecast`·`region_demand`)에 저장 |
 
 **A29 쿼리 필드**
@@ -3191,7 +3201,8 @@ BFCL 30문항의 원본은 한다영 브랜치에 있으며, 채점에는 API �
 | 설정 키 | 값 | 쓰는 곳 | 상태 | 확정 | 담당 |
 |---|---|---|---|---|---|
 | `ACCESS_JWT_TTL_MIN` / `REFRESH_TTL_DAYS` | 30분 / 14일 | 1절 인증 | 확정(11/24 팀 결정) | 11/24 | 한태경·권오현 |
-| `REVOKED_TTL` | Access 남은 수명 | `revoked:{jti}` | 설계 고정 | — | 권오현 |
+| `REVOKED_TTL` | Access 남은 수명 | `revoked:{jti}`. JWT의 `exp`에서 계산 | 설계 고정 | — | 권오현 |
+| `JWT_SECRET` / `JWT_ISSUER` | 32바이트 이상 비밀값 / 기본 `noldaga-api` | DB 모드 HS256 서명·발급자 검증 | 구현값 | 11/24 | 권오현 |
 | `ROUTE_TOKEN_TTL_MIN` / `ROUTE_REQ_TTL_MIN` | 10분 / 10분 | Redis의 `route:token`·`route:req` 예정값. 현재 DB 모드는 `submitted_at` 기준 A05 토큰 10분을 적용 | 임시 | W16 · 11/20 | 권오현 |
 | `RUN_TOKEN_TTL_MIN` | 10분 | `run_access_token`(A06-1·A06-2) | 임시 | W16 · 11/20 | 권오현 |
 | `ROUTE_INFLIGHT_TTL_S` | **12초** (= `ROUTE_TOTAL_TIMEOUT_S` + 2초) | `route:inflight`(동일 요청 병합) | 임시 — **v0.3의 5초에서 고침**(아래 대조) | W96 · 12/04 | 신유빈 |
@@ -3707,7 +3718,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | ④ 상태 조회 | A05 `GET /routes/return/{id}` | 시험의 모의 공급원 응답 | `processing`→`ready`(202 뒤 조회) |
 | 별도 2차 호출 | A04 (TMAP 건너뜀) | 모의 축제 ID로 **실제** 카카오 대중교통 | 200 `kakao/secondary`, 재조회 시 `ROUTE_SECONDARY_SYNC_ONLY` |
 - ①②의 DB 조회는 [수집 구현 계획 3단계](../../backend/Doc/festival-ingestion/IMP-PLAN.md#3단계--a02a03-db-조회-i12i13), ③과 별도 2차 호출은 [경로 공급원 구현 계획의 3단계 실행 결과](../../backend/Doc/route-providers/IMP-PLAN.md), ④는 `test_P11_slow_primary_returns_202_then_finishes_in_background`로 확인했습니다. 같은 실제 축제 ID로 검색→상세→귀가→상태 조회를 화면에서 이어 확인하는 일은 남아 있습니다.
-- **모의로 남은 구간:** 공지(A07)·날씨(A09)의 **값**, AI 질문(A06) 답변, 가입·로그인(A32~A35). 화면은 응답의 `is_mock`·`X-Mock`으로 "모의 데이터"를 표시합니다. API별 최신 상태는 `Docs/Step 2/handoff/API_연동_현황표.md`.
+- **모의로 남은 구간:** 공지(A07)·날씨(A09)의 **값**, AI 질문(A06) 답변. 가입·로그인(A32~A35)은 기본 모의 모드이며 `AUTH_PROVIDER=db`로 실제 인증을 선택합니다. 화면은 응답의 `is_mock`·`X-Mock`으로 "모의 데이터"를 표시합니다. API별 최신 상태는 `Docs/Step 2/handoff/API_연동_현황표.md`.
 - **켜는 방법:** `FESTIVAL_DATA=db`(축제 실제), `ROUTE_PROVIDER=real`(경로 실제). 기본값은 둘 다 모의 — 시험·시연 예비용.
 
 ### 17-2. 실제 호출 기록 (원본은 저장하지 않음)
@@ -3739,6 +3750,8 @@ TMAP 정리는 013까지 적용한 DB에 연결해 `backend/`에서 `python -m a
 
 | 규칙(5절·9절) | 현재 동작(코드 기준, 11/24) | 시험 함수 | 구현 예정(언제·누가) |
 |---|---|---|---|
+| A32~A35 계정·Refresh 및 보호 API 권한 | `api/routers/accounts/auth.py`가 모드를 선택합니다. `api/auth/service.py`가 DB에 Argon2id·Refresh 해시와 폐기 시각을 저장하고 `api/auth/tokens.py`가 Access JWT를 발급·검증합니다. `api/deps.py`가 계정 상태와 RLS로 본인 역할을 확인합니다. | `test_auth_db_mode.py`, `test_auth_postgres.py`(`db`) | — |
+| A33 로그인 한도, A34 교체 잠금, A35 jti 차단 및 인증 로그 | `api/auth/state.py`가 키·TTL·장애 처리를 정의하고 메모리에서 구현합니다. A34의 PostgreSQL 트랜잭션 잠금은 프로세스 간 동시 교체도 막습니다. `api/request_logs.py`는 인증 요청의 로그에서 쿼리와 헤더를 제거합니다. | `test_auth_db_mode.py`, `test_a3_db_auth_keeps_ids_and_status_without_raw_credentials` | 공통 Redis 연결 후 인증 상태 어댑터 교체 |
 | TMAP 결과 캐시, 만료 뒤 A05는 `ROUTE_RESULT_EXPIRED` | `memory`는 60초 캐시 만료 뒤 **`retryable=true`**, “경로가 만료됐어요. 다시 조회해 주세요.” `db`는 후보 요약을 저장하며, 유효 토큰으로 24시간이 지난 결과를 조회하거나 주기 정리(기본 23시간 기준)된 결과를 조회하면 **`retryable=false`**, “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.” | `test_P11_expiry_removes_shared_tmap_body_for_all_ids`, P18 및 `test_purge_route_results.py` | 신유빈이 W64·W65에서 시간당 실행·실패 감시 구성 |
 | **SK 회신 없이 적용하는 확정 기준(2-2)** | TMAP의 소요 시간·요금·환승 수·경로 요약 등 후보 전체, 근거·공급원 참조·검증 상세와 후보에서 계산한 `route_hash`를 24시간 이내에 비웁니다. 기존 정리 행의 잔여 값도 제거하며 최초 삭제 시각을 유지합니다. 요청·조회·완료·삭제 시각, 처리 시간(완료−접수), 상태·오류 코드·공급원을 보존합니다. 현재 API는 TMAP 후보나 후보 해시를 요청 행·로그·지표에 복제하지 않습니다. | P25, P18 | 시간당 정리 및 실패 감시(W64·W65, 신유빈) |
 | 7일 백업(SK 회신 없이 적용하는 확정 기준) | 012가 결과의 `provider`·`queried_at`을, 013이 `purged_at`을 요청 행에 이관합니다. [백업 실행기](db/backup_long_term.sh)는 `route_results` 데이터 전체를 제외하고 요청 행의 공급원·조회 시각·삭제 시각·상태·오류 코드를 보존합니다. 미정리 결과의 삭제 시각은 NULL입니다. 복원 뒤 `ready` 요청의 결과 행이 없으면 유효 토큰으로 조회한 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 새 경로 요청 안내를 반환합니다. | [T25a·b](db/tests_012_route_backup_evidence.sql) 로컬 통과. [T25c](db/tests_013_route_purge_evidence.sql) 삭제 시각 복원 검사 11/24 로컬 통과. A05 회귀 시험 `test_a05_db_ready_request_without_result`, `test_P18_db_ready_request_without_restored_result` | AWS 백업 작업에 적용·검증(W65, 신유빈) |
@@ -3884,6 +3897,8 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | A32~A35 PostgreSQL 인증과 DB-19 RLS 연결을 구현하고 토큰 수명·폐기·로그인 한도·로그 차단을 코드와 시험에 연결했습니다. |
+| v0.5 | 2026-11-24 | A07 승인 공지 DB 조회, A09 기상청 실황·예보, A26 서울 지하철·전국 버스, A29 관광공사 예측·수요의 실제 모드와 오프라인 검증을 추가했습니다. |
 | v0.5 | 2026-11-24 | DB 연결 대기 초과 오류를 `DB_POOL_TIMEOUT`(503, retryable, Retry-After 1, 신유빈 제안)으로 변경. |
 | v0.5 | 2026-11-24 | A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정. 한태경 16:09 NAVER API HUB 명세와 A81 Redis 10분 캐시를 반영했습니다. |
 | v0.5 | 2026-11-24 | 11/24 신유빈 확인 팀 결정 14건 반영. |

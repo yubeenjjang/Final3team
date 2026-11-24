@@ -1,12 +1,11 @@
 import re
-import secrets
-import string
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import TimeoutError as DBPoolTimeout
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 
 from api.errors import (
@@ -18,7 +17,9 @@ from api.errors import (
     handle_unexpected_error,
     handle_validation_error,
 )
-from api.request_logs import private_endpoint, request_logger
+from api.auth.state import enforce_login_limit
+from api.auth.tokens import uses_auth_db
+from api.request_logs import auth_endpoint, private_endpoint, request_logger
 import api.routers.accounts.favorites as favorites, api.routers.festivals.info as info
 from api.routers import health
 from api.routers.accounts import auth
@@ -26,6 +27,7 @@ from api.routers.assistant import chatbot
 from api.routers.festivals import catalog
 from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
+from api.services.real_festival_info import uses_real_info
 from api.services.real_routes import uses_real_routes
 from api.services.seoul_crowd import uses_real_crowd
 from ulid import ULID
@@ -62,12 +64,18 @@ async def add_response_headers(
     request.state.request_id = request_id
     endpoint = private_endpoint(request.url.path)
     try:
+        if endpoint == "/api/v1/auth/login" and request.method == "POST" and uses_auth_db():
+            await run_in_threadpool(enforce_login_limit, request.client.host if request.client else "unknown")
         response = await call_next(request)
+    except ApiError as error:
+        response = await handle_api_error(request, error)
     except Exception as error:
         if endpoint is None:
             raise
         # The server traceback can contain input values from an unexpected error.
         response = await handle_unexpected_error(request, error)
+        if uses_auth_db() and auth_endpoint(request.url.path):
+            del response.headers["X-Mock"]
         request_logger.error(
             "endpoint=%s request_id=%r http_status=500 error=INTERNAL_SERVER_ERROR",
             endpoint, request_id,
@@ -95,6 +103,8 @@ async def add_response_headers(
         response.headers["X-Mock"] = "true"
     elif "X-Mock" in response.headers and (
         _REAL_ROUTE_PATHS.match(request.url.path) or _REAL_CROWD_PATH.match(request.url.path)
+        or auth_endpoint(request.url.path)
+        or _FESTIVAL_INFO_PATH.match(request.url.path)
     ):
         del response.headers["X-Mock"]
     if endpoint is not None:
@@ -109,14 +119,18 @@ async def add_response_headers(
 _REAL_FESTIVAL_PATHS = re.compile(r"^/api/v1/festivals(/fst_[0-9A-Za-z]{6,26})?/?$")
 _REAL_ROUTE_PATHS = re.compile(r"^/api/v1/routes/(return|visit)(/[^/]+)?/?$")
 _REAL_CROWD_PATH = re.compile(r"^/api/v1/festivals/[^/]+/crowd/?$")
+_FESTIVAL_INFO_PATH = re.compile(r"^/api/v1/festivals/[^/]+/(notices|weather|transit|visit-forecast)/?$")
 
 
 def _serves_real_data(request: Request) -> bool:
     path = request.url.path
+    info_path = _FESTIVAL_INFO_PATH.match(path)
     return (
         (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
+        or (uses_auth_db() and auth_endpoint(path) is not None)
+        or (info_path is not None and uses_real_info(info_path[1]))
     )
 
 
