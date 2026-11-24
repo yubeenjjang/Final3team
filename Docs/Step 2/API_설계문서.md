@@ -253,10 +253,12 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | 근거 | 무엇을 고르는 데 쓰나 | 데이터 | 지역 |
 |---|---|---|---|
 | `area_evidence` 지역 선택 근거 | **어느 역·지역으로 갈지** (예: 삼각지역이 붐비니 이태원역) | 서울 실시간 인구 혼잡 구역(OA-21778), 교통 돌발(경찰청 전국·TOPIS 서울) | 혼잡 = 서울만, 돌발 = 전국 |
-| `mode_evidence` 교통수단 선택 근거 | **무엇을 탈지** (만석 버스 대신 지하철) | 서울 버스 차내 혼잡(서울시 버스 도착정보 15000314의 혼잡 필드). 경로 속 정류장은 TMAP `stationID`(6자리)와 서울 버스 `arsId`(5자리)가 **다른 체계**라서(11/19 실호출) **정류장 이름+거리**로 연결합니다(상·하행은 노선·방향으로 구분). 2차 카카오맵 응답에는 정류장 ID가 없어 이때는 `unsupported` | 서울만. 서울 밖이면 `unsupported`, 공급원 실호출 전이면 `unverified`(0-3절). **경로 응답의 필수 부분이 아님**(없어도 경로는 제공) |
+| `mode_evidence` 교통수단 선택 근거 | **무엇을 탈지** (만석 버스 대신 지하철) | 서울 버스도착정보 15000314의 차내 혼잡. 선택한 귀가 경로의 버스 승차 정류장에 표시 | 서울만. 서울 밖과 카카오맵은 `unsupported`. 확인이 안 된 선택 결과는 `unknown`. 혼잡을 확인할 수 없어도 경로는 제공 |
 
-- **정류장 연결 규칙(11/19 한태경 님 확인):** TMAP `stationID`, 서울 버스 `arsId`(5자리), 카카오맵(정류장 ID 없음)은 ID 체계가 다릅니다. ① TMAP `stationID`와 `arsId`가 대응되면 ID로 연결(실호출로 확인 중) ② 안 되면 **거리(30m 이내, 9-1 ⑧) + 정류장 이름 + 노선·방향**이 모두 맞을 때만 연결 ③ 길 건너 같은 이름 정류장처럼 하나로 정해지지 않으면 연결하지 않고 `mode_evidence`를 `unverified`로 둡니다(잘못 붙이지 않음).
+- TMAP `stationID`(6자리)와 서울 `arsId`(5자리)는 공급원별 식별자입니다. **정규화한 승차 정류장 이름, 30m 이내 거리(9-1 ⑧), 노선 번호, 바로 다음 정류장으로 확인한 진행 방향**이 모두 맞는 후보가 정확히 하나일 때 연결합니다. 일치 후보가 없거나 둘 이상이면 `unknown`입니다.
 - 버스 차내 혼잡은 **지역이 붐빈다는 근거로 쓰지 않습니다**(버스 승객은 지나가는 사람). 처음부터 다 보여 주지 않고, 사용자가 경로를 고른 뒤 그 경로의 버스에만 보여 줍니다(D-025).
+
+**구현 상태 (bus)** — A04의 동기 `ready` 응답은 `X-Route-Access-Token` 헤더로 후보 선택용 토큰을 전달합니다(카카오맵 제외). 202 응답은 기존 `route_access_token` 본문 필드를 사용합니다. 선택 후 화면은 A05에 `candidate_id`와 조회 토큰을 보내며, 해당 후보의 `mode_evidence.bus_crowding`을 읽습니다.
 
 **추천 기준과 점수 (D-025, 기획서 FR-R01~R05 '고급 5유형'과 같은 이름, 비율 미정, Should)**
 
@@ -289,7 +291,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 **정상 응답 필드 명세 (200)** — 202는 아래 '처리 중 응답' 필드만 돌려줍니다
 
-동기 200의 `ready` 응답에 경로 후보가 담겨 있으므로 화면에 바로 표시합니다. `status_url`과 `route_access_token`은 202 응답에서만 반환하며, A05는 그때만 조회합니다.
+동기 200의 `ready` 응답에 경로 후보가 담겨 있으므로 화면에 바로 표시합니다. `status_url`과 `route_access_token` 본문 필드는 202에 포함합니다. 동기 완료 뒤 버스 혼잡을 조회할 때는 응답 헤더의 토큰과 `route_request_id`로 A05를 호출합니다.
 
 아래 경로 상세 필드는 `ready` 기준입니다. DB 모드에서 조회 토큰 만료 후 같은 `request_id`와 본문을 보내면 기존 `route_request_id`, `route_status=unavailable`, `completed_valid_route=false`, `error`(`code`, `message`, `retryable`), `updated_at`, `is_mock`, `notices`를 반환합니다.
 
@@ -360,7 +362,7 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
         "traffic_incidents": []
       },
       "mode_evidence": {
-        "bus_crowding": { "status": "unverified", "reason": "정류장 이름+거리 연결 규칙 구현 전" }
+        "bus_crowding": { "status": "unverified", "reason": "버스 혼잡을 확인하지 않았어요." }
       }
     }
   ],
@@ -419,13 +421,13 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 | # | 칸 | 명세 |
 |---|---|---|
-| 1 | 호출 목적 | 202로 접수된 귀가 요청의 처리 상태·결과 확인 (FR-R14). 화면 폴링, Route Agent(`get_route_request_status`) |
+| 1 | 호출 목적 | 202로 접수된 귀가 요청의 처리 상태·결과 확인(FR-R14), 사용자가 선택한 귀가 후보의 버스 혼잡 확인(D-025). 화면 폴링, Route Agent(`get_route_request_status`) |
 | 2 | 요청 헤더 | `X-Request-ID`(선택) · `X-Route-Access-Token: rrt_…`(필수, 요청 때 받은 조회 토큰, DB 모드에서 접수 후 10분 유효) |
-| 3 | 경로·쿼리 | `route_request_id`: string, 필수, `^rr_[0-9A-Za-z]{6,26}$` |
+| 3 | 경로·쿼리 | `route_request_id`: string, 필수, `^rr_[0-9A-Za-z]{6,26}$` · `candidate_id`: 선택 쿼리, string, 최대 16자, `^c[1-9][0-9]*$`. 화면에서 경로를 선택한 뒤 전달합니다. |
 | 4 | 요청 본문 | 없음 |
 | 5 | 검증·권한 | 형식 오류 422 · 토큰 없음·만료 401 · 다른 요청의 토큰 403 · 없는 ID 404. `ROUTE_STORE=db`는 접수 후 10분에 만료한다. 기본 메모리 모드는 토큰 누락을 검사한다(17-3) |
 | 6 | 정상 응답 | **200** — 요청 처리가 실패했어도 '조회'는 성공이므로 200. 실패는 `route_status`·`error`로 알림(수업 가이드 S29). 경로는 `ready`일 때만 `route_candidates`에 담음 |
-| 7 | 오류 응답 | 401 `UNAUTHORIZED` / 403 `FORBIDDEN` / 404 `ROUTE_REQUEST_NOT_FOUND` / 422 `VALIDATION_ERROR` |
+| 7 | 오류 응답 | 401 `UNAUTHORIZED` / 403 `FORBIDDEN` / 404 `ROUTE_REQUEST_NOT_FOUND`·`ROUTE_CANDIDATE_NOT_FOUND`(`ready` 응답 내 후보 없음) / 422 `VALIDATION_ERROR` |
 | 8 | 실행 규칙 | 조회는 멱등이며 DB 모드는 조회 중 만료된 TMAP 본문을 정리할 수 있음. 폴링 간격 2초·최대 5회(임시), 그 뒤엔 '확인 불가' 안내 |
 
 **상태별 응답 예시 (모두 200)**
@@ -459,6 +461,14 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 | `notices[]` | array | 빈 배열 | 항상 가능 | 확인 못 한 것·대체 안내 | 계산값 |
 | `is_mock` | boolean | 불가 | 항상 | 모의 응답이면 true | `route_results.is_mock` |
 | `updated_at` | string | 불가 | 항상 | 상태가 마지막으로 바뀐 시각 | 계산값 `completed_at` → `started_at` → `submitted_at` 중 처음 값 |
+
+**구현 상태 (bus)** — `candidate_id`가 있고 상태가 `ready`일 때 선택한 후보의 차내 혼잡을 응답에 붙입니다. 기존 경로 토큰 검사를 통과한 요청에 적용합니다. `BUS_CROWD_PROVIDER=mock`이 기본이며 `real`은 `DATA_GO_KR_SERVICE_KEY`로 조회합니다. 외부 조회는 버스 구간당 전체 3초 이내에 끝내며, 결과를 서버 메모리에서 60초 재사용합니다.
+
+| 선택한 후보의 필드 | 타입 | 설명 |
+|---|---|---|
+| `mode_evidence.bus_crowding.status` | string | `available`은 유효한 관측이 있는 경우. 검증 정보 부족·중복·공급원 실패는 `unknown`, 카카오맵·버스 구간 없음·서울 범위 밖은 `unsupported` |
+| `mode_evidence.bus_crowding.source`·`is_mock` | string·boolean | 공급원 구분 `mock` 또는 `seoul_bus_15000314`와 모의 여부. 구간 정보가 있는 응답에 포함 |
+| `mode_evidence.bus_crowding.legs[]` | array | 버스 구간별 0부터 시작하는 `leg_index`, `status`, 유효한 혼잡 값이 있으면 `arrivals[]`. 도착 순서 `arrival_order`는 1 또는 2이며 `crowding`은 `여유`·`보통`·`혼잡` |
 
 - 화면과 Route Agent는 `completed_valid_route=true`일 때만 경로를 안내합니다.
 - **`ROUTE_RESULT_EXPIRED` — 현재 동작(코드 기준, 11/23):** TMAP 경로 결과는 서버 메모리에 **60초**만 둡니다. 60초가 지나 A05로 조회하면 `route_status=unavailable`, `error.code=ROUTE_RESULT_EXPIRED`, **`retryable=true`**("경로가 만료됐어요. 다시 조회해 주세요.")입니다(`real_routes.py`, 시험 `test_P11_expiry_removes_shared_tmap_body_for_all_ids`).
@@ -1405,6 +1415,7 @@ Content-Type: application/json
 | `ROUTE_QUEUE_TIMEOUT` | 504 | 내부 대기열에서 제한 시간 초과 |
 | `ROUTE_OVERLOADED` | 503 | 과부하 보호로 거절(`route_status=rejected`, 경로 제공 성공 아님) |
 | `ROUTE_REQUEST_NOT_FOUND` | 404 | 없는 `route_request_id` (A05) |
+| `ROUTE_CANDIDATE_NOT_FOUND` | 404 | 완료된 귀가 요청 결과에 전달된 `candidate_id`가 없음(A05) |
 | `MEET_AT_INVALID` | 400 | 동행 만남 시각이 축제 기간 밖이거나 과거 (A58) |
 | `OWN_POST` / `APPLICATION_EXISTS` / `POST_CLOSED` / `CAPACITY_FULL` / `APPLICATION_NOT_PENDING` | 403 / 409 / 409 / 409 / 409 | 동행 신청·승인 (A60·A62) |
 | `REPORT_ALREADY_SUBMITTED` | 409 | A76에서 동일 신고자·대상 유형·대상 ID의 KST 날짜당 신고 한도 초과 |
@@ -3342,7 +3353,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 
 | 항목 | 값 | 쓰는 곳 | 이유 | 상태 | 담당 |
 |---|---|---|---|---|---|
-| 정류장 연결 거리 | 30m 이내 | A04·A25 경로의 버스 정류장 연결(2-1절) | ID로 연결할 수 없을 때 이름과 노선·방향도 일치하는 후보만 연결 | 확정(11/24) | 권오현 |
+| 정류장 연결 거리 | 30m 이내 | 귀가 경로에서 고른 후보의 버스 정류장 연결(2·2-2절) | 이름·거리·노선·방향이 모두 일치하는 단일 후보 연결 | 확정(11/24) | 권오현 |
 | 교통 돌발 병합 거리 | 100m 이내 | A28 경찰청·TOPIS 돌발 병합(6-2절) | 인접하고 발생 시간이 겹치는 같은 사건을 한 건으로 집계 | 확정(11/24) | 권오현 |
 | 같은 대상 신고 제한 | 신고자당 하루 1회 | A76 신고 등록(6-4-6절) | 같은 신고자가 동일 대상에 반복 신고하는 것을 방지 | 확정(11/24) | 권오현 |
 | `window_at` 시간창 | 10초 | A16·`route_query_metrics` 지표 집계(DB 설계서 6절) | 같은 10초 구간의 운용·부하 지표를 묶어 비교 | 확정(11/24) | 권오현 |
@@ -3418,7 +3429,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | 서울 TOPIS 돌발 `AccInfo` | 2026-11-19 (한태경) | 전체 | ✅ 28건. `acc_type`·`acc_dtype`·`link_id`·`occr_date/time`·`exp_clr_date/time`. XML, **좌표 `grs80tm_x/y` → 위경도 변환 필요**, 시각 자릿수 혼재 | `evidence/responses/2026-11-19_seoul-accinfo.json` |
 | 서울 문화행사 OA-15486 | 2026-11-19 (한태경) | 5건 | ✅ 19,783건, 대부분 공연류. 축제 포함 여부·TourAPI 중복 미확인, 날짜 이상값 1건 → **보강용 우선순위 낮춤** | `evidence/responses/2026-11-19_seoul-culture.json` |
 | TMAP 대중교통(1차) | 2026-11-19 한태경(서울·부산, 11/19 17:29 공유) | 10-1 좌표 세트(광화문→서울역, 부산역→서면역, 광화문→서울역 `searchDttm` 22:00) | ✅ 서울·부산 정상. 정류장 ID `stationID`(6자리)·좌표가 옴. **정류장 목록 키는 문서 예시 `stationList`가 아니라 `stations`**. `searchDttm`을 바꿔도 경로·시간은 같고 `service`(1 운행 중/0 운행 종료)만 바뀜 → 막차 안내는 `service`로. 1호선 구간이 17시에도 `service`=0인 이유 확인 중 | **`evidence/길찾기_호출기록.md`**(호출 1건당 1줄: 정상 4건·키 오류 1건, 3경로씩) · `evidence/usage/TMAP_*.csv`(콘솔: 요청 7 = 완료 4 + 403 3, 평균 응답 273ms) · `evidence/responses/합성예시_tmap_*.json` — 원본은 24시간 규칙으로 삭제 |
-| 카카오맵 대중교통·도보(2차) | 2026-11-19 한태경(서울·부산, 11/19 17:29 공유) | TMAP과 같은 좌표 | ✅ 서울·부산 정상. **정류장은 이름만**(ID·좌표 없음) → 버스 혼잡을 붙이려면 이름+거리로 정류장 연결 | `evidence/길찾기_호출기록.md`(대중교통 정상 2건 15경로씩·키 오류 1건, 도보 1건 2,737m) · `evidence/responses/합성예시_kakao-transit_*.json`·`합성예시_kakao-walk_서울.json` — 원본은 저장 제한으로 보관 안 함 |
+| 카카오맵 대중교통·도보(2차) | 2026-11-19 한태경(서울·부산, 11/19 17:29 공유) | TMAP과 같은 좌표 | ✅ 서울·부산 정상. 정류장에 이름만 있으므로 차내 혼잡은 `unsupported` | `evidence/길찾기_호출기록.md`(대중교통 정상 2건 15경로씩·키 오류 1건, 도보 1건 2,737m) · `evidence/responses/합성예시_kakao-transit_*.json`·`합성예시_kakao-walk_서울.json` — 원본은 저장 제한으로 보관 안 함 |
 | 서울 버스도착정보(15000314) | 2026-11-19 한태경(서울·부산, 11/19 17:29 공유) | 광화문 근처 정류소 | ✅ 차내 혼잡 `reride_Num1`(3 여유 / 4 보통) 실제로 옴. **`arsId`(5자리) ≠ TMAP `stationID`(6자리)** → 같은 값 아님, 이름+거리로 연결(D-033). `itemCount`는 0으로 와서 건수로 쓰지 않음 | `evidence/responses/2026-11-19_seoul-bus_*.json` |
 | 경찰청 교통 돌발 | 2026-11-19 한태경(서울·부산, 11/19 17:29 공유) | 전국 | ✅ 118건(서울 33·부산 4), 행사 유형 있음. **XML만** | `evidence/responses/2026-11-19_police-*.json` |
 | 3순위 정적 데이터(12~18번) | 2026-11-19 한태경(서울·부산, 11/19 17:29 공유) | 서울·부산 | ✅ 호출 확인(`festival-standard`·`tourist-rate`·`tour-demand`·`toilet`·`parking-standard`·`emergency`·`kakao_*-음식점`). 응급실(국립중앙의료원)은 **XML만**. 관광 수요 강도는 시군구 코드+지표 코드를 **함께** 넣어야 값이 옴(문서엔 선택값), 2026-10까지 제공. 전국주차장표준데이터 `instt_nm`은 **정확히 일치**해야 해서 부산은 구청별 호출. 택시 승강장·일부 주차장은 **위경도 없음** → 카카오 주소 검색으로 좌표 변환 | `evidence/responses/2026-11-19_*` (`_호출요약.json`에 호출별 시각·HTTP·건수) |
@@ -3509,7 +3520,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | 지방 축제의 실시간 결합 정보 | 버스 도착·지하철·돌발 등 실시간 결합 API가 서울 중심 → 지방은 경로만 + '실시간 정보 미지원' 안내 | 권오현 | 실호출 후 |
 | TourAPI 팀 키 실호출 (A02·A03 필드, 지역 코드 대응) | ✅ 11/19 한태경 정식 키로 확인(10절), `detailCommon2` 소개 ✅(11/20). 한도 1,000건/일(기능별) → 축제는 DB 적재, 요청 때 직접 부르지 않음 | 한태경 | 정함 |
 | 목적지·출발지 장소 검색(지오코딩) | **카카오 장소 검색으로 정함**(D-035). 응답 필드는 실호출 후 | 권오현 | 길찾기와 함께 |
-| **버스 차내 혼잡도** 공급원 | ✅ 서울시 버스 도착정보 `reride_Num1` 실제 확인(서울만, D-033). 남은 것: TMAP 정류장과 이름+거리 연결 규칙 | 권오현 | 개발 착수 전 |
+| **버스 차내 혼잡도** 공급원 | ✅ 서울시 버스도착정보 `reride_Num1/2` 파싱과 정류장 매칭 구현. 저장한 응답으로 A05 선택 흐름 확인 | 권오현 | 공급원 연동 재확인 |
 | 지하철 실시간 도착 범위(수도권 노선 포함 여부) | ✅ 11/19 정식 키로 실호출(10절), 1,000회/일(활용사례 등록 시 무제한). 수도권 노선 범위는 개발 때 역 목록으로 확인 | 권오현 | 개발 착수 전 |
 | 실시간 주차 빈자리(A27) | **채택 안 함(11/24)**. 11/19 서울 실호출은 10절에 기록. A08 시설은 주차장 위치만 제공 | 권오현 | 확정(11/24 팀 결정) |
 | 경찰청 교통돌발 실제 지역 범위·행사/공사 구분 | ✅ 11/19 실호출: 전국 118건, 행사 유형 있음, XML만 | 권오현 | 정함 |
@@ -3576,7 +3587,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | 혼잡 구역 | 서울시 실시간 인구 OA-21778 | seoul_only | 예 | A10, 경로 근거 | D-010 |
 | 지하철 도착 | 서울 지하철 실시간 도착 | seoul_only | 예 | A26 | D-010 |
 | 버스 도착(서울 밖) | 국토교통부 TAGO (서울 정류소 없음, 11/19 확인) | national(서울 제외) | 예 | A26 | D-010·D-022 |
-| 버스 도착·차내 혼잡(서울) | 서울시 버스도착정보 15000314 (혼잡 `reride_Num1`·`arsId`, 11/19 확인) | seoul_only | 예 | A26, 교통수단 선택 근거 `mode_evidence` | D-024·D-033 |
+| 버스 도착·차내 혼잡(서울) | 서울시 버스도착정보 15000314. 도착 순서별 `rerdie_Div1/2=4`의 `reride_Num1/2`가 3 여유·4 보통·5 혼잡. 서울 정류장 조회에서 `arsId`와 좌표 확인 | seoul_only | 예 | A26, 선택한 귀가 경로의 `mode_evidence`(구현) | D-024·D-025·D-033 |
 | 실시간 주차 빈자리 | — | 제외 | — | A27 | 채택 안 함(11/24) |
 | 주차장 위치 | 전국주차장정보표준데이터 | national | 아니요 | A08 | D-014 |
 | 교통 돌발 | 경찰청 교통돌발정보 | national | 예 | A28, 경로 근거 | D-012 |
@@ -3806,7 +3817,7 @@ W96 계측 뒤 숫자만 조정하고, 조정 시 `LIMITS_VERSION`을 올립니�
 | `travel_mode` · `route_preference` · `user_constraints` | `route_requests.travel_mode` · `route_preference` · `constraints` | |
 | `route_status` | `route_requests.status` | |
 | `route_candidates[]` (근거 제외) | `route_results.candidates` (JSONB) | 후보·구간·점수 |
-| 후보별 `area_evidence` · `mode_evidence` | `route_results.evidence` (JSONB: `{candidate_id: {area_evidence, mode_evidence}}`) | 근거는 이 컬럼 한 곳에만 저장, 응답 때 후보에 붙임 |
+| 후보별 `area_evidence` · `mode_evidence` | 보존하는 근거는 `route_results.evidence` (JSONB: `{candidate_id: {area_evidence, mode_evidence}}`) | 선택 시 조회한 버스 혼잡은 60초 메모리 캐시를 사용해 A05 응답에만 붙임 |
 | `validity_check` (캐시·대체 경로) | `route_results.validity_check` | 7-5 |
 | `stop_reason` · `rollback_reason` | `recovery_attempts.stop_reason` · `rollback_reason` | 7-5 |
 | A02·A03 축제 필드(`name`·`venue_name`·`lat`·`lng`·`overview`·`fee_text`·`homepage_url`·`image_url`·`thumbnail_url`·`image_copyright.type`) | `festivals.title`·`venue_name`·`latitude`·`longitude`·`summary`·`admission_fee_text`·`official_url`·`image_url`·`thumbnail_url`·`image_copyright_type`(003) | **이름 다름** — API 이름이 기준, DB는 위 컬럼 |
@@ -4057,3 +4068,4 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.5 | 2026-11-24 | API 3번 감사 반영. 누락된 API 필드와 조회 쿼리, 202 응답, SSE·WebSocket 이벤트를 명세하고 6절 작성 현황을 갱신했습니다. 이후 11/24 팀 결정에 따라 A79 유형별 목록은 최종 범위에서 제외했습니다(6-4-6절). |
 | v0.5 | 2026-11-24 | `ohyun-me`에서 A11~A13·A36·A37·A78~A80의 DB·모의 모드, A78·A79 필드 및 A80 보존 처리를 반영했습니다(6-2·6-4절). |
 | v0.5 | 2026-11-25 | 인증·축제·관심·친구·채팅·동행·신고·챗봇의 화면 API를 DB에 연결하는 itest를 추가하고 DB 모드 축제 상세 404의 `X-Mock` 헤더를 수정했습니다. |
+| v0.5 | 2026-11-25 | A04 동기 선택 토큰과 A05 `candidate_id`, 서울 버스 차내 혼잡 매칭·캐시·응답 필드를 반영했습니다(2·2-2·9-1·13절). |

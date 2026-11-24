@@ -108,8 +108,10 @@ async def add_response_headers(
             },
         )
     response.headers["X-Request-ID"] = request_id
-    if "Retry-After" in response.headers and "access-control-expose-headers" in response.headers:
-        response.headers["Access-Control-Expose-Headers"] += ", Retry-After"
+    if "Access-Control-Expose-Headers" in response.headers:
+        for header in ("Retry-After", "X-Route-Access-Token"):
+            if header in response.headers:
+                response.headers["Access-Control-Expose-Headers"] += f", {header}"
     if not _serves_real_data(request):
         response.headers["X-Mock"] = "true"
     elif "X-Mock" in response.headers and (
