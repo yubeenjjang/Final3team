@@ -10,6 +10,20 @@
 
 Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 조치를 실행하지 않는다. 그런 질문은 `handoff_required` 결과로 끝내고, 나중에 Supervisor가 담당 에이전트로 전달한다. 단독 시험에서는 '이 단독 범위에서 처리하지 않음'으로 표시한다.
 
+### 1-1. W22 질문 범위와 후속 연결 경계
+
+| 질문 유형 | 현재 단일 Agent 동작 | 후속 연결·근거 |
+|---|---|---|
+| 축제 검색·일정·장소 | `search_festivals`, `get_festival`로 실존 ID·출처·갱신 시각을 확인한다. | 자연어 의도 분류와 선택 축제 문맥 유지(FR-C01/C04)는 Supervisor 및 W26·W44 이후 연결한다. |
+| 축제 주변 혼잡 | `get_crowd`의 서울 지원 구역·관측 시각·대체값 여부를 검증한다. | 행사장 내부나 개별 귀가 길의 혼잡으로 확대하지 않는다(FR-F02/F03/F18). |
+| 공식 운영·교통 공지 | `get_official_notices` 단독 조회를 연결했으나 현재 공급 응답은 모의 자료다. | 실제 공식 원본·효력 확인은 FR-F05와 W27의 자료 준비 뒤 검증한다. |
+| 화장실·주차장·응급시설 등 현장 정보 | `get_facilities`가 현재 그래프에 없어 도구를 호출하지 않는다. | W90의 검증된 공급원·지원 범위를 받은 뒤 연결한다(FR-F04/F11). |
+| 날씨·실시간 도착·상권 | 이번 단일 그래프에 도구가 없으므로 수치를 만들어 답하지 않는다. | 각 API·도구 계약 및 공급원 확인 뒤 별도 연결한다(FR-F09/F12/F16). |
+| 방문 코스 추천·공식 안내 RAG | 현재 실행하지 않는다. | W27·W37의 공식 문서와 실존 장소·조건 검증 이후 연결한다(FR-P01/P03, FR-C05/C07). |
+| 가는 길·귀가·장애 진단·복구 | `handoff_required`로 종료한다. | Route·Diagnosis·Recovery와의 협업은 W44 이후 Supervisor 계약에서 설계한다. |
+
+현재 단독 입력 계약은 `FestivalRequest(intent, festival_id, 검색 조건, notice_type)`이고, 최종 출력은 `FestivalResult(outcome, answer, evidence, transitions, used_tools, handoff_target)`이다. `tool_results`는 그래프의 한 실행 동안 `response`에 보관하며 별도 영속 상태가 아니다. **Supervisor가 이 입력을 실제로 생성하는 세부 형식은 아직 확정되지 않았다.** 이 표는 W22의 확장 계약 초안이며 후속 기능을 현재 구현 완료로 세지 않는다.
+
 ## 2. 상태·노드·전이(개념)
 
 ```mermaid
