@@ -81,6 +81,20 @@ def main() -> None:
               f"agent_outcome={crowd.outcome}, is_estimate={is_estimate}")
         if args.require_crowd_answered and (raw_crowd["data"].get("status") not in {"ok", "stale"} or crowd.outcome != "answered"):
             raise RuntimeError(f"Real crowd answer was not provided: provider_status={raw_crowd['data'].get('status')}, agent_outcome={crowd.outcome}")
+        if args.require_crowd_answered:
+            festival_name = raw_crowd_detail["data"].get("name")
+            if not isinstance(festival_name, str) or not festival_name:
+                raise RuntimeError("Crowd festival has no searchable name for composite check")
+            composite = run_agent(FestivalRequest("search_detail_crowd", select_first=True,
+                                                  region="SEOUL", q=festival_name))
+            expected_tools = ["search_festivals", "get_festival", "get_crowd"]
+            if (composite.outcome != "answered"
+                    or [item["tool"] for item in composite.used_tools] != expected_tools
+                    or len(composite.evidence) != 3
+                    or any(item.get("festival_id") != crowd_id for item in composite.evidence)):
+                raise RuntimeError(f"Real composite search/detail/crowd check failed: {composite.outcome}, {composite.used_tools}")
+            print(f"composite: festival_id={crowd_id}, outcome={composite.outcome}, "
+                  f"tool_calls={len(composite.used_tools)}, evidence={len(composite.evidence)}")
     else:
         print("Crowd was not checked; pass --crowd-festival-id to verify a Seoul festival.")
 
