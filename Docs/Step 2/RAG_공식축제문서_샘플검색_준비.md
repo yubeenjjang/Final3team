@@ -99,3 +99,15 @@ LIMIT 5;
 `dayoung 1574321`에서 D1 서울빛초롱축제, D2 청계천의 빛, D3 만료 시험 자료와 질문 10개를 `text-embedding-3-small`, `dimensions=1024`로 실제 OpenAI 임베딩 API에 보냈다. 호출·벡터 길이 검증·코사인 순위 계산은 오류 없이 끝났다. Q01~Q04는 기대 문서가 각 선택 축제의 1위였고, Q07은 만료 문서가 검색 자격에서 제외됐다. 표의 점수는 **재실행 결과의 코사인 유사도**이며 합격 임계값이 아니다. 기존 서울윈터페스티벌 시험 자료의 점수는 사용하지 않는다.
 
 이 시험은 짧게 바꿔 쓴 문장 3개를 메모리에서 비교했다. PostgreSQL·HNSW·운영 승인 필터·청크 분할·답변 생성과 보류 판단은 실행하지 않았다. 현재 D1·D2는 공개 축제 ID와 연결됐고 D3만 분리된 만료 자료다. Q05~Q06과 Q08~Q10의 검색 결과가 존재한다는 사실만으로 답변 가능하다고 판정하지 않는다. 출력에 사용량·호출 비용·지연 시간이 없으므로 이 값은 미측정으로 둔다. 첫 결과 JSON은 맥북 임시 폴더의 `backend/agents/rag/sample_eval_results.json`에 저장됐으며, 본 표는 사용자에게 전달된 터미널 출력을 근거로 작성했다.
+
+### 다음 확인: 별도 pgvector 시험 DB
+
+현재 저장소에는 `rag_documents`·`rag_chunks` 스키마와 HNSW 인덱스 정의가 있지만 공식 안내문 승인·적재·검색 API는 아직 구현되지 않았다. 운영 DB에 D1·D2를 승인된 자료로 직접 넣지 않는다. `backend/agents/rag/check_pgvector_sample.py`는 이름이 `rag_scratch`인 **별도 시험 DB**에만 접속하고 임시 테이블을 만든다. D1·D2, 만료된 D3, 미승인 대조 문서 D4를 넣어 축제 ID·기간·승인·모델 버전 필터와 pgvector 코사인 정렬을 확인한다. 임시 행은 연결 종료 후 사라진다. 이 결과는 운영 DB 적재·승인 또는 실제 서비스 RAG 검증으로 기록하지 않는다.
+
+```bash
+docker run --name noldaga-rag-scratch --rm -e POSTGRES_DB=rag_scratch -e POSTGRES_PASSWORD=rag_sample_only -p 127.0.0.1:55432:5432 -d pgvector/pgvector:pg17
+"$test_dir/venv/bin/python" -m pip install 'psycopg[binary]'
+"$test_dir/venv/bin/python" -m agents.rag.check_pgvector_sample
+```
+
+마지막 명령의 DB 비밀번호 입력에는 `rag_sample_only`를 사용하고, OpenAI 키는 숨김 입력으로 직접 넣는다. 첫 실행 시 DB 준비가 끝나기 전 접속 오류가 나면 같은 마지막 명령을 다시 실행한다. 시험 후 컨테이너는 `docker stop noldaga-rag-scratch`로 종료한다. PostgreSQL 검색 결과와 API 사용량은 실행 출력에서 확인하되 키는 문서·채팅에 기록하지 않는다.
