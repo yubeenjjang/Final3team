@@ -60,7 +60,9 @@ _TIMEOUT = _Failure(*_FAILURES["async_timeout"], status="timed_out")
 _SECONDARY_ONLY = _Failure(*_FAILURES["async_secondary_sync_only"])
 _QUOTA_EXCEEDED = _Failure(*_FAILURES["async_quota_exceeded"])
 _RESULT_EXPIRED = _Failure("ROUTE_RESULT_EXPIRED", "경로가 만료됐어요. 다시 조회해 주세요.", True)
-_DB_RESULT_EXPIRED = replace(_RESULT_EXPIRED, retryable=False)
+_DB_RESULT_EXPIRED = replace(
+    _RESULT_EXPIRED, message="경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.", retryable=False,
+)
 _ACCESS_EXPIRED = _Failure("ROUTE_ACCESS_EXPIRED", "경로 조회 시간이 지났어요. 새 요청 ID로 다시 요청해 주세요.")
 _DB_UNAVAILABLE = _Failure(
     "ROUTE_STORE_UNAVAILABLE", "귀가 요청 저장소에 연결할 수 없어요.", True, http_status=503,
@@ -94,6 +96,7 @@ class _CachedRoute:
     key: str
     valid_until: datetime
     result: ProviderResult | None = field(repr=False)
+    request_keys: set[str] = field(default_factory=set, repr=False)
 
 
 @dataclass
@@ -101,8 +104,9 @@ class _RouteRecord:
     route_id: str
     access_token: str = field(repr=False)
     direction: RouteDirection
-    request: RouteRequest = field(repr=False)
-    body: str = field(repr=False)
+    request: RouteRequest | None = field(repr=False)
+    request_key: str = field(repr=False)
+    body_hash: str = field(repr=False)
     depart_at: datetime
     updated_at: datetime
     sync_deadline: float
@@ -114,10 +118,6 @@ class _RouteRecord:
     failure: _Failure | None = None
     route_key: str | None = None
     source_type: str = "fresh"
-
-    @property
-    def request_key(self) -> tuple[RouteDirection, str]:
-        return self.direction, self.request.request_id
 
 
 _FlightResult = _CachedRoute | ProviderResult | _Failure
@@ -147,25 +147,28 @@ class RealRouteService:
         self._secret = secret.encode() if secret else _STARTUP_SECRET
         self._store = store
         self._records: dict[str, _RouteRecord] = {}
-        self._request_keys: dict[tuple[RouteDirection, str], _RouteRecord] = {}
+        self._request_keys: dict[str, _RouteRecord] = {}
         self._cache: dict[str, _CachedRoute] = {}
         self._flights: dict[str, asyncio.Task[_FlightResult]] = {}
 
     async def create_route(
         self, direction: RouteDirection, request: RouteRequest, body: dict[str, object]
     ) -> tuple[int, dict[str, object]]:
-        submitted_body = json.dumps(body, sort_keys=True)
+        request_key = self._private_hash("request-id", f"{direction}:{request.request_id}")
+        body_hash = self._private_hash("request-body", json.dumps(body, sort_keys=True))
         if self._store is not None:
-            return await self._create_db_route(direction, request, submitted_body)
+            return await self._create_db_route(direction, request, request_key, body_hash)
 
-        record = self._request_keys.get((direction, request.request_id))
+        record = self._request_keys.get(request_key)
         if record is None:
-            record = self._register(direction, request, submitted_body)
-        elif record.body != submitted_body:
+            record = self._register(direction, request, request_key, body_hash)
+        elif not hmac.compare_digest(record.body_hash, body_hash):
             raise ApiError(409, "IDEMPOTENCY_CONFLICT", "이미 다른 본문에 사용한 요청 ID입니다.")
-        return await self._submit_registered(record)
+        return await self._submit_registered(record, request)
 
-    async def _submit_registered(self, record: _RouteRecord) -> tuple[int, dict[str, object]]:
+    async def _submit_registered(
+        self, record: _RouteRecord, request: RouteRequest,
+    ) -> tuple[int, dict[str, object]]:
         secondary = None
         task = record.task
         if task is not None and not record.accepted:
@@ -180,7 +183,7 @@ class RealRouteService:
             return 202, self._accepted_payload(record)
         result = secondary or self._record_result(record)
         if result is not None:
-            return 200, self._ready_payload(record, result)
+            return 200, self._ready_payload(record, request, result)
         failure = record.failure
         if failure is not None and failure.http_status != 200:
             raise ApiError(failure.http_status, failure.code, failure.message, failure.retryable)
@@ -210,18 +213,21 @@ class RealRouteService:
     def _now(self) -> datetime:
         return as_kst(self._clock())
 
-    def _register(self, direction: RouteDirection, request: RouteRequest, body: str) -> _RouteRecord:
+    def _register(
+        self, direction: RouteDirection, request: RouteRequest, request_key: str, body_hash: str,
+    ) -> _RouteRecord:
         route_id = _random_id("rr_", 16)
         while route_id in self._records:
             route_id = _random_id("rr_", 16)
-        record = self._new_record(direction, request, body, route_id, _random_id("rrt_", 24))
+        record = self._new_record(direction, request, request_key, body_hash, route_id, _random_id("rrt_", 24))
         self._records[route_id] = record
         self._request_keys[record.request_key] = record
         record.task = asyncio.create_task(self._process(record))
         return record
 
     def _new_record(
-        self, direction: RouteDirection, request: RouteRequest, body: str, route_id: str, token: str,
+        self, direction: RouteDirection, request: RouteRequest, request_key: str, body_hash: str,
+        route_id: str, token: str,
     ) -> _RouteRecord:
         started = asyncio.get_running_loop().time()
         now = self._now()
@@ -230,7 +236,8 @@ class RealRouteService:
             access_token=token,
             direction=direction,
             request=request,
-            body=body,
+            request_key=request_key,
+            body_hash=body_hash,
             depart_at=now,
             updated_at=now,
             sync_deadline=started + _SYNC_WAIT_S,
@@ -238,12 +245,10 @@ class RealRouteService:
         )
 
     async def _create_db_route(
-        self, direction: RouteDirection, request: RouteRequest, body: str,
+        self, direction: RouteDirection, request: RouteRequest, request_key: str, body_hash: str,
     ) -> tuple[int, dict[str, object]]:
         assert self._store is not None
-        request_id = self._private_hash("request-id", f"{direction}:{request.request_id}")
-        body_hash = self._private_hash("request-body", body)
-        existing = await asyncio.to_thread(self._store.request_for_retry, request_id, body_hash)
+        existing = await asyncio.to_thread(self._store.request_for_retry, request_key, body_hash)
         if existing is not None:
             return await asyncio.to_thread(self._replay, direction, existing)
 
@@ -251,12 +256,12 @@ class RealRouteService:
         self._validate_festival(request, festival)
         assert festival is not None
         route_id = _random_id("rr_", 16)
-        record = self._new_record(direction, request, body, route_id, self._db_token(route_id))
+        record = self._new_record(direction, request, request_key, body_hash, route_id, self._db_token(route_id))
         record.festival = festival
         origin_type, origin_hash = self._place_fields(request.origin)
         destination_type, destination_hash = self._place_fields(request.destination)
         created = await asyncio.to_thread(self._store.register, {
-            "route_id": route_id, "request_id": request_id, "body_hash": body_hash,
+            "route_id": route_id, "request_id": request_key, "body_hash": body_hash,
             "token_hash": token_hash(record.access_token), "direction": direction,
             "festival_id": festival.festival_id, "festival_lat": festival.lat, "festival_lng": festival.lng,
             "origin_type": origin_type, "origin_hash": origin_hash,
@@ -266,11 +271,11 @@ class RealRouteService:
             "route_key": self._private_hash("pending-route", route_id), "now": record.depart_at,
         })
         if not created:
-            existing = await asyncio.to_thread(self._store.request_for_retry, request_id, body_hash)
+            existing = await asyncio.to_thread(self._store.request_for_retry, request_key, body_hash)
             assert existing is not None
             return await asyncio.to_thread(self._replay, direction, existing)
         record.task = asyncio.create_task(self._process(record))
-        return await self._submit_registered(record)
+        return await self._submit_registered(record, request)
 
     def _private_hash(self, purpose: str, value: str) -> str:
         return hmac.digest(self._secret, f"{purpose}:{value}".encode(), "sha256").hex()
@@ -314,9 +319,16 @@ class RealRouteService:
         record.accepted |= asyncio.get_running_loop().time() >= record.sync_deadline
         record.updated_at = self._now()
         record.task = None
+        # 메모리 모드에서는 A05의 유효한 TMAP 응답을 만드는 동안만 원문을 보관한다.
         if isinstance(result, _CachedRoute):
             record.cached = result
-        elif isinstance(result, ProviderResult):
+            if self._store is None and result.result is not None:
+                result.request_keys.add(record.request_key)
+            else:
+                record.request = None
+            return None
+        record.request = None
+        if isinstance(result, ProviderResult):
             record.failure = _SECONDARY_ONLY
             if not record.accepted:
                 return result
@@ -329,6 +341,7 @@ class RealRouteService:
 
     async def _resolve_query(self, record: _RouteRecord) -> RouteQuery:
         request = record.request
+        assert request is not None
         festival = record.festival
         if festival is None:
             festival = await asyncio.to_thread(find_festival, request.festival_id)
@@ -372,9 +385,11 @@ class RealRouteService:
     def _route_key(self, record: _RouteRecord, query: RouteQuery) -> str:
         start_lat, start_lng = query.origin
         end_lat, end_lng = query.destination
+        request = record.request
+        assert request is not None
         parts = (
             record.direction, f"{start_lat:.4f},{start_lng:.4f}", f"{end_lat:.4f},{end_lng:.4f}",
-            record.request.travel_mode, record.request.route_preference,
+            request.travel_mode, request.route_preference,
             str(int(record.depart_at.timestamp()) // 300),
         )
         return hmac.digest(self._secret, "|".join(parts).encode(), "sha256").hex()
@@ -454,6 +469,9 @@ class RealRouteService:
 
     def _expire_cache(self, cached: _CachedRoute) -> None:
         cached.result = None
+        for request_key in cached.request_keys:
+            self._request_keys[request_key].request = None
+        cached.request_keys.clear()
         if self._cache.get(cached.key) is cached:
             del self._cache[cached.key]
 
@@ -577,7 +595,8 @@ class RealRouteService:
         status = "ready" if result is not None else "processing"
         body = self._state_payload(record.route_id, status, record.updated_at, failure)
         if result is not None:
-            body.update(self._ready_payload(record, result))
+            assert record.request is not None
+            body.update(self._ready_payload(record, record.request, result))
         return body
 
     @staticmethod
@@ -600,8 +619,10 @@ class RealRouteService:
             body["retry_after_s"] = _RETRY_AFTER_S
         return body
 
-    def _ready_payload(self, record: _RouteRecord, result: ProviderResult) -> dict[str, object]:
-        request, festival = record.request, record.festival
+    def _ready_payload(
+        self, record: _RouteRecord, request: RouteRequest, result: ProviderResult,
+    ) -> dict[str, object]:
+        festival = record.festival
         assert festival is not None
         return {
             "route_request_id": record.route_id,

@@ -5,7 +5,7 @@ import json
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from threading import Barrier, Event
 from typing import Any
@@ -110,6 +110,7 @@ class Routes:
 @pytest.fixture
 def routes(monkeypatch: pytest.MonkeyPatch) -> Iterator[Routes]:
     monkeypatch.setenv("ROUTE_PROVIDER", "real")
+    monkeypatch.setenv("ROUTE_STORE", "memory")
     monkeypatch.setenv("ROUTE_KEY_SECRET", "TEST_KEY_DO_NOT_USE")
     monkeypatch.delenv("FESTIVAL_DATA", raising=False)
     clock = Clock()
@@ -411,6 +412,7 @@ def test_P11_expiry_removes_shared_tmap_body_for_all_ids(routes: Routes) -> None
     assert expired["completed_valid_route"] is False
     assert expired["error"]["code"] == "ROUTE_RESULT_EXPIRED"
     assert expired["error"]["retryable"] is True
+    assert expired["error"]["message"] == "경로가 만료됐어요. 다시 조회해 주세요."
     assert "route_candidates" not in expired
     assert cached.result is None
     assert not routes.service._cache
@@ -418,6 +420,79 @@ def test_P11_expiry_removes_shared_tmap_body_for_all_ids(routes: Routes) -> None
     _body(routes.client.post(_RETURN, json={**body, "request_id": "real-route-03"}), 200)
     assert len(routes.tmap.queries) == 2
     assert _poll(routes, second)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+
+
+def test_a05_db_ready_request_without_result(routes: Routes, monkeypatch: pytest.MonkeyPatch) -> None:
+    ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
+    assert ready["route_status"] == "ready"
+
+    class StoreWithoutResult:
+        def lookup(self, direction, route_id, token, now):
+            assert direction == "return"
+            assert route_id == ready["route_request_id"]
+            assert token == ready["route_access_token"]
+            return {
+                "status": "ready",
+                "completed_at": routes.clock.now,
+                "error_detail": None,
+            }, None
+
+    monkeypatch.setattr(routes.service, "_store", StoreWithoutResult())
+    restored = _poll(routes, ready)
+    assert restored["route_status"] == "unavailable"
+    assert restored["completed_valid_route"] is False
+    assert restored["error"] == {
+        "code": "ROUTE_RESULT_EXPIRED",
+        "message": "경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.",
+        "retryable": False,
+    }
+    assert "route_candidates" not in restored
+
+
+def test_a3_memory_expiry_removes_raw_places_from_all_cached_requests(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    origin_query, destination_query = "synthetic-private-origin", "synthetic-private-destination"
+    origin, destination = (37.123412, 126.789112), (37.234512, 126.876512)
+    places = {
+        origin_query: (*origin, origin_query),
+        destination_query: (*destination, destination_query),
+    }
+    monkeypatch.setattr(routes.kakao, "search_place", places.__getitem__)
+    body = {
+        **_BODY,
+        "origin": {"lat": origin[0], "lng": origin[1]},
+        "destination": {"query": destination_query},
+    }
+    cached_body = {
+        **_BODY,
+        "request_id": "privacy-cache-reuse",
+        "origin": {"query": origin_query},
+        "destination": {"lat": destination[0], "lng": destination[1]},
+    }
+    first = _body(routes.client.post(_RETURN, json=body), 200)
+    second = _body(routes.client.post(_RETURN, json=cached_body), 200)
+    assert first["origin"]["label"] == "37.123412,126.789112"
+    assert first["destination"]["label"] == destination_query
+    assert second["origin"]["label"] == origin_query
+    assert second["destination"]["label"] == "37.234512,126.876512"
+    assert len(routes.tmap.queries) == 1
+
+    routes.clock.now += timedelta(seconds=60)
+    expired = _poll(routes, first)
+    assert expired["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+    assert not routes.service._cache and not routes.service._flights
+    markers = ("37.1234", "126.7891", "37.2345", "126.8765", origin_query, destination_query)
+    for record in (*routes.service._records.values(), *routes.service._request_keys.values()):
+        retained = json.dumps(asdict(record), default=str)
+        if any(raw in retained for raw in markers):
+            pytest.fail("만료된 메모리 요청에 장소 원문이 남았습니다.", pytrace=False)
+
+    assert _poll(routes, second)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+    replay = _body(routes.client.post(_RETURN, json=body), 200)
+    assert replay["route_request_id"] == first["route_request_id"]
+    assert replay["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+    assert routes.client.post(_RETURN, json={**body, "travel_mode": "walk"}).status_code == 409
 
 
 @pytest.mark.parametrize("lane_key", ["Lane", "lane"])
