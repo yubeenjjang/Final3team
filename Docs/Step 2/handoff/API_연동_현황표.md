@@ -89,7 +89,7 @@
 | 11/24 | 011·012·P18·T25a·b 로컬 검증 결과와 화면·워커 확인 범위 갱신 | 권오현 |
 | 11/24 | v0.5 팀 결정 14건과 프론트 연동 기준 반영 | 권오현 |
 
-11/24 SQL·DB 시험 기준 커밋은 `ohyun` `3368c2e`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~015를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 189줄(개별 시험 PASS 184건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 424개 통과·20개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](../db/results_2026-11-24.log)
+11/24 SQL·DB 시험 기준 커밋은 `ohyun` `63c6dd9`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~016를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 197줄(개별 시험 PASS 192건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 424개 통과·20개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](../db/results_2026-11-24.log)
 
 ## 6. 결정 기록
 
