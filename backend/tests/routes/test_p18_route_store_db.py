@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from collections.abc import Iterator
@@ -166,6 +167,7 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
         assert expired["route_status"] == "unavailable"
         assert expired["error"]["code"] == "ROUTE_RESULT_EXPIRED"
         assert expired["error"]["retryable"] is False
+        assert expired["error"]["message"] == "경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요."
         assert "route_candidates" not in expired
         with route_engine.connect() as connection:
             purged = connection.execute(text("""
@@ -185,6 +187,40 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
         assert {"route_access_token", "route_candidates", "status_url"}.isdisjoint(response)
         assert client.post(_RETURN, json={**body, "travel_mode": "walk"}).status_code == 409
         assert len(tmap.queries) == 1
+
+
+def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, festival_id, monkeypatch):
+    clock = Clock()
+    use_db(route_engine, app_engine, monkeypatch, clock, FakeProvider("tmap", clock), FakeProvider("kakao", clock))
+    monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
+    with TestClient(app) as client:
+        submitted = client.post(_RETURN, json=body_for(festival_id))
+        assert submitted.status_code == 200
+        ready = submitted.json()
+        assert ready["route_status"] == "ready"
+        route_id = ready["route_request_id"]
+
+        with route_engine.begin() as connection:
+            # 012 백업에서 결과 데이터만 빠진 복원 상태를 재현한다.
+            deleted = connection.execute(text("""
+                DELETE FROM public.route_results WHERE route_request_id = :id
+            """), {"id": route_id})
+            assert deleted.rowcount == 1
+            assert connection.scalar(text("""
+                SELECT status FROM public.route_requests WHERE route_request_id = :id
+            """), {"id": route_id}) == "ready"
+
+        response = client.get(f"{_RETURN}/{route_id}", headers={_TOKEN: ready["route_access_token"]})
+        assert response.status_code == 200
+        restored = response.json()
+        assert restored["route_status"] == "unavailable"
+        assert restored["completed_valid_route"] is False
+        assert restored["error"] == {
+            "code": "ROUTE_RESULT_EXPIRED",
+            "message": "경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.",
+            "retryable": False,
+        }
+        assert "route_candidates" not in restored
 
 
 def test_P18_db_kakao_has_no_result_row(route_engine, app_engine, festival_id, monkeypatch):
@@ -227,6 +263,48 @@ def test_P18_db_sweeper_clears_cached_result_before_24h(route_engine, app_engine
             FROM public.route_results WHERE route_request_id = :id
         """), {"id": cached_id}).one()
     assert row == ("cache", None, {}, {}, clock.now)
+
+
+def test_a3_db_route_rows_exclude_raw_places_before_and_after_purge(route_engine, festival_id, monkeypatch):
+    clock = Clock()
+    kakao = FakeProvider("kakao", clock)
+    place_query = "synthetic-private-place"
+    monkeypatch.setattr(kakao, "search_place", lambda query: (37.234512, 126.876512, place_query))
+    store, _ = use_db(route_engine, route_engine, monkeypatch, clock, FakeProvider("tmap", clock), kakao)
+    monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
+    point = {"lat": 37.123412, "lng": 126.789112}
+    place = {"query": place_query}
+    markers = ("37.1234", "126.7891", "37.2345", "126.8765", place_query)
+
+    def check_stored_rows(route_ids, *, purged):
+        with route_engine.connect() as connection:
+            for route_id in route_ids:
+                request, result = connection.execute(text("""
+                    SELECT row_to_json(rq), row_to_json(rs)
+                    FROM public.route_requests rq JOIN public.route_results rs USING (route_request_id)
+                    WHERE rq.route_request_id = :id
+                """), {"id": route_id}).one()
+                assert len(request["origin_place_hash"] or "") == 64
+                assert len(request["destination_place_hash"] or "") == 64
+                assert (result["purged_at"] is not None) == purged
+                assert bool(result["candidates"]) != purged
+                for row in (request, result):
+                    retained = json.dumps(row, ensure_ascii=False)
+                    if any(raw in retained for raw in markers):
+                        pytest.fail("경로 요청 또는 결과 행에 장소 원문이 저장됐습니다.", pytrace=False)
+
+    route_ids = []
+    with TestClient(app) as client:
+        for origin, destination in ((point, place), (place, point)):
+            body = {**body_for(festival_id), "origin": origin, "destination": destination}
+            response = client.post(_RETURN, json=body)
+            assert response.status_code == 200 and response.json()["provider"] == "tmap"
+            route_ids.append(response.json()["route_request_id"])
+    check_stored_rows(route_ids, purged=False)
+
+    clock.now += timedelta(hours=23)
+    assert store.purge_expired(clock.now) >= len(route_ids)
+    check_stored_rows(route_ids, purged=True)
 
 
 def test_P18_db_migration_011_up_down_up(route_engine):
