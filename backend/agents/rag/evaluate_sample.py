@@ -32,10 +32,10 @@ DOCUMENTS = [
     },
     {
         "id": "D2",
-        "festival": "autumn_festa",
-        "text": "2026 서울어텀페스타는 9월 18일부터 11월 29일까지 열린다. 통합정보센터는 서울문화재단 대학로센터 1층에 있으며 월요일과 공휴일에는 쉰다.",
-        "effective_to": "2026-11-30T00:00:00+09:00",
-        "source_url": "https://news.seoul.go.kr/culture/archives/534503",
+        "festival": "painters",
+        "text": "페인터즈 광화문 전용관은 서울시 중구 정동길 3 경향아트힐 1층에 있다. 공연은 하루 세 번 14시, 17시, 20시에 열리고 러닝타임은 75분이다.",
+        "effective_to": None,
+        "source_url": "https://www.thepainters.co.kr/",
     },
     {
         "id": "D3",
@@ -49,10 +49,10 @@ DOCUMENTS = [
 QUESTIONS = [
     ("Q01", "sungnyemun", "파수의식은 월요일에도 하나요?", "D1"),
     ("Q02", "sungnyemun", "어디서 몇 시까지 진행하나요?", "D1"),
-    ("Q03", "autumn_festa", "올해 축제는 언제까지 진행되나요?", "D2"),
-    ("Q04", "autumn_festa", "통합정보센터는 월요일에도 여나요?", "D2"),
-    ("Q05", "sungnyemun", "서울어텀페스타 통합정보센터는 어디 있나요?", None),
-    ("Q06", "autumn_festa", "숭례문 파수의식은 월요일에도 하나요?", None),
+    ("Q03", "painters", "하루에 몇 번, 몇 시에 공연하나요?", "D2"),
+    ("Q04", "painters", "공연장 주소와 러닝타임은 무엇인가요?", "D2"),
+    ("Q05", "sungnyemun", "페인터즈 광화문 공연은 몇 시에 하나요?", None),
+    ("Q06", "painters", "숭례문 파수의식은 월요일에도 하나요?", None),
     ("Q07", "mokdong_bbq", "2026년 11월 25일에 가도 축제를 즐길 수 있나요?", None),
     ("Q08", "sungnyemun", "오늘 비 때문에 행사가 취소됐나요?", None),
     ("Q09", "sungnyemun", "지금 숭례문 앞은 얼마나 혼잡한가요?", None),
@@ -157,7 +157,7 @@ def main() -> int:
 
     OUTPUT.write_text(
         json.dumps(
-            {"model": MODEL, "dimensions": DIMENSIONS, "as_of": AS_OF.isoformat(), "usage": usage, "scope": "three paraphrased snippets; no DB or answer generation", "results": results},
+            {"model": MODEL, "dimensions": DIMENSIONS, "as_of": AS_OF.isoformat(), "usage": usage, "scope": "three paraphrased snippets; D3 is a fixed expired fixture; no DB or answer generation", "results": results},
             ensure_ascii=False,
             indent=2,
         ),
