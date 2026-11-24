@@ -54,6 +54,9 @@ FESTIVAL_CHANGE_HISTORY = table(
     column("before_value", JSONB), column("after_value", JSONB), column("source_id"),
     column("actor"), column("changed_at"),
 )
+FESTIVAL_REVIEW_QUEUE = table(
+    "festival_review_queue", column("festival_id"), column("reason"), column("approval_status"),
+)
 SOURCE_FESTIVALS = FESTIVAL_SOURCES.join(
     FESTIVALS, FESTIVAL_SOURCES.c.festival_id == FESTIVALS.c.festival_id
 )
@@ -153,6 +156,30 @@ def _write_history(
     ])
 
 
+def _queue_review(connection: Connection, festival_id: str, reason: str) -> None:
+    # 호출자가 축제 행을 잠근 상태에서 같은 사유의 미처리 건을 확인한다.
+    pending = select(FESTIVAL_REVIEW_QUEUE.c.reason).where(
+        FESTIVAL_REVIEW_QUEUE.c.festival_id == festival_id,
+        FESTIVAL_REVIEW_QUEUE.c.reason == reason,
+        FESTIVAL_REVIEW_QUEUE.c.approval_status == "pending",
+    )
+    if not connection.execute(select(pending.exists())).scalar_one():
+        connection.execute(FESTIVAL_REVIEW_QUEUE.insert().values(festival_id=festival_id, reason=reason))
+
+
+def _quality_review_reason(values: Mapping[str, FieldValue]) -> str | None:
+    if values.get("review_status") != "pending":
+        return None
+    level2 = values["source_class_level2"]
+    if not level2 or not str(level2).strip():
+        return CLASS_UNVERIFIED
+    if level2 != FESTIVAL_CLASS:
+        return NOT_FESTIVAL_CLASS
+    if values["address"] and (values["latitude"] is None or values["longitude"] is None):
+        return COORDS_OUT_OF_RANGE
+    return None
+
+
 def _record_presence(
     connection: Connection, festival_id: str, job_id: str, reason: str, now: datetime,
     previous: dict[str, str] | None = None,
@@ -161,6 +188,8 @@ def _record_presence(
         connection, festival_id, {PRESENCE_FIELD: previous},
         {PRESENCE_FIELD: {"reason": reason, "job_id": job_id}}, now,
     )
+    if reason == MISSING:
+        _queue_review(connection, festival_id, reason)
 
 
 def _record_classification(
@@ -201,10 +230,13 @@ def _upsert(
         if not has_required_fields:
             return None
         festival_id = f"fst_{ULID()}"
+        values = festival_values(record, {}, now)
         connection.execute(FESTIVALS.insert().values(
-            festival_id=festival_id, collected_at=now, last_synced_at=now,
-            **festival_values(record, {}, now),
+            festival_id=festival_id, collected_at=now, last_synced_at=now, **values,
         ))
+        review_reason = _quality_review_reason(values)
+        if review_reason:
+            _queue_review(connection, festival_id, review_reason)
         connection.execute(FESTIVAL_SOURCES.insert().values(
             festival_id=festival_id, source_id=SOURCE_ID, source_item_id=record.source_item_id,
             raw_checksum=record.raw_checksum, **sync,
@@ -266,6 +298,9 @@ def _upsert(
     connection.execute(FESTIVAL_SOURCES.update().where(source).values(**sync))
     if changes:
         _write_history(connection, festival_id, previous, changes, now)
+        review_reason = _quality_review_reason({**previous, **changes})
+        if review_reason and review_reason != _quality_review_reason(previous):
+            _queue_review(connection, festival_id, review_reason)
     if (record.source_class_level2 != FESTIVAL_CLASS and previous["review_status"] == "approved"
             and previous["published_at"] is not None and changes.get("review_status") == "pending"):
         reason = CLASS_UNVERIFIED if record.source_class_level2 is None else NOT_FESTIVAL_CLASS

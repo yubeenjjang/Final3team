@@ -54,7 +54,7 @@
 | 1' | 추천·동행·채팅 첫 시연/후속 순서·담당·완료 기준 합의 | 🟡 일부 | 19절(결정 반영 기록), 12/8 시연 범위는 신유빈 11/23 공지(축제→상세→귀가) | 추천 A36~A41 담당 신유빈 확정(협업 규칙). 후속 순서와 완료 기준은 별도 합의 |
 | 2 | 공급원별 저장·캐시 규칙을 **실제 처리 코드**와 맞춤, 동기 전용(카카오)·비동기 구분, 합성 예시 ≠ 실제 증거 | 🟡 일부 | **17-3절**(코드·시험 대응, 현재 동작과 예정 구분), 5절 막차 규칙, 17-4(합성 예시와 실제 호출 기록 구분) | **11/24 로컬 확인** — P18 A05 TMAP 만료(`retryable=false`)·카카오 결과 미저장·23시간 정리와 파생 값 삭제, 24시간 정리 명령 `python -m api.jobs.purge_route_results` 완료. **남은 것(막힌 이유)** — Redis 라벨 연동: 공통 Redis 연결(`backend/shared/redis.py`, 신유빈 담당)이 아직 빈 파일이라 연결 뒤 시험 · 정리 명령의 시간당 실행·실패 감시: W64·W65 AWS 구성(신유빈) |
 | 3 | 위치·대화 정보 최소 전달·열람자·로그 항목 구분, 허용/차단 시험 | 🟡 일부 | **18절** | **완료** — A04·A05·장소 검색·A10 로그 시험, A04 메모리 만료 후 장소 원문 검사, 일회용 DB 신규 행 원문 검사(P18, 11/24 DB 16개 통과), AI 실행기 결과에 경로 본문·토큰이 남지 않는 시험(한태경 tk `b7fd21a`). **남은 것(막힌 이유)** — Redis 원문 만료 시험: 공통 Redis 연결(신유빈) 뒤 · 에이전트 도구 입력 제한 시험: 한다영(Festival Agent 도구 연결 범위) · A77 관리자 열람 범위·기록 서버 시험: 신고·관리자 API가 12월 구현 범위(동행·채팅 W115~W128 뒤) |
-| 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **완료(11/24)** — `yubeen`의 D1 공통 DB 연결(`service_db_session`·`RESET ALL`)을 `ohyun`에 병합하고 A04·A05를 연결, 일회용 DB 시험 21개와 한태경 실DB 연결·권한 시험 17개(tk `649d50b`) 통과. A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다(6-2, 권오현 확정). **남은 것** — 확정 정책의 구현·시험. 11/24 팀 결정 14건은 19절에 기록 |
+| 4 | 남은 결정을 API·도구·시험 반영 기록으로 닫기 | 🟡 일부 | **19절** | 작성자·검토자·날짜 칸. **완료(11/24)** — `yubeen`의 D1 공통 DB 연결(`service_db_session`·`RESET ALL`)을 `ohyun`에 병합하고 A04·A05를 연결, 일회용 DB 시험 30개와 한태경 실DB 연결·권한 시험 17개(tk `649d50b`) 통과. A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다(6-2, 권오현 확정). **남은 것** — 확정 정책의 구현·시험. 11/24 팀 결정 14건은 19절에 기록 |
 | 5 | 최신 정본 링크·제출 상태, 개인 PC 경로 제거 | 🟡 일부 | 문서 정보(11/24 SQL·DB 시험 기준 `ohyun` `719484d`)·전체 | **남은 것** — 대시보드 링크·접수 상태 팀 확인, v0.5 제출 기준 커밋(`ohyun` 병합 뒤), `origin/main` 기획서의 이전 설계서 경로·v0.3 인용을 담당자와 갱신 |
 
 A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입·로그인·갱신·로그아웃과 인증 원문 로그 차단 시험은 1절·17-3절에 연결했습니다. Redis 연결 전에는 폐기·요청 제한 상태를 API 프로세스 메모리에 보관합니다.
@@ -159,13 +159,13 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | **전달** | `Authorization: Bearer <access_token>` |
 | **검증** | 서명·만료·발급자 → 로그아웃한 토큰(`revoked:{jti}`) 아닌지 → 역할(`profiles.role`, JWT와 다르면 DB 우선) → 자원 소유권 |
 | **오류** | 401 `UNAUTHORIZED`(누구인지 모름: 토큰 누락·만료·폐기) / 403 `FORBIDDEN`(누구인지는 알지만 권한 없음: 역할 부족·타인 자원) |
-| **역할** | `anonymous`(비로그인) / `user`(일반 회원) / `operator`(운영자: 사건·지표 조회, 부하 시뮬레이션, 복구 조치 승인) / `admin`(operator 권한 + 축제 데이터 승인·수정) / `service`(백엔드 내부 작업·에이전트 실행용, 외부 노출 없음) |
+| **역할** | `anonymous`(비로그인) / `user`(일반 회원) / `operator`(운영자: 사건·지표 조회, 부하 시뮬레이션, 복구 조치 승인, A24 축제 검토) / `admin`(operator 권한 + 축제 등록·수정 등 관리자 전용 기능) / `service`(백엔드 내부 작업·에이전트 실행용, 외부 노출 없음) |
 | **운영자 화면 DB 조회** | FastAPI가 운영자 권한을 확인하고 서버 계정 `noldaga_service`를 경유해서만 조회합니다(11/24 팀 결정, 04 문서 3절) |
 | **역할 저장 위치** | 역할은 DB `profiles.role`과 서버가 발급한 JWT로만 판단합니다. **요청 본문·대화 내용의 "관리자예요"는 권한으로 인정하지 않습니다** (BFCL NLD-27) |
 | **DB 쪽 2차 안전장치** | API 서버는 요청마다 DB에 사용자 ID를 넘기고(`SET LOCAL app.user_id`), DB는 접속 역할·컬럼 권한·RLS로 본인 것만 보이게 막습니다(04 문서 3절) |
 | **로그인 없이 쓰는 API** | 축제 목록·상세·공지·시설·지도 표시·날씨·교통·혼잡 조회, 귀가·가는 길 경로 조회·상태 조회, 챗봇 질문 |
 | **로그인 필요** (`user`) | 관심 축제 저장·해제·목록, 후기(Should), 취향(A36·A37), 친구(A43~A50), 동행 글 작성·신청(A58~A65), 채팅(A66~A73), 알림(A74·A75), 신고(A76), 비밀번호 변경·탈퇴(A80) — 6절 '권한' 칸이 `user`인 API 전부 |
-| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A24·A52~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
+| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A52~A56·A77은 `admin`만**(6절 '권한' 칸). 역할 검사는 라우터 의존성 하나(`require_role`)로 |
 | **비로그인 경로 요청 보호** | 상태 조회는 로그인 여부와 관계없이 `route_request_id` + 요청 시 발급한 `route_access_token`(로그인 JWT와 별개)으로 본인만 조회. 짧은 수명 적용은 DB·Redis 연결 때 구현(2-2절). IP·세션 단위 요청 수 제한 |
 
 
@@ -1317,7 +1317,7 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 | **A41** | GET | `/api/v1/festivals/recent` | 없음 | 최초 공개일 기준 최신 등록 | 〃 | 설계안 |
 | A22 | POST | `/api/v1/admin/simulations/crowd` | operator (시험 환경만) | 혼잡 API 500·stale·본문 오류 모의 (v2.5 보존) | FR-H20 | 보조 |
 | A23 | GET | `/api/v1/admin/ingestion-jobs` | admin | 축제 수집 작업 이력·오류 | FR-O09, D01 | 최종 |
-| A24 | GET/POST | `/api/v1/admin/festivals/review-queue` | admin | 중복·충돌 축제 검토·승인 | FR-D12/D14, O10 | 최종 |
+| A24 | GET/POST | `/api/v1/admin/festivals/review-queue` | operator·admin | 축제 검토 대기열 조회·결정 | FR-D12/D14, O10 | 최종 |
 | **A25** | POST | `/api/v1/routes/visit` (+ `GET /api/v1/routes/visit/{id}`) | 없음 | **축제 가는 길** (2-5절) | FR-R(기본 왕복), **D-015** | 최종 |
 | **A26** | GET | `/api/v1/festivals/{festival_id}/transit` | 없음 | 주변 지하철역·버스 정류장 **실시간 도착**. 지하철 실시간은 서울만, 버스는 서울 = 서울시 버스도착정보·서울 밖 = TAGO | **D-010·D-012** | 최종 |
 | **A27** | — | — | — | 실시간 주차 빈자리 제외. 주차장 위치는 A08 `parking` | 11/24 팀 결정 | **채택 안 함(11/24)** |
@@ -1378,7 +1378,7 @@ Content-Type: application/json
 
 | 코드 | HTTP | 의미 |
 |---|---|---|
-| `VALIDATION_ERROR` | 422 | 입력 형식 오류(Pydantic) |
+| `VALIDATION_ERROR` | 422 | 입력 형식 오류(Pydantic) 또는 A24 게시 조건 미충족 |
 | `UNAUTHORIZED` / `FORBIDDEN` | 401 / 403 | 인증 없음·만료 / 권한 부족·타인 자원 |
 | `RATE_LIMITED` | 429 | 요청 수 제한 초과 |
 | `DB_POOL_TIMEOUT` | 503 | DB 연결 풀 대기 시간 초과(DB-14). `retryable=true`, `Retry-After: 1`(초) |
@@ -1677,23 +1677,24 @@ Content-Type: application/json
 | `items[].rejected` | 응답 | int | 예 | 제외 건수 |
 | `items[].error` | 응답 | JSON 또는 null | 예 | 페이지별 오류 요약, 키 값 제외. 수집 코드에서 제외한 항목의 기록은 배열로 저장 |
 
-#### A24. 중복·충돌 축제 검토 `GET`·`POST /api/v1/admin/festivals/review-queue`
+#### A24. 축제 검토 대기열 `GET`·`POST /api/v1/admin/festivals/review-queue`
 
 | 항목 | GET (목록) | POST (처리) |
 |---|---|---|
-| 권한 | admin | admin |
-| 입력 | 쿼리 `approval_status`(기본 `pending`)·`reason`(`duplicate`·`conflict`·`missing_location`·`date_unclear`)·`page` | 본문 `{queue_id: int, decision: "approve"·"reject", value?: object, note?: string≤200}` |
-| 응답 | 200 `{items[] {queue_id, festival_id, festival_name, reason, proposed_value, approval_status, created_at}, total, …}` | 200 `{queue_id, approval_status, applied: bool}` |
-| 오류 | 401 / 403 / 422 | 401 / 403 / 404 `QUEUE_ITEM_NOT_FOUND` / 409 `ALREADY_REVIEWED` / 422 |
-| 처리 규칙 | — | `approve`면 `value`(없으면 `proposed_value`)를 `festivals`에 반영하고 `festival_change_history`(`actor='admin'`)에 한 줄. `reject`면 축제는 그대로. 처리자·시각을 `reviewer`·`reviewed_at`에 기록. 축제를 물리 삭제하지 않음(숨김은 `review_status='hidden'`) |
+| 권한 | operator·admin | operator·admin |
+| 입력 | `approval_status`·`reason`·`page`·`page_size` | `{queue_id, decision, value?, note}` |
+| 응답 | 200 `{items, total, page, page_size}` | 200 `{queue_id, approval_status, applied}` |
+| 오류 | 401 / 403 / 422 | 401 / 403 / 404 `QUEUE_ITEM_NOT_FOUND` / 409 `ALREADY_REVIEWED` / 422 `VALIDATION_ERROR` |
+| 처리 규칙 | 생성 시각과 대기열 ID 내림차순 | 승인 시 `value` 또는 `proposed_value`를 적용한 뒤 EV01 축제 및 좌표 조건을 확인하고, 아직 게시되지 않았다면 `published_at`을 설정합니다. 거절은 축제를 그대로 두고, 숨김은 `review_status='hidden'`으로 바꾸고 게시 시각을 비웁니다. 모두 처리자·시각과 `festival_change_history` 한 줄을 기록합니다. |
+| 구현 상태 | `AUTH_PROVIDER=db`에서 역할 확인 후 `noldaga_service`로 조회합니다. | 축제 행과 대기열 행을 잠가 같은 건의 결정을 한 번 반영합니다. 기본 모의 모드는 메모리 예시와 `X-Mock: true`를 사용하며, 시연용 운영자 인증은 서버 설정 `MOCK_ADMIN_REVIEW_TOKEN`으로 활성화합니다. |
 
 **A24 GET 목록 요청·응답 (200)**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `approval_status` | query | string | 아니요 | `pending`(기본)·`approved`·`rejected` |
-| `reason` | query | string | 아니요 | `duplicate`·`conflict`·`missing_location`·`date_unclear` |
-| `page` | query | int | 아니요 | 조회할 페이지 번호 |
+| `reason` | query | string | 아니요 | `duplicate`·`conflict`·`missing_location`·`date_unclear`·`not_festival_class`·`class_unverified`·`missing_from_source`·`coords_out_of_range` |
+| `page` / `page_size` | query | int | 아니요 | 1부터, 기본값 1·20. 페이지 크기 최대 100 |
 | `items` | 응답 | array<object> | 예 | 검토 대기열 항목 |
 | `items[].queue_id` | 응답 | int (64비트) | 예 | `festival_review_queue.queue_id` |
 | `items[].festival_id` | 응답 | string | 예 | 검토 대상 축제 ID |
@@ -1703,18 +1704,21 @@ Content-Type: application/json
 | `items[].approval_status` | 응답 | string | 예 | `pending`·`approved`·`rejected` |
 | `items[].created_at` | 응답 | string(date-time) | 예 | 검토 항목 생성 시각 |
 | `total` | 응답 | int | 예 | 필터 적용 후 전체 건수 |
+| `page` / `page_size` | 응답 | int | 예 | 요청에 적용한 페이지 번호와 크기 |
 
 **A24 POST 처리 요청·응답 (200)**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `queue_id` | body | int (64비트) | 예 | 처리할 대기열 ID |
-| `decision` | body | string | 예 | `approve`·`reject` |
-| `value` | body | object | 아니요 | 승인 시 적용 값, 생략하면 `proposed_value` |
-| `note` | body | string | 아니요 | 검토 메모, 200자 이하 |
+| `decision` | body | string | 예 | `approve`·`reject`·`hide` |
+| `value` | body | object | 아니요 | 승인 시 적용할 축제 필드. 생략하면 `proposed_value`를 사용합니다. |
+| `note` | body | string | 예 | 공백을 제거한 뒤 1~200자의 결정 사유. `reason`도 같은 필드명으로 받습니다. |
 | `queue_id` | 응답 | int (64비트) | 예 | 처리한 대기열 ID |
-| `approval_status` | 응답 | string | 예 | `approved`·`rejected` |
-| `applied` | 응답 | boolean | 예 | 축제에 변경 사항을 실제 반영했는지 표시 |
+| `approval_status` | 응답 | string | 예 | 승인 `approved`, 거절·숨김 `rejected` |
+| `applied` | 응답 | boolean | 예 | 축제 행에 변경 사항을 실제 반영했는지 표시 |
+
+승인에 필요한 좌표는 위도 33~39, 경도 124~132입니다. 주소와 위경도 모두 없는 축제는 2-3절의 공개 조건을 따릅니다. 담당자는 분류·좌표 등 확인한 축제 필드를 `value`로 보완할 수 있습니다. 서버는 ID·검토 상태·게시 시각을 직접 관리합니다.
 
 #### A25. 축제 가는 길 `POST /api/v1/routes/visit` + `GET /api/v1/routes/visit/{route_request_id}`
 
@@ -2098,6 +2102,8 @@ Content-Type: application/json
 
 #### 6-4-3. 친구 API (A43~A50) — 담당 권오현(11/20 GitHub 협업 규칙 `community/friends.py`)
 
+**구현 상태 (11/24)** — A43~A50을 `AUTH_PROVIDER=db`의 PostgreSQL 모드와 기본 mock 모드에 연결했습니다. A43은 사용자별 최근 60초에 20회까지 허용하며 Redis 연동 전에는 API 프로세스 메모리에 횟수를 보관합니다. A47은 1페이지부터 20건씩 반환합니다. A49에서 기존 1:1 방을 닫고, A50은 실제 차단 삭제가 끝나면 채팅 연동 함수 `notify_chat_unblocked`를 호출합니다. 새 1:1 방 개설은 A67에서 처리합니다.
+
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A43** `GET /api/v1/users/search` | 쿼리 `nickname`(2~12자) — **정확히 일치만**(대소문자 무시, 일부만 치면 0건) | `{items[] {user_id, display_name, friendship_status: none·pending_sent·pending_received·friends}}` 최대 1건(닉네임은 겹치지 않음) | user. **친구 코드 없음, 닉네임으로 검색**(11/20 결정, DB `app_find_user_by_nickname` T43d·e). 나이·성별은 돌려주지 않음. 이메일·전화번호로는 검색 안 됨. 나를 차단한 사람·내가 차단한 사람은 안 나옴 | 401 / 422 / 429(분당 20회) |
@@ -2148,7 +2154,8 @@ Content-Type: application/json
 | `items[].since` | 응답 | string(date-time) | A47 예 | 친구가 된 시각(`friendships.created_at`) |
 | `blocked` | 응답 | boolean | A49 예 | 차단 완료 시 `true` |
 
-- 쓰기는 두 사람의 행이 함께 바뀌므로 API 서버가 `noldaga_service` 역할로 한 트랜잭션에서 처리하고(앱 역할은 조회만 — T33b), 그 전에 FastAPI가 소유권·차단 상태를 검사합니다(04 문서 3절).
+- A46은 먼저 RLS 조회로 신청 당사자와 처리 권한을 확인합니다. API 서버는 `noldaga_service` 역할로 두 사용자 행을 잠근 뒤 신청 상태와 차단 여부를 다시 확인하고 한 트랜잭션에서 쓰기를 처리합니다(04 문서 3절, T33b).
+- A44의 교차 신청도 201로 응답하며 기존 신청 ID와 `accepted`를 반환합니다. 자기 자신에게 신청하면 404입니다.
 - 동행 승인은 친구 추가로 이어지지 않습니다(친구 추가 API로만).
 - **친구 추천**(같이 동행한 사람, 취향이 비슷한 사람 등)은 기획서에 없어 **이번 범위에서 뺍니다.** 후보로만 남기고 넣을지는 정예진(기획)이 정합니다 — 넣으면 개인정보 노출(누가 누구와 동행했는지) 검토가 먼저 필요합니다.
 
@@ -2156,17 +2163,20 @@ Content-Type: application/json
 
 #### 6-4-4. 동행 API (A57~A65) — 담당 권오현(`community/companions.py`), 화면 `companions/`(정예진)
 
+**구현 상태** · A57~A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
+
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
-| **A57** `GET /api/v1/festivals/{festival_id}/companion-posts` | `status`(기본 `open`)·`page` | `{items[] {post_id, author_display_name, meet_at, capacity, approved_count, age_pref, gender_pref, memo, status}}` | 공개. **정확한 만남 장소는 안 줌**(FR-COM01·08) | 404 / 422 |
+| **A57** `GET /api/v1/festivals/{festival_id}/companion-posts` | `status`(기본 `open`)·`page`(기본 1, 20개씩) | `{items[] {post_id, author_display_name, meet_at, capacity, approved_count, age_pref, gender_pref, memo, status}}` | 공개. **정확한 만남 장소는 안 줌**(FR-COM01·08) | 404 / 422 |
 | **A58** `POST /api/v1/companion-posts` | `{festival_id, meet_at, capacity(1~10, 작성자 제외), age_pref?, gender_pref?, memo?(≤500)}` | 201 `{post_id, room_id}` | user. `meet_at`은 **축제 기간 안의 미래 시각만**(400 `MEET_AT_INVALID`, FR-COM03). 한 트랜잭션: 동행방(`companion`) 만들기 + 작성자 방장 입장 + 글 저장, 만남 장소는 처음 '미정'(FR-COM04) | 401 / 400 / 404 / 422 |
 | **A59** `GET /api/v1/companion-posts/{post_id}` | — | A57 한 건 + `my_application_status` | 공개 | 404 |
-| **A60** `POST /api/v1/companion-posts/{post_id}/applications` | `{message?(≤200)}` | 201 `{application_id, status:"pending"}` | user. 본인 글·마감·종료 글 거부, **대기·승인·거절 기록이 있으면 재신청 불가, 취소했으면 재신청 가능**(DB 부분 UNIQUE, T36a). 작성자에게 알림 | 401 / 403 `OWN_POST` / 409 `APPLICATION_EXISTS`·`POST_CLOSED` |
+| **A58 보완** `PATCH /api/v1/companion-posts/{post_id}` | `meet_at`·`capacity`·`age_pref`·`gender_pref`·`memo` 중 1개 이상 | 200 `{post_id, status}` | 작성자만. 일정 검증은 A58과 같으며 정원은 승인 인원 이상이어야 함. `age_pref`·`memo`의 null은 기존 값 제거. 수동 마감은 정원 변경 뒤에도 유지 | 401 / 400 `MEET_AT_INVALID` / 403 / 404 / 409 `CAPACITY_FULL`·`POST_CLOSED` / 422 |
+| **A60** `POST /api/v1/companion-posts/{post_id}/applications` | `{message?(≤200)}` | 201 `{application_id, status:"pending"}` | user. 본인 글·마감·종료 글 거부, **대기·승인·거절 기록이 있으면 재신청 불가, 취소했으면 재신청 가능**(DB 부분 UNIQUE, T36a). 작성자에게 알림 | 401 / 403 `OWN_POST` / 404 / 409 `APPLICATION_EXISTS`·`POST_CLOSED` |
 | **A61** `GET /api/v1/companion-posts/{post_id}/applications` | `status` | `{items[] {application_id, applicant_display_name, applicant_age, applicant_gender, message, status, created_at}}` — `applicant_age`는 서버가 출생연도로 계산한 나이(올해 − 출생연도), 출생연도 자체는 보내지 않음. 대기·승인 중인 신청만, 탈퇴자는 '알 수 없음' — 신청 화면에서 '닉네임·나이·성별이 작성자에게 보여요'를 미리 알림(S07) | **작성자만**(나이·성별은 DB `app_applicant_profile`, T43b·c)(신청자는 A59의 자기 상태만, RLS T37c) | 401 / 403 |
-| **A62** `POST /api/v1/companion-applications/{application_id}/{action}` | `action`: `approve`·`reject`(작성자) / `cancel`(신청자, 승인 전만) | 200 `{application_id, status, post_status}` | `approve`는 **한 트랜잭션**: `SELECT … FOR UPDATE`로 글을 잠그고 정원 확인 → 신청 승인 → `approved_count+1`(정원 넘으면 DB가 거부, T36c) → 방 멤버 입장 → 시스템 메시지 → 정원이 차면 `full`(FR-COM06·07). 승인·거절 알림. **친구는 자동 추가 안 함**(FR-COM13) | 401 / 403 / 404 / 409 `CAPACITY_FULL`·`APPLICATION_NOT_PENDING` |
+| **A62** `POST /api/v1/companion-applications/{application_id}/{action}` | `action`: `approve`·`reject`(작성자) / `cancel`(신청자, 승인 전만) | 200 `{application_id, status, post_status}` | `approve`는 **한 트랜잭션**: `SELECT … FOR UPDATE`로 글을 잠그고 정원 확인 → 신청 승인 → `approved_count+1`(정원 넘으면 DB가 거부, T36c) → 방 멤버 입장 → 시스템 메시지 → 정원이 차면 `full`(FR-COM06·07). 승인·거절 알림. **친구는 자동 추가 안 함**(FR-COM13) | 401 / 403 / 404 / 409 `CAPACITY_FULL`·`APPLICATION_NOT_PENDING`·`POST_CLOSED` |
 | **A63** `PUT /api/v1/companion-posts/{post_id}/meeting-place` | `{name, address?, lat?, lng?, guide?}` (좌표 없이 이름·주소만도 가능 — 지도 오류 시 텍스트) | 200 `{post_id, updated_at}` | **작성자만**. 바꾸면 시스템 메시지 + 참여자 알림 `meeting_place_changed`(FR-COM10·11) | 401 / 403 / 422 |
 | **A64** `GET /api/v1/companion-posts/{post_id}/meeting-place` | — | `{name, address, lat, lng, guide, updated_at}` 없으면 `{status:"undecided"}` | **작성자·승인 참여자만**(RLS, T37a·f) | 401 / 403 |
-| **A65** `POST /api/v1/companion-posts/{post_id}/{action}` | `action`: `end`(종료)·`cancel`(사전 취소) | 200 `{post_id, status}` | 작성자만. 만남 시각 + 12시간(임시 `COMPANION_AUTO_END_H`)이 지나면 자동 `end`. 종료·취소 → 동행방 **읽기 전용**(`read_only_at`) → '지난 동행'(FR-COM18·19) → 3일 뒤 메시지 정리(04 문서 7-0) | 401 / 403 / 409 |
+| **A65** `POST /api/v1/companion-posts/{post_id}/{action}` | `action`: `close`(모집 마감)·`end`(종료)·`cancel`(만남 전 취소) | 200 `{post_id, status}` | 작성자만. 수동 마감은 `full`로 표시. 만남 시각 + 12시간(임시 `COMPANION_AUTO_END_H`)이 지나면 자동 `end`. 종료·취소 → 동행방 **읽기 전용**(`read_only_at`) → '지난 동행'(FR-COM18·19) → 3일 뒤 내용 정리(04 문서 7-0) | 401 / 403 / 404 / 409 `POST_CLOSED` |
 
 **A57 목록·A58 등록·A59 상세 요청**
 
@@ -2228,7 +2238,7 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `post_id` | path | string | A63·A64·A65 예 | `^cpo_[0-9A-Za-z]{6,26}$`, 모집 글 ID |
-| `action` | path | string | A65 예 | `end`·`cancel` |
+| `action` | path | string | A65 예 | `close`·`end`·`cancel` |
 | `name` | body | string | A63 예 | 장소 이름 1~60자 |
 | `address` | body | string | A63 선택 | 주소 |
 | `lat` | body | number | A63 쌍으로 선택 | 위도 33~39, 경도와 함께 제공하거나 둘 다 생략 |
@@ -2241,9 +2251,11 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | `lat` | 응답 | number 또는 null | A64 장소가 있으면 예 | 위도, 텍스트 안내만 있으면 null |
 | `lng` | 응답 | number 또는 null | A64 장소가 있으면 예 | 경도, 텍스트 안내만 있으면 null |
 | `guide` | 응답 | string 또는 null | A64 장소가 있으면 예 | 만남 안내 |
-| `status` | 응답 | string | A64 장소가 없으면 예·A65 예 | A64 미정이면 `undecided`, A65 완료면 `ended`·`cancelled` |
+| `status` | 응답 | string | A64 장소가 없으면 예·A65 예 | A64 미정이면 `undecided`, A65 완료면 `full`·`ended`·`cancelled` |
 
 #### 6-4-5. 채팅 API (A66~A73 + WebSocket) — 담당 권오현(`community/chat.py`, `realtime/chat_socket.py`), 화면 `chats/[roomId]/`·`friends/`(정예진)
+
+**구현 상태 (ohyun-chat)** — A66~A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
@@ -2360,6 +2372,8 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 - 전송 제한: 사람당 초당 5개·방당 초당 20개(임시, 9-1). 사용자 대화는 AI·RAG에 넣지 않음(5.20).
 
 #### 6-4-6. 알림·신고·마이페이지·탈퇴 (A74~A80)
+
+**구현 상태 (ohyun-chat)** — A74·A75를 구현했습니다. 본인의 알림을 조회하고 읽음 처리합니다. WebSocket은 `{"type":"notification","notification":{...}}`으로 새 알림을 전달합니다.
 
 **마이페이지 API** — 관심 축제(A11~A13), 축제 취향(A36·A37), 본인 프로필(A78), 내 동행 내역(A79), 탈퇴(A80)를 제공합니다. A78·A79는 `ohyun-me` 구현 범위에 포함하며 11/24 이전 명세의 경로와 응답을 사용합니다. `AUTH_PROVIDER=db`에서 실제 DB를 사용하며 기본은 모의 모드입니다. 모의 동행 내역은 빈 배열입니다. 운영 공지·이용약관은 고정 문서 링크를 사용합니다.
 
@@ -3799,7 +3813,7 @@ TMAP 정리는 013까지 적용한 DB에 연결해 `backend/`에서 `python -m a
 
 팀 공통 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
 
-11/24 SQL·DB 시험 기준 커밋은 `ohyun` `719484d`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~018를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 218줄(개별 시험 PASS 213건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 490개 통과·25개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](db/results_2026-11-24.log)
+11/24 SQL·DB 시험 기준 커밋은 `ohyun` `719484d`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~021를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 233줄(개별 시험 PASS 228건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 490개 통과·25개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](db/results_2026-11-24.log)
 
 장소 원문 검사는 오프라인에서 메모리 시험을 통과했습니다. 신규 DB 행 검사는 오프라인에서 `TEST_DB_URL`이 없어 건너뛰었고, 11/24 로컬 `-m db` 실행에서는 통과했습니다(전체 16개, 18-2절).
 
@@ -3952,6 +3966,10 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
+| v0.5 | 2026-11-24 | A43~A50의 DB·mock 동작, 닉네임 검색 한도, 신청·차단 트랜잭션과 채팅 차단 해제 연동 지점을 구현했습니다(6-4-3). |
+| v0.5 | 2026-11-24 | A24의 검토 필터·사유 필수·승인·거절·숨김, 운영자 권한과 서비스 계정 처리 명세를 구현과 맞췄습니다(6-2절). |
+| v0.5 | 2026-11-24 | A57~A65 동행 API 구현 상태, 글 수정과 수동 마감, 72시간 내용 보존을 반영했습니다(6-4-4절). |
+| v0.5 | 2026-11-24 | A66~A75와 채팅 WebSocket 구현. 방별 순번 이력·읽음, 30초 표·커밋 후 ACK·재연결 복원, 앱 알림을 연결했습니다. |
 | v0.5 | 2026-11-24 | 한태경 님 W64 Docker 검토를 반영해 A01에 앱 계정의 1초 DB 점검과 503 상태 응답을 추가하고 pytest를 시험 전용 의존성으로 옮겼습니다. |
 | v0.5 | 2026-11-24 | A02·A03의 EV01 검증, 미분류 보류와 카카오 좌표 보정, 주소 없는 축제의 좌표 NULL 응답을 반영했습니다. |
 | v0.5 | 2026-11-24 | A32~A35 PostgreSQL 인증과 DB-19 RLS 연결을 구현하고 토큰 수명·폐기·로그인 한도·로그 차단을 코드와 시험에 연결했습니다. |
