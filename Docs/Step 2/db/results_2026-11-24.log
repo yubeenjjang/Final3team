@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-24 16:07:50 KST
+# 놀다가 DB 시험 결과 — 2026-11-24 17:19:57 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -243,36 +243,36 @@ psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 
  
 (1 row)
 
-psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_count 
 --------------
  
 (1 row)
 
+psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_error 
 --------------
  
 (1 row)
 
 psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_trend_ratio_check"
- expect_error 
---------------
- 
-(1 row)
-
 psql:<stdin>:37: NOTICE:  PASS T017c 미정의 신호 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_signal_check"
+ expect_error 
+--------------
+ 
+(1 row)
+
+ expect_error 
+--------------
+ 
+(1 row)
+
 psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null value in column "signal" of relation "festival_trends" violates not-null constraint
- expect_error 
---------------
- 
-(1 row)
-
- expect_error 
---------------
- 
-(1 row)
-
 psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
+ expect_error 
+--------------
+ 
+(1 row)
+
 T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차단
 psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 — 0 행
  expect_count 
@@ -280,12 +280,12 @@ psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 �
  
 (1 row)
 
-psql:<stdin>:55: NOTICE:  PASS T017d 되돌리기 후 기존 행 보존 — 2 행
  expect_count 
 --------------
  
 (1 row)
 
+psql:<stdin>:55: NOTICE:  PASS T017d 되돌리기 후 기존 행 보존 — 2 행
  expect_error 
 --------------
  
@@ -298,18 +298,18 @@ psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 
  
 (1 row)
 
+psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_count 
 --------------
  
 (1 row)
 
-psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
-psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_trend_ratio_check"
  expect_error 
 --------------
  
 (1 row)
 
+psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_trend_ratio_check"
  expect_error 
 --------------
  
@@ -337,18 +337,18 @@ PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행
 ## 6. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
 Buffers: shared hit=297
-->  Seq Scan on festivals (actual time=0.073..1.173 rows=26 loops=1)
+->  Seq Scan on festivals (actual time=0.074..1.187 rows=26 loops=1)
 Rows Removed by Filter: 19977
 Buffers: shared hit=297
 Buffers: shared hit=95
-Planning Time: 0.152 ms
-Execution Time: 1.214 ms
+Planning Time: 0.145 ms
+Execution Time: 1.204 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
 Buffers: shared hit=36
-->  Bitmap Heap Scan on festivals (actual time=0.044..0.065 rows=26 loops=1)
+->  Bitmap Heap Scan on festivals (actual time=0.047..0.062 rows=26 loops=1)
 Buffers: shared hit=36
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.039..0.043 rows=26 loops=1)
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.038..0.038 rows=26 loops=1)
 Buffers: shared hit=10
-Planning Time: 0.053 ms
-Execution Time: 0.083 ms
+Planning Time: 0.075 ms
+Execution Time: 0.077 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)
