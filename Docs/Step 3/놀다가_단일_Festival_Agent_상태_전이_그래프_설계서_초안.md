@@ -226,6 +226,18 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 조건은 `build_festival_graph()`의 `add_conditional_edges` 및 각 노드의 결과 생성과 대응한다. `retry`와 복합 `validate → select_tool`은 모두 호출 수·시간으로 닫힌 유한 반복이다. 성공·실패·예산 초과 중 어느 것도 다음 노드 없이 방치되지 않는다.
 
+### 8-2. API 응답부터 사용자 안내까지의 오류 계약
+
+| API·도구 응답 | 그래프 전이·호출 횟수 | 최종 `outcome`·사용자 안내 |
+|---|---|---|
+| 상세 404 `FESTIVAL_NOT_FOUND`, `retryable:false` | `call_tool → error → END`, 도구 1회 | `clarification_needed` · “해당 축제를 찾지 못했습니다. 다시 선택해 주세요.” 자동 검색 복귀 없음 |
+| 일시적 503·`retryable:true`, 다음 호출 성공 | `call_tool → retry → call_tool → validate → END`, 최대 2회 | 검증 성공 시 `answered`. 두 번째도 실패하면 `unavailable` 또는 앞 단계 근거가 있는 복합 흐름은 `partial` |
+| 혼잡 HTTP 200 `status:"unsupported"` | `call_tool → validate → END`, 도구 1회 | 단독 `unsupported` · “이 축제 주변 지역의 혼잡 정보는 지원하지 않습니다.” 복합 흐름은 기존 축제 정보와 함께 `partial` |
+| 혼잡 HTTP 200 `status:"stale"` | 재시도 없이 `validate → END` | 관측 시각·오래된 자료 경고를 포함한 `answered` |
+| 혼잡 HTTP 200 `status:"unavailable"` | 재시도 없이 `validate → END` | `unavailable` · 현재 혼잡을 확인할 수 없다고 안내 |
+
+위 계약에서 `ok:false`의 재시도 여부는 **도구 오류의 `retryable`**로, `ok:true`인 혼잡의 이용 가능 여부는 **본문 `status`**로 판단한다. `FESTIVAL_NOT_FOUND`를 검색 단계로 자동 복귀시키지 않는 결정은 API 설계 문서의 해당 문구와 맞춰야 하며, API 문서 담당자가 수정 중이다.
+
 ## 9. 종료 조건
 
 | 상황 | 처리·종료 |
@@ -395,6 +407,14 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 | 기능 범위 | 1-1절·3장 | 현재 네 도구와 후속 시설·코스·RAG·Supervisor 계약을 구현 완료로 혼동하지 않는가? |
 
 현재 브랜치의 시험 통과와 실제 응답 재생은 **작성자 확인 결과**다. 이 표는 R04 검토를 요청할 때 사용할 점검 목록이며 검토 완료·M03 제출을 뜻하지 않는다.
+
+## 부록 D. 11/27 공통 시험 실행 기준
+
+- **기준:** `dayoung` 브랜치의 `b88161d` 이상. `origin/main`의 2026-11-23 WBS 갱신 `ce5fcad`를 병합한 뒤의 시험 코드다. 팀 병합 기준 커밋은 실제 병합 후 다시 기록한다.
+- **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
+- **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
+- **기대 결과:** 2026-11-24 현재 `Ran 33 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다.
+- **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
 
 ## 참고 파일
 
