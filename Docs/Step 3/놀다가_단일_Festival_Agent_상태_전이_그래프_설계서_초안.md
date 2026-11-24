@@ -140,6 +140,8 @@ flowchart TD
 
 `search_festivals` 도구의 기본 `page_size`는 10이지만 공개 축제 목록 API의 기본값은 20이다. 연결 어댑터는 도구 호출에서 값이 생략되면 API 요청에 `page_size=10`을 명시한다.
 
+**W14 연결 확인(2026-11-24):** `yubeen 00ca7dc`의 공통 `ToolExecutor`를 `dayoung`에 반영했다. Festival 단독 HTTP 실행기에서는 Agent 실행마다 `FESTIVAL_TOOLS` 권한의 실행기를 새로 만들고, 실행별 `trace_id`를 모든 도구 호출에 전달한다. 모의 전송 시험에서 검색→상세→혼잡 3회 호출, 같은 추적 ID 전달, 범위 밖 귀가 도구의 HTTP 호출 전 차단을 확인했다. 기존 Festival 그래프가 실제로 선택하는 도구는 검색·상세·혼잡·공식 공지 4개다. `get_facilities`는 공통 실행기의 허용 목록과 인자 검증에만 포함되며, A08 API와 Festival 그래프의 시설 흐름은 아직 구현 전이다. 공통 실행기를 통한 실제 DB·서울 혼잡 공급원 연속 실행도 별도 확인이 필요하다.
+
 도구 래퍼의 공통 출력은 `{ok, data, request_id, is_mock}` 또는 `{ok:false, error:{code,message,retryable}, request_id}`다. **`ok`는 도구 호출의 성공 여부이고, `data.status`는 데이터 이용 가능 상태**이므로 두 값을 순서대로 판정한다. API가 `forecast[]`를 보내더라도 현재 Agent는 이를 답변·근거에 넣지 않는다. 후속 연결 시에는 예측 정보로 별도 표시하고 현재 관측값처럼 표현하지 않는다.
 
 
@@ -435,7 +437,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 | 확인 지점 | 현재 근거 | 검토할 질문 |
 |---|---|---|
 | 그래프 전이·종료 | 2장·8장·9장, `backend/agents/festival_graph.py` | 모든 분기가 `END`에 도달하고, 검색→상세→혼잡의 ID가 계속 같은가? |
-| 오류·호출 예산 | 5-2절·9장, 11/24 공통 명령 기준 시험 33개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
+| 오류·호출 예산 | 5-2절·9장, 11/24 공통 명령 기준 시험 35개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
 | 실제·모의 근거 경계 | A-7~A-10 | 실제 API 직접 조회, 실제 응답 필드 재생, Agent의 학원 서버 직접 HTTP E2E를 구분했는가? |
 | 기능 범위 | 1-1절·3장 | 현재 네 도구와 후속 시설·코스·RAG·Supervisor 계약을 구현 완료로 혼동하지 않는가? |
 
@@ -446,7 +448,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **시험 코드 기준:** `dayoung` 브랜치의 `64d2093`. `origin/main`의 2026-11-23 WBS 갱신 `ce5fcad`를 병합한 뒤의 시험 코드다. 이후 RAG 자료 커밋은 Festival Agent 실행 계약을 바꾸지 않았다. 팀 병합 기준 커밋은 실제 병합 후 다시 기록한다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
-- **기대 결과:** 2026-11-24 현재 `Ran 33 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다.
+- **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
 - **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
 
 ## 참고 파일

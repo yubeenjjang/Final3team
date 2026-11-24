@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import argparse
+from uuid import uuid4
 
 from agents.festival_graph import run_festival_graph
 from agents.roles.festival import FestivalRequest
-from agents.tools.festival_api import FestivalApiTools
+from agents.tools import FESTIVAL_TOOLS, ToolExecutor
+
+
+def _trace_id() -> str:
+    return f"req_{uuid4().hex[:20]}"
 
 
 def main() -> None:
@@ -17,14 +22,26 @@ def main() -> None:
     args = parser.parse_args()
     if args.require_crowd_answered and not args.crowd_festival_id:
         parser.error("--require-crowd-answered requires --crowd-festival-id")
-    tool = FestivalApiTools(args.base_url)
+    # Each Agent run gets its own executor; raw checks use a separate instance.
+    raw_executor = ToolExecutor(args.base_url, FESTIVAL_TOOLS)
+
+    def raw_tool(name, tool_args):
+        return raw_executor.execute(name, tool_args, trace_id=_trace_id())
+
+    def run_agent(request):
+        executor = ToolExecutor(args.base_url, FESTIVAL_TOOLS)
+        trace_id = _trace_id()
+        return run_festival_graph(
+            lambda name, tool_args: executor.execute(name, tool_args, trace_id=trace_id),
+            request,
+        )
 
     chosen_id = None
     for status in ("ongoing", "upcoming"):
-        raw = tool("search_festivals", {"status": status, "page_size": 10})
+        raw = raw_tool("search_festivals", {"status": status, "page_size": 10})
         if not raw.get("ok") or raw.get("is_mock") or raw.get("data", {}).get("is_mock") is not False:
             raise RuntimeError(f"{status} search did not return real DB data: {raw.get('error')}")
-        result = run_festival_graph(tool, FestivalRequest("search", status=status))
+        result = run_agent(FestivalRequest("search", status=status))
         if result.outcome != "answered":
             raise RuntimeError(f"{status} agent search failed: {result.answer}")
         print(f"{status}: total={raw['data'].get('total')}, agent_evidence={len(result.evidence)}")
@@ -33,10 +50,10 @@ def main() -> None:
 
     if chosen_id is None:
         raise RuntimeError("No ongoing or upcoming festival was returned")
-    raw_detail = tool("get_festival", {"festival_id": chosen_id})
+    raw_detail = raw_tool("get_festival", {"festival_id": chosen_id})
     if not raw_detail.get("ok") or raw_detail.get("is_mock") or raw_detail.get("data", {}).get("is_mock") is not False:
         raise RuntimeError(f"Detail did not return real DB data: {raw_detail.get('error')}")
-    detail = run_festival_graph(tool, FestivalRequest("detail", festival_id=chosen_id))
+    detail = run_agent(FestivalRequest("detail", festival_id=chosen_id))
     if detail.outcome != "answered" or detail.evidence[0]["festival_id"] != chosen_id:
         raise RuntimeError(f"Agent detail failed for {chosen_id}: {detail.answer}")
     print(f"detail: festival_id={chosen_id}, outcome={detail.outcome}, source={detail.evidence[0]['source']}")
@@ -44,17 +61,17 @@ def main() -> None:
 
     if args.crowd_festival_id:
         crowd_id = args.crowd_festival_id
-        raw_crowd_detail = tool("get_festival", {"festival_id": crowd_id})
+        raw_crowd_detail = raw_tool("get_festival", {"festival_id": crowd_id})
         if not raw_crowd_detail.get("ok") or raw_crowd_detail.get("is_mock") or raw_crowd_detail.get("data", {}).get("is_mock") is not False:
             raise RuntimeError(f"Crowd festival is not in the public real DB: {raw_crowd_detail.get('error')}")
-        crowd_detail = run_festival_graph(tool, FestivalRequest("detail", festival_id=crowd_id))
+        crowd_detail = run_agent(FestivalRequest("detail", festival_id=crowd_id))
         if crowd_detail.outcome != "answered" or crowd_detail.evidence[0]["festival_id"] != crowd_id:
             raise RuntimeError(f"Agent detail failed for crowd festival {crowd_id}: {crowd_detail.answer}")
         print(f"crowd_festival_detail: festival_id={crowd_id}, outcome={crowd_detail.outcome}")
-        raw_crowd = tool("get_crowd", {"festival_id": crowd_id})
+        raw_crowd = raw_tool("get_crowd", {"festival_id": crowd_id})
         if not raw_crowd.get("ok") or raw_crowd.get("is_mock") or raw_crowd.get("data", {}).get("is_mock") is not False:
             raise RuntimeError(f"Crowd did not return real provider data: {raw_crowd.get('error')}")
-        crowd = run_festival_graph(tool, FestivalRequest("crowd", festival_id=crowd_id))
+        crowd = run_agent(FestivalRequest("crowd", festival_id=crowd_id))
         if crowd.outcome not in {"answered", "unsupported", "unavailable"}:
             raise RuntimeError(f"Unexpected crowd outcome: {crowd.outcome}")
         is_estimate = raw_crowd["data"].get("is_estimate") is True
