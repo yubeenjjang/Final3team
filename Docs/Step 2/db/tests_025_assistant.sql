@@ -19,10 +19,10 @@ SELECT set_config('app.user_id', 'd0220000-0000-0000-0000-000000000001', true);
 DO $$
 BEGIN
     IF (SELECT count(*) FROM public.assistant_runs WHERE run_id IN ('run_T22001', 'run_T22002')) <> 1 THEN
-        RAISE EXCEPTION 'T022a FAIL: owner visibility';
+        RAISE EXCEPTION 'T025a FAIL: owner visibility';
     END IF;
     IF has_table_privilege('public.assistant_runs', 'UPDATE') THEN
-        RAISE EXCEPTION 'T022a FAIL: app role can mutate assistant runs';
+        RAISE EXCEPTION 'T025a FAIL: app role can mutate assistant runs';
     END IF;
 END;
 $$;
@@ -30,9 +30,9 @@ SELECT set_config('app.user_id', 'd0220000-0000-0000-0000-000000000002', true);
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM public.assistant_runs WHERE run_id IN ('run_T22001', 'run_T22002')) THEN
-        RAISE EXCEPTION 'T022a FAIL: foreign row visibility';
+        RAISE EXCEPTION 'T025a FAIL: foreign row visibility';
     END IF;
-    RAISE NOTICE 'T022a PASS: 본인 행만 조회, 앱 역할 상태 변경 불가';
+    RAISE NOTICE 'T025a PASS: 본인 행만 조회, 앱 역할 상태 변경 불가';
 END;
 $$;
 RESET ROLE;
@@ -48,9 +48,9 @@ BEGIN
           AND execution_context IS NULL AND request_body_hash IS NULL AND anonymous_session_hash IS NULL
           AND used_tools = '[]' AND evidence = '[]' AND ended_at IS NOT NULL
     ) THEN
-        RAISE EXCEPTION 'T022b FAIL: purge left assistant content or active job';
+        RAISE EXCEPTION 'T025b FAIL: purge left assistant content or active job';
     END IF;
-    RAISE NOTICE 'T022b PASS: 탈퇴·보존 정리 시 문맥 삭제와 미완료 작업 종료';
+    RAISE NOTICE 'T025b PASS: 탈퇴·보존 정리 시 문맥 삭제와 미완료 작업 종료';
 END;
 $$;
 \else
@@ -62,12 +62,12 @@ BEGIN
            SELECT 1 FROM information_schema.columns
            WHERE table_schema = 'public' AND table_name = 'assistant_runs' AND column_name = 'execution_context'
        ) THEN
-        RAISE EXCEPTION 'T022c FAIL: rollback left new objects';
+        RAISE EXCEPTION 'T025c FAIL: rollback left new objects';
     END IF;
     IF to_regclass('public.assistant_runs') IS NULL THEN
-        RAISE EXCEPTION 'T022c FAIL: rollback lost existing table';
+        RAISE EXCEPTION 'T025c FAIL: rollback lost existing table';
     END IF;
-    RAISE NOTICE 'T022c PASS: 002·006을 유지하며 022 기능을 되돌림';
+    RAISE NOTICE 'T025c PASS: 002·006을 유지하며 022 기능을 되돌림';
 END;
 $$;
 \endif

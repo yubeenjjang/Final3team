@@ -3,7 +3,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.notice_events WHERE action = 'end')
     OR EXISTS (SELECT 1 FROM public.official_notices WHERE ended_at IS NOT NULL) THEN
-    RAISE EXCEPTION '022_notice: 보존해야 하는 공지 종료 이력이 있습니다';
+    RAISE EXCEPTION '023_notice: 보존해야 하는 공지 종료 이력이 있습니다';
   END IF;
 END;
 $$;

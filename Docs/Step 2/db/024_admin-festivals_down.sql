@@ -3,7 +3,7 @@ LOCK TABLE public.festival_change_history IN ACCESS EXCLUSIVE MODE;
 
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM public.festival_change_history WHERE actor_user_id IS NOT NULL) THEN
-    RAISE EXCEPTION '022_admin-festivals: 등록·수정 감사 이력이 있습니다';
+    RAISE EXCEPTION '024_admin-festivals: 등록·수정 감사 이력이 있습니다';
   END IF;
 END $$;
 

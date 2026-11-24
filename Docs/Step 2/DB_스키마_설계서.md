@@ -1030,7 +1030,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 
 ### 6-5. 챗봇·AI 방문 코스
 
-**구현 상태** — A06은 `assistant_runs`를 작업 기록과 큐로 함께 사용합니다. [022_assistant.sql](db/022_assistant.sql)은 본문 HMAC, 익명 세션 해시, 실행 문맥, 재시도 예정 시각, 도구·근거 및 오류 재시도 표시를 추가합니다. 워커는 `FOR UPDATE SKIP LOCKED`로 선점하고 동일 시도에 대해서만 결과를 적습니다. 완료·실패 신호는 PostgreSQL 알림으로 전달하며, 진행 이벤트를 별도 보관하지 않습니다. A80 또는 30일 정리로 본문을 지우면 022 트리거가 저장된 대화 문맥·근거도 함께 지웁니다. 로그인 조회에는 002의 본인 행 RLS를 그대로 적용합니다.
+**구현 상태** — A06은 `assistant_runs`를 작업 기록과 큐로 함께 사용합니다. [025_assistant.sql](db/025_assistant.sql)은 본문 HMAC, 익명 세션 해시, 실행 문맥, 재시도 예정 시각, 도구·근거 및 오류 재시도 표시를 추가합니다. 워커는 `FOR UPDATE SKIP LOCKED`로 선점하고 동일 시도에 대해서만 결과를 적습니다. 완료·실패 신호는 PostgreSQL 알림으로 전달하며, 진행 이벤트를 별도 보관하지 않습니다. A80 또는 30일 정리로 본문을 지우면 022 트리거가 저장된 대화 문맥·근거도 함께 지웁니다. 로그인 조회에는 002의 본인 행 RLS를 그대로 적용합니다.
 
 
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
@@ -1126,7 +1126,7 @@ A36·A37은 요청 트랜잭션에 설정된 `app.user_id`의 취향 행만 `nol
 
 - `notice_events`의 행 제약 `CHECK (action <> 'reject' OR reason IS NOT NULL)`. 트리거 `trg_notice_events_append_only`가 이력의 수정·삭제를 막습니다.
 
-**구현 상태 (ohyun-notice)** — [022_notice](db/022_notice.sql)가 수동 종료와 `notice_control_changes`를 추가합니다. 공지 변경·감사 행을 같은 서비스 트랜잭션에 기록합니다. A07 앱 역할은 공개 축제에 연결된 승인 공지와 승인된 공통 공지를 조회합니다.
+**구현 상태 (ohyun-notice)** — [023_notice](db/023_notice.sql)가 수동 종료와 `notice_control_changes`를 추가합니다. 공지 변경·감사 행을 같은 서비스 트랜잭션에 기록합니다. A07 앱 역할은 공개 축제에 연결된 승인 공지와 승인된 공통 공지를 조회합니다.
 
 | 테이블 | 주요 컬럼 | 제약과 용도 |
 |---|---|---|
@@ -1526,7 +1526,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 2-15 | [`db/017_festival_trends_signal.sql`](db/017_festival_trends_signal.sql) (되돌리기 [`017_festival_trends_signal_down.sql`](db/017_festival_trends_signal_down.sql)) | `festival_trends` 증가율·신호 추가 및 004 CHECK 교체. 되돌리면 새 컬럼 값이 사라지고, 004 제약에 맞지 않는 행이 남아 있으면 되돌리기가 중단됨 |
 | 2-16 | [`db/018_festival_publication.sql`](db/018_festival_publication.sql) (되돌리기 [`018_festival_publication_down.sql`](db/018_festival_publication_down.sql)) | EV01 RLS, `coords_source` 추가, 기존 미분류 공개 행 검토 대기 및 이전 게시 상태 이력. 되돌릴 때 이후 게시·분류 변경이 없는 018 대상만 복원하고 좌표 출처 컬럼을 제거합니다. 저장된 위경도 값은 유지됩니다. |
 | 2-17 | [`db/019_admin-review.sql`](db/019_admin-review.sql) (되돌리기 [`019_admin-review_down.sql`](db/019_admin-review_down.sql)) | A24 대기열 사유 제약 확장, 인덱스와 기존 TourAPI 보류 사유 이관. 새 사유를 처리한 결정이 있으면 되돌리기를 중단합니다. |
-| 2-20 | [`db/022_jobs.sql`](db/022_jobs.sql) (되돌리기 [`022_jobs_down.sql`](db/022_jobs_down.sql)) | 서비스 전용 성공 회차와 경로 요청 만료 외래 키·인덱스. 적용·되돌리기·재적용은 [`tests_022_jobs.sql`](db/tests_022_jobs.sql)에서 확인합니다. |
+| 2-20 | [`db/026_jobs.sql`](db/026_jobs.sql) (되돌리기 [`026_jobs_down.sql`](db/026_jobs_down.sql)) | 서비스 전용 성공 회차와 경로 요청 만료 외래 키·인덱스. 적용·되돌리기·재적용은 [`tests_026_jobs.sql`](db/tests_026_jobs.sql)에서 확인합니다. |
 | 3 | `db/tests_v0.3.2.sql` → `db/tests_v0.3.2_after_backup.sql` | 시험 T1~T43 (스스로 판정: 기대와 다르면 `FAIL`로 멈춤) |
 | 4 | [`db/tests_010_festival_sources_public.sql`](db/tests_010_festival_sources_public.sql) | 공개 원본 조회·조인, 내부 컬럼 차단, 되돌리기·재적용(T010a~e). **11/24 통과** |
 | 4 | `db/tests_011_route_access_token.sql` | 기존 행 보존·해시 제약·일반 계정 차단·되돌리기·재적용(T011a~d) |
@@ -1538,7 +1538,7 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 | 5-4 | [`db/tests_017_festival_trends_signal.sql`](db/tests_017_festival_trends_signal.sql) | 증가율·신호 제약, 기존 행·공개 조회 정책 보존, 되돌리기·재적용, 004 제약에 맞지 않는 행이 있을 때 되돌리기 중단(T017a~e). 실행 결과는 10-A-4절 |
 | 5-5 | [`db/tests_018_festival_publication.sql`](db/tests_018_festival_publication.sql) | 미분류 데이터 정리·이력, 축제 및 원본 RLS, 좌표 출처 제약, 되돌리기·재적용(T018a~d) |
 | 5-6 | [`db/tests_019_admin-review.sql`](db/tests_019_admin-review.sql) | 기존 행 이관·사유 제약·앱 역할 접근 제한·되돌리기·재적용과 처리된 결정의 되돌리기 차단(T019a~d) |
-| 5-9 | [`db/022_notice.sql`](db/022_notice.sql)·[`db/022_notice_down.sql`](db/022_notice_down.sql)·[`db/tests_022_notice.sql`](db/tests_022_notice.sql) | 공지 수동 종료·축제별 효력 전이·캐시 무효화·공개 RLS와 이력 보존(T022a~e). 021 적용 뒤 적용·되돌리기·재적용 |
+| 5-9 | [`db/023_notice.sql`](db/023_notice.sql)·[`db/023_notice_down.sql`](db/023_notice_down.sql)·[`db/tests_023_notice.sql`](db/tests_023_notice.sql) | 공지 수동 종료·축제별 효력 전이·캐시 무효화·공개 RLS와 이력 보존(T022a~e). 021 적용 뒤 적용·되돌리기·재적용 |
 | 6 | `db/explain_v0.3.2.sql` | 축제 검색 인덱스 전후 실행 계획(데이터 생성 SQL 포함) |
 | — | `db/run_tests.sh` | 새 컨테이너에서 001~009와 기존 시험 실행 후 010~019 적용·시험 및 7일 백업 복원. 009 기존 데이터 사전 검사는 별도 실행기 사용 |
 | — | `backend/tests/routes/test_p18_route_store_db.py` | `TEST_DB_APP_URL`의 `noldaga_app`으로 축제 조회, `TEST_DB_URL`로 시험 데이터 준비·경로 저장. 접수→상태→TMAP 저장·조회·만료, 토큰 만료 후 A04 재전송, 카카오 미저장, A05·정기 정리의 삭제 시각 일치. 011 시험에는 소유자 권한 또는 `TEST_DB_MIGRATION_URL` 필요. **11/24 기존 P18 4개 로컬 통과**. 신규 DB 행 원문·삭제 시각 검사는 013 적용 일회용 DB에서 실행 |
@@ -2906,8 +2906,8 @@ ALTER TABLE rag_documents
 | v0.5 | 2026-11-24 | A28 메모리 캐시와 A29 승인 연결 파일을 기존 공개 축제 RLS·외부 값 저장 구조에 연결했습니다(6-4절). |
 | v0.5 | 2026-11-24 | 022_notify에 운영 조치·메모와 신고 중복 조회 인덱스, A74~A77 권한·기록·90일 보존 구현 상태와 시험을 추가했습니다(6-8·7-0·7-2). |
 | v0.5 | 2026-11-24 | 022 공지 수동 종료·효력 전이·축제별 경로 통제 버전과 SQL 시험을 추가했습니다. |
-| v0.5 | 2026-11-24 | 022_admin-festivals의 관리자 출처, 중복 확인, 컬럼별 감사 이력과 되돌리기 시험을 A55·A56에 연결했습니다. |
-| v0.5 | 2026-11-24 | 022_assistant에 A06 DB 큐 선점·재시도·종료 알림과 보존 정리 연동, 적용·되돌리기 SQL 시험을 추가했습니다(6-5절). |
+| v0.5 | 2026-11-24 | 024_admin-festivals의 관리자 출처, 중복 확인, 컬럼별 감사 이력과 되돌리기 시험을 A55·A56에 연결했습니다. |
+| v0.5 | 2026-11-24 | 025_assistant에 A06 DB 큐 선점·재시도·종료 알림과 보존 정리 연동, 적용·되돌리기 SQL 시험을 추가했습니다(6-5절). |
 | v0.5 | 2026-11-24 | 022 작업별 성공 회차·경로 요청 보존과 7-0의 정기 실행기, 적용·되돌리기·권한 시험을 추가했습니다. |
 | v0.5 | 2026-11-24 | A43~A50에 기존 친구 DDL·RLS를 연결하고, 1:1 방 닫기와 30일 경과 신청 정리 작업을 추가했습니다(6-6·7-0). |
 | v0.5 | 2026-11-24 | A24 서비스 계정 권한·결정 이력·보존과 019_admin-review 사유 제약, 이관 및 SQL 시험을 반영했습니다. |

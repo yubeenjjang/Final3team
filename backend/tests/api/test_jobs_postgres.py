@@ -17,7 +17,7 @@ pytestmark = pytest.mark.db
 
 @pytest.fixture
 def jobs_engine():
-    url = make_url(os.environ["TEST_DB_URL"]).set(drivername="postgresql+psycopg")
+    url = make_url(os.environ.get("TEST_DB_MIGRATION_URL") or os.environ["TEST_DB_URL"]).set(drivername="postgresql+psycopg")
     engine = create_engine(url, hide_parameters=True)
     try:
         yield engine
