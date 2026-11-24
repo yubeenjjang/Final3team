@@ -177,6 +177,43 @@
 | **A34** `POST /auth/refresh` | `{refresh_token}` | **200** A33과 같은 토큰 묶음(새 Access + **새 Refresh**) | **교체 방식**: `refresh:lock:{token_id}`(5초)로 동시 교체 방지 → 기존 행 `revoked_at` 기록 → 새 행 추가(한 트랜잭션). **이미 폐기된 Refresh가 다시 오면 재사용으로 보고 그 사용자의 Refresh 전부 폐기** | 401 `REFRESH_INVALID`(없음·만료) / 401 `REFRESH_REUSED`(재사용 — 다시 로그인) / 409 `REFRESH_IN_PROGRESS`(잠금 중) |
 | **A35** `POST /auth/logout` | 헤더 Access JWT + 본문 `{refresh_token}` | **204** | 그 Refresh 행 `revoked_at` + Access의 `jti`를 `revoked:{jti}`(남은 수명만큼)에 넣음 → 이 기기만 로그아웃. 전체 기기 로그아웃은 탈퇴(A80)와 Refresh 재사용 감지 때만 | 401 |
 
+**A32 회원 가입 (201)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `email` | body | string | 예 | 254자 이하, 이메일 형식, 로컬 부분 64자 이하, 점으로 구분된 도메인 레이블 2개 이상, 소문자로 정규화 |
+| `password` | body | string (SecretStr) | 예 | 8~64자, 영문과 숫자를 각각 1개 이상 포함 |
+| `display_name` | body | string | 예 | 앞뒤 공백 제거 후 2~12자, 대소문자 무시 중복 불가 |
+| `birth_year` | body | int | 예 | 1900 이상 올해 이하 |
+| `gender` | body | string | 예 | `male`·`female` |
+| `user_id` | 응답 | string (UUID) | 예 | 생성된 사용자 ID |
+| `display_name` | 응답 | string | 예 | 저장한 닉네임 |
+| `is_mock` | 응답 | boolean | 예 | 현재 모의 응답은 `true` |
+
+**A33 로그인·A34 갱신·A35 로그아웃 요청**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `email` | body | string | A33 예 | 로그인 계정 이메일 |
+| `password` | body | string (SecretStr) | A33 예 | 로그인 비밀번호 |
+| `refresh_token` | body | string (SecretStr) | A34·A35 예 | A34는 교체할 토큰, A35는 폐기할 토큰 |
+| `Authorization` | header | string | A35 예 | `Bearer` Access 토큰 |
+
+**A33·A34 공통 정상 응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `access_token` | 응답 | string | 예 | 로그인 또는 갱신으로 발급한 Access 토큰 |
+| `token_type` | 응답 | string | 예 | `bearer` |
+| `expires_in` | 응답 | int | 예 | Access 유효 시간(초), 1800 |
+| `refresh_token` | 응답 | string | 예 | 새로 발급한 Refresh 토큰 |
+| `refresh_expires_at` | 응답 | string(date-time) | 예 | Refresh 만료 시각 |
+| `user` | 응답 | object | 예 | 사용자 정보 |
+| `user.user_id` | 응답 | string (UUID) | 예 | 사용자 ID |
+| `user.display_name` | 응답 | string | 예 | 닉네임 |
+| `user.role` | 응답 | string | 예 | 현재 모의 응답은 `user`, 설계상 계정 역할은 1절 |
+| `is_mock` | 응답 | boolean | 예 | 현재 모의 응답은 `true` |
+
 - **보호 API의 인증 순서:** 서명·만료·발급자 검증 → `revoked:{jti}` 확인 → 역할 확인. **Redis 장애로 `revoked` 확인이 안 되면** 읽기 API는 그대로 처리하고, 쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`(안전 쪽). 담당 권오현 · 확정 W16(11/20 초안, 구현 때 W18에서 시험).
 - **탈퇴·정지 계정:** Access JWT가 남아 있어도 보호 API마다 `users.status='active'`를 확인합니다(탈퇴 직후 30분 동안 쓰는 것 방지).
 
@@ -429,9 +466,38 @@ v0.3 초안의 `relaxed`(여유로운 길)·`shortest`(최단 거리)는 기획�
 
 응답(200): `{ "items": [ { "festival_id", "name", "region_code", "venue_name", "lat", "lng", "start_date", "end_date", "event_status", "thumbnail_url", "image_credit", "source", "last_synced_at" } ], "total": 37, "page": 1, "page_size": 20 }` — `thumbnail_url`은 TourAPI `firstimage2`(작은 크기), 없으면 null(화면 기본 이미지), `image_credit`은 출처 문구(아래 2-4 이미지 규칙) — 요청마다 외부 API를 부르지 않고 수집된 DB에서 답합니다. 오류: 422 `VALIDATION_ERROR`.
 
+**A02 목록 응답 (200, FestivalPage·FestivalListItem)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items` | 응답 | array<object> | 예 | 공개 축제 중 이 페이지의 목록 |
+| `items[].festival_id` | 응답 | string | 예 | 축제 ID |
+| `items[].name` | 응답 | string | 예 | 축제명 |
+| `items[].region_code` | 응답 | string | 예 | 시·도 코드(0-1절, `ALL` 제외) |
+| `items[].venue_name` | 응답 | string 또는 null | 예 | 축제 장소 |
+| `items[].lat` | 응답 | number 또는 null | 예 | 위도 |
+| `items[].lng` | 응답 | number 또는 null | 예 | 경도 |
+| `items[].start_date` | 응답 | string(date) 또는 null | 예 | 시작일 |
+| `items[].end_date` | 응답 | string(date) 또는 null | 예 | 종료일 |
+| `items[].event_status` | 응답 | string | 예 | `upcoming`·`ongoing`·`ended`·`cancelled`·`needs_review` |
+| `items[].thumbnail_url` | 응답 | string 또는 null | 예 | TourAPI `firstimage2`, null이면 화면 기본 이미지 |
+| `items[].image_credit` | 응답 | string 또는 null | 예 | 이미지 출처 표시 문구(2-4절) |
+| `items[].source` | 응답 | string | 예 | 현재 스키마 값 `tourapi` |
+| `items[].last_synced_at` | 응답 | string | 예 | 마지막 수집 시각 |
+| `total` | 응답 | int | 예 | 페이지 자르기 전 필터와 공개 조건을 만족하는 전체 건수 |
+| `page` | 응답 | int | 예 | 조회한 페이지 번호 |
+| `page_size` | 응답 | int | 예 | 요청에 적용한 페이지 크기 |
+| `is_mock` | 응답 | boolean | 예 | 모의 목록이면 `true`, 수집 DB 목록이면 `false` |
+
 ### 2-4. 축제 상세: `GET /api/v1/festivals/{festival_id}` (A03) — 필드 명세
 
 A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 404 `FESTIVAL_NOT_FOUND`로 응답합니다.
+
+**A03 요청 경로**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `festival_id` | path | string | 예 | `^fst_[0-9A-Za-z]{6,26}$`, 공개 축제 ID. 쿼리·본문 없음 |
 
 | 필드 | 타입 | 빈값 | 설명 |
 |---|---|---|---|
@@ -1243,19 +1309,35 @@ API `X-Request-ID` ↔ 에이전트 `run_id` ↔ `route_request_id` ↔ `inciden
 
 ¹·² 물품보관함·약국: **보류**(D-021, 11/18). 11/18 회의 지도 목록에 없어 넣지 않기로 함. 다만 BFCL `get_facilities`의 `category` 값(`locker`·`pharmacy`)에는 이미 들어 있어서, 평가 기준을 바꾸지 않도록 값은 남기고 호출되면 `status:"unsupported"`로 응답합니다.
 
-**상세 명세 작성 범위 (v0.3, 11/20 제출본)**
+**상세 명세 작성 현황 (v0.5, 11/24)**
 
-| 수준 | API | 상태 |
+| 명세 | API | 작성 현황 |
 |---|---|---|
-| 8칸 상세 + 필드 명세 + 예시 | A04(2절), A05(2-2), **A06(7-6)**, **A14(7-7)**, **A16(7-8)**, **A18(7-9)**, A19(7-4), **A21(7-10)** | 작성 (v0.3.2에서 굵은 5개 추가) |
-| 필드 명세 표 | A02(2-3), A03(2-4), A15(7-2), A20(7-1) | 작성 |
-| 표 형식 상세(요청·응답·규칙·오류) | **A32~A35 인증(1-1절)** | 작성 (v0.3.3 교차 검토 반영) |
-| 8칸(공통 규칙 + API별 차이) + 응답 필드·원본 필드 표 | **A07~A13, A17, A22~A31 (6-2절, v0.3.2 추가)** | 작성 — A17은 후속(구현 전 501) |
-| A01 상태 | `GET /api/v1/health` → 200 `{status, db, redis, version}` (하나라도 실패면 503) | 작성 |
-| 표 형식 상세(요청·응답·권한·규칙·오류) | **A36~A41 추천(6-4-2), A42 핫한 축제(6-2), A43~A50 친구(6-4-3), A51~A56 방문 코스·공지·축제 관리(6-6)** | 작성 (v0.3.3) |
-| 표 형식 상세 | **A57~A80 동행·채팅·알림·신고·마이페이지·탈퇴(6-4-4~6-4-6)** | 작성 (v0.3.3) |
+| 상태 확인 응답 | A01(6절) | 모의 응답 필드와 의존 서비스 점검 설계 명시 |
+| 축제 조회·경로 | A02~A05(2절), A25(6-2) | 요청·응답 필드 표, A25는 A04·A05 공통 형식과 차이 명시 |
+| 챗봇 접수·상태·SSE | A06·A06-1·A06-2(7-6) | 202 응답, 상태 필드, SSE 이벤트별 필드 표 |
+| 외부 정보·관심 축제 | A07~A13, A26~A30, A42(6-2) | 조회 필터, 응답 또는 원본 필드 표. A13은 204 요청만 |
+| 사건·지표·복구·부하 시험 | A14~A16, A18~A21(7절), A22~A24·A31(6-2) | 필드 명세, 202 접수 응답, A31 시험 조건별 타입 구체화 |
+| 지연 위험 예측 | A17(6-2) | 후속 필드 설계. 구현 전 501 |
+| 인증·추천·친구 | A32~A35(1-1), A36~A41(6-4-2), A43~A50(6-4-3) | 필드 표. 204는 요청만 |
+| 방문 코스·공지·축제 관리 | A51~A56(6-6) | 필드 표, A51 결과는 A06-1 |
+| 동행·채팅·알림·신고·마이페이지·탈퇴 | A57~A80(6-4-4~6-4-6) | 필드 표, WS 메시지별 명세, A79 조회 유형별 목록. 기존 설계가 200만 명시한 응답은 그 범위를 표시 |
 
 수업 가이드는 "최종 제출에는 구현하기로 확정한 API 전체의 명세"를 요구합니다. **v0.3.2에서 채운 것**(강사 11/19 피드백 2): 1차 필수 A06·A14·A16·A18·A21의 8칸 상세와 필드 표, A05 응답 필드 표, 필수 도구 6개(`search_festivals`·`get_festival`·`get_route_request_status`·`get_incident`·`get_route_metrics`·`list_allowed_actions`)의 JSON Schema와 성공·실패 출력(4-6). 그리고 A07~A13·A17·A22~A31 상세(6-2절)와 최종 범위 도구 5개 JSON Schema(4-6 ⑦~⑪)도 채웠습니다. **v0.3.3에서 채운 것**: 인증 A32~A35(1-1), 추천·핫한 축제·친구·동행·채팅·알림·신고·마이페이지·방문 코스·공지·축제 관리 A36~A80(6-2·6-4·6-6). **남은 것**: A17은 후속 기능이라 구현 전 501, 실제 코드·화면 연결은 구현 단계(6-5절 실행 범위 A~D).
+
+#### A01. 상태 확인 `GET /api/v1/health`
+
+조회 파라미터와 본문 없이 호출합니다. 현재 라우터는 `HealthResponse`로 200을 반환합니다. 서버·DB·Redis를 점검해 하나라도 실패하면 503으로 알리는 동작은 상태 확인 설계에 해당합니다.
+
+**A01 모의 정상 응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `status` | 응답 | string | 예 | `ok`, API 상태 |
+| `db` | 응답 | string | 예 | `mock`, 모의 DB 상태 |
+| `redis` | 응답 | string | 예 | `mock`, 모의 Redis 상태 |
+| `version` | 응답 | string | 예 | FastAPI 앱 버전 |
+| `is_mock` | 응답 | boolean | 예 | `true` |
 
 **공통 오류 코드**
 
@@ -1353,6 +1435,13 @@ Content-Type: application/json
 | 출처 | 운영자가 등록·승인한 공지 + 서울 TOPIS 통제(10번, 서울만) |
 | 규칙 | `approval_status='approved'`만 보여 줌(미승인은 경로 차단에도 안 씀). 축제 공지가 없어도 `status:"ok"`, `items:[]` — "확인할 수 있는 공지 자료가 없어요" |
 
+**A07 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `type` | query | string | 아니요 | `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure`, 생략하면 유형 필터 없음 |
+| `active_only` | query | boolean | 아니요 | 기본 `true`, 지금 효력 있는 공지로 제한 |
+
 | 응답 `items[]` | 타입 | 빈값 | 출처 | DB `official_notices` |
 |---|---|---|---|---|
 | `notice_id`·`type`·`title` | string | 불가 | 운영자·TOPIS(`acc_type`→`type`) | 같은 이름 |
@@ -1367,6 +1456,14 @@ Content-Type: application/json
 |---|---|
 | 쿼리 | `categories`: 선택, 쉼표 구분, 기본 1차 10종 전부(`toilet,parking,hospital,emergency,subway_station,bus_stop,bike_zone,taxi_stand,food,attraction`). `locker`·`pharmacy`는 허용값이지만 항상 `unsupported`(D-021) / `radius_m`: 100~3000, 기본 1000 / `limit_per_category`: 1~50, 기본 20 |
 | 규칙 | 축제 좌표 필요. 거리순 정렬. **카테고리마다 상태를 따로** `categories_status`로 줌(한 공급원이 실패해도 나머지는 보여 줌). 카카오 로컬(`food`·`attraction`)은 **저장 조건 미확인이라 DB에 넣지 않고 요청 때 중계**만 함(11절) |
+
+**A08 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `categories` | query | string | 아니요 | 쉼표 구분, 기본 `toilet,parking,hospital,emergency,subway_station,bus_stop,bike_zone,taxi_stand,food,attraction`. `locker`·`pharmacy`는 `unsupported` |
+| `radius_m` | query | int | 아니요 | 100~3000m, 기본 1000 |
+| `limit_per_category` | query | int | 아니요 | 분류당 1~50건, 기본 20 |
 
 | 카테고리 | 공급원 (11/19 실호출) | 위치 필드 | 추가로 보여 주는 값 | 상태 |
 |---|---|---|---|---|
@@ -1451,6 +1548,23 @@ Content-Type: application/json
 | `festival_id`·`name`·`region_code`·`start_date`·`end_date`·`event_status`·`thumbnail_url` | string | `festivals` |
 | `saved_at` | string | `favorites.created_at` |
 
+**A11 쿼리 필드 (FavoritesQuery)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `page` | query | int | 아니요 | 1 이상, 기본 1 |
+| `page_size` | query | int | 아니요 | 1~100, 기본 20 |
+| `sort` | query | string | 아니요 | `-saved_at`(기본)·`start_date` |
+
+**A12 저장·A13 해제 경로, A12 응답 (FavoriteSave, 201·200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `festival_id` | path | string | A12·A13 예 | `^fst_[0-9A-Za-z]{6,26}$`, 저장·해제할 축제 ID |
+| `festival_id` | 응답 | string | A12 예 | 저장된 축제 ID |
+| `saved_at` | 응답 | string(date-time) | A12 예 | 최초 저장 시각, DB `favorites.created_at`에 대응 |
+| `is_mock` | 응답 | boolean | A12 예 | 현재 모의 응답은 `true` |
+
 #### A17. 지연 위험 예측 `GET /api/v1/admin/route-metrics/risk` — **후속(FR-H19), 1차 구현 안 함**
 
 | 항목 | 명세 |
@@ -1460,6 +1574,21 @@ Content-Type: application/json
 | 지금 동작 | 구현 전에는 **501 `NOT_IMPLEMENTED`**("예측 기능은 아직 없어요"). 도구 `predict_route_delay_risk`도 이 응답을 그대로 안내(BFCL NLD-03) |
 | 구현 시 응답(계획) | `{risk_level: low·medium·high, method: "trend", horizon, signals[] {metric, value, threshold}, evidence_refs[] (rqm_…)}` — 추세 규칙(예: 대기열 4배 증가 → high)이며 학습 모델 아님 |
 | 담당·날짜 | 신유빈 · W48 정책 확정 뒤(12/04) 구현 여부 결정 |
+
+**A17 요청·후속 구현 시 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `window` | query | string | 아니요 | `5m`·`15m`(기본)·`1h`, 추세를 볼 시간창 |
+| `horizon` | query | string | 아니요 | `5m`(기본)·`15m`, 예측 범위 |
+| `risk_level` | 응답 | string | 예 | `low`·`medium`·`high` |
+| `method` | 응답 | string | 예 | `trend` |
+| `horizon` | 응답 | string | 예 | 예측에 적용한 시간 범위 |
+| `signals` | 응답 | array<object> | 예 | 추세 규칙에 사용한 신호 |
+| `signals[].metric` | 응답 | string | 예 | 지표 이름 |
+| `signals[].value` | 응답 | number | 예 | 측정한 지표 값 |
+| `signals[].threshold` | 응답 | number | 예 | 추세 규칙의 판단 기준값 |
+| `evidence_refs` | 응답 | array<string> | 예 | 근거 지표 ID(`rqm_…`) |
 
 #### A22. 혼잡 공급원 장애 모의 `POST /api/v1/admin/simulations/crowd` (보조)
 
@@ -1472,6 +1601,17 @@ Content-Type: application/json
 | 6 | 정상 | 202 `{fault_id, mode, ends_at}` |
 | 8 | 실행 규칙 | 실제 서울시 API에는 아무것도 안 함 — A10 어댑터가 Redis `fault:crowd`(TTL = `duration_s`)를 보고 모의 응답을 냄. 감지되면 `failure_domain=crowd_upstream` 사건으로 기록. **귀가 부하 시험(A20)과 별개**이고 대표 시연 아님 |
 
+**A22 요청·202 응답 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `Idempotency-Key` | header | string | 예 | 시험 모의 요청의 중복 방지 키 |
+| `mode` | body | string | 예 | `http_500`·`stale`·`body_error` |
+| `duration_s` | body | int | 예 | 5~300초 |
+| `fault_id` | 응답 | string | 예 | 등록한 혼잡 공급원 장애 모의 ID |
+| `mode` | 응답 | string | 예 | 요청에서 선택한 장애 모의 유형 |
+| `ends_at` | 응답 | string(date-time) | 예 | 장애 모의 종료 시각 |
+
 #### A23. 축제 수집 작업 이력 `GET /api/v1/admin/ingestion-jobs`
 
 | 항목 | 명세 |
@@ -1480,6 +1620,28 @@ Content-Type: application/json
 | 쿼리 | `source_id`, `status`(`running`·`success`·`partial`·`failed`), `from`·`to`(기본 최근 7일), `page`·`page_size` |
 | 응답 `items[]` | `{job_id, source_id, status, started_at, ended_at, scanned, inserted, updated, rejected, error}` — DB `ingestion_jobs` 그대로. `error`는 페이지별 오류 요약(키 값 없음) |
 | 규칙 | 조회만. 수집 실행은 API가 아니라 정기 작업(워커 주기 실행, 매일 06:00 임시)이 함 |
+
+**A23 요청·이력 목록 응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `source_id` | query | string | 아니요 | `data_sources.source_id` 공급원 필터 |
+| `status` | query | string | 아니요 | `running`·`success`·`partial`·`failed` |
+| `from` | query | string(date-time) | 아니요 | 검색 시작 시각, 생략 시 최근 7일 범위 |
+| `to` | query | string(date-time) | 아니요 | 검색 종료 시각, 생략 시 최근 7일 범위 |
+| `page` | query | int | 아니요 | 요청할 페이지 번호 |
+| `page_size` | query | int | 아니요 | 페이지당 결과 수 |
+| `items` | 응답 | array<object> | 예 | `ingestion_jobs` 이력 목록 |
+| `items[].job_id` | 응답 | string | 예 | 수집 작업 ID |
+| `items[].source_id` | 응답 | string | 예 | 공급원 ID |
+| `items[].status` | 응답 | string | 예 | `running`·`success`·`partial`·`failed` |
+| `items[].started_at` | 응답 | string(date-time) | 예 | 시작 시각 |
+| `items[].ended_at` | 응답 | string(date-time) 또는 null | 예 | 종료 시각 |
+| `items[].scanned` | 응답 | int | 예 | 읽어 본 건수 |
+| `items[].inserted` | 응답 | int | 예 | 추가 건수 |
+| `items[].updated` | 응답 | int | 예 | 갱신 건수 |
+| `items[].rejected` | 응답 | int | 예 | 제외 건수 |
+| `items[].error` | 응답 | JSON 또는 null | 예 | 페이지별 오류 요약, 키 값 제외. 수집 코드에서 제외한 항목의 기록은 배열로 저장 |
 
 #### A24. 중복·충돌 축제 검토 `GET`·`POST /api/v1/admin/festivals/review-queue`
 
@@ -1490,6 +1652,35 @@ Content-Type: application/json
 | 응답 | 200 `{items[] {queue_id, festival_id, festival_name, reason, proposed_value, approval_status, created_at}, total, …}` | 200 `{queue_id, approval_status, applied: bool}` |
 | 오류 | 401 / 403 / 422 | 401 / 403 / 404 `QUEUE_ITEM_NOT_FOUND` / 409 `ALREADY_REVIEWED` / 422 |
 | 처리 규칙 | — | `approve`면 `value`(없으면 `proposed_value`)를 `festivals`에 반영하고 `festival_change_history`(`actor='admin'`)에 한 줄. `reject`면 축제는 그대로. 처리자·시각을 `reviewer`·`reviewed_at`에 기록. 축제를 물리 삭제하지 않음(숨김은 `review_status='hidden'`) |
+
+**A24 GET 목록 요청·응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `approval_status` | query | string | 아니요 | `pending`(기본)·`approved`·`rejected` |
+| `reason` | query | string | 아니요 | `duplicate`·`conflict`·`missing_location`·`date_unclear` |
+| `page` | query | int | 아니요 | 조회할 페이지 번호 |
+| `items` | 응답 | array<object> | 예 | 검토 대기열 항목 |
+| `items[].queue_id` | 응답 | int (64비트) | 예 | `festival_review_queue.queue_id` |
+| `items[].festival_id` | 응답 | string | 예 | 검토 대상 축제 ID |
+| `items[].festival_name` | 응답 | string | 예 | `festivals.title` |
+| `items[].reason` | 응답 | string | 예 | 위 `reason` 필터와 같은 값 |
+| `items[].proposed_value` | 응답 | object 또는 null | 예 | 수집·정규화에서 제안한 변경 값 |
+| `items[].approval_status` | 응답 | string | 예 | `pending`·`approved`·`rejected` |
+| `items[].created_at` | 응답 | string(date-time) | 예 | 검토 항목 생성 시각 |
+| `total` | 응답 | int | 예 | 필터 적용 후 전체 건수 |
+
+**A24 POST 처리 요청·응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `queue_id` | body | int (64비트) | 예 | 처리할 대기열 ID |
+| `decision` | body | string | 예 | `approve`·`reject` |
+| `value` | body | object | 아니요 | 승인 시 적용 값, 생략하면 `proposed_value` |
+| `note` | body | string | 아니요 | 검토 메모, 200자 이하 |
+| `queue_id` | 응답 | int (64비트) | 예 | 처리한 대기열 ID |
+| `approval_status` | 응답 | string | 예 | `approved`·`rejected` |
+| `applied` | 응답 | boolean | 예 | 축제에 변경 사항을 실제 반영했는지 표시 |
 
 #### A25. 축제 가는 길 `POST /api/v1/routes/visit` + `GET /api/v1/routes/visit/{route_request_id}`
 
@@ -1511,6 +1702,14 @@ Content-Type: application/json
 | 쿼리 | `mode`: `all`(기본)·`subway`·`bus` / `radius_m`: 100~1000, 기본 500 / `limit`: 정류장·역 최대 10 |
 | 공급원 | 지하철: 서울 지하철 실시간(서울만) / 버스: **서울 = 서울시 버스도착정보 15000314, 서울 밖 = TAGO** |
 | 규칙 | 주변 역·정류장 목록은 A08 위치 데이터에서 찾고, 도착 정보만 실시간으로 부름. 지하철 `barvlDt`가 0이어도 도착 전일 수 있어 **`arvlMsg2` 문구를 함께** 줌. 서울 버스 `itemCount`는 0으로 와서 **건수로 쓰지 않음**. TAGO `resultCode` 99는 일시 오류로 재시도. 캐시 30초 |
+
+**A26 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `mode` | query | string | 아니요 | `all`(기본)·`subway`·`bus` |
+| `radius_m` | query | int | 아니요 | 100~1000m, 기본 500 |
+| `limit` | query | int | 아니요 | 정류장·역 최대 10곳 |
 
 | 응답 `stations[]` | 타입 | 원본 | 설명 |
 |---|---|---|---|
@@ -1534,6 +1733,12 @@ Content-Type: application/json
 | 쿼리 | `radius_m`: 300~3000, 기본 1000 |
 | 규칙 | 서울 시영주차장 실시간(122곳)만. **응답에 위경도가 없어** 전국주차장표준데이터와 주차장 이름·주소로 연결한 것만 거리 계산·지도 표시. 연결 안 된 곳은 `lat`·`lng` null, 목록 뒤쪽에 "위치 미확인"으로. 서울 밖 → `unsupported`(위치만 A08 `parking`). 캐시 1분 |
 
+**A27 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `radius_m` | query | int | 아니요 | 300~3000m, 기본 1000 |
+
 | 응답 `items[]` | 타입 | 원본 | 설명 |
 |---|---|---|---|
 | `name`·`address` | string | `PKLT_NM`·`ADDR` | |
@@ -1550,6 +1755,13 @@ Content-Type: application/json
 | 공급원 | 경찰청 교통돌발(UTIC, 전국, XML) + 서울 TOPIS(서울 보강, XML) |
 | 규칙 | 경찰청은 지역 필터 없이 **전국 전체가 와서 서버가 반경으로 거름**(11/19: 전국 118건). 날짜가 "2026년 11월 19일 16시 22분" 문자열이라 어댑터가 ISO 시각으로 바꿈. TOPIS 좌표 `grs80tm_x/y`는 GRS80 TM → 위경도 변환. 두 공급원에 같은 사건이 있으면 위치 100m·시간 겹침으로 하나로 합침(임시). 캐시 1분. 경로 근거(`area_evidence.traffic_incidents`)도 이 데이터를 씀 |
 
+**A28 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `radius_m` | query | int | 아니요 | 500~10000m, 기본 2000 |
+| `type` | query | string | 아니요 | `accident`·`construction`·`event`·`control` |
+
 | 응답 `items[]` | 타입 | 원본 | 설명 |
 |---|---|---|---|
 | `type` | string | 경찰청 `incidenteTypeCd`(1 사고 `accident`·2 공사 `construction`·3 행사 `event`·5 통제 `control`) / TOPIS `acc_type` | |
@@ -1565,6 +1777,12 @@ Content-Type: application/json
 | 쿼리 | `days`: 1~30, 기본 7 |
 | 공급원 | 한국관광공사 관광지 집중률 예측 15128555 + 지역별 관광 수요 강도 15151868 |
 | 규칙 | **실시간 혼잡이 아니라 상대값(0~100) 예측**이므로 다른 이름·색으로 표시(D-018). 축제 장소와 이름이 맞는 관광지(`tAtsNm`)가 있을 때만 `forecast`를 주고, 없으면 `forecast.status:"unsupported"`("이 축제 장소의 예측 자료가 없어요"). 관광 수요 강도는 **시군구 코드와 지표 코드를 함께 넣어야** 값이 옴(문서엔 선택값, 11/19 확인). 하루 1회 수집해 `realtime_snapshots`(`visit_forecast`·`region_demand`)에 저장 |
+
+**A29 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `days` | query | int | 아니요 | 1~30일, 기본 7 |
 
 | 응답 필드 | 타입 | 원본 | 설명 |
 |---|---|---|---|
@@ -1584,6 +1802,13 @@ Content-Type: application/json
 | 6 | 정상 응답 | 200 `{items[], crawled_at, source, status}`. 크롤링이 한 번도 성공하지 않았으면 `status:"unavailable"`, `items:[]`. 마지막 성공이 12시간보다 오래면 `status:"stale"`(목록은 그대로 보여 줌) |
 | 7 | 오류 응답 | 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED` (크롤링 실패는 HTTP 오류가 아니라 `status`로 알림) |
 | 8 | 실행 규칙 | 요청 때 크롤링하지 않고 **수집된 DB(`festival_trends`)에서만** 답함. 우리 축제와 **규칙으로 연결된 것만**(`match_status='matched'`), 게시된·안 끝난 축제만. 정렬: 최근 크롤링의 `source_rank` 오름차순 → 없으면 `mention_count` 내림차순 |
+
+**A42 쿼리 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `region` | query | string | 아니요 | 시·도 코드(0-1절), 기본 `ALL` |
+| `limit` | query | int | 아니요 | 1~20, 기본 10 |
 
 **수집(크롤링) 규칙**
 
@@ -1613,6 +1838,21 @@ Content-Type: application/json
 | 응답 `items[]` | `{source_id, name, scope, enabled_region_codes[], is_realtime, refresh_s, status, last_success_at}` — DB `data_sources`(`key_site`·`notes`는 빼고) |
 | 규칙 | `status`가 `verified`가 아니면 화면은 그 정보를 '준비 중'으로. 조회만, 캐시 10분 |
 
+**A30 요청·응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `region_code` | query | string | 아니요 | 0-1절의 지역 코드, 지정하면 그 지역에서 켜진 공급원만 조회 |
+| `items` | 응답 | array<object> | 예 | 공급원 목록 |
+| `items[].source_id` | 응답 | string | 예 | `data_sources.source_id` |
+| `items[].name` | 응답 | string | 예 | 공급원 표시 이름 |
+| `items[].scope` | 응답 | string | 예 | `national`·`seoul_only`·`region_specific` |
+| `items[].enabled_region_codes` | 응답 | array<string> | 예 | 켜진 지역 코드 목록 |
+| `items[].is_realtime` | 응답 | boolean | 예 | 실시간 공급원 여부 |
+| `items[].refresh_s` | 응답 | int 또는 null | 예 | 갱신 주기(초) |
+| `items[].status` | 응답 | string | 예 | `planned`·`key_issued`·`verified`·`disabled` |
+| `items[].last_success_at` | 응답 | string(date-time) 또는 null | 예 | 마지막 수집 성공 시각 |
+
 #### A31. 부하 시험 상태 `GET /api/v1/admin/simulations/{simulation_id}`
 
 | # | 칸 | 명세 |
@@ -1627,7 +1867,18 @@ Content-Type: application/json
 | 응답 필드 | 타입 | 빈값 | DB |
 |---|---|---|---|
 | `simulation_id`·`status`(`running`·`stopped`·`finished`·`failed`) | string | 불가 | `load_simulations` |
-| `scenario`·`comparison_arm`·`concurrency`·`offered_rps`·`duration_s`·`unique_route_keys`·`cache_state`·`fault`·`seed`·`repeat_group`·`run_index`·`upstream` | — | null 가능 | 같은 이름 |
+| `scenario` | string | 불가 | `duplicate_keys`·`unique_keys`·`mixed`, `load_simulations.scenario` |
+| `comparison_arm` | string | 불가 | `B0`·`B1`·`A1`, `load_simulations.comparison_arm` |
+| `concurrency` | int | 불가 | 동시 요청 수 |
+| `offered_rps` | number | null 가능 | 초당 요청 수 |
+| `duration_s` | int | 불가 | 구간별 지속 시간(초) |
+| `unique_route_keys` | int | 불가 | 서로 다른 경로 키 수 |
+| `cache_state` | string | 불가 | `cold`·`warm` |
+| `fault` | object | null 가능 | A20의 `{type, delay_ms}` |
+| `seed` | int | null 가능 | 재현용 시드 |
+| `repeat_group` | string | null 가능 | 반복 시험 묶음 |
+| `run_index` | int | 불가 | 묶음 안 시험 순번 |
+| `upstream` | string | 불가 | `mock_adapter` |
 | `limits_version`·`code_version` | string | 불가 | 결과 JSON·`code_version` (9-1) |
 | `phases[]` | array | 빈 배열 | `{phase, offered_requests, valid_route_rate, error_rate, p50_ms, p95_ms}` — `route_query_metrics` 구간별 |
 | `incidents[]` | array | 빈 배열 | `{incident_id, detected_at, final_mode}` — `incident_logs`·`incident_outcomes` |
@@ -1737,6 +1988,55 @@ Content-Type: application/json
 
 - 모든 목록은 승인·게시된 예정/진행 축제만(종료·취소·비공개 제외), 없는 축제를 만들지 않음. A36~A41 고정 경로는 `/festivals/{festival_id}`보다 먼저 등록(6절 라우터 규칙).
 
+**A36 조회·A37 저장 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `scenarios` | body | array<string> | A37 예 | 0~5개, `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` |
+| `skip` | body | boolean | A37 예 | `true` 또는 빈 `scenarios`이면 건너뛰기 |
+| `scenarios` | 응답 | array<string> | A36·A37 예 | 저장한 취향, 위 5개 값 |
+| `onboarding_status` | 응답 | string | A36·A37 예 | `pending`(저장 행 없음)·`completed`·`skipped` |
+| `updated_at` | 응답 | string(date-time) 또는 null | A36·A37 예 | 취향 저장 행의 마지막 갱신 시각 |
+
+**A38 맞춤·A39 인기·A40 둘러보기·A41 최신 목록 쿼리**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `region` | query | string | 아니요 | 시·도 코드, 0-1절 |
+| `page` | query | int | 아니요 | 조회할 페이지 번호 |
+| `scenarios` | query | string | A38 선택 | 비로그인일 때 쉼표로 구분한 취향 코드, 로그인 시 저장 취향이 기본 |
+| `date_from` | query | string(date) | A38 선택 | 축제 기간 필터 시작일 |
+| `date_to` | query | string(date) | A38 선택 | 축제 기간 필터 종료일 |
+| `page_size` | query | int | A38 선택 | 페이지당 최대 50건 |
+| `seed` | query | string | A40 선택 | 정렬 시드, 생략 시 서버가 날짜와 세션으로 생성 |
+
+**A38·A39·A40·A41 공통 축제 카드와 각 목록 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items` | 응답 | array<object> | 예 | 승인·게시된 예정/진행 축제 카드 목록 |
+| `items[].festival_id` | 응답 | string | 예 | 축제 ID |
+| `items[].name` | 응답 | string | 예 | 축제명 |
+| `items[].region_code` | 응답 | string | 예 | 시·도 코드 |
+| `items[].start_date` | 응답 | string(date) 또는 null | 예 | 시작일 |
+| `items[].end_date` | 응답 | string(date) 또는 null | 예 | 종료일 |
+| `items[].event_status` | 응답 | string | 예 | `upcoming`·`ongoing` |
+| `items[].thumbnail_url` | 응답 | string 또는 null | 예 | 카드 이미지 URL |
+| `items[].image_credit` | 응답 | string 또는 null | 예 | 이미지 출처(2-4절) |
+| `items[].score` | 응답 | number | A38 예 | 추천 규칙으로 계산한 점수 |
+| `items[].applied_tags` | 응답 | array<string> | A38 예 | 적용한 검증 태그(`festival_tags.tag`, 6-4-1절) |
+| `items[].recommendation_reason` | 응답 | array<string> | A38 예 | 검증된 근거 문장으로 만든 고정 추천 문구 |
+| `score_version` | 응답 | string | A38 예 | 추천 점수 규칙 버전 |
+| `total` | 응답 | int | A38 예 | 추천 필터 적용 후 전체 건수 |
+| `page` | 응답 | int | A38·A40 예 | 응답 페이지 번호 |
+| `page_size` | 응답 | int | A38 예 | 적용한 페이지 크기 |
+| `fallback` | 응답 | string | 조건부 | A38 일치 축제가 없으면 `all_festivals`, A39 지표가 20건 미만이면 `recent` |
+| `window` | 응답 | string | A39 예 | `7d`, 인기 지표 집계 기간 |
+| `items[].views_7d` | 응답 | int | A39 인기 항목 | 최근 7일 상세 조회 합계(`detail_views`) |
+| `items[].favorites_7d` | 응답 | int | A39 인기 항목 | 최근 7일 관심 추가 합계(`favorites_added`) |
+| `seed` | 응답 | string | A40 예 | 실제 정렬에 사용한 시드 |
+| `items[].published_at` | 응답 | string(date-time) | A41 최신 항목 | 최초 공개 시각, 최신순 정렬 기준 |
+
 #### 6-4-3. 친구 API (A43~A50) — 담당 권오현(11/20 GitHub 협업 규칙 `community/friends.py`)
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
@@ -1749,6 +2049,45 @@ Content-Type: application/json
 | **A48** `DELETE /api/v1/me/friends/{user_id}` | — | 204 (친구가 아니어도 204, 멱등) | user | 401 |
 | **A49** `PUT /api/v1/me/blocks/{user_id}` | — | 200 `{blocked: true}` | user. **한 트랜잭션**: 차단 추가 + 친구 관계 삭제 + 대기 중 신청 `cancelled`. 차단당한 사람은 차단 사실을 볼 수 없음(T33d). 두 사람의 1:1 방은 `closed`, 공동 단체방·동행방은 남음(서로의 메시지 숨김은 범위 밖) | 401 / 422(자기 자신) |
 | **A50** `DELETE /api/v1/me/blocks/{user_id}` | — | 204 | user. 차단을 풀어도 **친구 관계는 자동 복원 안 함**(권한 기준안) | 401 |
+
+**A43 정확한 닉네임 검색**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `nickname` | query | string | 예 | 2~12자, 대소문자 무시 정확히 일치 |
+| `items` | 응답 | array<object> | 예 | 검색 결과 최대 1건 |
+| `items[].user_id` | 응답 | string (UUID) | 예 | 찾은 사용자 ID |
+| `items[].display_name` | 응답 | string | 예 | 그 사용자의 닉네임 |
+| `items[].friendship_status` | 응답 | string | 예 | `none`·`pending_sent`·`pending_received`·`friends` |
+
+**A44 신청·A45 신청 목록·A46 신청 처리**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `to_user_id` | body | string (UUID) | A44 예 | 받는 사람 ID, `friend_requests.to_user`, 자기 자신 제외 |
+| `box` | query | string | A45 선택 | `received`(기본)·`sent` |
+| `request_id` | path | string | A46 예 | `^frq_[0-9A-Za-z]{6,26}$`, 처리할 신청 ID |
+| `action` | path | string | A46 예 | `accept`·`reject`는 받은 사람, `cancel`은 보낸 사람 |
+| `request_id` | 응답 | string | A44·A46 예 | 생성하거나 처리한 신청 ID |
+| `status` | 응답 | string | A44·A46 예 | 신규 신청은 `pending`, 자동 수락은 `accepted`. A46 처리 후 `accepted`·`rejected`·`cancelled` |
+| `items` | 응답 | array<object> | A45 예 | 받거나 보낸 신청 목록 |
+| `items[].request_id` | 응답 | string | A45 예 | 신청 ID |
+| `items[].user_id` | 응답 | string (UUID) | A45 예 | 받은 신청의 보낸 사람 또는 보낸 신청의 받은 사람 |
+| `items[].display_name` | 응답 | string 또는 null | A45 예 | 신청 상대 닉네임 |
+| `items[].status` | 응답 | string | A45 예 | `pending`·`accepted`·`rejected`·`cancelled` |
+| `items[].created_at` | 응답 | string(date-time) | A45 예 | 신청 시각 |
+
+**A47 친구 목록·A48 삭제·A49 차단·A50 차단 해제**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `page` | query | int | A47 선택 | 조회할 페이지 번호 |
+| `user_id` | path | string (UUID) | A48·A49·A50 예 | 대상 사용자 ID, A49는 자기 자신 제외 |
+| `items` | 응답 | array<object> | A47 예 | 내 친구 목록 |
+| `items[].user_id` | 응답 | string (UUID) | A47 예 | 친구 사용자 ID |
+| `items[].display_name` | 응답 | string 또는 null | A47 예 | 친구 닉네임 |
+| `items[].since` | 응답 | string(date-time) | A47 예 | 친구가 된 시각(`friendships.created_at`) |
+| `blocked` | 응답 | boolean | A49 예 | 차단 완료 시 `true` |
 
 - 쓰기는 두 사람의 행이 함께 바뀌므로 API 서버가 `noldaga_service` 역할로 한 트랜잭션에서 처리하고(앱 역할은 조회만 — T33b), 그 전에 FastAPI가 소유권·차단 상태를 검사합니다(04 문서 3절).
 - 동행 승인은 친구 추가로 이어지지 않습니다(친구 추가 API로만).
@@ -1770,6 +2109,81 @@ Content-Type: application/json
 | **A64** `GET /api/v1/companion-posts/{post_id}/meeting-place` | — | `{name, address, lat, lng, guide, updated_at}` 없으면 `{status:"undecided"}` | **작성자·승인 참여자만**(RLS, T37a·f) | 401 / 403 |
 | **A65** `POST /api/v1/companion-posts/{post_id}/{action}` | `action`: `end`(종료)·`cancel`(사전 취소) | 200 `{post_id, status}` | 작성자만. 만남 시각 + 12시간(임시 `COMPANION_AUTO_END_H`)이 지나면 자동 `end`. 종료·취소 → 동행방 **읽기 전용**(`read_only_at`) → '지난 동행'(FR-COM18·19) → 3일 뒤 메시지 정리(04 문서 7-0) | 401 / 403 / 409 |
 
+**A57 목록·A58 등록·A59 상세 요청**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `festival_id` | path | string | A57 예 | `fst_…`, 목록을 조회할 축제 ID |
+| `status` | query | string | A57 선택 | `open`(기본)·`full`·`ended`·`cancelled` |
+| `page` | query | int | A57 선택 | 조회할 페이지 번호 |
+| `festival_id` | body | string | A58 예 | `fst_…`, 모집할 축제 ID |
+| `meet_at` | body | string(date-time) | A58 예 | 축제 기간 안의 미래 시각 |
+| `capacity` | body | int | A58 예 | 1~10명, 작성자 제외 |
+| `age_pref` | body | string | A58 선택 | `any`·`20s`·`30s`·`40s`·`50s_plus` |
+| `gender_pref` | body | string | A58 선택 | `any`(DB 기본값)·`female`·`male` |
+| `memo` | body | string | A58 선택 | 모집 안내, 500자 이하 |
+| `post_id` | path | string | A59 예 | `^cpo_[0-9A-Za-z]{6,26}$`, 조회할 모집 글 ID |
+
+**A57 목록·A58 등록·A59 상세 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items` | 응답 | array<object> | A57 예 | 축제 동행 모집 글 목록 |
+| `post_id` | 응답 | string | 예 | 모집 글 ID, A57에서는 `items[].post_id` |
+| `author_display_name` | 응답 | string 또는 null | A57·A59 예 | 작성자 닉네임(`app_public_display_name`), A57에서는 항목 필드 |
+| `meet_at` | 응답 | string(date-time) | A57·A59 예 | 만남 시각 |
+| `capacity` | 응답 | int | A57·A59 예 | 모집 정원(작성자 제외 1~10명) |
+| `approved_count` | 응답 | int | A57·A59 예 | 승인 인원, 0 이상 정원 이하 |
+| `age_pref` | 응답 | string 또는 null | A57·A59 예 | 위 A58의 연령대 조건 |
+| `gender_pref` | 응답 | string | A57·A59 예 | 위 A58의 성별 조건 |
+| `memo` | 응답 | string 또는 null | A57·A59 예 | 모집 안내 |
+| `status` | 응답 | string | A57·A59 예 | `open`·`full`·`ended`·`cancelled` |
+| `room_id` | 응답 | string | A58 예 | 모집 글과 함께 생성한 동행 채팅방 ID |
+| `my_application_status` | 응답 | string 또는 null | A59 예 | 본인 신청의 `pending`·`approved`·`rejected`·`cancelled`, 본인 신청이 없으면 null |
+
+A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 신청 상태를 반환합니다.
+
+**A60 신청·A61 신청 목록·A62 승인·거절·취소**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `post_id` | path | string | A60·A61 예 | `^cpo_[0-9A-Za-z]{6,26}$`, 모집 글 ID |
+| `message` | body | string | A60 선택 | 신청 메시지, 200자 이하 |
+| `status` | query | string | A61 선택 | 신청 상태 필터, 조회 대상은 `pending`·`approved` |
+| `application_id` | path | string | A62 예 | `^cap_[0-9A-Za-z]{6,26}$`, 처리할 신청 ID |
+| `action` | path | string | A62 예 | `approve`·`reject`는 작성자, `cancel`은 승인 전 신청자 |
+| `application_id` | 응답 | string | A60·A62 예 | 등록하거나 처리한 신청 ID |
+| `status` | 응답 | string | A60·A62 예 | A60은 `pending`, A62는 `approved`·`rejected`·`cancelled` |
+| `post_status` | 응답 | string | A62 예 | 처리 후 모집 글 상태, 정원이 차면 `full` |
+| `items` | 응답 | array<object> | A61 예 | 작성자만 받는 신청 목록 |
+| `items[].application_id` | 응답 | string | A61 예 | 신청 ID |
+| `items[].applicant_display_name` | 응답 | string 또는 null | A61 예 | 신청자 닉네임, 탈퇴자는 화면에서 ‘알 수 없음’ |
+| `items[].applicant_age` | 응답 | int 또는 null | A61 예 | 올해에서 출생연도를 뺀 값, 원본 출생연도 제외 |
+| `items[].applicant_gender` | 응답 | string 또는 null | A61 예 | `male`·`female`, 작성자에게만 공개 |
+| `items[].message` | 응답 | string 또는 null | A61 예 | 신청 메시지 |
+| `items[].status` | 응답 | string | A61 예 | `pending`·`approved` |
+| `items[].created_at` | 응답 | string(date-time) | A61 예 | 신청 시각 |
+
+**A63·A64 만남 장소·A65 모집 글 종료 또는 취소**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `post_id` | path | string | A63·A64·A65 예 | `^cpo_[0-9A-Za-z]{6,26}$`, 모집 글 ID |
+| `action` | path | string | A65 예 | `end`·`cancel` |
+| `name` | body | string | A63 예 | 장소 이름 1~60자 |
+| `address` | body | string | A63 선택 | 주소 |
+| `lat` | body | number | A63 쌍으로 선택 | 위도 33~39, 경도와 함께 제공하거나 둘 다 생략 |
+| `lng` | body | number | A63 쌍으로 선택 | 경도 124~132, 위도와 함께 제공하거나 둘 다 생략 |
+| `guide` | body | string | A63 선택 | 만남 안내, 300자 이하 |
+| `post_id` | 응답 | string | A63·A65 예 | 수정하거나 종료·취소한 모집 글 ID |
+| `updated_at` | 응답 | string(date-time) | A63 및 A64 장소가 있으면 예 | 장소 최종 변경 시각 |
+| `name` | 응답 | string | A64 장소가 있으면 예 | 장소 이름 |
+| `address` | 응답 | string 또는 null | A64 장소가 있으면 예 | 주소 |
+| `lat` | 응답 | number 또는 null | A64 장소가 있으면 예 | 위도, 텍스트 안내만 있으면 null |
+| `lng` | 응답 | number 또는 null | A64 장소가 있으면 예 | 경도, 텍스트 안내만 있으면 null |
+| `guide` | 응답 | string 또는 null | A64 장소가 있으면 예 | 만남 안내 |
+| `status` | 응답 | string | A64 장소가 없으면 예·A65 예 | A64 미정이면 `undecided`, A65 완료면 `ended`·`cancelled` |
+
 #### 6-4-5. 채팅 API (A66~A73 + WebSocket) — 담당 권오현(`community/chat.py`, `realtime/chat_socket.py`), 화면 `chats/[roomId]/`·`friends/`(정예진)
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
@@ -1784,6 +2198,57 @@ Content-Type: application/json
 | **A73** `POST /api/v1/ws-tickets` | `{}` | 201 `{ticket, expires_in: 30}` | user. 브라우저 WebSocket은 헤더를 못 붙이므로 **30초짜리 1회용 표**(Redis `ws:ticket:{hash}`)로 연결 | 401 |
 | **WS** `GET /api/v1/ws/chat?ticket=…` | 아래 메시지 형식 | 아래 | 연결·구독·전송마다 **현재 멤버·입장 시각·차단·방 상태**를 다시 확인(5.20). 서버 여러 대면 Redis Pub/Sub `chat:{room_id}`로 전달하되 **Pub/Sub은 저장·수신 보장이 아님**(놓친 것은 A71로) | 연결 거부 4401(표 없음·만료) / 4403(권한) |
 
+**A66 내 채팅방 목록**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `filter` | query | string | 아니요 | `all`·`companion`·`friend`·`past` |
+| `items` | 응답 | array<object> | 예 | 내가 초대됐거나 입장한 채팅방 목록 |
+| `items[].room_id` | 응답 | string | 예 | 채팅방 ID |
+| `items[].room_type` | 응답 | string | 예 | `companion`·`direct`·`friend_group` |
+| `items[].name` | 응답 | string 또는 null | 예 | 채팅방 이름, 단체방은 1~40자 |
+| `items[].status` | 응답 | string | 예 | `active`·`read_only`·`closed` |
+| `items[].last_message_at` | 응답 | string(date-time) 또는 null | 예 | 마지막 메시지 시각 |
+| `items[].unread_count` | 응답 | int | 예 | 내가 아직 읽지 않은 메시지 수 |
+| `items[].my_status` | 응답 | string | 예 | `invited`·`joined` |
+| `empty_hint` | 응답 | string | 목록이 비면 예 | 동행을 찾거나 친구를 추가해 보세요 |
+
+**A67 생성·A68 초대·A69 초대 처리 또는 퇴장·A70 이름 변경**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `type` | body | string | A67 예 | `direct`·`friend_group` |
+| `friend_id` | body | string (UUID) | A67 1:1방 예 | 실제 친구의 사용자 ID |
+| `name` | body | string | A67 단체방·A70 예 | 단체방 이름 1~40자 |
+| `invitee_ids` | body | array<string (UUID)> | A67 단체방·A68 예 | 초대할 친구 ID, A67 단체방 생성 시 2~19명 |
+| `room_id` | path | string | A68·A69·A70 예 | `^crm_[0-9A-Za-z]{6,26}$`, 대상 채팅방 ID |
+| `action` | path | string | A69 예 | `accept`·`decline`은 초대받은 사람, `leave`는 멤버 |
+| `room_id` | 응답 | string | A67·A69 예 | 생성하거나 상태가 바뀐 방 ID, 기존 1:1 방은 기존 ID |
+| `my_status` | 응답 | string | A69 예 | 처리 후 `joined`·`declined`·`left` |
+
+A68 초대와 A70 이름 변경은 성공 응답이 200이며 응답 본문 필드는 정해지지 않았습니다.
+
+**A71 메시지 이력·A72 읽음·A73 연결 표 발급**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `room_id` | path | string | A71·A72 예 | `^crm_[0-9A-Za-z]{6,26}$`, 대상 채팅방 ID |
+| `after_seq` | query | int (64비트) | A71 선택 | 이 순번보다 새 메시지 조회 |
+| `before_seq` | query | int (64비트) | A71 선택 | 이 순번보다 이전 메시지 조회 |
+| `limit` | query | int | A71 선택 | 최대 100건 |
+| `seq` | body | int (64비트) | A72 예 | 읽은 마지막 방별 순번, 기존 읽음 위치보다 앞선 값만 반영 |
+| `items` | 응답 | array<object> | A71 예 | 입장 후 열람 가능한 메시지 목록 |
+| `items[].message_id` | 응답 | int (64비트) | A71 예 | `chat_messages.message_id` |
+| `items[].seq` | 응답 | int (64비트) | A71 예 | 방별 메시지 순번 |
+| `items[].sender_id` | 응답 | string (UUID) 또는 null | A71 예 | 발신자 ID, 시스템 메시지는 null |
+| `items[].sender_display_name` | 응답 | string 또는 null | A71 예 | 발신자 닉네임(`app_public_display_name`) |
+| `items[].msg_type` | 응답 | string | A71 예 | `text`·`system` |
+| `items[].body` | 응답 | string | A71 예 | 숨김 처리되지 않은 메시지 본문, 1~1000자 |
+| `items[].created_at` | 응답 | string(date-time) | A71 예 | 저장 시각 |
+| `has_more` | 응답 | boolean | A71 예 | 조회한 방향에 메시지가 더 있는지 표시 |
+| `ticket` | 응답 | string | A73 예 | WebSocket 연결에 쓰는 1회용 표, 요청 본문은 빈 객체 |
+| `expires_in` | 응답 | int | A73 예 | 연결 표 유효 시간(초), 30 |
+
 **WebSocket 메시지 (JSON 한 줄씩)**
 
 | 방향 | `type` | 내용 |
@@ -1797,6 +2262,35 @@ Content-Type: application/json
 | 서버 → 앱 | `notification` | `{notification_id, type, ref_type, ref_id, created_at}` — A74와 같은 내용(앱 안 알림) |
 | 서버 → 앱 | `unsubscribed` | `{room_id, reason: left·removed·blocked·deleted}` — **멤버 상태가 바뀌면(나가기·내보내기·차단·탈퇴) 서버가 그 방 구독을 즉시 끊고** 이후 `message`를 보내지 않음 |
 
+**WS 연결 쿼리와 메시지 종류별 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `ticket` | query | string | 예 | A73에서 받은 1회용 연결 표 |
+| `type` | body | string | 예 | 앱 → 서버 이벤트 종류 `subscribe`·`send` |
+| `room_id` | body | string | 예 | 구독하거나 전송할 채팅방 ID, `crm_…` |
+| `after_seq` | body | int (64비트) | `subscribe` 예 | 재수신 기준이 되는 마지막 방별 순번 |
+| `client_message_id` | body | string | `send` 예 | 앱에서 만든 UUID, 8~64자, 재전송 시 같은 값 사용 |
+| `body` | body | string | `send` 예 | 텍스트 본문 1~1000자 |
+| `type` | 응답 | string | 예 | 서버 → 앱 이벤트 종류 `ack`·`message`·`error`·`room_status`·`notification`·`unsubscribed` |
+| `room_id` | 응답 | string | `message`·`room_status`·`unsubscribed` 예 | 메시지·상태 변경·구독 해제 대상 채팅방 ID |
+| `client_message_id` | 응답 | string | `ack` 예, `error` 선택 | 대응하는 앱 전송 ID |
+| `message_id` | 응답 | int (64비트) | `ack`·`message` 예 | DB에 저장된 메시지 ID |
+| `seq` | 응답 | int (64비트) | `ack`·`message` 예 | 저장 시 발급된 방별 순번 |
+| `sender_id` | 응답 | string (UUID) 또는 null | `message` 예 | 발신자 ID, 시스템 메시지는 null |
+| `msg_type` | 응답 | string | `message` 예 | `text`·`system` |
+| `body` | 응답 | string | `message` 예 | 메시지 본문 1~1000자 |
+| `created_at` | 응답 | string(date-time) | `message`·`notification` 예 | 메시지 또는 알림 생성 시각 |
+| `code` | 응답 | string | `error` 예 | `FORBIDDEN`·`ROOM_READ_ONLY`·`RATE_LIMITED`·`VALIDATION_ERROR`·`STORE_FAILED` |
+| `status` | 응답 | string | `room_status` 예 | `read_only`·`closed` |
+| `notification_id` | 응답 | int (64비트) | `notification` 예 | A74의 알림 ID |
+| `type` | 응답 | string | `notification` 내용에 예 | A74의 알림 유형(이벤트 종류 `notification`과 구분) |
+| `ref_type` | 응답 | string | `notification` 예 | A74의 알림 참조 유형 |
+| `ref_id` | 응답 | string | `notification` 예 | A74의 알림 참조 ID |
+| `reason` | 응답 | string | `unsubscribed` 예 | `left`·`removed`·`blocked`·`deleted` |
+
+이벤트 종류와 알림 내용의 `type`은 위 메시지 표의 두 항목을 각각 가리킵니다.
+
 - **전송 처리 순서(W116):** ① 멤버·차단·방 상태 확인 → ② 한 트랜잭션에서 `chat_rooms.last_seq + 1`로 순서 발급 + `chat_messages` 저장 → ③ commit 성공 뒤 `ack` → ④ Redis 최근 메시지 갱신·Pub/Sub 발행. 같은 `client_message_id` 재전송은 DB UNIQUE(T38b)로 **처음 저장된 메시지의 `ack`를 다시** 보냄(중복 저장 없음). Redis 실패는 전송 성공에 영향 없음(읽을 때 DB로).
 - 전송 제한: 사람당 초당 5개·방당 초당 20개(임시, 9-1). 사용자 대화는 AI·RAG에 넣지 않음(5.20).
 
@@ -1809,8 +2303,102 @@ Content-Type: application/json
 | **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상 하루 1회(임시). 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
 | **A77** `GET`·`POST /api/v1/admin/reports` | GET `status`·`page` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 그 시험은 **구현 예정**(W128 권한 검증, 12/17–18. T40c는 기록 삭제 차단만 확인, 18-2). 메시지 숨김은 `chat_messages.deleted_at`(+ Redis 최근 목록에서 삭제), 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
 | **A78** `GET`·`PATCH /api/v1/me/profile` | PATCH `{display_name?}` (닉네임 변경 가능, 2~12자·중복 검사) | `{user_id, display_name, birth_year, gender, onboarding_status}` (출생연도·성별은 본인 화면용. 다른 사람에게는 **동행 신청 때 그 글 작성자에게만 나이·성별**이 보임 — A61) | user, 본인만. 이메일·전화번호·나이·성별은 다른 사람에게 보이지 않음(FR-COM22) | 401 / 409 `NICKNAME_TAKEN` / 422 |
-| **A79** `GET /api/v1/me/companion-activity` | `type`: `posts`·`applications` | 내 모집 글 / 내 신청 내역 | user | 401 |
+| **A79** `GET /api/v1/me/companion-activity` | `type`: `posts`·`applications` | 200 `{items[]}`, 조회 유형별 항목 필드는 아래 A79 표 | user, 본인 내역 | 401 |
 | **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(04 문서 7-0 ② '계정·프로필'과 같은 목록): Refresh 토큰 전부 폐기 → 진행 중 동행 글 `cancelled`·신청 `cancelled` → 친구 관계·신청·차단 삭제 → 방 멤버 `left`(방장이면 가장 먼저 들어온 멤버가 방장, FR-COM17) → 관심 축제(`favorites`)·취향(`user_festival_preferences`)·알림 삭제 → 챗봇 질문·답변(`assistant_runs`) 즉시 삭제 → `profiles` 닉네임·출생연도·성별 NULL → `users`는 행을 지우지 않고(감사 기록 FK) **이메일을 `deleted+<user_id>@invalid`, 비밀번호 해시를 `'!'`(로그인 불가)로 덮어쓰고 `status='deleted'`**(DDL NOT NULL 유지, 시험 T42l). **커밋 뒤**: `revoked:{jti}` 등록, 열린 WebSocket 끊기, LangGraph 체크포인트(`thread_id`) 삭제 — 실패하면 워커가 재시도. 다른 사람에게는 "알 수 없음"으로 표시(`app_public_display_name`이 NULL). 메시지 본문은 방 보존 정책대로 지워짐(FR-COM24). 백업(7일)에서 복원하면 탈퇴 목록으로 다시 지움 | 401 / 403(비밀번호 불일치) |
+
+**A74 알림 목록·A75 읽음 처리**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `unread_only` | query | boolean | A74 선택 | 읽지 않은 알림만 조회 |
+| `page` | query | int | A74 선택 | 조회할 페이지 번호 |
+| `items` | 응답 | array<object> | A74 예 | 본인에게 온 앱 안 알림 |
+| `items[].notification_id` | 응답 | int (64비트) | A74 예 | 알림 ID |
+| `items[].type` | 응답 | string | A74 예 | `companion_applied`·`companion_approved`·`companion_rejected`·`companion_ended`·`companion_cancelled`·`meeting_place_changed`·`friend_requested`·`friend_accepted`·`room_invited` |
+| `items[].ref_type` | 응답 | string | A74 예 | `companion_post`·`companion_application`·`friend_request`·`chat_room` |
+| `items[].ref_id` | 응답 | string | A74 예 | 참조 대상 ID |
+| `items[].created_at` | 응답 | string(date-time) | A74 예 | 알림 생성 시각 |
+| `items[].read_at` | 응답 | string(date-time) 또는 null | A74 예 | 읽음 시각, 읽기 전에는 null |
+| `unread_count` | 응답 | int | A74 예 | 본인의 읽지 않은 알림 수 |
+| `ids` | body | array<int (64비트)> | A75 일부 처리 시 예 | 읽음으로 표시할 본인 알림 ID |
+| `all` | body | boolean | A75 전체 처리 시 예 | `true`면 본인 알림 전체를 읽음 처리. 본문은 `ids` 또는 `all: true` |
+
+**A76 신고 등록·A77 관리자 신고 조회·처리 요청**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `target_type` | body | string | A76 예 | `companion_post`·`chat_message`·`chat_room`·`user` |
+| `target_id` | body | string | A76 예 | `reports.target_id`, 선택한 유형의 신고 대상 ID |
+| `reason` | body | string | A76 예 | `spam`·`abuse`·`harassment`·`fraud`·`privacy`·`other` |
+| `detail` | body | string | A76 선택 | 신고 상세, 500자 이하 |
+| `report_id` | 응답 | string | A76 예 | 생성한 신고 ID(`rpt_…`) |
+| `status` | query | string | A77 GET 선택 | `received`·`reviewing`·`actioned`·`dismissed` |
+| `page` | query | int | A77 GET 선택 | 조회할 페이지 번호 |
+| `report_id` | body | string | A77 POST 예 | `^rpt_[0-9A-Za-z]{6,26}$`, 처리할 신고 ID |
+| `action` | body | string | A77 POST 예 | `dismiss`·`hide_message`·`hide_post`·`close_room`·`block_user` |
+| `note` | body | string | A77 POST 예 | 관리자 처리 메모 |
+
+**A77 조회에서 열람하는 대상별 데이터 (DDL 컬럼 기준)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `reason` | 응답 | string | 채팅방 신고 열람 | 신고 사유, `reports.reason`의 6개 값(A76) |
+| `room_id` | 응답 | string | 채팅방 신고 열람 | 신고된 방 ID |
+| `room_type` | 응답 | string | 채팅방 신고 열람 | `companion`·`direct`·`friend_group` |
+| `name` | 응답 | string 또는 null | 채팅방 신고 열람 | 방 이름 |
+| `status` | 응답 | string | 채팅방 신고 열람 | `active`·`read_only`·`closed` |
+| `message_id` | 응답 | int (64비트) | 메시지 신고 열람 | 신고된 메시지 한 건의 ID |
+| `body` | 응답 | string 또는 null | 메시지 신고 열람 | 신고된 메시지 한 건의 본문 |
+
+A77 상세 표는 조회·처리 성공 상태를 200으로 명시합니다. 위 열람 데이터는 기존에 명시된 방 정보·신고 사유·신고 메시지의 DB 필드이며, 응답 본문에서 이 데이터를 감싸는 필드와 POST 성공 본문은 정의되어 있지 않습니다.
+
+**A78 본인 프로필 조회·수정**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `display_name` | body | string | PATCH 선택 | 2~12자, 대소문자 무시 중복 검사(009) |
+| `user_id` | 응답 | string (UUID) | 예 | 본인 사용자 ID |
+| `display_name` | 응답 | string 또는 null | 예 | 본인 닉네임 |
+| `birth_year` | 응답 | int 또는 null | 예 | 본인 출생연도, 009 저장 범위 1900~2100(A32 가입은 1900~올해) |
+| `gender` | 응답 | string 또는 null | 예 | 본인 성별, `male`·`female` |
+| `onboarding_status` | 응답 | string | 예 | A36의 `pending`·`completed`·`skipped` |
+
+**A79 내 동행 내역 요청·유형별 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `type` | query | string | 예 | `posts`는 내가 작성한 모집 글, `applications`는 내가 보낸 동행 신청 |
+| `items` | 응답 | array<object> | 예 | A57·A61과 같은 목록 형식. 선택한 유형의 본인 내역을 아래 항목 구조로 반환 |
+
+**A79 type=posts 항목 (A57 글 필드와 companion_posts)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items[].post_id` | 응답 | string | 예 | 내 모집 글 ID |
+| `items[].festival_id` | 응답 | string | 예 | 모집 대상 축제 ID |
+| `items[].meet_at` | 응답 | string(date-time) | 예 | 만남 시각 |
+| `items[].capacity` | 응답 | int | 예 | 모집 정원(작성자 제외 1~10명) |
+| `items[].approved_count` | 응답 | int | 예 | 승인 인원, 0 이상 정원 이하 |
+| `items[].age_pref` | 응답 | string 또는 null | 예 | A58의 연령대 조건 |
+| `items[].gender_pref` | 응답 | string | 예 | A58의 성별 조건 |
+| `items[].memo` | 응답 | string 또는 null | 예 | 모집 안내, 500자 이하 |
+| `items[].status` | 응답 | string | 예 | `open`·`full`·`ended`·`cancelled` |
+
+**A79 type=applications 항목 (A60~A62와 companion_applications)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `items[].application_id` | 응답 | string | 예 | 내 신청 ID |
+| `items[].post_id` | 응답 | string | 예 | 신청한 모집 글 ID |
+| `items[].message` | 응답 | string 또는 null | 예 | 내가 보낸 신청 메시지, 200자 이하 |
+| `items[].status` | 응답 | string | 예 | `pending`·`approved`·`rejected`·`cancelled` |
+| `items[].created_at` | 응답 | string(date-time) | 예 | 신청 시각 |
+
+**A80 탈퇴 요청 (204)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `password` | body | string | 예 | 탈퇴 전 본인 계정의 비밀번호 재확인 |
 
 ### 6-5. 기능 연결표 — 요구사항 → 화면 → API → 도구 → DB → 시험 (강사 11/20 자료 「설계서 한 줄을 실제 동작으로 연결하기」)
 
@@ -1861,6 +2449,24 @@ Content-Type: application/json
 | 7 | 오류 응답 | 400 `COURSE_OUT_OF_PERIOD` / 404 `FESTIVAL_NOT_FOUND` / 409 `IDEMPOTENCY_CONFLICT` / 422 / 429 / 503 `AI_AGENT_FAILED` |
 | 8 | 실행 규칙 | 워커의 Festival 에이전트가 `get_festival`·`get_facilities`·`get_official_notices`·`get_crowd`만 써서 후보를 고르고, **코드가 검증한 뒤** 결과를 저장(아래). 전체 제한 30초·재시도 1회(A06과 같음, 9-1) |
 
+**A51 방문 코스 요청·접수 응답 (202)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `request_id` | body | string | 예 | 8~64자, 같은 요청 재전송 시 기존 작업 사용 |
+| `festival_id` | body | string | 예 | 방문할 축제 ID |
+| `companion` | body | string | 예 | `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` |
+| `start_at` | body | string(date-time) | 예 | 축제 기간 안의 시작 시각 |
+| `duration_min` | body | int | 예 | 60~480분 |
+| `constraints` | body | object | 예 | 이동 제약 |
+| `constraints.wheelchair` | body | boolean | 예 | 휠체어 이용 조건 |
+| `run_id` | 응답 | string | 예 | 등록된 코스 작업 ID |
+| `run_kind` | 응답 | string | 예 | `visit_course` |
+| `run_status` | 응답 | string | 예 | `queued` |
+| `status_url` | 응답 | string | 예 | A06-1 상태·코스 결과 조회 경로 |
+| `events_url` | 응답 | string | 예 | A06-2 진행 이벤트 구독 경로 |
+| `run_access_token` | 응답 | string | 예 | 비로그인 작업 조회에 쓰는 토큰 |
+
 **코스 검증 규칙 (FR-P03 — 실존·운영 시각·동선)**
 
 | 검증 | 통과 조건 | 못 통과하면 |
@@ -1881,6 +2487,29 @@ Content-Type: application/json
   "is_mock": true }
 ```
 
+**A51 결과 필드 (A06-1의 result, 코스 작업 성공 시)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `result` | 응답 | object | 예 | 완성된 방문 코스 |
+| `result.festival_id` | 응답 | string | 예 | 코스를 만든 축제 ID |
+| `result.companion` | 응답 | string | 예 | 적용한 동행 유형(요청과 같은 값) |
+| `result.start_at` | 응답 | string(date-time) | 예 | 코스 시작 시각 |
+| `result.duration_min` | 응답 | int | 예 | 요청한 코스 시간(분) |
+| `result.stops` | 응답 | array<object> | 예 | 검증한 코스 지점 목록 |
+| `result.stops[].order` | 응답 | int | 예 | 코스 내 방문 순서 |
+| `result.stops[].type` | 응답 | string | 예 | `festival`·`facility`·`place` |
+| `result.stops[].ref_id` | 응답 | string | 예 | 축제·시설·카카오 장소 ID |
+| `result.stops[].name` | 응답 | string 또는 null | 예 | 화면 표시용 이름, 예시의 카카오 장소명은 null |
+| `result.stops[].start` | 응답 | string(time) | 예 | 예시의 `HH:mm` 형식 방문 시작 시각 |
+| `result.stops[].end` | 응답 | string(time) | 예 | 예시의 `HH:mm` 형식 방문 종료 시각 |
+| `result.stops[].reason_tag` | 응답 | string | 아니요 | 지점 선정 태그, 예: `family_program` |
+| `result.stops[].verified` | 응답 | boolean | 예 | 지점 검증 여부 |
+| `result.stops[].note` | 응답 | string | 아니요 | 운영 시간 등 추가 확인 안내 |
+| `result.walk_min_estimated` | 응답 | int | 예 | 지점 사이 도보 이동 시간 추정치(분) |
+| `result.constraint_status` | 응답 | object | 예 | 조건별 확인 결과, 근거가 없으면 `not_verifiable` |
+| `result.unverified` | 응답 | array<string> | 예 | 확인할 수 없는 장소·운영 시간 안내 |
+
 - 코스 수정·재추천(FR-P02)은 Should라 이번 범위 밖입니다(같은 요청을 조건만 바꿔 새로 보내면 됨).
 
 #### A52~A54. 공식 공지 관리 (FR-O06 등록·수정, FR-D05 승인 — 둘 다 "적용 시" Must)
@@ -1891,6 +2520,29 @@ Content-Type: application/json
 | **A53** `PATCH /api/v1/admin/notices/{notice_id}` | 바꿀 칸만 | 200 `{notice_id, approval_status}` | admin. 승인된 공지를 고치면 **다시 `pending`**(재승인 필요). 바뀌기 전·후 값을 `notice_events`(`update`)에 | 401 / 403 / 404 / 422 |
 | **A54** `POST /api/v1/admin/notices/{notice_id}/review` | `{decision: "approve"·"reject", reason}` (반려는 이유 필수 — DB도 거부, T35b) | 200 `{notice_id, approval_status, control_version}` | admin, **등록한 사람과 다른 관리자 권장**(2인 확인, 팀 인원상 필수는 아님). 승인되면 `control_version`이 바뀌어 그 축제의 경로 캐시를 무효화(04 문서 7절) → 귀가 경로가 통제를 반영(FR-R06·R09) | 401 / 403 / 404 / 409 `ALREADY_REVIEWED` |
 
+**A52 공지 등록·A53 수정·A54 승인/반려 요청**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `notice_id` | path | string | A53·A54 예 | 수정하거나 검토할 공지 ID |
+| `festival_id` | body | string | A52·A53 선택 | 관련 축제 ID, 공통 공지는 생략 가능 |
+| `type` | body | string | A52 예·A53 선택 | `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure` |
+| `title` | body | string | A52 예·A53 선택 | 제목 1~200자 |
+| `content` | body | string | A52 예·A53 선택 | 공지 내용 |
+| `effective_from` | body | string(date-time) | A52 예·A53 선택 | 효력 시작 시각 |
+| `effective_to` | body | string(date-time) | A52 예·A53 선택 | 효력 종료 시각 |
+| `source_url` | body | string | A52·A53 선택 | 출처 URL |
+| `decision` | body | string | A54 예 | `approve`·`reject` |
+| `reason` | body | string | A54 반려 시 예 | 검토 사유, `notice_events.reason` 300자 이하 |
+
+**A52 등록(201)·A53 수정(200)·A54 검토(200) 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `notice_id` | 응답 | string | 예 | 등록·수정·검토한 공지 ID |
+| `approval_status` | 응답 | string | 예 | `pending`·`approved`·`rejected`. 등록과 승인 공지 수정 후 `pending`, 검토 후 `approved` 또는 `rejected` |
+| `control_version` | 응답 | string 또는 null | A54 예 | 승인 시 갱신하는 경로 통제 버전 |
+
 - 이력(`notice_events`)은 추가만 가능하고 수정·삭제할 수 없습니다(트리거, T35c). AI가 공지를 구조화하는 기능(FR-D04·O07)은 Should라 범위 밖 — 들어오면 같은 승인 흐름을 탑니다.
 - 담당: `admin/operations.py` 쪽 운영 기능이라 신유빈(협업 규칙) — 공지 화면은 `admin/operations/`(이수언).
 
@@ -1900,6 +2552,38 @@ Content-Type: application/json
 |---|---|---|---|---|
 | **A55** `POST /api/v1/admin/festivals` | A03 필드(이름·기간·장소·좌표·지역 필수) + `reason` | 201 `{festival_id, review_status:"pending"}` | admin. 공급원에 없는 축제를 직접 넣을 때. `data_sources`의 `admin_manual` 출처로 기록, 게시는 A56으로 | 401 / 403 / 409 `DUPLICATE_FESTIVAL`(이름·기간·장소가 같은 축제가 있으면 A24 검토 대기열로) / 422 |
 | **A56** `PATCH /api/v1/admin/festivals/{festival_id}` | 바꿀 칸 + `reason`, 게시 여부 `published: bool` | 200 `{festival_id, review_status, published_at}` | admin. 칸마다 바뀌기 전·후 값을 `festival_change_history`(`actor='admin'`)에. 공급원 재수집이 관리자 수정을 덮지 않음(바뀐 칸은 A24 충돌 대기열 — FR-D14). 삭제 대신 `review_status='hidden'`(FR-D10) | 401 / 403 / 404 / 422 |
+
+**A55 직접 등록·A56 수정/게시 요청**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `festival_id` | path | string | A56 예 | 수정하거나 게시할 축제 ID |
+| `name` | body | string | A55 예·A56 선택 | 축제 이름(`festivals.title`) |
+| `region_code` | body | string | A55 예·A56 선택 | 시·도 코드, 0-1절 |
+| `start_date` | body | string(date) | A55 예·A56 선택 | 축제 시작일 |
+| `end_date` | body | string(date) | A55 예·A56 선택 | 축제 종료일 |
+| `venue_name` | body | string | A55 예·A56 선택 | 축제 장소 |
+| `lat` | body | number | A55 예·A56 선택 | 위도 33~39(`festivals.latitude`) |
+| `lng` | body | number | A55 예·A56 선택 | 경도 124~132(`festivals.longitude`) |
+| `address` | body | string | 선택 | 축제 주소 |
+| `overview` | body | string | 선택 | 축제 소개 |
+| `fee_text` | body | string | 선택 | 입장료 안내(`admission_fee_text`) |
+| `homepage_url` | body | string | 선택 | 축제 홈페이지(`official_url`) |
+| `event_status` | body | string | 선택 | `upcoming`·`ongoing`·`ended`·`cancelled`·`needs_review` |
+| `image_url` | body | string | 선택 | 대표 이미지 URL |
+| `thumbnail_url` | body | string | 선택 | 카드 이미지 URL |
+| `image_copyright` | body | object | 대표 이미지가 있으면 예 | A03 저작권 정보 객체. DDL 003은 이미지 URL이 있으면 저작권 유형 필요 |
+| `image_copyright.type` | body | string | 객체가 있으면 예 | `Type1`·`Type3`, `festivals.image_copyright_type`에 대응 |
+| `reason` | body | string | A55·A56 예 | 관리자 등록·수정 이유 |
+| `published` | body | boolean | A56 선택 | 게시 여부 |
+
+**A55 등록(201)·A56 수정/게시(200) 응답**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `festival_id` | 응답 | string | 예 | 등록하거나 수정한 축제 ID |
+| `review_status` | 응답 | string | 예 | 등록은 `pending`, 수정 후 상태는 `pending`·`approved`·`hidden` |
+| `published_at` | 응답 | string(date-time) 또는 null | A56 예 | 공개 시각, 비공개면 null |
 
 - 담당: `admin/festival_review.py`(권오현, 협업 규칙). 화면 `admin/festival-management/`(정예진).
 
@@ -1964,6 +2648,17 @@ HTTP 202
 
 응답(202): `simulation_id`·`test_mode`·`comparison_arm`·`status`·`stop_url`·`status_url`. 결과는 **A31 `GET /api/v1/admin/simulations/{simulation_id}`**(조회 성공이면 시험이 실패했어도 200, 실패는 `status`·`error`로)로 확인합니다. 요청 헤더에 `Idempotency-Key`(필수)를 받아 같은 키면 처음 만든 `simulation_id`를 돌려줍니다.
 
+**A20 접수 응답 (202)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `simulation_id` | 응답 | string | 예 | 등록한 시험 ID |
+| `test_mode` | 응답 | boolean | 예 | `true`, 시험 환경 요청 |
+| `comparison_arm` | 응답 | string | 예 | `B0`·`B1`·`A1` 중 선택한 대응 방식 |
+| `status` | 응답 | string | 예 | 접수 시 `running` |
+| `stop_url` | 응답 | string | 예 | A21 시험 중단 경로 |
+| `status_url` | 응답 | string | 예 | A31 시험 상태 조회 경로 |
+
 - 부하 생성기는 **팀 서버 안의 경로 처리 구간과 시험용 어댑터**에만 요청을 보냅니다. 외부 공급원은 부르지 않습니다.
 - 장애 기준을 넘으면 관측 코드가 `incident_id`를 만들고 시뮬레이션 기록에 연결합니다. **시뮬레이션 1회에 사건이 여러 건 생길 수 있습니다**(감지 → 원복 → 재감지). 시뮬레이션이 사건을 직접 만들지 않습니다 — 감지 로직도 시험 대상이기 때문입니다.
 - B0/B1/A1을 비교할 때는 `scenario`·`concurrency`·`offered_rps`·`duration_s`·`unique_route_keys`·`seed`·`cache_state`를 **똑같이** 두고, 같은 `repeat_group`으로 여러 번(`run_index`) 돌립니다 (FR-H23, 강사 2차 의견 5).
@@ -1977,6 +2672,12 @@ HTTP 202
 | 409 | 이미 실행 중인 시뮬레이션 있음 | `SIMULATION_RUNNING` |
 
 ### 7-2. `GET /api/v1/admin/incidents/{incident_id}` 응답 모양
+
+**A15 요청 경로**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `incident_id` | path | string | 예 | `^inc_[0-9A-Za-z]{6,26}$`, 조회할 사건 ID. 쿼리·본문 없음 |
 
 ```json
 {
@@ -2060,6 +2761,17 @@ HTTP 202
 | `stop_condition` | object | 아니요 | — | `{max_minutes, rollback_if}`. `select`에서 생략하면 **서버 기본값**(5분, '유효 경로 제공률이 오르지 않거나 거절 증가 시 원복')을 채워 저장 | `recovery_plans.stop_condition` |
 | `evidence_refs` | array<string> | 예 | 불가 | 1개 이상, `diag_`·지표 ID | `recovery_plans.evidence_refs` |
 
+**A19 실행 예약 응답 (202)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `plan_id` | 응답 | string | 예 | 기록한 복구 계획 ID |
+| `incident_id` | 응답 | string | 예 | 복구 대상 사건 ID |
+| `decided_by` | 응답 | string | 예 | `rule_policy`·`recovery_agent` |
+| `policy_verdict` | 응답 | string | 예 | 실행 예약 시 `allowed` |
+| `execution` | 응답 | string | 예 | `scheduled_by_policy_gate`, 정책 코드가 실행을 예약한 상태 |
+| `attempt_id` | 응답 | string | 예 | A15에서 실행 결과를 확인할 복구 시도 ID |
+
 **정상 응답 예시 (202)**
 
 ```json
@@ -2127,6 +2839,19 @@ HTTP 202
 
 **재시도와 새 작업의 차이:** 재시도는 같은 `run_id` 안에서 서버가 하는 것이고(사용자에게 새 ID 없음), 새 작업은 사용자가 다시 질문해 새 `request_id` → 새 `run_id`가 생기는 것입니다. 같은 `request_id`로 다시 보내면 새 작업이 아니라 **기존 작업 상태**를 돌려줍니다.
 
+**A06 POST 접수 응답 (202)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `run_id` | 응답 | string | 예 | 등록한 챗봇 작업 ID |
+| `conversation_id` | 응답 | string | 예 | 대화 ID, 새 대화면 서버가 생성 |
+| `run_status` | 응답 | string | 예 | 현재 모의 접수 응답은 `queued`, 작업 상태 값은 위 표 |
+| `status_url` | 응답 | string | 예 | A06-1 상태 조회 경로 |
+| `events_url` | 응답 | string | 예 | A06-2 이벤트 구독 경로 |
+| `run_access_token` | 응답 | string | 예 | 비로그인 작업 조회에 쓰는 토큰 |
+| `retry_after_s` | 응답 | int | 예 | 다시 조회하기 전 대기 시간(초), 모의 응답 1 |
+| `is_mock` | 응답 | boolean | 모의 응답 예 | 현재 모의 응답은 `true` |
+
 **정상 응답 예시 (202)**
 
 ```json
@@ -2173,6 +2898,18 @@ HTTP 202
 - 이벤트 4종: `{"type":"step","node":"supervisor"}` · `{"type":"token","text":"…"}`(선택) · `{"type":"done"}` · `{"type":"failed","code":"AI_AGENT_FAILED"}`. `done`·`failed` 뒤 연결을 닫습니다.
 - 이벤트는 저장되지 않으므로(구독 전 이벤트 없음) 화면은 **먼저 A06-1로 현재 상태를 그린 뒤** 구독합니다. 브라우저 `EventSource`는 헤더를 못 붙이므로 fetch 기반 SSE로 `X-Run-Access-Token`을 보냅니다.
 - 구현 순서(강사 자료 25쪽): ① 폴링(A06-1, 2초)으로 먼저 완성 → ② SSE로 교체.
+
+**A06-2 SSE 이벤트별 데이터 필드**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `type` | 응답 | string | `step` 예 | 값은 `step` |
+| `node` | 응답 | string | `step` 예 | 완료한 에이전트 노드 이름(예: `supervisor`) |
+| `type` | 응답 | string | `token` 예 | 값은 `token` |
+| `text` | 응답 | string | `token` 예 | 전달할 텍스트 조각, `token` 이벤트 사용 자체는 선택 |
+| `type` | 응답 | string | `done` 예 | 값은 `done`, 추가 필드 없음 |
+| `type` | 응답 | string | `failed` 예 | 값은 `failed` |
+| `code` | 응답 | string | `failed` 예 | 작업 실패 코드(예: `AI_AGENT_FAILED`) |
 
 **DB:** 작업 상태·결과의 기준은 DB입니다. `agent_runs`(에이전트 1회 실행 기록)와 별도로 **작업 1건 = 1행**인 `assistant_runs`(`run_id`·`request_id` UNIQUE·`conversation_id`·`user_id`/`run_token_hash`·`run_status`·`attempt`·`message`·`answer`·`error_code`·`route_request_id`·시각)를 **04 문서 마이그레이션 002로 추가하고 시험했습니다**(11/20, T24: 같은 `request_id` 거부, 두 워커 선점 시 1명만, 70초 넘은 `running` 정리, 본인 작업만 조회).
 
@@ -2282,6 +3019,21 @@ HTTP 202
 | 6 | 정상 응답 | **200** `{simulation_id, status, stop_requested_at, stopped_at, affected_incidents[]}` — `status`는 `stopping`(정리 중) 또는 `stopped`. 이미 `stopped`·`finished`·`failed`면 **같은 200으로 현재 상태**를 돌려줌(여러 번 눌러도 안전 = 멱등) |
 | 7 | 오류 응답 | 401 / 403 `FORBIDDEN`·`SIMULATION_DISABLED` / 404 `SIMULATION_NOT_FOUND` / 422 |
 | 8 | 실행 규칙 | ① 부하 생성기에 중지 신호 → 2초 안(임시) 새 요청 중단 ② `load_simulations.status='stopped'`, `ended_at`, `offered_requests`(지금까지 보낸 수) 기록 ③ 이 시험에서 생긴 **열린 사건**은 켜진 조치를 정책 코드가 원복(`rollback_reason='simulation_stopped'`)하고 `final_mode='unresolved'`로 닫음 — 중단된 시험을 복구 성공으로 세지 않음 ④ 결과는 A31로 확인 |
+
+**A21 중단 요청·응답 (200)**
+
+| 필드 | 위치 | 타입 | 필수 | 제약·설명 |
+|---|---|---|---|---|
+| `simulation_id` | path | string | 예 | `^sim_[0-9A-Za-z]{6,26}$`, 중단할 시험 ID |
+| `reason` | body | string | 아니요 | 중단 사유, 200자 이하 |
+| `simulation_id` | 응답 | string | 예 | 대상 시험 ID |
+| `status` | 응답 | string | 예 | `stopping`·`stopped`. 이미 끝난 시험은 현재 `stopped`·`finished`·`failed` 상태 |
+| `stop_requested_at` | 응답 | string(date-time) 또는 null | 예 | 중단 요청 기록 시각 |
+| `stopped_at` | 응답 | string(date-time) 또는 null | 예 | 중단 완료 시각, 정리 중에는 null |
+| `affected_incidents` | 응답 | array<object> | 예 | 시험 중단으로 닫은 열린 사건 |
+| `affected_incidents[].incident_id` | 응답 | string | 예 | 닫은 사건 ID |
+| `affected_incidents[].action_rolled_back` | 응답 | string 또는 null | 예 | 원복한 조치(7-3절), 켜진 조치가 없으면 null |
+| `affected_incidents[].final_mode` | 응답 | string | 예 | `unresolved`, 중단으로 닫은 사건의 최종 모드 |
 
 ```json
 { "simulation_id": "sim_01JD8P…", "status": "stopping", "stop_requested_at": "2026-11-20T14:06:00+09:00", "stopped_at": null,
@@ -3080,3 +3832,4 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | v0.4 | 2026-11-24 | DB 모드 A05 만료 문구를 새 경로 요청 안내로 변경. 012 복원 후 `ready` 요청의 결과 행이 없으면 `ROUTE_RESULT_EXPIRED`(`retryable=false`)로 응답하는 동작을 명시하고 회귀 시험 추가(2-2·6절 공통 오류표·17-3절). |
 | v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 A05·정리 명령의 TMAP 본문 삭제 시각을 요청에도 기록하고, 7일 백업 복원 검사 T25c 추가(0-A·5·17-3절). SQL 재실행 대기. |
 | v0.4 | 2026-11-24 | STEP7 경로 키 v2(분석 #26), DB 연결 풀 과부하 503(DB-14), SK 회신 없이 적용하는 TMAP 정리 확정 기준 및 시험을 반영했습니다(2·6·17-3절). |
+| v0.5 | 2026-11-24 | API 3번 감사 반영. 누락된 API 필드와 조회 쿼리, 202 응답, SSE·WebSocket 이벤트 및 A79 유형별 목록을 명세하고 6절 작성 현황을 갱신했습니다. |
