@@ -14,15 +14,15 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 
 ## 시험
 
-저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다. uv 환경에서는 다음 명령을 사용합니다.
+저장소 루트에서 다음 명령을 실행합니다.
 
 ```sh
-uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q
+uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q
 ```
 
 ## A01 서버 상태
 
-`GET /api/v1/health`는 서버와 모의 DB·Redis 상태, API 버전을 반환합니다.
+`GET /api/v1/health`는 기본 설정에서 서버와 모의 DB·Redis 상태, API 버전을 반환합니다. DB를 사용하는 API 설정에서는 앱 계정으로 1초 안에 `SELECT 1`을 확인하고, 실패하면 503을 반환합니다. 공통 Redis 연결 전까지 이 설정의 `redis` 값은 `not_configured`입니다.
 
 ## A02 축제 목록
 
@@ -34,7 +34,7 @@ uv run --offline --with-requirements backend/api/requirements.txt python -m pyte
 
 ## A04 귀갓길 접수
 
-`POST /api/v1/routes/return`은 `request_id`, `festival_id`, `destination`을 받습니다. `origin`을 생략하면 축제 장소에서 출발합니다. 사용자 장소는 `query` 또는 `lat`과 `lng`로 지정합니다. 접수 응답은 202이며 `status_url`과 `route_access_token`을 반환합니다. `sync_ready`는 200으로 경로와 조회 토큰을 반환합니다. 같은 `request_id`와 본문으로 다시 접수하면 최초 응답을 재사용하며, 본문을 바꾸면 409를 반환합니다.
+`POST /api/v1/routes/return`은 `request_id`, `festival_id`, `destination`을 받습니다. `origin`을 생략하면 축제 장소에서 출발합니다. 사용자 장소는 `query` 또는 `lat`과 `lng`로 지정합니다. 접수 응답은 202이며 `status_url`과 `route_access_token`을 반환합니다. `sync_ready`는 200으로 경로를 반환하므로 바로 표시합니다. 같은 `request_id`와 본문으로 다시 접수하면 최초 응답을 재사용하며, 본문을 바꾸면 409를 반환합니다.
 
 ## A05 귀갓길 조회
 
@@ -46,11 +46,15 @@ uv run --offline --with-requirements backend/api/requirements.txt python -m pyte
 
 ## A06 챗봇 작업 접수
 
-`POST /api/v1/assistant/query`에 `request_id`와 `message`를 보냅니다. 기존 대화는 `conversation_id`로 이어갈 수 있습니다. 선택 항목으로 `context.festival_id`, `context.route_request_id`, `reference_date`를 보낼 수 있습니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 `request_id`와 본문을 다시 보내면 기존 접수 응답을 반환하며, 본문을 바꾸면 409를 반환합니다.
+`POST /api/v1/assistant/query`에 `request_id`와 `message`를 보냅니다. 익명 대화를 이어가려면 `conversation_id`와 이전 작업의 `X-Run-Access-Token`을 보냅니다. 선택 항목은 `context.festival_id`, `context.route_request_id`, `reference_date`입니다. 경로 ID를 보내면 `X-Route-Access-Token`도 필요합니다. 접수 응답은 202이며 `run_id`, `conversation_id`, `status_url`, `events_url`, `run_access_token`을 반환합니다. 같은 클라이언트의 세션 쿠키나 작업 토큰으로 다시 제출하면 기존 접수 응답을 반환합니다. 같은 `request_id`로 본문을 바꾸면 409를 반환합니다.
 
 ## A06-1 챗봇 작업 조회
 
 `GET /api/v1/assistant/runs/{run_id}`에 `X-Run-Access-Token`을 보냅니다. 첫 조회는 `running`이고, 두 번째부터 `succeeded` 또는 `failed`입니다. 귀가 질문의 결과에 경로 ID와 토큰이 있으면 A05에서 경로를 조회할 수 있습니다.
+
+## A06-2 챗봇 진행 SSE
+
+응답의 `events_url`에 `X-Run-Access-Token`을 보내면 진행 `step`, 답변 `token`, 종료 `done` 또는 `failed`를 받을 수 있습니다.
 
 ## A07 공지·통제
 
@@ -123,7 +127,7 @@ A07, A09, A10 요청에도 `X-Mock-Scenario`를 보낼 수 있습니다. 축제 
 | ID | 이름 | 지역 | 장소 | 위도, 경도 | 시작일 ~ 종료일 | 상태 | 이미지 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `fst_000001` | 광화문 겨울빛 축제 | SEOUL | 광화문광장 | 37.5759, 126.9768 | 2026-11-20 ~ 2026-12-31 | ongoing | Type3 |
-| `fst_000002` | 한강 겨울 야시장 | SEOUL | 여의도 한강공원 | 37.5284, 126.9327 | 2026-12-05 ~ 2026-12-07 | upcoming | Type1 |
+| `fst_000002` | 한강 겨울 별빛 축제 | SEOUL | 여의도 한강공원 | 37.5284, 126.9327 | 2026-12-05 ~ 2026-12-07 | upcoming | Type1 |
 | `fst_000003` | 부산 빛 축제 | BUSAN | 광복로 일대 | 35.1003, 129.0337 | 2026-11-15 ~ 2026-11-30 | ongoing | Type3 |
 | `fst_000004` | 해운대 모래 축제 | BUSAN | 해운대해수욕장 | 35.1587, 129.1604 | 2026-06-01 ~ 2026-06-03 | ended | Type3 |
 | `fst_000005` | 평창 송어 축제 | GANGWON | 오대천 일원 | 37.5640, 128.3846 | 2026-12-26 ~ 2027-01-25 | upcoming | 없음 |

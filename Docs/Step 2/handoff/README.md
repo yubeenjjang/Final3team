@@ -8,7 +8,7 @@ cd backend
 uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --port 8000
 # 브라우저: http://localhost:8000/docs  (모든 API를 눌러 볼 수 있음)
 ```
-11/22 모의 API 시험 112개 통과. 현재 팀 공통 시험은 저장소 루트에서 `python -m pytest backend/tests -q`로 실행합니다.
+11/22 모의 API 시험 112개 통과. 현재 팀 공통 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다.
 
 웹 화면(1차)은 **브랜치 `ohyun-web`**에 있습니다(프론트 담당 정예진·이수언 님과 월요일 결정 D6 뒤 `main` 병합). 보려면 `git fetch && git checkout ohyun-web` → `cd frontend && npm install && cp .env.local.example .env.local`(카카오 키는 따로 받기) → `npm run dev` → `http://localhost:3000`. 자세한 건 `ohyun-web`의 `frontend/README.md`.
 
@@ -26,7 +26,7 @@ uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --
 ## 지금 되는 API (모의)
 | API | 주소 | 비고 |
 |---|---|---|
-| A01 | `GET /api/v1/health` | |
+| A01 | `GET /api/v1/health` | DB 모드에서 앱 계정으로 `SELECT 1` 확인(최대 1초, 실패 503), 공통 Redis 연결 전까지 `not_configured` |
 | A02·A03 | `GET /api/v1/festivals`, `GET /api/v1/festivals/{id}` | 가짜 축제 6건(서울 2·부산 2·강원 1·좌표 없는 1) |
 | A07·A09·A10 | `GET /api/v1/festivals/{id}/notices` · `/weather` · `/crowd` | 혼잡은 서울만, 그 밖은 '지원 안 함' |
 | A04·A05 | `POST /api/v1/routes/return`, `GET /api/v1/routes/return/{id}` | 접수 → 처리 중 → 완료 |

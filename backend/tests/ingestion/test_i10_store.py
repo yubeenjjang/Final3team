@@ -22,6 +22,7 @@ def record() -> FestivalRecord:
         "contentid": "3379778", "title": "가락 옥토버페스트", "lDongRegnCd": "11",
         "eventstartdate": "20261016", "eventenddate": "20261018",
         "mapx": "127.118462", "mapy": "37.494505", "modifiedtime": "20261006091502",
+        "lclsSystm1": "EV", "lclsSystm2": "EV01", "lclsSystm3": "EV010600",
     }, today=NOW.date(), details_requested=False)
 
 
@@ -60,11 +61,19 @@ def test_I10_publication_rule(
     assert (values["review_status"], values["published_at"]) == expected
 
 
+@pytest.mark.parametrize("category", ["performance", "event", "unknown"])
+def test_I19_nonfestival_cannot_publish(record: FestivalRecord, category: str) -> None:
+    incoming = replace(record, category=category)
+    for review, expected in (("approved", ("pending", None)), ("hidden", ("hidden", NOW))):
+        values = festival_values(incoming, {"review_status": review, "published_at": NOW}, NOW)
+        assert (values["review_status"], values["published_at"]) == expected
+
+
 @pytest.mark.db
 def test_I10_insert_rerun_update_history_and_hidden(db_engine: Engine, record: FestivalRecord) -> None:
     store = FestivalStore(db_engine)
     pending = replace(
-        record, source_item_id="2", latitude=None, longitude=None,
+        record, source_item_id="2", latitude=None, longitude=None, coords_source=None,
         publishable=False, review_status="pending",
     )
     first_id = store.start_job(NOW)

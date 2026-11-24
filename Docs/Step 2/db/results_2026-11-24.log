@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-24 10:28:55 KST
+# 놀다가 DB 시험 결과 — 2026-11-24 22:26:28 KST
 ## 환경
 PostgreSQL 17.12 (Debian 17.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd)
@@ -174,7 +174,16 @@ PASS T43i 축제 장소인데 장소 해시가 있음 — 거부됨: new row for
 PASS T43j 채팅방 신고(S07) — 1 행 바뀜
 ALL SQL TESTS PASSED
 PASS T43k 앱 사용법 문서에 앱 버전 없음 — 거부됨: new row for relation "rag_documents" violates check constraint "rag_documents_app_guide_check"
-## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용
+## 4. 010 공개 원본 권한 적용·되돌리기·재적용
+psql:<stdin>:50: NOTICE:  T010a PASS: 공개 축제 원본 번호만 조회
+psql:<stdin>:50: NOTICE:  T010b PASS: 공개 축제와 원본만 조인
+psql:<stdin>:50: NOTICE:  T010c PASS: 내부 컬럼 조회 차단
+psql:<stdin>:71: NOTICE:  T010d PASS: 되돌리기 후 조회 권한과 공개 정책 제거
+psql:<stdin>:50: NOTICE:  T010a PASS: 공개 축제 원본 번호만 조회
+psql:<stdin>:50: NOTICE:  T010b PASS: 공개 축제와 원본만 조인
+psql:<stdin>:50: NOTICE:  T010c PASS: 내부 컬럼 조회 차단
+T010e PASS: 재적용 후 권한 및 공개 정책 복원
+## 4-1. 기존 귀가 데이터 → 011 적용·되돌리기·재적용
                      6
 
 psql:<stdin>:30: NOTICE:  PASS T011a: 칸·색인과 기존 요청·결과 보존
@@ -184,32 +193,234 @@ psql:<stdin>:78: NOTICE:  PASS T011d: 되돌리기와 기존 요청·결과 보�
 psql:<stdin>:30: NOTICE:  PASS T011a: 칸·색인과 기존 요청·결과 보존
 psql:<stdin>:47: NOTICE:  PASS T011b: 서비스 계정·토큰 해시 제약
 psql:<stdin>:63: NOTICE:  PASS T011c: 일반 계정 조회 거부
-## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증
+## 5. 012·013 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증
 psql:<stdin>:53: NOTICE:  PASS T012a: 기존 증빙 이관 및 원본 DB 본문 유지
 psql:<stdin>:73: NOTICE:  PASS T012b: 서비스 계정의 신규 결과 증빙 동기화
 psql:<stdin>:89: NOTICE:  PASS T012c: 증빙 칸·트리거 제거, 원래 경로 결과 유지
 psql:<stdin>:53: NOTICE:  PASS T012a: 기존 증빙 이관 및 원본 DB 본문 유지
 psql:<stdin>:73: NOTICE:  PASS T012b: 서비스 계정의 신규 결과 증빙 동기화
+psql:<stdin>:40: NOTICE:  PASS T013a: 기존 삭제 시각 이관 및 미정리·결과 없는 요청의 NULL 유지
+psql:<stdin>:58: NOTICE:  PASS T013b: 서비스 계정의 정리 트랜잭션에서 두 삭제 시각 일치
+psql:<stdin>:81: NOTICE:  PASS T013c: RLS 유지, 일반 계정의 삭제 시각 읽기·수정 거부
+psql:<stdin>:97: NOTICE:  PASS T013d: 013 되돌리기 뒤 결과 삭제 시각과 012 증빙 유지
+psql:<stdin>:40: NOTICE:  PASS T013a: 기존 삭제 시각 이관 및 미정리·결과 없는 요청의 NULL 유지
+psql:<stdin>:58: NOTICE:  PASS T013b: 서비스 계정의 정리 트랜잭션에서 두 삭제 시각 일치
+psql:<stdin>:81: NOTICE:  PASS T013c: RLS 유지, 일반 계정의 삭제 시각 읽기·수정 거부
+## 5-1. 014 축제 분류·공개 RLS 적용·되돌리기·재적용
+T014 PASSED
+T014 PASSED
+T014 PASSED
+## 5-2. 015 친구 신청 UNIQUE 사전 검사·적용·되돌리기·재적용
+ duplicate_request_id_count 
+----------------------------
+                          0
+(1 row)
+
+T015d PASS: 사전 검사에서 중복 1건 발견 및 적용 중단
+psql:<stdin>:36: NOTICE:  T015a PASS: 같은 신청을 참조하는 두 번째 관계 거부
+T015b PASS: request_id가 NULL인 관계를 여러 건 허용
+psql:<stdin>:59: NOTICE:  T015c PASS: 되돌리기 후 UNIQUE 제거·외래키 유지
+psql:<stdin>:36: NOTICE:  T015a PASS: 같은 신청을 참조하는 두 번째 관계 거부
+T015b PASS: request_id가 NULL인 관계를 여러 건 허용
+## 5-3. 016 1:1 방 부분 UNIQUE 사전 검사·적용·되돌리기·재적용
+ duplicate_keys_for_up | duplicate_keys_for_down 
+-----------------------+-------------------------
+                     0 |                       0
+(1 row)
+
+T016a PASS: 닫힌 방을 보존한 채 같은 사용자 쌍의 새 방 생성
+psql:<stdin>:48: NOTICE:  T016b PASS: 활성 방 중복 거부
+psql:<stdin>:48: NOTICE:  T016c PASS: 읽기 전용 방과 충돌하는 상태 변경 거부
+T016e PASS: 사전 검사에서 되돌리기 충돌 1건 발견 및 되돌리기 차단
+psql:<stdin>:68: NOTICE:  T016d PASS: 되돌리기 후 닫힌 방도 전역 UNIQUE 적용
+T016a PASS: 닫힌 방을 보존한 채 같은 사용자 쌍의 새 방 생성
+psql:<stdin>:48: NOTICE:  T016b PASS: 활성 방 중복 거부
+psql:<stdin>:48: NOTICE:  T016c PASS: 읽기 전용 방과 충돌하는 상태 변경 거부
+## 5-4. 017 축제 증가율·신호 적용·되돌리기·재적용
+psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 보존 — 2 행
+ expect_count 
+--------------
+ 
+(1 row)
+
+ expect_count 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_trend_ratio_check"
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:37: NOTICE:  PASS T017c 미정의 신호 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_signal_check"
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null value in column "signal" of relation "festival_trends" violates not-null constraint
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
+T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차단
+psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 — 0 행
+ expect_count 
+--------------
+ 
+(1 row)
+
+ expect_count 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:55: NOTICE:  PASS T017d 되돌리기 후 기존 행 보존 — 2 행
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:59: NOTICE:  PASS T017d 004 제약 복원 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_check1"
+ expect_count 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 보존 — 2 행
+psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
+ expect_count 
+--------------
+ 
+(1 row)
+
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_trend_ratio_check"
+psql:<stdin>:37: NOTICE:  PASS T017c 미정의 신호 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_signal_check"
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null value in column "signal" of relation "festival_trends" violates not-null constraint
+ expect_error 
+--------------
+ 
+(1 row)
+
+ expect_error 
+--------------
+ 
+(1 row)
+
+psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
+## 5-5. 018 축제 공개·좌표 출처 적용·되돌리기·재적용
+psql:<stdin>:49: NOTICE:  T018a~b PASS: 미분류 전환·이력 및 좌표 출처 제약
+psql:<stdin>:62: NOTICE:  T018c PASS: 축제와 원본 RLS 모두 EV01만 공개
+psql:<stdin>:86: NOTICE:  T018d PASS: 014 정책과 기존 게시 상태 복원
+psql:<stdin>:49: NOTICE:  T018a~b PASS: 미분류 전환·이력 및 좌표 출처 제약
+psql:<stdin>:62: NOTICE:  T018c PASS: 축제와 원본 RLS 모두 EV01만 공개
+## 5-6. 019_admin-review 축제 검토 사유 이관·되돌리기·재적용
+psql:<stdin>:43: NOTICE:  T019a PASS: 기존 검토 항목과 보류 사유 이관 및 사유 제약
+psql:<stdin>:56: NOTICE:  T019b PASS: 앱 역할의 검토 대기열 및 비공개 축제 접근 제한
+T019d PASS: 새 사유로 처리한 결정이 있으면 되돌리기 차단
+psql:<stdin>:70: NOTICE:  T019c PASS: 되돌리기 뒤 기존 검토 항목과 사유 제약 복원
+psql:<stdin>:43: NOTICE:  T019a PASS: 기존 검토 항목과 보류 사유 이관 및 사유 제약
+psql:<stdin>:56: NOTICE:  T019b PASS: 앱 역할의 검토 대기열 및 비공개 축제 접근 제한
+## 5-7. 020 동행 수동 마감·보존 RLS 적용·되돌리기·재적용
+psql:<stdin>:29: NOTICE:  T020a PASS: 수동 마감 상태 유지
+psql:<stdin>:44: NOTICE:  T020b PASS: 72시간 전 참가자 열람
+psql:<stdin>:60: NOTICE:  T020c PASS: 72시간 이후 내용 접근 차단과 방 이력 보존
+psql:<stdin>:77: NOTICE:  T020d PASS: 마감 상태와 만료 정책 되돌리기
+psql:<stdin>:29: NOTICE:  T020a PASS: 수동 마감 상태 유지
+psql:<stdin>:44: NOTICE:  T020b PASS: 72시간 전 참가자 열람
+psql:<stdin>:60: NOTICE:  T020c PASS: 72시간 이후 내용 접근 차단과 방 이력 보존
+## 5-8. 021_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용
+T021a~c PASS: 입장 시각·보존·비회원·차단 해제 뒤 RLS 및 새 방 생성
+T021a~c PASS: 입장 시각·보존·비회원·차단 해제 뒤 RLS 및 새 방 생성
+## 5-9. 022_notify 신고 처리 메모·조회 인덱스 적용·되돌리기·재적용
+T022a–d PASS: 신고 인덱스·메모 권한·열람 기록 보호·신고 RLS
+T022e PASS: 022 적용 전 상태로 되돌림
+T022a–d PASS: 신고 인덱스·메모 권한·열람 기록 보호·신고 RLS
+## 5-10. 023_notice 공식 공지 통제 버전 적용·되돌리기·재적용
+T023a~e PASS: 효력 전이·축제별 캐시·수동 종료·RLS·이력 보존
+T023a~e PASS: 효력 전이·축제별 캐시·수동 종료·RLS·이력 보존
+## 5-11. 024_admin-festivals 관리자 등록·변경 이력 적용·되돌리기·재적용
+psql:<stdin>:28: NOTICE:  T024a PASS: 관리 출처·감사 이력·중복 검색 인덱스와 필수 사유/처리자 확인
+psql:<stdin>:42: NOTICE:  T024b PASS: 앱 계정의 미게시 행과 관리자 데이터 접근 차단
+psql:<stdin>:54: NOTICE:  T024e PASS: 게시된 축제의 관리 출처 공개 조회
+T022d PASS: 관리자 감사 이력이 있으면 되돌리기 차단
+psql:<stdin>:66: NOTICE:  T024c PASS: 되돌리기 뒤 중복 검색 인덱스 및 신규 감사 칸 제거
+psql:<stdin>:28: NOTICE:  T024a PASS: 관리 출처·감사 이력·중복 검색 인덱스와 필수 사유/처리자 확인
+psql:<stdin>:42: NOTICE:  T024b PASS: 앱 계정의 미게시 행과 관리자 데이터 접근 차단
+psql:<stdin>:54: NOTICE:  T024e PASS: 게시된 축제의 관리 출처 공개 조회
+## 5-12. 025_assistant 작업 큐·보존 적용·되돌리기·재적용
+              set_config              
+--------------------------------------
+ d0220000-0000-0000-0000-000000000001
+(1 row)
+
+              set_config              
+--------------------------------------
+ d0220000-0000-0000-0000-000000000002
+(1 row)
+
+psql:<stdin>:37: NOTICE:  T025a PASS: 본인 행만 조회, 앱 역할 상태 변경 불가
+psql:<stdin>:55: NOTICE:  T025b PASS: 탈퇴·보존 정리 시 문맥 삭제와 미완료 작업 종료
+psql:<stdin>:72: NOTICE:  T025c PASS: 002·006을 유지하며 022 기능을 되돌림
+              set_config              
+--------------------------------------
+ d0220000-0000-0000-0000-000000000001
+(1 row)
+
+              set_config              
+--------------------------------------
+ d0220000-0000-0000-0000-000000000002
+(1 row)
+
+psql:<stdin>:37: NOTICE:  T025a PASS: 본인 행만 조회, 앱 역할 상태 변경 불가
+psql:<stdin>:55: NOTICE:  T025b PASS: 탈퇴·보존 정리 시 문맥 삭제와 미완료 작업 종료
+## 5-13. 026_jobs 정기 작업 회차·경로 요청 보존 적용·되돌리기·재적용
+psql:<stdin>:18: NOTICE:  PASS T026a: 서비스 회차 기록, 결과 연쇄 삭제, 공유 참조 해제
+psql:<stdin>:29: NOTICE:  PASS T026b: 회차 테이블 RLS 활성, 일반 계정 접근 거부
+psql:<stdin>:45: NOTICE:  PASS T026c: 회차 테이블·인덱스 제거와 기존 외래 키 복원
+psql:<stdin>:18: NOTICE:  PASS T026a: 서비스 회차 기록, 결과 연쇄 삭제, 공유 참조 해제
+psql:<stdin>:29: NOTICE:  PASS T026b: 회차 테이블 RLS 활성, 일반 계정 접근 거부
 psql:<stdin>:37: NOTICE:  PASS T25a: 복원된 route_results에 공급원 원본·후보 등 데이터 0행
 psql:<stdin>:37: NOTICE:  PASS T25b: 복원 뒤 공급원·조회 시각·요청 상태·오류 코드 보존
+psql:<stdin>:25: NOTICE:  PASS T25c: 복원 뒤 실제 삭제 시각 보존, 미정리·결과 없는 요청은 NULL
 PASS T20b TMAP 경로 내용을 purged_at과 함께 지움 — 1 행 바뀜
-AFTER-BACKUP TESTS PASSED
 PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
+AFTER-BACKUP TESTS PASSED
 ## 6. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
 Buffers: shared hit=296
-->  Seq Scan on festivals (actual time=0.071..1.315 rows=26 loops=1)
-Rows Removed by Filter: 19977
+->  Seq Scan on festivals (actual time=0.071..1.163 rows=26 loops=1)
+Rows Removed by Filter: 19987
 Buffers: shared hit=296
-Buffers: shared hit=95
-Planning Time: 0.152 ms
-Execution Time: 1.333 ms
+Buffers: shared hit=97
+Planning Time: 0.146 ms
+Execution Time: 1.179 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
-Buffers: shared hit=35
-->  Bitmap Heap Scan on festivals (actual time=0.049..0.071 rows=26 loops=1)
-Buffers: shared hit=35
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.042..0.043 rows=26 loops=1)
-Buffers: shared hit=9
-Planning Time: 0.077 ms
-Execution Time: 0.111 ms
+Buffers: shared hit=37
+->  Bitmap Heap Scan on festivals (actual time=0.066..0.079 rows=26 loops=1)
+Buffers: shared hit=37
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.061..0.061 rows=26 loops=1)
+Buffers: shared hit=11
+Planning Time: 0.050 ms
+Execution Time: 0.093 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)

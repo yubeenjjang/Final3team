@@ -84,4 +84,12 @@
 
 - `CROWD_PROVIDER` 기본값은 `mock`입니다. 기존 내장 고정 자료와 응답 키, `X-Mock-Scenario`의 `source_error`·`stale`을 유지합니다.
 - `real`에서 승인 조건을 통과한 구역만 서버의 `SEOUL_OPEN_API_KEY`로 호출합니다. 실제 모드 A10은 `is_mock:false`이고 `X-Mock`이 없습니다. 공식 HTTP 전송 허용 여부는 **사용자 확인 필요**입니다. 승인 구역과 전송 조건이 확인된 뒤 운영에서 `real`로 전환합니다.
-- `tests/crowd/`의 저장된 고정 파일·가짜 HTTP·가짜 시각으로 검증하고 저장소 루트에서 `python -m pytest backend/tests -q`를 실행합니다.
+- `tests/crowd/`의 저장된 고정 파일·가짜 HTTP·가짜 시각으로 검증하고 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`를 실행합니다.
+
+## 승인 기록
+
+| 날짜 | 승인자 | 축제 | 구역 | 근거 |
+|---|---|---|---|---|
+| 2026-11-24 | 권오현 | 2026 숭례문 파수의식 (`fst_01M835BYKKNJ8CZP9RP09ST18D`) | 숭례문 `POI131` | 행사장 좌표가 공식 구역 내부(`contains`), 11/23 학원망 실응답 확인 |
+| 2026-11-24 | 권오현 | 서울빛초롱축제 (`fst_01M835B57450M888RBNEFVRWWA`) | 광화문·덕수궁 `POI009`, 시의회 앞 `POI130`, 명동 관광특구 `POI003` | 주변 구역 3곳을 모두 '주변 지역 혼잡'으로 표시. 2027-01-31까지 개최로 시연 대표 |
+| 2026-11-24 | 권오현 | 2026 숭례문 파수의식 | 숭례문 `POI131` **승인 취소** | 재수집 결과 TourAPI `lclsSystm2=EV03`(행사)로 축제 범위 밖 → 공개 내림. 시연 대표는 서울빛초롱축제 하나 |

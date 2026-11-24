@@ -11,20 +11,42 @@ from typing import Literal, cast
 
 from api.providers.route_base import KST, as_kst
 
-QuotaProvider = Literal["tmap", "kakao", "kakao_local", "seoul_citydata"]
+QuotaProvider = Literal[
+    "tmap", "kakao", "kakao_local", "seoul_citydata", "kma", "seoul_subway",
+    "seoul_bus_arrival", "seoul_bus_station", "tago_stop", "tago_bus", "visit_forecast", "region_demand",
+    "police_incident", "police_utic", "seoul_topis",
+]
 
 _LIMITS: dict[QuotaProvider, tuple[str, str]] = {
     "tmap": ("ROUTE_TMAP_DAILY_LIMIT", "10"),
     "kakao": ("ROUTE_KAKAO_DAILY_LIMIT", "1000"),
     "kakao_local": ("ROUTE_KAKAO_LOCAL_DAILY_LIMIT", "1000"),
 }
+_INFO_LIMITS: dict[QuotaProvider, tuple[str, str]] = {
+    "kma": ("KMA_DAILY_LIMIT", "10000"),
+    "tago_stop": ("TAGO_STOP_DAILY_LIMIT", "10000"),
+    "tago_bus": ("TAGO_ARRIVAL_DAILY_LIMIT", "10000"),
+    "seoul_subway": ("SEOUL_SUBWAY_DAILY_LIMIT", "1000"),
+    "seoul_bus_arrival": ("SEOUL_BUS_DAILY_LIMIT", "1000"),
+    "seoul_bus_station": ("SEOUL_BUS_STATION_DAILY_LIMIT", "1000"),
+    "visit_forecast": ("VISIT_FORECAST_DAILY_LIMIT", "1000"),
+    "region_demand": ("REGION_DEMAND_DAILY_LIMIT", "1000"),
+    "police_incident": ("POLICE_INCIDENT_DAILY_LIMIT", "2880"),
+    "police_utic": ("UTIC_DAILY_LIMIT", "2880"),
+    "seoul_topis": ("SEOUL_TOPIS_DAILY_LIMIT", "2880"),
+}
 _LOGGER = logging.getLogger(__name__)
 
 
 class QuotaGuard:
-    def __init__(self, *, now: Callable[[], datetime] | None = None, crowd: bool = False) -> None:
+    def __init__(
+        self, *, now: Callable[[], datetime] | None = None, crowd: bool = False, info: bool = False,
+    ) -> None:
         limits: dict[QuotaProvider, tuple[str, str]]
-        if crowd:
+        if info:
+            self._path = Path(os.environ.get("FESTIVAL_INFO_QUOTA_FILE", "./.festival_info_quota.json"))
+            limits = _INFO_LIMITS
+        elif crowd:
             self._path = Path(os.environ.get("CROWD_QUOTA_FILE", "./.crowd_quota.json"))
             limits = {"seoul_citydata": ("CROWD_SEOUL_DAILY_LIMIT", "1000")}
         else:

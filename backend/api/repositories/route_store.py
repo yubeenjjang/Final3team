@@ -9,32 +9,47 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import RowMapping, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, TimeoutError as DBPoolTimeout
 from sqlalchemy.orm import Session
 
 from api.errors import ApiError
+from api.jobs.locks import ROUTE_RESULTS
 from api.providers.route_base import ProviderResult
 from api.schemas.routes import RouteDirection
 from shared.db.session import service_db_session
 
 TOKEN_TTL = timedelta(minutes=10)
 RESULT_TTL = timedelta(hours=24)
-SWEEP_AGE = timedelta(hours=23)
+DEFAULT_PURGE_AFTER_HOURS = 23
 
 _STATUS = """
-    SELECT route_request_id, direction, festival_id, festival_lat, festival_lng, origin_type,
+    SELECT route_request_id, direction, rq.festival_id, f.region_code, festival_lat, festival_lng, origin_type,
            destination_type, travel_mode, route_preference, constraints, status, error_code,
            error_detail, submitted_at, started_at, completed_at, access_token_hash
-      FROM public.route_requests
+      FROM public.route_requests AS rq
+      LEFT JOIN public.festivals AS f ON f.festival_id = rq.festival_id
      WHERE route_request_id = :route_id AND direction = :direction AND request_body_hash IS NOT NULL
 """
-_PURGE = """
-    UPDATE public.route_results
-       SET candidates = NULL, evidence = '{}', provider_ref = NULL,
-           validity_check = CASE WHEN source_type IN ('cache','alternate') THEN '{}'::jsonb END,
-           purged_at = :now
-     WHERE provider = 'tmap' AND purged_at IS NULL AND queried_at <= :cutoff
+_EMPTY_VALIDITY_CHECK = "CASE WHEN source_type IN ('cache','alternate') THEN CAST('{}' AS jsonb) END"
+_EXPIRED_RESULTS = f"""
+    WHERE provider = 'tmap' AND (
+        (purged_at IS NULL AND queried_at <= :cutoff)
+        OR (purged_at IS NOT NULL AND (
+            candidates IS NOT NULL OR evidence <> '{{}}' OR provider_ref IS NOT NULL
+            OR route_hash <> '' OR score_version IS NOT NULL OR cache_key IS NOT NULL
+            OR validity_check IS DISTINCT FROM ({_EMPTY_VALIDITY_CHECK})
+        ))
+    )
 """
+# A05와 정리 명령이 공유한다. 013 트리거가 같은 트랜잭션에서 삭제 시각을 요청 행에 기록한다.
+_PURGE = f"""
+    UPDATE public.route_results
+       SET candidates = NULL, evidence = '{{}}', provider_ref = NULL,
+           route_hash = '', score_version = NULL, cache_key = NULL,
+           validity_check = {_EMPTY_VALIDITY_CHECK},
+           purged_at = COALESCE(purged_at, :now)
+""" + _EXPIRED_RESULTS
+_COUNT_EXPIRED = text("SELECT count(*) FROM public.route_results " + _EXPIRED_RESULTS)
 
 
 def token_hash(token: str) -> str:
@@ -82,6 +97,8 @@ class RouteStore:
         try:
             with self._session() as session:
                 yield session
+        except DBPoolTimeout:
+            raise
         except (SQLAlchemyError, ValueError):
             raise ApiError(503, "ROUTE_STORE_UNAVAILABLE", "귀가 요청 저장소에 연결할 수 없어요.", True) from None
 
@@ -175,7 +192,14 @@ class RouteStore:
             """), params).mappings().one_or_none()
             return request, result
 
-    def purge_expired(self, now: datetime) -> int:
-        """매시간 실행할 때 24시간 전에 정리하도록 23시간부터 비운다."""
+    def purge_expired(
+        self, now: datetime, *, after_hours: int = DEFAULT_PURGE_AFTER_HOURS, dry_run: bool = False,
+    ) -> int | None:
+        """정리 기준에 도달한 결과 수를 반환한다. 다른 정리 작업이 실행 중이면 None이다."""
         with self._transaction() as session:
-            return session.execute(text(_PURGE), {"now": now, "cutoff": now - SWEEP_AGE}).rowcount
+            if not session.execute(ROUTE_RESULTS).scalar_one():
+                return None
+            params = {"cutoff": now - timedelta(hours=after_hours)}
+            if dry_run:
+                return session.execute(_COUNT_EXPIRED, params).scalar_one()
+            return session.execute(text(_PURGE), {**params, "now": now}).rowcount

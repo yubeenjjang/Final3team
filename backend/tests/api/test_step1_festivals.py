@@ -1,6 +1,12 @@
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+
+from api.mocks.store import festivals
+from api.services import festival_store
 
 _FESTIVALS = "/api/v1/festivals"
 _LIST_FIELDS = {
@@ -17,7 +23,7 @@ _ROWS = (
         "2026-11-20", "2026-12-31", "ongoing", "Type3", "무료",
     ),
     (
-        "fst_000002", "한강 겨울 야시장", "SEOUL", "여의도 한강공원", 37.5284, 126.9327,
+        "fst_000002", "한강 겨울 별빛 축제", "SEOUL", "여의도 한강공원", 37.5284, 126.9327,
         "2026-12-05", "2026-12-07", "upcoming", "Type1", None,
     ),
     (
@@ -133,7 +139,7 @@ def test_R7_date_filters_use_inclusive_overlap(client: TestClient) -> None:
 
 
 def test_R7_searches_names_and_venues(client: TestClient) -> None:
-    assert _ids(_list(client, "?q=야시장")) == ["fst_000002"]
+    assert _ids(_list(client, "?q=별빛")) == ["fst_000002"]
     assert _ids(_list(client, "?q=여의도")) == ["fst_000002"]
 
 
@@ -193,3 +199,62 @@ def test_R8_missing_and_malformed_festival_ids(client: TestClient) -> None:
     error = invalid.json()["error"]
     assert error["code"] == "VALIDATION_ERROR"
     assert "festival_id" in error["message"]
+
+
+def test_I20_mock_catalog_filters_categories(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    for index, category in enumerate(("performance", "event", "unknown"), start=7):
+        festival_id = f"fst_{index:06d}"
+        monkeypatch.setitem(festivals, festival_id, festivals["fst_000001"].model_copy(
+            update={"festival_id": festival_id, "category": category, "name": "분류 시험"},
+        ))
+        assert client.get(f"{_FESTIVALS}/{festival_id}").status_code == 404
+    assert _list(client)["total"] == 6
+    assert _list(client, "?q=분류+시험")["items"] == []
+
+
+def test_I20_catalog_filters_without_relying_on_rls(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("""
+                CREATE TABLE festivals (festival_id TEXT, title TEXT, region_code TEXT, venue_name TEXT,
+                    latitude REAL, longitude REAL, start_date TEXT, end_date TEXT, event_status TEXT,
+                    thumbnail_url TEXT, image_url TEXT, last_synced_at TEXT, address TEXT, summary TEXT,
+                    admission_fee_text TEXT, official_url TEXT, image_copyright_type TEXT,
+                    category TEXT, source_class_level2 TEXT, review_status TEXT, published_at TEXT)
+            """)
+            connection.exec_driver_sql("""
+                CREATE TABLE festival_sources (festival_id TEXT, source_id TEXT, source_item_id TEXT)
+            """)
+            connection.exec_driver_sql("""
+                INSERT INTO festivals (festival_id, title, region_code, category, source_class_level2,
+                                       review_status, published_at)
+                VALUES ('fst_T20001', '축제', 'SEOUL', 'festival', 'EV01', 'approved', '2026-11-24'),
+                       ('fst_T20002', '공연', 'SEOUL', 'festival', 'EV02', 'approved', '2026-11-24'),
+                       ('fst_T20003', '행사', 'SEOUL', 'event', 'EV03', 'approved', '2026-11-24'),
+                       ('fst_T20004', '무안 YD 페스티벌', 'JEONNAM', 'festival', NULL, 'approved', '2026-11-24')
+            """)
+        monkeypatch.setenv("FESTIVAL_DATA", "db")
+        monkeypatch.setattr(festival_store, "get_festival_engine", lambda: engine)
+        listing = client.get(_FESTIVALS).json()
+        assert listing["total"] == 1
+        assert _ids(listing) == ["fst_T20001"]
+        assert (listing["items"][0]["lat"], listing["items"][0]["lng"]) == (None, None)
+        detail = client.get(f"{_FESTIVALS}/fst_T20001")
+        assert detail.status_code == 200
+        assert (detail.json()["lat"], detail.json()["lng"]) == (None, None)
+        route = client.post("/api/v1/routes/return", json={
+            "request_id": "fst-t18001-route", "festival_id": "fst_T20001",
+            "destination": {"query": "서울역"},
+        })
+        assert route.status_code == 400
+        assert route.json()["error"]["code"] == "FESTIVAL_LOCATION_UNKNOWN"
+        monkeypatch.setenv("CROWD_PROVIDER", "real")
+        crowd = client.get(f"{_FESTIVALS}/fst_T20001/crowd")
+        assert crowd.status_code == 200
+        assert crowd.json()["status"] == "unsupported"
+        assert crowd.json()["unsupported_reason"] == "missing_coordinates"
+        for festival_id in ("fst_T20002", "fst_T20003", "fst_T20004"):
+            assert client.get(f"{_FESTIVALS}/{festival_id}").status_code == 404
+    finally:
+        engine.dispose()

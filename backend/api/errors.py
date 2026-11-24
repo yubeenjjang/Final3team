@@ -3,20 +3,27 @@ from collections.abc import Mapping
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import TimeoutError as DBPoolTimeout
 from starlette.exceptions import HTTPException
 
 from api.schemas.common import ErrorDetail, ErrorResponse
 
+SERVICE_BUSY_CODE = "DB_POOL_TIMEOUT"
+SERVICE_BUSY_MESSAGE = "요청이 많아 잠시 후 다시 시도해 주세요."
+_DB_POOL_RETRY_AFTER_S = 1
+
 
 class ApiError(Exception):
     def __init__(
-        self, status: int, code: str, message: str, retryable: bool = False
+        self, status: int, code: str, message: str, retryable: bool = False,
+        *, retry_after: int | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
         self.retryable = retryable
+        self.retry_after = retry_after
 
 
 def error_response(
@@ -40,7 +47,13 @@ def error_response(
 
 
 async def handle_api_error(request: Request, error: ApiError) -> JSONResponse:
-    return error_response(request, error)
+    retry_after = _DB_POOL_RETRY_AFTER_S if error.code == SERVICE_BUSY_CODE else error.retry_after
+    headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
+    return error_response(request, error, headers)
+
+
+async def handle_db_pool_timeout(request: Request, _error: DBPoolTimeout) -> JSONResponse:
+    return await handle_api_error(request, ApiError(503, SERVICE_BUSY_CODE, SERVICE_BUSY_MESSAGE, True))
 
 
 async def handle_validation_error(

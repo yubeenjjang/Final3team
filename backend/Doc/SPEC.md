@@ -4,7 +4,7 @@
 - 모든 요구에는 **확인 방법**이 있다. 확인 방법은 `backend/tests/api/`의 pytest 시험으로 만든다(시험 이름에 요구 번호를 넣는다. 예: `test_R4_region_filter`).
 - 실행 환경: Python 3.14(안 되면 3.13), `uv`.
   - 서버는 `backend/`에서 `uv run --with-requirements api/requirements.txt uvicorn api.main:app --reload --port 8000`으로 실행한다. API 문서 주소는 `http://localhost:8000/docs`다.
-  - 시험은 저장소 루트에서 `python -m pytest backend/tests -q`로 실행한다. uv 환경에서는 `uv run --offline --with-requirements backend/api/requirements.txt python -m pytest backend/tests -q`를 사용한다.
+  - 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행한다.
 - import는 `backend/`를 기준으로 `from api.… import …`.
 
 ## 0. 공통
@@ -44,7 +44,7 @@
 | festival_id | name | region_code | venue_name | lat, lng | start_date ~ end_date | event_status | 이미지 |
 |---|---|---|---|---|---|---|---|
 | `fst_000001` | 광화문 겨울빛 축제 | SEOUL | 광화문광장 | 37.5759, 126.9768 | 2026-11-20 ~ 2026-12-31 | ongoing | 있음, Type3 |
-| `fst_000002` | 한강 겨울 야시장 | SEOUL | 여의도 한강공원 | 37.5284, 126.9327 | 2026-12-05 ~ 2026-12-07 | upcoming | 있음, Type1 |
+| `fst_000002` | 한강 겨울 별빛 축제 | SEOUL | 여의도 한강공원 | 37.5284, 126.9327 | 2026-12-05 ~ 2026-12-07 | upcoming | 있음, Type1 |
 | `fst_000003` | 부산 빛 축제 | BUSAN | 광복로 일대 | 35.1003, 129.0337 | 2026-11-15 ~ 2026-11-30 | ongoing | 있음, Type3 |
 | `fst_000004` | 해운대 모래 축제 | BUSAN | 해운대해수욕장 | 35.1587, 129.1604 | 2026-06-01 ~ 2026-06-03 | ended | 있음, Type3 |
 | `fst_000005` | 평창 송어 축제 | GANGWON | 오대천 일원 | 37.5640, 128.3846 | 2026-12-26 ~ 2027-01-25 | upcoming | 없음 |
@@ -64,7 +64,7 @@
 | `page`·`page_size` | 1 이상 / 1~100, 기본 1 / 20 |
 
 - 응답 200: `{items:[목록 칸], total, page, page_size, is_mock}`. 목록 칸 = `festival_id, name, region_code, venue_name, lat, lng, start_date, end_date, event_status, thumbnail_url, image_credit, source, last_synced_at`.
-- **확인:** 필터 없음 → total 6 · `region=SEOUL` → 2 · `region=BUSAN&status=ongoing` → `fst_000003`만 · `date_from=2026-12-01&date_to=2026-12-10` → `fst_000001`,`fst_000002` · `q=야시장` → `fst_000002` · `page_size=2&page=3` → items 2개, total 6 · 기본 정렬에서 `fst_000006`이 마지막 · `region=MARS` 422 · `date_from=2026-12-10&date_to=2026-12-01` 422 · `page_size=101` 422.
+- **확인:** 필터 없음 → total 6 · `region=SEOUL` → 2 · `region=BUSAN&status=ongoing` → `fst_000003`만 · `date_from=2026-12-01&date_to=2026-12-10` → `fst_000001`,`fst_000002` · `q=별빛` → `fst_000002` · `page_size=2&page=3` → items 2개, total 6 · 기본 정렬에서 `fst_000006`이 마지막 · `region=MARS` 422 · `date_from=2026-12-10&date_to=2026-12-01` 422 · `page_size=101` 422.
 
 ### R8. A03 `GET /api/v1/festivals/{festival_id}`
 - `festival_id`는 `^fst_[0-9A-Za-z]{6,26}$`. 형식이 틀리면 422, 없으면 **404 `FESTIVAL_NOT_FOUND`**.
@@ -72,8 +72,9 @@
 - **확인:** `fst_000001` → `image_copyright.type=="Type3"`, `modify_allowed is False`, `image_credit=="한국관광공사"` · `fst_000002` → `modify_allowed is True` · `fst_000005` → `image_url is None` 이고 `image_copyright is None` · `fst_999999` → 404 `FESTIVAL_NOT_FOUND` · `abc` → 422.
 
 ### R9. A01 `GET /api/v1/health`
-- 200 `{status:"ok", db:"mock", redis:"mock", version:"0.1.0-mock", is_mock:true}`.
-- **확인:** 위 값 그대로.
+- 모의 모드는 200 `{status:"ok", db:"mock", redis:"mock", version:"0.1.0-mock", is_mock:true}`.
+- DB를 사용하는 API 설정에서는 앱 계정으로 연결해 `SELECT 1`을 총 1초 안에 실행한다. 성공은 200에 `status: ok`, `db: ok`, 실패는 503에 `status: degraded`, `db: unavailable`이다. 두 응답 모두 `redis: not_configured`, `is_mock: false`와 앱 버전을 포함한다.
+- **확인:** 모의 모드 DB 호출 없음, 가짜 DB 연결·쿼리 성공과 실패, 연결·쿼리 시간 초과.
 
 ## 2. 귀갓길·가는 길 (2단계)
 

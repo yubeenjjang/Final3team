@@ -5,8 +5,11 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import TimeoutError as DBPoolTimeout
 
 from api.errors import ApiError
+from api.main import app
 from api.providers.route_base import ProviderResult
 from api.repositories.route_store import TOKEN_TTL, RouteStore, stored_candidates, token_hash
 from api.schemas.routes import ReturnRouteRequest
@@ -127,6 +130,43 @@ def test_P20_shared_service_settings_error_returns_503(monkeypatch):
     assert error.value.__suppress_context__
 
 
+@pytest.mark.parametrize("method", ["POST", "GET"])
+def test_P24_pool_timeout_returns_retryable_service_busy(monkeypatch, caplog, method):
+    def exhausted_pool():
+        raise DBPoolTimeout("synthetic internal pool details")
+
+    monkeypatch.setenv("ROUTE_PROVIDER", "real")
+    monkeypatch.setenv("ROUTE_KEY_SECRET", "TEST_KEY_DO_NOT_USE")
+    service = real_routes.RealRouteService(store=RouteStore(exhausted_pool))
+    monkeypatch.setattr(real_routes, "get_service", lambda: service)
+    path = "/api/v1/routes/return"
+    headers = {"X-Request-ID": "synthetic-pool-request", "Origin": "http://localhost:3000"}
+    with TestClient(app) as client:
+        if method == "POST":
+            response = client.post(path, headers=headers, json={
+                "request_id": "synthetic-pool-request",
+                "festival_id": "fst_000001",
+                "destination": {"lat": 37.5, "lng": 126.9},
+            })
+        else:
+            response = client.get(f"{path}/rr_SYNTHETIC", headers={
+                **headers, "X-Route-Access-Token": "synthetic-token",
+            })
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "1"
+    assert "Retry-After" in response.headers["Access-Control-Expose-Headers"]
+    assert response.headers["X-Request-ID"] == headers["X-Request-ID"]
+    assert "X-Mock" not in response.headers
+    assert response.json() == {"error": {
+        "code": "DB_POOL_TIMEOUT",
+        "message": "요청이 많아 잠시 후 다시 시도해 주세요.",
+        "request_id": headers["X-Request-ID"],
+        "retryable": True,
+    }}
+    assert "synthetic internal pool details" not in caplog.text
+
+
 @pytest.mark.parametrize("tmap_available", [True, False])
 def test_P17_db_write_contains_only_the_allowed_result(monkeypatch, tmap_available):
     monkeypatch.setenv("ROUTE_KEY_SECRET", "TEST_KEY_DO_NOT_USE")
@@ -158,12 +198,14 @@ def test_P17_db_write_contains_only_the_allowed_result(monkeypatch, tmap_availab
     }
     status, response = asyncio.run(service.create_route("return", ReturnRouteRequest(**body), body))
     assert status == 200
+    assert "route_access_token" not in response
     assert [name for name, _ in writes] == [
         "queued", "processing", "ready" if tmap_available else "unavailable",
     ]
-    assert writes[0][1]["token_hash"] == token_hash(response["route_access_token"])
+    token = service._db_token(response["route_request_id"])
+    assert writes[0][1]["token_hash"] == token_hash(token)
     serialized_writes = json.dumps(writes, default=str)
-    for sensitive in (response["route_access_token"], body["request_id"], "37.123456", "126.789123"):
+    for sensitive in (token, body["request_id"], "37.123456", "126.789123"):
         assert sensitive not in serialized_writes
     if tmap_available:
         assert writes[-1][1]["result"] is not None

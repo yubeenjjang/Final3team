@@ -28,9 +28,10 @@ def test_I3_record_fields(listing: dict[str, Any]) -> None:
     record = normalize_festival(listing, today=TODAY, details_requested=False)
     assert {field.name for field in fields(FestivalRecord)} == {
         "source_item_id", "title", "start_date", "end_date", "venue_name", "address",
-        "latitude", "longitude", "region_code", "category", "summary", "admission_fee_text",
+        "latitude", "longitude", "coords_source", "region_code", "category", "source_class_level1",
+        "source_class_level2", "source_class_code", "summary", "admission_fee_text",
         "image_url", "thumbnail_url", "image_copyright_type", "official_url", "organizer",
-        "event_status", "source_updated_at", "review_status", "publishable", "issues", "raw_checksum",
+        "event_status", "source_updated_at", "listing_updated_at", "review_status", "publishable", "issues", "raw_checksum",
     }
     assert record.source_item_id == "3379778"
     assert record.title == "가락 옥토버페스트"
@@ -153,6 +154,38 @@ def test_I5_category_timestamp_and_stable_checksum(listing: dict[str, Any]) -> N
         (listing, common, intro | {"raw_field": 1}),
     ):
         assert normalize_festival(*items, today=TODAY).raw_checksum != record.raw_checksum
+
+
+@pytest.mark.parametrize(
+    ("level2", "level3", "category"),
+    [
+        ("EV01", "EV010600", "festival"),
+        ("EV02", "EV020100", "performance"),
+        ("EV03", "EV030100", "event"),
+        ("EV99", "EV990100", "unknown"),
+        ("", "", "unknown"),
+        (None, None, "unknown"),
+    ],
+)
+def test_I18_classification_uses_listing_codes(
+    listing: dict[str, Any], level2: str | None, level3: str | None, category: str,
+) -> None:
+    listing.pop("lclsSystm2")
+    listing.pop("lclsSystm3")
+    listing["lclsSystm1"] = " EV "
+    if level2 is not None:
+        listing.update(lclsSystm2=f" {level2} ", lclsSystm3=f" {level3} ")
+    common = fixture_items("common_3379778.json")[0]
+    intro = fixture_items("intro_3379778.json")[0]
+    record = normalize_festival(listing, common, intro, today=TODAY)
+    assert (record.source_class_level1, record.source_class_level2, record.source_class_code) == (
+        "EV", level2 or None, level3 or None,
+    )
+    assert record.category == category
+    assert record.publishable is (category == "festival")
+    assert record.review_status == ("approved" if record.publishable else "pending")
+    expected_issue = "not_festival_class" if level2 else "class_unverified"
+    assert record.issues == ([] if record.publishable else [expected_issue])
 
 
 def test_I6_detail_text_and_homepage(listing: dict[str, Any]) -> None:

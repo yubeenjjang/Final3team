@@ -2,18 +2,126 @@ import logging
 import re
 
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
-_CROWD_PATH = re.compile(r"/api/v1/festivals/[^/]+/crowd/?")
+_ASSISTANT_PATH = re.compile(r"/api/v1/assistant/(query|runs/[^/]+(?:/events)?)/?")
+_AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
+_ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
+_CHAT_PATH = re.compile(
+    r"/api/v1/(?:ws/chat|chat-rooms(?:/[^/]+(?:/(?:invitations|accept|decline|leave|read|messages))?)?"
+    r"|me/(?:chat-rooms|notifications(?:/read)?)|ws-tickets)/?"
+)
+_CHAT_ROOM_PATH = re.compile(r"/api/v1/chat-rooms/[^/]+(?:/([^/]+))?/?")
+_CHAT_SOCKET_PATH = "/api/v1/ws/chat"
+_FAVORITE_ITEM_PATH = re.compile(r"/api/v1/me/favorites/[^/]+/?")
+_FRIENDS_PATH = re.compile(r"(/api/v1/(?:users/search|friend-requests|me/friend-requests|me/friends))/?")
+_FRIEND_ACTION_PATH = re.compile(r"/api/v1/friend-requests/[^/]+/[^/]+/?")
+_FRIEND_ITEM_PATH = re.compile(r"(/api/v1/me/(?:friends|blocks))/[^/]+/?")
+_FESTIVAL_INFO_PATH = re.compile(
+    r"/api/v1/festivals/[^/]+/(crowd|notices|weather|transit|traffic-incidents|visit-forecast)/?"
+)
+_COMPANION_PATH = re.compile(
+    r"/api/v1/(?:festivals/[^/]+/companion-posts|companion-posts(?:/[^/]+(?:/[^/]+)?)?"
+    r"|companion-applications/[^/]+/[^/]+)/?"
+)
+
+_ADMIN_NOTICE_PATH = re.compile(r"/api/v1/admin/notices(?:/[^/]+(?:/(review|end))?)?/?")
+
+ADMIN_FESTIVALS_PATH = "/api/v1/admin/festivals"
+ADMIN_REVIEW_PATH = ADMIN_FESTIVALS_PATH + "/review-queue"
+_ADMIN_FESTIVAL_DETAIL = re.compile(ADMIN_FESTIVALS_PATH + r"/[^/]+")
+REPORTS_PATH = "/api/v1/reports"
+ADMIN_REPORTS_PATH = "/api/v1/admin/reports"
+REPORT_PATHS = frozenset((REPORTS_PATH, ADMIN_REPORTS_PATH))
 
 request_logger = logging.getLogger("uvicorn.error.api_requests")
+
+
+def assistant_endpoint(path: str) -> str | None:
+    match = _ASSISTANT_PATH.fullmatch(path)
+    if match is None:
+        return None
+    if match[1] == "query":
+        return "/api/v1/assistant/query"
+    return "/api/v1/assistant/runs/{run_id}" + ("/events" if match[1].endswith("/events") else "")
+
+
+def auth_endpoint(path: str) -> str | None:
+    match = _AUTH_PATH.fullmatch(path)
+    return match[1] if match else None
+
+
+def me_endpoint(path: str) -> str | None:
+    match = _ME_PATH.fullmatch(path)
+    if match:
+        return match[1]
+    if _FAVORITE_ITEM_PATH.fullmatch(path):
+        return "/api/v1/me/favorites/{festival_id}"
+    return None
+
+
+def friends_endpoint(path: str) -> str | None:
+    match = _FRIENDS_PATH.fullmatch(path)
+    if match:
+        return match[1]
+    if _FRIEND_ACTION_PATH.fullmatch(path):
+        return "/api/v1/friend-requests/{request_id}/{action}"
+    match = _FRIEND_ITEM_PATH.fullmatch(path)
+    return match[1] + "/{user_id}" if match else None
+
+
+def companion_endpoint(path: str) -> str | None:
+    if not _COMPANION_PATH.fullmatch(path):
+        return None
+    if path.startswith("/api/v1/festivals/"):
+        return "/api/v1/festivals/{festival_id}/companion-posts"
+    parts = path.rstrip("/").split("/")
+    if parts[3] == "companion-applications":
+        return "/api/v1/companion-applications/{application_id}/{action}"
+    if len(parts) == 4:
+        return "/api/v1/companion-posts"
+    detail = "/api/v1/companion-posts/{post_id}"
+    if len(parts) == 5:
+        return detail
+    return detail + ("/" + parts[5] if parts[5] in {"applications", "meeting-place"} else "/{action}")
+
+
+def chat_endpoint(path: str) -> str | None:
+    if not _CHAT_PATH.fullmatch(path):
+        return None
+    if room := _CHAT_ROOM_PATH.fullmatch(path):
+        return "/api/v1/chat-rooms/{room_id}" + ("/" + room[1] if room[1] else "")
+    return path.rstrip("/")
+
+
+def admin_notice_endpoint(path: str) -> str | None:
+    match = _ADMIN_NOTICE_PATH.fullmatch(path)
+    if not match:
+        return None
+    base = "/api/v1/admin/notices"
+    if path.rstrip("/") == base:
+        return base
+    return base + "/{notice_id}" + ("/" + match[1] if match[1] else "")
+
+
+def admin_festival_endpoint(path: str) -> str | None:
+    path = path.rstrip("/")
+    if path in (ADMIN_FESTIVALS_PATH, ADMIN_REVIEW_PATH):
+        return path
+    if _ADMIN_FESTIVAL_DETAIL.fullmatch(path):
+        return ADMIN_FESTIVALS_PATH + "/{festival_id}"
+    return None
 
 
 def private_endpoint(path: str) -> str | None:
     route = _ROUTE_PATH.fullmatch(path)
     if route:
         return route[1] + ("/{route_request_id}" if route[2] else "")
-    if _CROWD_PATH.fullmatch(path):
-        return "/api/v1/festivals/{festival_id}/crowd"
-    return None
+    info = _FESTIVAL_INFO_PATH.fullmatch(path)
+    if info:
+        return "/api/v1/festivals/{festival_id}/" + info[1]
+    normalized = path.rstrip("/")
+    if normalized in REPORT_PATHS or normalized == ADMIN_REVIEW_PATH:
+        return normalized
+    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or assistant_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):
@@ -26,14 +134,21 @@ class _PrivateRequestFilter(logging.Filter):
             client, method, target, version, status = args
             if isinstance(target, str) and (endpoint := private_endpoint(target.partition("?")[0])):
                 record.args = client, method, endpoint, version, status
+        if record.name == "uvicorn.error":
+            record.args = tuple(
+                value.partition("?")[0]
+                if isinstance(value, str) and value.partition("?")[0].rstrip("/") == _CHAT_SOCKET_PATH else value
+                for value in args
+            )
         if record.name == "uvicorn.asgi" and len(args) == 3 and isinstance(args[2], dict):
             scope = args[2]
             path = scope.get("path")
-            if scope.get("type") == "http" and isinstance(path, str) and (endpoint := private_endpoint(path)):
-                record.args = args[:2] + ({"type": "http", "path": endpoint},)
+            if scope.get("type") in ("http", "websocket") and isinstance(path, str):
+                if endpoint := private_endpoint(path):
+                    record.args = args[:2] + ({"type": scope["type"], "path": endpoint},)
         return True
 
 
 _private_requests = _PrivateRequestFilter()
-for logger_name in ("uvicorn.access", "uvicorn.asgi"):
+for logger_name in ("uvicorn.access", "uvicorn.asgi", "uvicorn.error"):
     logging.getLogger(logger_name).addFilter(_private_requests)

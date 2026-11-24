@@ -101,6 +101,89 @@ def test_I11_detail_error_keeps_saved_details_and_can_retry() -> None:
 
 
 @pytest.mark.db
+def test_I19_reclassifies_legacy_rows_with_cached_details_and_is_idempotent(
+    db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
+    payload = listing()
+    body = payload["response"]["body"]
+    items = body["items"]["item"]
+    handler = mock_responses(payload)
+    assert run_collector(tmp_path / "initial", handler, "--db") == 0
+    with db_engine.begin() as connection:
+        connection.execute(text("""
+            UPDATE festivals SET source_class_level1 = NULL, source_class_level2 = NULL, source_class_code = NULL
+        """))
+        connection.execute(text("""
+            UPDATE festivals SET review_status = 'hidden'
+            WHERE festival_id = (SELECT festival_id FROM festival_sources WHERE source_item_id = '3486674')
+        """))
+        before = connection.execute(text("""
+            SELECT source_item_id, raw_checksum, summary, published_at
+            FROM festival_sources JOIN festivals USING (festival_id)
+        """)).mappings().all()
+    previous = {row["source_item_id"]: row for row in before}
+
+    items[0].update(lclsSystm2="EV02", lclsSystm3="EV020100")
+    items[1].update(lclsSystm2="EV03", lclsSystm3="EV030100")
+    items[2].update(lclsSystm1="", lclsSystm2="", lclsSystm3="")
+    items[3].update(lclsSystm2="EV02", lclsSystm3="EV020100")
+    items.append(items[1] | {"contentid": "1234567"})
+    body["totalCount"] = len(items)
+
+    assert run_collector(tmp_path / "reclassified", handler, "--db", "--no-detail") == 0
+    _, report = output_files(tmp_path / "reclassified")
+    assert report["calls"] == {"searchFestival2": 1}
+    assert report["issues"]["not_festival_class"] == 4
+    assert report["issues"]["class_unverified"] == 1
+    assert (report["db"]["inserted"], report["db"]["updated"]) == (1, 5)
+    job_id = report["db"]["job_id"]
+
+    assert run_collector(tmp_path / "repeated", handler, "--db", "--no-detail") == 0
+    _, repeated = output_files(tmp_path / "repeated")
+    assert (repeated["db"]["inserted"], repeated["db"]["updated"]) == (0, 0)
+    with db_engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT source_item_id, raw_checksum, summary, category, source_class_level1,
+                   source_class_level2, source_class_code, review_status, published_at
+            FROM festival_sources JOIN festivals USING (festival_id) ORDER BY source_item_id
+        """)).all()
+        assert {row[0]: row[3:] for row in rows} == {
+            "1234567": ("event", "EV", "EV03", "EV030100", "pending", None),
+            "2536122": ("event", "EV", "EV03", "EV030100", "pending", None),
+            "2865122": ("festival", "EV", "EV01", "EV010200", "pending", None),
+            "292950": ("unknown", None, None, None, "pending", None),
+            "3379778": ("performance", "EV", "EV02", "EV020100", "pending", None),
+            "3486674": ("performance", "EV", "EV02", "EV020100", "hidden", previous["3486674"]["published_at"]),
+        }
+        for source_id, checksum, summary, *_ in rows:
+            if source_id in previous:
+                assert (checksum, summary) == (previous[source_id]["raw_checksum"], previous[source_id]["summary"])
+        reasons = connection.execute(text("""
+            SELECT source_item_id, after_value, actor FROM festival_change_history
+            JOIN festival_sources USING (festival_id)
+            WHERE field = 'source_classification' ORDER BY source_item_id
+        """)).all()
+        assert reasons == [
+            ("2536122", {"reason": "not_festival_class", "job_id": job_id}, "ingestion"),
+            ("292950", {"reason": "class_unverified", "job_id": job_id}, "ingestion"),
+            ("3379778", {"reason": "not_festival_class", "job_id": job_id}, "ingestion"),
+        ]
+        assert connection.execute(text("""
+            SELECT field, count(*) FROM festival_change_history
+            WHERE field IN ('published_at', 'review_status') GROUP BY field ORDER BY field
+        """)).all() == [("published_at", 3), ("review_status", 3)]
+
+    items[0].update(lclsSystm2="EV01", lclsSystm3="EV010600")
+    assert run_collector(tmp_path / "restored", handler, "--db", "--no-detail") == 0
+    with db_engine.connect() as connection:
+        assert connection.execute(text("""
+            SELECT category, review_status, published_at IS NOT NULL
+            FROM festival_sources JOIN festivals USING (festival_id) WHERE source_item_id = '3379778'
+        """)).one() == ("festival", "approved", True)
+
+
+@pytest.mark.db
 def test_I11_collect_db_refetches_only_changed_item(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:

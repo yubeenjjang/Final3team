@@ -1,17 +1,22 @@
 import os
+from collections.abc import Mapping
 from datetime import date, datetime
 from functools import lru_cache
 
 from sqlalchemy import URL, Engine, RowMapping, case, create_engine, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
-from api.ingestion.festivals.normalize import KST
+from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY, FESTIVAL_CLASS, KST
 from api.ingestion.festivals.store import FESTIVAL_SOURCES, FESTIVALS, SOURCE_ID
 from api.schemas.festivals import FestivalDetail, FestivalListItem, FestivalPage, FestivalQuery
+from api.services.admin_festivals import ADMIN_IMAGE_CREDIT, ADMIN_SOURCE_ID
 
 _F = FESTIVALS.c
 _SOURCE = FESTIVAL_SOURCES.c
-_PUBLIC = (_F.review_status == "approved", _F.published_at.is_not(None))
+_PUBLIC = (
+    _F.category == FESTIVAL_CATEGORY, _F.source_class_level2 == FESTIVAL_CLASS,
+    _F.review_status == "approved", _F.published_at.is_not(None),
+)
 _IMAGE_CREDIT = "한국관광공사"
 _SORT_ORDERS = {
     "start_date": _F.start_date.asc().nulls_last(),
@@ -26,26 +31,37 @@ _SOURCE_REF = (
     .scalar_subquery()
     .label("source_ref")
 )
+_IS_ADMIN_SOURCE = (
+    select(_SOURCE.festival_id)
+    .where(_SOURCE.festival_id == _F.festival_id, _SOURCE.source_id == ADMIN_SOURCE_ID,
+           _SOURCE.source_item_id == _F.festival_id)
+    .exists()
+    .label("is_admin_source")
+)
 
 
-def get_festival_engine() -> Engine:
-    password = os.environ.get("DB_USER_PASSWORD")
+def get_app_db_url(environ: Mapping[str, str]) -> URL:
+    password = environ.get("DB_USER_PASSWORD")
     if not password:
         raise RuntimeError("DB_USER_PASSWORD를 설정해 주세요.")
     try:
-        port = int(os.environ.get("DB_PORT", "5432"))
+        port = int(environ.get("DB_PORT", "5432"))
     except ValueError:
         raise RuntimeError("DB_PORT는 숫자여야 합니다.") from None
     if not 1 <= port <= 65535:
         raise RuntimeError("DB_PORT는 1부터 65535 사이여야 합니다.")
-    return _create_engine(URL.create(
+    return URL.create(
         "postgresql+psycopg",
-        username="noldaga_app",
+        username=environ.get("DB_USER_USERNAME", "noldaga_app"),
         password=password,
-        host=os.environ.get("DB_HOST", "127.0.0.1"),
+        host=environ.get("DB_HOST", "127.0.0.1"),
         port=port,
-        database=os.environ.get("DB_NAME", "noldaga"),
-    ))
+        database=environ.get("DB_NAME", "noldaga"),
+    )
+
+
+def get_festival_engine() -> Engine:
+    return _create_engine(get_app_db_url(os.environ))
 
 
 @lru_cache(maxsize=1)
@@ -68,7 +84,7 @@ def _list_columns(status: ColumnElement[str]) -> tuple[ColumnElement, ...]:
         _F.festival_id, _F.title.label("name"), _F.region_code, _F.venue_name,
         _F.latitude.label("lat"), _F.longitude.label("lng"), _F.start_date,
         _F.end_date, status.label("event_status"), _F.thumbnail_url, _F.image_url,
-        _F.last_synced_at,
+        _F.last_synced_at, _IS_ADMIN_SOURCE,
     )
 
 
@@ -96,7 +112,9 @@ def _filters(query: FestivalQuery, status: ColumnElement[str]) -> list[ColumnEle
 
 def _response_values(row: RowMapping) -> dict[str, object]:
     values = dict(row)
-    values["image_credit"] = _IMAGE_CREDIT if row.image_url or row.thumbnail_url else None
+    credit = ADMIN_IMAGE_CREDIT if row.is_admin_source else _IMAGE_CREDIT
+    values["source"] = "admin" if row.is_admin_source else "tourapi"
+    values["image_credit"] = credit if row.image_url or row.thumbnail_url else None
     synced_at = row.last_synced_at
     values["last_synced_at"] = synced_at.astimezone(KST).isoformat() if synced_at else ""
     return values
@@ -138,10 +156,10 @@ def get_festival(festival_id: str) -> FestivalDetail | None:
 
     values = _response_values(row)
     values["overview"] = row.overview or ""
-    values["source_ref"] = row.source_ref or ""
+    values["source_ref"] = row.festival_id if row.is_admin_source else row.source_ref or ""
     values["is_mock"] = False
     values["image_copyright"] = (
-        {"type": row.image_copyright_type, "credit": _IMAGE_CREDIT,
+        {"type": row.image_copyright_type, "credit": values["image_credit"],
          "modify_allowed": row.image_copyright_type == "Type1"}
         if values["image_credit"] and row.image_copyright_type
         else None

@@ -76,9 +76,16 @@ echo "## 2-7. 009 마이그레이션(기능 상세 시나리오) 적용 → 되�
 echo "## 3. 시험 SQL (tests_v0.3.2.sql)"
 "${PSQL[@]}" < tests_v0.3.2.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /ALL SQL TESTS PASSED/p'
 
-echo "## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
+echo "## 4. 010 공개 원본 권한 적용·되돌리기·재적용"
 # 010에는 자체 BEGIN/COMMIT이 있고, 011은 -1로 적용한다.
 "${PSQL[@]}" -q -f - < 010_festival_sources_public.sql
+"${PSQL[@]}" -q -v applied=true -v reapplied=false -f - < tests_010_festival_sources_public.sql
+"${PSQL[@]}" -q -f - < 010_festival_sources_public_down.sql
+"${PSQL[@]}" -q -v applied=false -v reapplied=false -f - < tests_010_festival_sources_public.sql
+"${PSQL[@]}" -q -f - < 010_festival_sources_public.sql
+"${PSQL[@]}" -q -v applied=true -v reapplied=true -f - < tests_010_festival_sources_public.sql
+
+echo "## 4-1. 기존 귀가 데이터 → 011 적용·되돌리기·재적용"
 "${PSQL_TX[@]}" -q -v seed=true -v applied=false < tests_011_route_access_token.sql
 "${PSQL[@]}" -t -f - < precheck_011_route_access_token.sql
 "${PSQL_TX[@]}" -q < 011_route_access_token.sql
@@ -88,7 +95,7 @@ echo "## 4. 010 → 기존 귀가 데이터 → 011 적용·되돌리기·재적
 "${PSQL_TX[@]}" -q < 011_route_access_token.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_011_route_access_token.sql
 
-echo "## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증"
+echo "## 5. 012·013 적용·되돌리기·재적용 및 T25 7일 백업 복원 검증"
 "${PSQL[@]}" -q -v seed=true -v applied=false -v restored=false -f - < tests_012_route_backup_evidence.sql
 "${PSQL_TX[@]}" -q < 012_route_backup_evidence.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_012_route_backup_evidence.sql
@@ -97,6 +104,183 @@ echo "## 5. 012 적용·되돌리기·재적용 및 T25 7일 백업 복원 검�
 "${PSQL_TX[@]}" -q < 012_route_backup_evidence.sql
 "${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_012_route_backup_evidence.sql
 
+"${PSQL[@]}" -q -v seed=true -v applied=false -v restored=false -f - < tests_013_route_purge_evidence.sql
+"${PSQL_TX[@]}" -q < 013_route_purge_evidence.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_013_route_purge_evidence.sql
+"${PSQL_TX[@]}" -q < 013_route_purge_evidence_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -v restored=false -f - < tests_013_route_purge_evidence.sql
+"${PSQL_TX[@]}" -q < 013_route_purge_evidence.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -v restored=false -f - < tests_013_route_purge_evidence.sql
+
+echo "## 5-1. 014 축제 분류·공개 RLS 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 014_tourapi_festival_class.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_014_tourapi_festival_class.sql
+"${PSQL_TX[@]}" -q < 014_tourapi_festival_class_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_014_tourapi_festival_class.sql
+"${PSQL_TX[@]}" -q < 014_tourapi_festival_class.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_014_tourapi_festival_class.sql
+
+echo "## 5-2. 015 친구 신청 UNIQUE 사전 검사·적용·되돌리기·재적용"
+"${PSQL[@]}" -f - < precheck_015_friendships_request_unique.sql
+if duplicate_check=$(
+  cat tests_015_friendships_request_unique.sql \
+    precheck_015_friendships_request_unique.sql 015_friendships_request_unique.sql |
+    "${PSQL[@]}" -qAt -v applied=false -v probe_duplicate=true -f - 2>&1
+); then
+  echo "T015d FAIL: 중복된 신청 ID가 있는 상태에서 015 적용이 성공했습니다"
+  exit 1
+fi
+if ! grep -qx '1' <<< "$duplicate_check" ||
+   ! grep -Fq '015: 중복된 friendships.request_id가 있어 적용을 중단합니다' <<< "$duplicate_check"; then
+  printf 'T015d FAIL: 사전 검사 또는 중복 적용 차단 실패\n%s\n' "$duplicate_check"
+  exit 1
+fi
+echo "T015d PASS: 사전 검사에서 중복 1건 발견 및 적용 중단"
+"${PSQL_TX[@]}" -q < 015_friendships_request_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
+"${PSQL_TX[@]}" -q < 015_friendships_request_unique_down.sql
+"${PSQL[@]}" -q -v applied=false -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
+"${PSQL_TX[@]}" -q < 015_friendships_request_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_duplicate=false -f - < tests_015_friendships_request_unique.sql
+
+echo "## 5-3. 016 1:1 방 부분 UNIQUE 사전 검사·적용·되돌리기·재적용"
+"${PSQL[@]}" -f - < precheck_016_direct_room_key_partial_unique.sql
+"${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
+if duplicate_check=$(
+  cat tests_016_direct_room_key_partial_unique.sql \
+    precheck_016_direct_room_key_partial_unique.sql 016_direct_room_key_partial_unique_down.sql |
+    "${PSQL[@]}" -qAt -v applied=true -v probe_down=true -f - 2>&1
+); then
+  echo "T016e FAIL: 중복 키가 있는 상태에서 전역 UNIQUE가 복원되었습니다"
+  exit 1
+fi
+if ! grep -Fqx '0|1' <<< "$duplicate_check" ||
+   ! grep -Fq 'could not create unique index "chat_rooms_direct_key_key"' <<< "$duplicate_check"; then
+  printf 'T016e FAIL: 사전 검사 또는 되돌리기 차단 실패\n%s\n' "$duplicate_check"
+  exit 1
+fi
+echo "T016e PASS: 사전 검사에서 되돌리기 충돌 1건 발견 및 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique_down.sql
+"${PSQL[@]}" -q -v applied=false -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
+"${PSQL_TX[@]}" -q < 016_direct_room_key_partial_unique.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_016_direct_room_key_partial_unique.sql
+
+echo "## 5-4. 017 축제 증가율·신호 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 017_festival_trends_signal.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_017_festival_trends_signal.sql
+if trend_down_check=$(
+  cat tests_017_festival_trends_signal.sql 017_festival_trends_signal_down.sql |
+    "${PSQL[@]}" -q -v applied=true -v probe_down=true -f - 2>&1
+); then
+  echo "T017e FAIL: 004 제약에 맞지 않는 행이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -Eq 'ERROR:.*festival_trends_check1' <<< "$trend_down_check"; then
+  printf 'T017e FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$trend_down_check"
+  exit 1
+fi
+echo "T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 017_festival_trends_signal_down.sql
+"${PSQL[@]}" -q -v applied=false -v probe_down=false -f - < tests_017_festival_trends_signal.sql
+"${PSQL_TX[@]}" -q < 017_festival_trends_signal.sql
+"${PSQL[@]}" -q -v applied=true -v probe_down=false -f - < tests_017_festival_trends_signal.sql
+
+echo "## 5-5. 018 축제 공개·좌표 출처 적용·되돌리기·재적용"
+"${PSQL[@]}" -q -v seed=true -v applied=false -f - < tests_018_festival_publication.sql
+"${PSQL_TX[@]}" -q < 018_festival_publication.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_018_festival_publication.sql
+"${PSQL_TX[@]}" -q < 018_festival_publication_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_018_festival_publication.sql
+"${PSQL_TX[@]}" -q < 018_festival_publication.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_018_festival_publication.sql
+
+echo "## 5-6. 019_admin-review 축제 검토 사유 이관·되돌리기·재적용"
+"${PSQL[@]}" -q -v seed=true -v applied=false -f - < tests_019_admin-review.sql
+"${PSQL_TX[@]}" -q < 019_admin-review.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_019_admin-review.sql
+if review_down_check=$(
+  {
+    echo "UPDATE public.festival_review_queue SET approval_status = 'rejected' WHERE festival_id = 'fst_T19004';"
+    cat 019_admin-review_down.sql
+  } | "${PSQL_TX[@]}" -q 2>&1
+); then
+  echo "T019d FAIL: 새 사유로 처리한 결정이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -q '019_admin-review: 새 사유로 처리된 검토 이력' <<< "$review_down_check"; then
+  printf 'T019d FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$review_down_check"
+  exit 1
+fi
+echo "T019d PASS: 새 사유로 처리한 결정이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 019_admin-review_down.sql
+"${PSQL[@]}" -q -v seed=false -v applied=false -f - < tests_019_admin-review.sql
+"${PSQL_TX[@]}" -q < 019_admin-review.sql
+"${PSQL[@]}" -q -v seed=false -v applied=true -f - < tests_019_admin-review.sql
+echo "## 5-7. 020 동행 수동 마감·보존 RLS 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 020_companions.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_020_companions.sql
+"${PSQL_TX[@]}" -q < 020_companions_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_020_companions.sql
+"${PSQL_TX[@]}" -q < 020_companions.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_020_companions.sql
+echo "## 5-8. 021_chat 채팅 차단·이력 RLS 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 021_chat.sql
+"${PSQL[@]}" -q -f - < tests_021_chat.sql
+"${PSQL_TX[@]}" -q < 021_chat_down.sql
+"${PSQL_TX[@]}" -q < 021_chat.sql
+"${PSQL[@]}" -q -f - < tests_021_chat.sql
+
+echo "## 5-9. 022_notify 신고 처리 메모·조회 인덱스 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 022_notify.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_notify.sql
+"${PSQL_TX[@]}" -q < 022_notify_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_022_notify.sql
+"${PSQL_TX[@]}" -q < 022_notify.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_022_notify.sql
+echo "## 5-10. 023_notice 공식 공지 통제 버전 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 023_notice.sql
+"${PSQL[@]}" -q -f - < tests_023_notice.sql
+"${PSQL_TX[@]}" -q < 023_notice_down.sql
+"${PSQL_TX[@]}" -q < 023_notice.sql
+"${PSQL[@]}" -q -f - < tests_023_notice.sql
+echo "## 5-11. 024_admin-festivals 관리자 등록·변경 이력 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 024_admin-festivals.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_024_admin-festivals.sql
+if admin_festivals_down_check=$(
+  {
+    echo "INSERT INTO public.festivals (festival_id, title, region_code) VALUES ('fst_T22002', '축제', 'SEOUL');"
+    echo "INSERT INTO public.festival_change_history (festival_id, field, actor, changed_at, reason, actor_user_id) VALUES ('fst_T22002', 'title', 'admin', now(), '보존', '22220000-0000-0000-0000-000000000001');"
+    cat 024_admin-festivals_down.sql
+  } | "${PSQL_TX[@]}" -q 2>&1
+); then
+  echo "T022d FAIL: 운영 감사 이력이 있는데 되돌리기가 성공했습니다"
+  exit 1
+fi
+if ! grep -Fq '024_admin-festivals: 등록·수정 감사 이력이 있습니다' <<< "$admin_festivals_down_check"; then
+  printf 'T022d FAIL: 예상과 다른 되돌리기 오류\n%s\n' "$admin_festivals_down_check"
+  exit 1
+fi
+echo "T022d PASS: 관리자 감사 이력이 있으면 되돌리기 차단"
+"${PSQL_TX[@]}" -q < 024_admin-festivals_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_024_admin-festivals.sql
+"${PSQL_TX[@]}" -q < 024_admin-festivals.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_024_admin-festivals.sql
+echo "## 5-12. 025_assistant 작업 큐·보존 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 025_assistant.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_025_assistant.sql
+"${PSQL_TX[@]}" -q < 025_assistant_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_025_assistant.sql
+"${PSQL_TX[@]}" -q < 025_assistant.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_025_assistant.sql
+echo "## 5-13. 026_jobs 정기 작업 회차·경로 요청 보존 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 026_jobs.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_026_jobs.sql
+"${PSQL_TX[@]}" -q < 026_jobs_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_026_jobs.sql
+"${PSQL_TX[@]}" -q < 026_jobs.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_026_jobs.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
@@ -104,6 +288,8 @@ docker exec "$NAME" createdb -U postgres -T template0 "$restore_db"
 docker exec "$NAME" pg_restore -U postgres -d "$restore_db" --single-transaction "$archive"
 docker exec -i "$NAME" psql -U postgres -d "$restore_db" -v ON_ERROR_STOP=1 -X -q \
   -v seed=false -v applied=false -v restored=true -f - < tests_012_route_backup_evidence.sql
+docker exec -i "$NAME" psql -U postgres -d "$restore_db" -v ON_ERROR_STOP=1 -X -q \
+  -v seed=false -v applied=false -v restored=true -f - < tests_013_route_purge_evidence.sql
 "${PSQL[@]}" < tests_v0.3.2_after_backup.sql 2>&1 | sed -n 's/^.*NOTICE:  //p; /PASSED/p'
 
 echo "## 6. 실행 계획 (explain_v0.3.2.sql)"

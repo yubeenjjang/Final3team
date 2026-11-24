@@ -8,8 +8,8 @@ QUERY = "/api/v1/assistant/query"
 RUNS = "/api/v1/assistant/runs"
 
 
-def _start(client: TestClient, **fields: object) -> dict:
-    response = client.post(QUERY, json={"request_id": "assistant-001", "message": "축제 알려줘", **fields})
+def _start(client: TestClient, *, headers: dict | None = None, **fields: object) -> dict:
+    response = client.post(QUERY, headers=headers, json={"request_id": "assistant-001", "message": "축제 알려줘", **fields})
     assert response.status_code == 202
     assert response.headers["X-Mock"] == "true"
     body = response.json()
@@ -28,8 +28,8 @@ def _poll(client: TestClient, run: dict) -> dict:
 
 def test_R14_accepted_and_idempotent(client: TestClient) -> None:
     run = _start(client)
-    assert re.fullmatch(r"run_[0-9A-Za-z]{16}", run["run_id"])
-    assert re.fullmatch(r"cv_[0-9A-Za-z]{16}", run["conversation_id"])
+    assert re.fullmatch(r"run_[0-9A-HJKMNP-TV-Z]{26}", run["run_id"])
+    assert re.fullmatch(r"cv_[0-9A-HJKMNP-TV-Z]{26}", run["conversation_id"])
     assert re.fullmatch(r"rat_[0-9A-Za-z]{24}", run["run_access_token"])
     assert run["run_status"] == "queued"
     assert run["status_url"] == f"{RUNS}/{run['run_id']}"
@@ -75,7 +75,8 @@ def test_R14_existing_and_unknown_conversation(client: TestClient) -> None:
         client,
         request_id="assistant-002",
         conversation_id=first["conversation_id"],
-        context={"festival_id": "fst_zzzzzz", "route_request_id": "rr_zzzzzz"},
+        headers={"X-Run-Access-Token": first["run_access_token"]},
+        context={"festival_id": "fst_zzzzzz"},
         reference_date="2026-11-22",
     )
     assert second["conversation_id"] == first["conversation_id"]

@@ -1,7 +1,7 @@
 import asyncio
-import hashlib
 import hmac
 import json
+import re
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -27,6 +27,7 @@ from api.providers.route_base import (
     make_candidate,
 )
 from api.providers.tmap import TmapClient
+from api.schemas.routes import ReturnRouteRequest, VisitRouteRequest
 from api.services import real_routes
 from . import FIXTURES, TEST_KEY
 
@@ -149,7 +150,7 @@ def _poll(routes: Routes, route: dict[str, Any], path: str = _RETURN) -> dict[st
 def test_P9_primary_preserves_response_shape_and_ignores_mock_scenario(routes: Routes) -> None:
     ready = _body(routes.client.post(_RETURN, json=_BODY, headers={"X-Mock-Scenario": "overloaded"}), 200)
     assert set(ready) == {
-        "route_request_id", "route_status", "route_access_token", "direction", "festival_id", "origin",
+        "route_request_id", "route_status", "direction", "festival_id", "origin",
         "destination", "travel_mode", "route_preference", "route_candidates", "provider", "provider_tier",
         "queried_at", "verification_status", "completed_valid_route", "constraint_status", "coverage",
         "score_version", "notices", "is_mock",
@@ -161,7 +162,6 @@ def test_P9_primary_preserves_response_shape_and_ignores_mock_scenario(routes: R
     assert ready["destination"] == {"type": "place", "label": "37.5,126.9"}
     assert routes.tmap.queries == [RouteQuery((37.5759, 126.9768), (37.5, 126.9), routes.clock.now)]
     assert routes.quota.calls == ["tmap"]
-    assert _poll(routes, ready) == {**ready, "updated_at": routes.clock.now.isoformat()}
     assert routes.client.get("/api/v1/health").headers["X-Mock"] == "true"
 
 
@@ -180,7 +180,7 @@ def test_P9_mock_mode_does_not_select_real_service(
     assert not routes.quota.calls
 
 
-def test_P9_visit_resolves_place_and_preserves_tokens_and_idempotency(routes: Routes) -> None:
+def test_P9_visit_resolves_place_and_preserves_idempotency(routes: Routes) -> None:
     body = {
         "request_id": "real-visit-01", "festival_id": "fst_000001", "origin": {"query": "서울역"},
         "user_constraints": {"with_child": True, "wheelchair": True, "max_walk_m": 0},
@@ -198,13 +198,13 @@ def test_P9_visit_resolves_place_and_preserves_tokens_and_idempotency(routes: Ro
     assert routes.quota.calls == ["kakao_local", "tmap"]
     assert _body(routes.client.post(_VISIT, json=dict(reversed(list(body.items())))), 200) == ready
     assert routes.kakao.searches == ["서울역"]
-    assert _poll(routes, ready, _VISIT)["route_status"] == "ready"
+    assert "route_access_token" not in ready
 
     route_id = ready["route_request_id"]
     checks = (
         (routes.client.get(f"{_VISIT}/{route_id}"), 401, "UNAUTHORIZED"),
         (routes.client.get(f"{_VISIT}/{route_id}", headers={_TOKEN: "다른 토큰".encode()}), 403, "FORBIDDEN"),
-        (routes.client.get(f"{_RETURN}/{route_id}", headers={_TOKEN: ready["route_access_token"]}), 404,
+        (routes.client.get(f"{_RETURN}/{route_id}", headers={_TOKEN: "다른 토큰".encode()}), 404,
          "ROUTE_REQUEST_NOT_FOUND"),
         (routes.client.get(f"{_VISIT}/rr_invalid-id"), 422, "VALIDATION_ERROR"),
         (routes.client.post(_VISIT, json={**body, "origin": {"query": "다른 장소"}}), 409,
@@ -270,10 +270,74 @@ def test_P10_cache_key_uses_hmac_and_rounded_coordinates(routes: Routes) -> None
     assert original["route_candidates"] == second["route_candidates"]
     assert len(routes.tmap.queries) == 1
     key, = routes.service._cache
-    departure_bucket = int(routes.clock.now.timestamp()) // 300
-    encoded = f"return|37.5759,126.9768|37.5000,126.9000|transit|fastest|{departure_bucket}".encode()
-    assert key == hmac.new(b"TEST_KEY_DO_NOT_USE", encoded, hashlib.sha256).hexdigest()
+    assert re.fullmatch(r"v2:[0-9a-f]{64}", key)
     assert all(coordinate not in key for coordinate in ("37.5759", "126.9768", "37.5000", "126.9000"))
+
+
+@pytest.mark.parametrize("conditions", [
+    {"user_constraints": {"with_child": True}},
+    {"user_constraints": {"wheelchair": True}},
+    {"user_constraints": {"max_walk_m": 0}},
+    {"route_preference": "min_walk"},
+    {"travel_mode": "walk"},
+])
+def test_P23_cache_and_idempotency_distinguish_request_conditions(routes: Routes, conditions) -> None:
+    first = _body(routes.client.post(_RETURN, json=_BODY), 200)
+    same = _body(routes.client.post(_RETURN, json={
+        **_BODY, "request_id": "same-conditions", "departure": "now",
+        "user_constraints": {"max_walk_m": None, "wheelchair": False, "with_child": False},
+    }), 200)
+    assert len(routes.tmap.queries) == 1
+    assert routes.service._records[first["route_request_id"]].route_key == (
+        routes.service._records[same["route_request_id"]].route_key
+    )
+
+    different = _body(routes.client.post(_RETURN, json={
+        **_BODY, **conditions, "request_id": "different-conditions",
+    }), 200)
+    assert routes.service._records[different["route_request_id"]].route_key != (
+        routes.service._records[first["route_request_id"]].route_key
+    )
+    assert len(routes.tmap.queries) == 2
+    conflict = _body(routes.client.post(_RETURN, json={**_BODY, **conditions}), 409)
+    assert conflict["error"]["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+def test_P23_route_key_includes_direction_departure_control_and_provider(routes: Routes) -> None:
+    async def keys():
+        request = ReturnRouteRequest(**_BODY)
+        query = RouteQuery((37.5759, 126.9768), (37.5, 126.9), routes.clock.now)
+        service = routes.service
+        record = service._new_record("return", request, "", "", "", "")
+        key = service._route_key(record, query, "tmap")
+        assert key == service._route_key(record, query, "tmap")
+        assert key != service._route_key(record, query, "kakao")
+
+        record.control = real_routes.ControlSnapshot("cv2")
+        assert key != service._route_key(record, query, "tmap")
+        record.control = real_routes.ControlSnapshot()
+        record.direction = "visit"
+        record.request = VisitRouteRequest(**request.model_dump())
+        assert key != service._route_key(record, query, "tmap")
+        record.direction = "return"
+        record.request = request
+        record.depart_at += timedelta(minutes=5)
+        assert key != service._route_key(record, query, "tmap")
+
+        encoded = {
+            "direction": "return", "festival_id": "fst_000001",
+            "origin_type": "festival", "destination_type": "place",
+            "origin": ["37.5759", "126.9768"], "destination": ["37.5000", "126.9000"],
+            "travel_mode": "transit", "route_preference": "fastest",
+            "user_constraints": {"with_child": False, "wheelchair": False, "max_walk_m": None},
+            "departure": "now", "departure_bucket": int(routes.clock.now.timestamp()) // 300,
+            "control_version": "none", "provider": "tmap",
+        }
+        normalized = json.dumps(encoded, sort_keys=True, separators=(",", ":"))
+        expected = hmac.digest(TEST_KEY.encode(), f"route-key-v2:{normalized}".encode(), "sha256").hex()
+        assert key == f"v2:{expected}"
+
+    asyncio.run(keys())
 
 
 def test_P10_five_concurrent_requests_share_one_tmap_call(routes: Routes) -> None:
@@ -304,20 +368,34 @@ def test_P10_five_concurrent_requests_share_one_tmap_call(routes: Routes) -> Non
     assert routes.quota.calls == ["tmap"]
 
 
+def test_P23_kakao_fallback_uses_its_own_provider_key(routes: Routes) -> None:
+    routes.clock.now -= timedelta(minutes=1)
+    tmap = _body(routes.client.post(_RETURN, json=_BODY), 200)
+    routes.clock.now += timedelta(seconds=61)
+    routes.tmap.error = "temporary"
+    kakao = _body(routes.client.post(_RETURN, json={**_BODY, "request_id": "kakao-fallback"}), 200)
+
+    assert (tmap["provider"], kakao["provider"]) == ("tmap", "kakao")
+    assert routes.service._records[tmap["route_request_id"]].route_key != (
+        routes.service._records[kakao["route_request_id"]].route_key
+    )
+    assert not routes.service._cache
+
+
 def test_P11_secondary_response_is_only_available_on_sync_post(routes: Routes) -> None:
     routes.tmap.error = "temporary"
     ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
     assert ready["provider"] == "kakao"
     assert ready["provider_tier"] == "secondary"
     assert ready["completed_valid_route"] is True
-    failed = _poll(routes, ready)
+    assert "route_access_token" not in ready
+    failed = _body(routes.client.post(_RETURN, json=_BODY), 200)
     assert failed["route_status"] == "unavailable"
     assert failed["completed_valid_route"] is False
     assert failed["error"]["code"] == "ROUTE_SECONDARY_SYNC_ONLY"
     assert failed["error"]["retryable"] is True
     assert "route_candidates" not in failed
-    replay = _body(routes.client.post(_RETURN, json=_BODY), 200)
-    assert replay == {**failed, "route_access_token": ready["route_access_token"]}
+    assert "route_access_token" not in failed
     assert not routes.service._cache and not routes.service._flights
     record = routes.service._records[ready["route_request_id"]]
     assert record.cached is None and record.task is None
@@ -341,6 +419,7 @@ def test_P11_slow_primary_returns_202_then_finishes_in_background(
     routes.tmap.gate.set()
     routes.finish(queued["route_request_id"])
     final = _poll(routes, queued)
+    assert "route_access_token" not in final
     if primary_fails:
         assert final["route_status"] == "unavailable"
         assert final["error"]["code"] == "ROUTE_SECONDARY_SYNC_ONLY"
@@ -399,15 +478,20 @@ def test_P11_overall_deadline_times_out_and_releases_flight(
 
 
 def test_P11_expiry_removes_shared_tmap_body_for_all_ids(routes: Routes) -> None:
-    ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
+    routes.tmap.gate = Event()
+    try:
+        queued = _body(routes.client.post(_RETURN, json=_BODY), 202)
+    finally:
+        routes.tmap.gate.set()
+    routes.finish(queued["route_request_id"])
     routes.clock.now += timedelta(seconds=30)
     body = {**_BODY, "request_id": "real-route-02"}
-    second = _body(routes.client.post(_RETURN, json=body), 200)
+    _body(routes.client.post(_RETURN, json=body), 200)
     assert len(routes.tmap.queries) == 1
     cached, = routes.service._cache.values()
 
     routes.clock.now += timedelta(seconds=31)
-    expired = _poll(routes, ready)
+    expired = _poll(routes, queued)
     assert expired["route_status"] == "unavailable"
     assert expired["completed_valid_route"] is False
     assert expired["error"]["code"] == "ROUTE_RESULT_EXPIRED"
@@ -419,26 +503,54 @@ def test_P11_expiry_removes_shared_tmap_body_for_all_ids(routes: Routes) -> None
 
     _body(routes.client.post(_RETURN, json={**body, "request_id": "real-route-03"}), 200)
     assert len(routes.tmap.queries) == 2
-    assert _poll(routes, second)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+    assert _body(routes.client.post(_RETURN, json=body), 200)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
 
 
-def test_a05_db_ready_request_without_result(routes: Routes, monkeypatch: pytest.MonkeyPatch) -> None:
-    ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
-    assert ready["route_status"] == "ready"
+@pytest.mark.parametrize("result_state", ["missing", "purged-at-23h"])
+def test_a05_db_ready_coverage_and_result_expiry(
+    routes: Routes, monkeypatch: pytest.MonkeyPatch, result_state: str,
+) -> None:
+    routes.tmap.gate = Event()
+    try:
+        queued = _body(routes.client.post(_RETURN, json=_BODY), 202)
+    finally:
+        routes.tmap.gate.set()
+    routes.finish(queued["route_request_id"])
 
-    class StoreWithoutResult:
+    class StoredRoute:
+        result = {"queried_at": routes.clock.now, "purged_at": None, "candidates": [], "evidence": {}}
+
         def lookup(self, direction, route_id, token, now):
             assert direction == "return"
-            assert route_id == ready["route_request_id"]
-            assert token == ready["route_access_token"]
+            assert route_id == queued["route_request_id"]
+            assert hmac.compare_digest(token, queued["route_access_token"])
             return {
                 "status": "ready",
                 "completed_at": routes.clock.now,
                 "error_detail": None,
-            }, None
+                "festival_id": "fst_000001",
+                "festival_lat": 37.5759,
+                "festival_lng": 126.9768,
+                "region_code": "SEOUL",
+                "origin_type": "festival",
+                "destination_type": "user",
+                "travel_mode": "transit",
+                "route_preference": "fastest",
+                "constraints": {},
+            }, self.result
 
-    monkeypatch.setattr(routes.service, "_store", StoreWithoutResult())
-    restored = _poll(routes, ready)
+    store = StoredRoute()
+    monkeypatch.setattr(routes.service, "_store", store)
+    ready = _poll(routes, queued)
+    assert ready["route_status"] == "ready"
+    assert ready["coverage"] == {"scope": "national", "region_code": "SEOUL", "supported": True}
+    assert "route_access_token" not in ready
+
+    store.result = (
+        {"queried_at": routes.clock.now - timedelta(hours=23), "purged_at": routes.clock.now}
+        if result_state == "purged-at-23h" else None
+    )
+    restored = _poll(routes, queued)
     assert restored["route_status"] == "unavailable"
     assert restored["completed_valid_route"] is False
     assert restored["error"] == {
@@ -479,8 +591,9 @@ def test_a3_memory_expiry_removes_raw_places_from_all_cached_requests(
     assert len(routes.tmap.queries) == 1
 
     routes.clock.now += timedelta(seconds=60)
-    expired = _poll(routes, first)
-    assert expired["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+    replay = _body(routes.client.post(_RETURN, json=body), 200)
+    assert replay["route_request_id"] == first["route_request_id"]
+    assert replay["error"]["code"] == "ROUTE_RESULT_EXPIRED"
     assert not routes.service._cache and not routes.service._flights
     markers = ("37.1234", "126.7891", "37.2345", "126.8765", origin_query, destination_query)
     for record in (*routes.service._records.values(), *routes.service._request_keys.values()):
@@ -488,10 +601,7 @@ def test_a3_memory_expiry_removes_raw_places_from_all_cached_requests(
         if any(raw in retained for raw in markers):
             pytest.fail("만료된 메모리 요청에 장소 원문이 남았습니다.", pytrace=False)
 
-    assert _poll(routes, second)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
-    replay = _body(routes.client.post(_RETURN, json=body), 200)
-    assert replay["route_request_id"] == first["route_request_id"]
-    assert replay["error"]["code"] == "ROUTE_RESULT_EXPIRED"
+    assert _body(routes.client.post(_RETURN, json=cached_body), 200)["error"]["code"] == "ROUTE_RESULT_EXPIRED"
     assert routes.client.post(_RETURN, json={**body, "travel_mode": "walk"}).status_code == 409
 
 
@@ -538,7 +648,7 @@ def test_P13_tmap_excludes_ended_candidates(
     with Client(transport=MockTransport(lambda _: Response(200, json=payload))) as http:
         monkeypatch.setattr(routes.service, "_tmap", lambda: TmapClient(http))
         result = _body(routes.client.post(_RETURN, json=_BODY), 200)
-        polled = _poll(routes, result)
+        replay = _body(routes.client.post(_RETURN, json=_BODY), 200)
 
     assert routes.quota.calls == ["tmap"]
     assert not routes.kakao.queries
@@ -551,14 +661,14 @@ def test_P13_tmap_excludes_ended_candidates(
         }
         assert "route_candidates" not in result
         assert not routes.service._cache
-        assert polled == {key: value for key, value in result.items() if key != "route_access_token"}
     else:
         assert result["route_status"] == "ready"
         assert result["completed_valid_route"] is True
         candidate, = result["route_candidates"]
         assert candidate["candidate_id"] == "c2"
         assert candidate["service_running"] is True
-        assert polled == {**result, "updated_at": routes.clock.now.isoformat()}
+    assert replay == result
+    assert "route_access_token" not in result
 
 
 def test_P14_tmap_service_ended_after_202(
@@ -604,7 +714,7 @@ def test_P14_kakao_last_service_unknown_in_sync_response(
     with Client(transport=MockTransport(lambda _: Response(200, json=payload))) as http:
         monkeypatch.setattr(routes.service, "_kakao", lambda: KakaoClient(http))
         ready = _body(routes.client.post(_RETURN, json=_BODY), 200)
-        polled = _poll(routes, ready)
+        replay = _body(routes.client.post(_RETURN, json=_BODY), 200)
 
     assert routes.quota.calls == ["tmap", "kakao"]
     assert ready["route_status"] == "ready"
@@ -612,6 +722,6 @@ def test_P14_kakao_last_service_unknown_in_sync_response(
     candidate, = ready["route_candidates"]
     assert candidate["service_running"] is None
     assert "막차 확인 불가" in ready["notices"]
-    assert polled["error"]["code"] == "ROUTE_SECONDARY_SYNC_ONLY"
-    assert "route_candidates" not in polled
+    assert replay["error"]["code"] == "ROUTE_SECONDARY_SYNC_ONLY"
+    assert "route_candidates" not in replay
     assert not routes.service._cache

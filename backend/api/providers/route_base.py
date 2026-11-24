@@ -1,5 +1,7 @@
 import logging
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -30,7 +32,7 @@ _ERROR_DETAILS: dict[ErrorKind, str] = {
     "timeout": "공급원 응답 시간이 초과됐어요.",
     "quota": "공급원 조회 한도를 다 썼어요.",
 }
-_private_transport = ContextVar("private_route_transport", default=False)
+_private_transport = ContextVar("private_provider_transport", default=False)
 _logger = logging.getLogger(__name__)
 
 
@@ -40,6 +42,15 @@ def _allow_transport_log(record: logging.LogRecord) -> bool:
 
 for _name in HTTP_LOGGERS:
     logging.getLogger(_name).addFilter(_allow_transport_log)
+
+
+@contextmanager
+def private_transport_logs() -> Iterator[None]:
+    token = _private_transport.set(True)
+    try:
+        yield
+    finally:
+        _private_transport.reset(token)
 
 
 @dataclass(frozen=True)
@@ -171,19 +182,17 @@ class RouteProviderClient:
         json: dict[str, object] | None,
     ) -> httpx2.Response:
         # Transport logs can include the URL, header values and encoded payloads.
-        token = _private_transport.set(True)
         try:
-            return client.request(
-                method, url, headers=headers, params=params, json=json,
-                timeout=self._timeout, follow_redirects=False,
-            )
+            with private_transport_logs():
+                return client.request(
+                    method, url, headers=headers, params=params, json=json,
+                    timeout=self._timeout, follow_redirects=False,
+                )
         except httpx2.TimeoutException:
             kind: ErrorKind = "timeout"
         except (httpx2.RequestError, httpx2.InvalidURL):
             kind = "temporary"
         except UnicodeEncodeError:
             kind = "config"
-        finally:
-            _private_transport.reset(token)
         # 요청과 응답 원문에는 키가 있을 수 있어 오류에 전달하지 않는다.
         raise ProviderError(kind, self.provider)

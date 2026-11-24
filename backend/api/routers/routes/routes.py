@@ -28,7 +28,7 @@ async def submit_return_route(
     if real_routes.uses_real_routes():
         status, body = await real_routes.get_service().create_route("return", route, submitted_body)
     else:
-        status, body = create_route("return", route, submitted_body, scenario)
+        status, body = await run_in_threadpool(create_route, "return", route, submitted_body, scenario)
     request.state.result_status = body["route_status"]
     request.state.route_request_id = body["route_request_id"]
     return JSONResponse(body, status_code=status)
@@ -57,7 +57,7 @@ async def submit_visit_route(
     if real_routes.uses_real_routes():
         status, body = await real_routes.get_service().create_route("visit", route, submitted_body)
     else:
-        status, body = create_route("visit", route, submitted_body, scenario)
+        status, body = await run_in_threadpool(create_route, "visit", route, submitted_body, scenario)
     request.state.result_status = body["route_status"]
     request.state.route_request_id = body["route_request_id"]
     return JSONResponse(body, status_code=status)

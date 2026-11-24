@@ -1,12 +1,16 @@
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import count
 from threading import Lock
+from uuid import UUID
 
-from api.mocks.festivals import FESTIVALS
+from api.mocks.admin_festivals import mock_festival_store
+from api.mocks.festivals import MockFestival
 from api.schemas.assistant import AssistantRequest
 from api.schemas.festivals import FestivalDetail
 from api.schemas.routes import RouteDirection, RouteRequest, RouteStatus
+from api.schemas.users import FestivalPreferences
 
 
 @dataclass
@@ -20,9 +24,20 @@ class RouteRecord:
     scenario: str
     status: RouteStatus
     updated_at: str
+    control_version: str
 
 
-festivals: dict[str, FestivalDetail] = {}
+festivals = mock_festival_store.catalog
+
+
+def public_mock_festivals() -> Iterator[MockFestival]:
+    return iter(mock_festival_store.public_festivals())
+
+
+def get_public_mock_festival(festival_id: str) -> MockFestival | None:
+    return mock_festival_store.public_festival(festival_id)
+
+
 route_requests: dict[str, RouteRecord] = {}
 route_request_keys: dict[tuple[RouteDirection, str], str] = {}
 route_lock = Lock()
@@ -33,9 +48,11 @@ class AssistantRun:
     run_id: str
     conversation_id: str
     access_token: str = field(repr=False)
-    request: AssistantRequest
-    body: str
+    request: AssistantRequest = field(repr=False)
+    body: str = field(repr=False)
     queued_at: str
+    user_id: UUID | None = None
+    anonymous_session_hash: str | None = field(default=None, repr=False)
     started_at: str | None = None
     ended_at: str | None = None
     outcome: dict[str, object] | None = field(default=None, repr=False)
@@ -47,6 +64,9 @@ class MockUser:
     display_name: str
     salt: bytes = field(repr=False)
     password_hash: bytes = field(repr=False)
+    birth_year: int
+    gender: str
+    disabled: bool = False
 
 
 @dataclass(frozen=True)
@@ -81,15 +101,13 @@ class FavoriteRecord:
 
 
 favorites_by_user: dict[str, dict[str, FavoriteRecord]] = {}
+preferences_by_user: dict[str, FestivalPreferences] = {}
 favorite_sequence = count()
 
 
 def reset_store() -> None:
     with assistant_lock, route_lock, auth_lock:
-        festivals.clear()
-        festivals.update(
-            (festival.festival_id, festival.model_copy(deep=True)) for festival in FESTIVALS
-        )
+        mock_festival_store.reset()
         route_requests.clear()
         route_request_keys.clear()
         assistant_conversations.clear()
@@ -101,6 +119,7 @@ def reset_store() -> None:
         refresh_sessions.clear()
         retired_refresh_tokens.clear()
         favorites_by_user.clear()
+        preferences_by_user.clear()
 
 
 reset_store()

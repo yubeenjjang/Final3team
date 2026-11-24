@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 from api.errors import ApiError
 from api.mocks.clock import MOCK_NOW
 from api.mocks.notices import NOTICES
+from api.providers.traffic_incidents import Incident, IncidentReading, nearby_incidents
+from api.mocks import notices as mock_notices
+from api.services.notices import active_at
 from api.schemas.festival_info import (
     CongestColor,
     CongestLevel,
@@ -14,11 +17,21 @@ from api.schemas.festival_info import (
     NoticeResponse,
     NoticeType,
     SourceError,
+    TrafficIncidentResponse,
+    TrafficIncidentType,
+    TransitArrival,
+    TransitMode,
+    TransitResponse,
+    TransitStation,
+    VisitForecast,
+    VisitForecastDay,
+    VisitForecastResponse,
     WeatherData,
     WeatherGrid,
     WeatherResponse,
 )
 from api.schemas.festivals import FestivalDetail, RegionCode
+from api.providers.transit_arrivals import distance_m
 from api.services.festival_lookup import find_festival
 
 _WEATHER_OBSERVED_AT = datetime.fromisoformat("2026-11-22T11:00:00+09:00")
@@ -132,14 +145,15 @@ def get_notices(
     )
     if _can_supply_data(response, scenario):
         response.observed_at = MOCK_NOW
+        fixtures = [
+            notice for notice in mock_notices.NOTICES.get(festival_id, ())
+            if (notice_type is None or notice.type == notice_type)
+            and (not active_only or active_at(notice.effective_from, notice.effective_to, MOCK_NOW))
+        ]
+        managed = mock_notices.memory_store.approved(festival_id, notice_type, active_only)
         response.items = sorted(
-            (
-                notice
-                for notice in NOTICES.get(festival_id, ())
-                if (notice_type is None or notice.type == notice_type)
-                and (not active_only or notice.effective_from <= MOCK_NOW <= notice.effective_to)
-            ),
-            key=lambda notice: notice.effective_from,
+            [*fixtures, *managed],
+            key=lambda notice: notice.effective_from or datetime.min.replace(tzinfo=MOCK_NOW.tzinfo),
             reverse=True,
         )
         if not response.items:
@@ -163,6 +177,33 @@ def get_weather(festival_id: str, scenario: str | None) -> WeatherResponse:
         else:
             response.data = data
             response.observed_at = data.observed_at
+    return response
+
+
+def get_traffic_incidents(
+    festival_id: str, radius_m: int, kind: TrafficIncidentType | None, scenario: str | None,
+) -> TrafficIncidentResponse:
+    festival = _find_festival(festival_id)
+    response = TrafficIncidentResponse(
+        festival_id=festival_id, coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
+        source="police_incident",
+    )
+    has_location = festival.lat is not None and festival.lng is not None
+    if not _can_supply_data(response, scenario, has_location=has_location):
+        return response
+    response.observed_at = MOCK_NOW - timedelta(minutes=3) if scenario == "stale" else MOCK_NOW
+    if festival_id == "fst_000001":
+        incident = Incident(
+            "control", "세종대로 임시 통제(모의)", 37.5759, 126.9771, MOCK_NOW,
+            MOCK_NOW + timedelta(hours=1), "police_incident", None,
+        )
+        assert festival.lat is not None and festival.lng is not None
+        response.items = nearby_incidents(
+            [IncidentReading("police_incident", response.observed_at, [incident])],
+            (festival.lat, festival.lng), radius_m, kind,
+        )
+    if scenario == "stale":
+        response.error = SourceError(code="SOURCE_STALE", message="정보가 오래됐어요", retryable=False)
     return response
 
 
@@ -193,4 +234,71 @@ def get_crowd(festival_id: str, scenario: str | None) -> CrowdResponse:
             f"주변 지역 혼잡(모의 데이터) · {area.area_name}",
             "행사장 안 혼잡과 다를 수 있어요",
         ])
+    return response
+
+
+_MOCK_STATIONS = {
+    "fst_000001": [
+        ("subway", "sta_000001", "광화문", 37.5716, 126.9763, "1005"),
+        ("bus", "sta_000002", "광화문광장", 37.5746, 126.9768, "703"),
+    ],
+    "fst_000003": [("bus", "sta_000003", "광복로", 35.1008, 129.0328, "41")],
+}
+
+
+def get_transit(
+    festival_id: str, mode: TransitMode, radius_m: int, limit: int, scenario: str | None,
+) -> TransitResponse:
+    festival = _find_festival(festival_id)
+    is_seoul = festival.region_code == "SEOUL"
+    supported = mode != "subway" or is_seoul
+    response = TransitResponse(
+        festival_id=festival_id,
+        coverage=Coverage(
+            scope="seoul_only" if mode == "subway" else "national",
+            region_code=festival.region_code, supported=supported,
+        ),
+        source="seoul_subway" if mode == "subway" else "seoul_bus_arrival" if is_seoul else "tago_bus",
+    )
+    lat, lng = festival.lat, festival.lng
+    if not _can_supply_data(
+        response, scenario, has_location=lat is not None and lng is not None,
+        unsupported_notice=None if supported else "이 지역은 아직 지원하지 않아요",
+    ) or lat is None or lng is None:
+        return response
+    stations = []
+    for station_type, station_id, name, station_lat, station_lng, line in _MOCK_STATIONS.get(festival_id, []):
+        distance = distance_m(lat, lng, station_lat, station_lng)
+        if distance <= radius_m and mode in ("all", station_type):
+            stations.append(TransitStation(
+                type=station_type, station_id=station_id, name=name,
+                lat=station_lat, lng=station_lng, distance_m=round(distance, 1),
+                arrivals=[TransitArrival(line=line, eta_s=120, message="2분 후 도착")], observed_at=MOCK_NOW,
+            ))
+    response.stations = sorted(stations, key=lambda station: station.distance_m)[:limit]
+    if response.stations:
+        response.observed_at = MOCK_NOW
+    else:
+        response.status = "unverified"
+    return response
+
+
+def get_visit_forecast(festival_id: str, days: int, scenario: str | None) -> VisitForecastResponse:
+    festival = _find_festival(festival_id)
+    response = VisitForecastResponse(
+        festival_id=festival_id,
+        coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
+        source="visit_forecast", forecast=VisitForecast(status="unsupported"),
+    )
+    if _can_supply_data(
+        response, scenario,
+        unsupported_notice=None if festival_id == "fst_000001" else "이 축제 장소의 예측 자료가 없어요",
+    ):
+        response.observed_at = MOCK_NOW
+        response.forecast = VisitForecast(
+            status="stale" if response.status == "stale" else "ok", attraction=festival.venue_name,
+            days=[VisitForecastDay(date=MOCK_NOW.date() + timedelta(days=i), rate=45 + i) for i in range(days)],
+        )
+    elif response.status == "unavailable":
+        response.forecast.status = "unavailable"
     return response

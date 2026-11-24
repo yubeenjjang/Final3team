@@ -18,7 +18,7 @@ from api.main import app
 from api.providers.kakao import KakaoClient
 from api.providers.seoul_citydata import SeoulCityData
 from api.providers.tmap import TmapClient
-from api.services import real_routes, seoul_crowd
+from api.services import mock_routes, real_routes, seoul_crowd
 
 _RETURN = "/api/v1/routes/return"
 _CROWD = "/api/v1/festivals/fst_000001/crowd"
@@ -195,12 +195,17 @@ def test_a3_requests_keep_ids_and_status_without_raw_inputs(
                 "origin": _ORIGIN, "destination": destination,
             })
             assert result["route_status"] == "ready"
-            route_ids[name] = route_ids[f"{name}-lookup"] = result["route_request_id"]
-            token = tokens[f"{name} token"] = result["route_access_token"]
+            assert "route_access_token" not in result
+            route_id = result["route_request_id"]
+            route_ids[name] = route_ids[f"{name}-lookup"] = route_id
+            # Exercise the access logger with a valid synthetic token from the test store.
+            records = real_routes.get_service()._records if mode_name == "real" else mock_routes.route_requests
+            token = tokens[f"{name} token"] = records[route_id].access_token
             looked_up = await check(
-                "GET", f"{_RETURN}/{result['route_request_id']}", f"{name}-lookup", 200,
+                "GET", f"{_RETURN}/{route_id}", f"{name}-lookup", 200,
                 token=token, params={"unused_token": token, "unused_query": _SEARCH},
             )
+            assert "route_access_token" not in looked_up
             expected = "unavailable" if mode_name == "real" and name == "coords" else "ready"
             assert looked_up["route_status"] == expected
 
@@ -278,3 +283,67 @@ def test_a3_detector_catches_deliberately_logged_raw_value(capture, label, raw) 
     logging.getLogger("api.a3_control").warning("deliberately leaked %s", raw)
     with pytest.raises(pytest.fail.Exception, match=label):
         _assert_no_raw_logs(capture.text, {label: raw})
+
+
+def test_a3_db_auth_keeps_ids_and_status_without_raw_credentials(
+    monkeypatch: pytest.MonkeyPatch, capture: pytest.LogCaptureFixture, server_config: Config,
+) -> None:
+    from datetime import timezone
+    from uuid import uuid4
+
+    from api.auth import service, state, tokens
+    from api.deps import CurrentUser, get_current_user
+
+    signing_key = "fixture-auth-key-for-redaction-tests-only"
+    password = "FixturePassword123"
+    refresh = "fixture-refresh-secret-with-entropy"
+    user_id = uuid4()
+    monkeypatch.setenv("AUTH_PROVIDER", "db")
+    monkeypatch.setenv("JWT_SECRET", signing_key)
+    monkeypatch.setattr(state, "_auth_state", state.MemoryAuthState())
+    access = tokens.issue_access_token(user_id, "user", datetime.now(timezone.utc), 1800)
+    claims = tokens.read_access_token(f"Bearer {access}")
+
+    def signup(body):
+        if body.display_name == "Error":
+            raise RuntimeError(body.password.get_secret_value())
+        return {"user_id": str(user_id), "display_name": body.display_name, "is_mock": False}
+
+    token_response = {"access_token": access, "refresh_token": refresh, "is_mock": False}
+    monkeypatch.setattr(service, "signup", signup)
+    monkeypatch.setattr(service, "login", lambda _: token_response)
+    monkeypatch.setattr(service, "refresh", lambda _: token_response)
+    monkeypatch.setattr(service, "logout", lambda *_: None)
+    monkeypatch.setitem(app.dependency_overrides, get_current_user, lambda: CurrentUser(claims, "user", True))
+    signup_body = {
+        "email": "logs@example.test", "password": password, "display_name": "Tester",
+        "birth_year": 2000, "gender": "female",
+    }
+
+    async def exercise() -> None:
+        cases = (
+            ("signup", "signup", signup_body, 201),
+            ("validation", "signup", {**signup_body, "gender": "invalid"}, 422),
+            ("error", "signup", {**signup_body, "display_name": "Error"}, 500),
+            ("login", "login", {"email": signup_body["email"], "password": password}, 200),
+            ("refresh", "refresh", {"refresh_token": refresh}, 200),
+            ("logout", "logout", {"refresh_token": refresh}, 204),
+        )
+        for label, endpoint, payload, status in cases:
+            response = await _send(server_config, httpx2.Request(
+                "POST", f"http://testserver/api/v1/auth/{endpoint}",
+                headers={"X-Request-ID": f"a3-auth-{label}", "Authorization": f"Bearer {access}"},
+                params={"unused_key": signing_key, "unused_token": refresh}, json=payload,
+            ))
+            assert response.status_code == status
+            assert response.headers["X-Request-ID"] == f"a3-auth-{label}"
+            assert "X-Mock" not in response.headers
+
+    asyncio.run(exercise())
+    _assert_no_raw_logs(capture.text, {
+        "JWT signing key": signing_key, "password": password, "Access JWT": access, "Refresh token": refresh,
+    })
+    assert "request_id='a3-auth-login' http_status=200" in capture.text
+    assert "request_id='a3-auth-error' http_status=500" in capture.text
+    assert sum(record.name == "uvicorn.access" for record in capture.records) == 6
+    assert any(record.name == "uvicorn.asgi" for record in capture.records)

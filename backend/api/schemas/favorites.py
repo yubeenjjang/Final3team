@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from api.schemas.common import MockResponse
 from api.schemas.festivals import FestivalStatus, RegionCode
 
 
@@ -13,7 +12,11 @@ class FavoritesQuery(BaseModel):
     sort: Literal["-saved_at", "start_date"] = "-saved_at"
 
 
-class FavoriteSave(MockResponse):
+class FavoriteResponse(BaseModel):
+    is_mock: bool = True
+
+
+class FavoriteSave(FavoriteResponse):
     festival_id: str
     saved_at: datetime
 
@@ -29,7 +32,7 @@ class FavoriteItem(BaseModel):
     saved_at: datetime
 
 
-class FavoritesPage(MockResponse):
+class FavoritesPage(FavoriteResponse):
     items: list[FavoriteItem]
     total: int
     page: int

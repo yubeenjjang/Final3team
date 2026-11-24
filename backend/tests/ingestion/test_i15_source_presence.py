@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from datetime import date
 from pathlib import Path
 from unittest.mock import Mock
@@ -36,7 +37,11 @@ def test_I15_only_complete_listing_is_forwarded(
     store = Mock()
     store.load.return_value = {}
     store.finish_job.return_value = None
-    monkeypatch.setattr(collect, "create_ingestion_engine", Mock())
+    engine = Mock()
+    lock = Mock()
+    lock.scalar.return_value = True
+    engine.begin.return_value = nullcontext(lock)
+    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: engine)
     monkeypatch.setattr(collect, "FestivalStore", lambda engine: store)
     if scenario == "quota":
         monkeypatch.setattr("api.providers.tourapi.LIST_CALL_LIMIT", 1)
@@ -100,6 +105,9 @@ def test_I16_I17_same_scope_missing_and_reappearance_keep_review(
 
     with db_engine.connect() as connection:
         assert connection.execute(text(
+            "SELECT reason, approval_status FROM festival_review_queue"
+        )).one() == ("missing_from_source", "pending")
+        assert connection.execute(text(
             "SELECT error #> '{listing,ids}' FROM ingestion_jobs WHERE job_id = :job"
         ), {"job": missing_job}).scalar_one() == []
         history = dict(connection.execute(text(
@@ -135,3 +143,35 @@ def test_I15_page_failure_leaves_public_festival_and_no_history(
     assert festival_state(db_engine)[:2] == ("approved", True)
     with db_engine.connect() as connection:
         assert connection.execute(text("SELECT count(*) FROM festival_change_history")).scalar_one() == 0
+
+
+@pytest.mark.db
+def test_I18_legacy_public_row_missing_from_first_baseline_is_held_for_classification(
+    db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
+    original = lambda request: httpx2.Response(200, json=listing())
+    empty = lambda request: list_response(1, total=0, present=False)
+    assert run_collector(tmp_path, original, "--db", "--no-detail", "--limit", "2") == 0
+    with db_engine.begin() as connection:
+        connection.execute(text("""
+            UPDATE festivals SET source_class_level2 = NULL, source_class_code = NULL
+            FROM festival_sources
+            WHERE festivals.festival_id = festival_sources.festival_id AND source_item_id = :item
+        """), {"item": ITEM_ID})
+
+    assert run_collector(tmp_path, empty, "--db", "--no-detail") == 0
+    _, report = output_files(tmp_path)
+    assert festival_state(db_engine)[:2] == ("pending", False)
+    assert run_collector(tmp_path, empty, "--db", "--no-detail") == 0
+    with db_engine.connect() as connection:
+        assert connection.execute(text("""
+            SELECT source_item_id FROM festival_sources JOIN festivals USING (festival_id)
+            WHERE review_status = 'approved' AND published_at IS NOT NULL
+        """)).scalar_one() == "2536122"
+        assert connection.execute(text("""
+            SELECT field, after_value FROM festival_change_history
+            WHERE field IN ('source_classification', 'source_presence')
+        """)).one() == (
+            "source_classification", {"reason": "class_unverified", "job_id": report["db"]["job_id"]},
+        )

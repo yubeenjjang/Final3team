@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE</resultMsg></header>
+  <body>
+    <totalCount>3</totalCount>
+    <items>
+      <item>
+        <incidenteTypeCd>1</incidenteTypeCd>
+        <incidentTitle>세종대로 차량 사고</incidentTitle>
+        <locationDataX>126.9771</locationDataX>
+        <locationDataY>37.5759</locationDataY>
+        <linkId>1000000100</linkId>
+        <startDate>2026년 11월 19일  17시 15분</startDate>
+        <endDate>2026년 11월 19일  17시 45분</endDate>
+      </item>
+      <item>
+        <incidenteTypeCd>2</incidenteTypeCd>
+        <incidentTitle>삼청로 보수 공사</incidentTitle>
+        <locationDataX>126.9771</locationDataX>
+        <locationDataY>37.5830</locationDataY>
+        <startDate>2026년 11월 19일  09시 00분</startDate>
+        <endDate>2026년 11월 19일  18시 00분</endDate>
+      </item>
+      <item>
+        <incidenteTypeCd>3</incidenteTypeCd>
+        <incidentTitle>부산 광복로 문화 행사</incidentTitle>
+        <locationDataX>129.0337</locationDataX>
+        <locationDataY>35.1003</locationDataY>
+        <startDate>2026년 11월 19일  17시 00분</startDate>
+        <endDate/>
+      </item>
+    </items>
+  </body>
+</response>
