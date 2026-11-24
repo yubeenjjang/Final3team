@@ -62,6 +62,7 @@ class MigrationFilesTests(unittest.TestCase):
         for number in range(1, 12):
             self._write(f"{number:03d}_change.sql")
         self._write("010_change_down.sql")
+        self._write("009_precheck.sql")  # 점검용 SQL은 마이그레이션 번호로 세지 않습니다.
         self.assertEqual([number for number, _, _ in migrate.migration_files()], list(range(1, 12)))
 
     def test_missing_or_duplicate_number_is_rejected(self):
