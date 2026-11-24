@@ -198,12 +198,14 @@ def test_P17_db_write_contains_only_the_allowed_result(monkeypatch, tmap_availab
     }
     status, response = asyncio.run(service.create_route("return", ReturnRouteRequest(**body), body))
     assert status == 200
+    assert "route_access_token" not in response
     assert [name for name, _ in writes] == [
         "queued", "processing", "ready" if tmap_available else "unavailable",
     ]
-    assert writes[0][1]["token_hash"] == token_hash(response["route_access_token"])
+    token = service._db_token(response["route_request_id"])
+    assert writes[0][1]["token_hash"] == token_hash(token)
     serialized_writes = json.dumps(writes, default=str)
-    for sensitive in (response["route_access_token"], body["request_id"], "37.123456", "126.789123"):
+    for sensitive in (token, body["request_id"], "37.123456", "126.789123"):
         assert sensitive not in serialized_writes
     if tmap_available:
         assert writes[-1][1]["result"] is not None

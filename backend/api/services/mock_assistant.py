@@ -17,6 +17,7 @@ from api.schemas.festivals import FestivalQuery
 from api.services import festival_store
 from api.services.festival_lookup import find_festival
 from api.services.mock_routes import create_ready_route
+from ulid import ULID
 
 _ALPHABET = string.ascii_letters + string.digits
 _KST = timezone(timedelta(hours=9))
@@ -30,7 +31,7 @@ def _now() -> str:
 
 def _unique_id(prefix: str, existing: set[str] | dict[str, AssistantRun]) -> str:
     while True:
-        candidate = prefix + "".join(secrets.choice(_ALPHABET) for _ in range(16))
+        candidate = prefix + str(ULID())
         if candidate not in existing:
             return candidate
 

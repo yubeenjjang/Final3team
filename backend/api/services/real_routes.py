@@ -36,7 +36,7 @@ from api.services.mock_routes import (
     _FAILURES,
     _RETRY_AFTER_S,
     _format_endpoint,
-    _random_id,
+    _new_id, _random_id,
 )
 
 _SYNC_WAIT_S = 3
@@ -192,7 +192,7 @@ class RealRouteService:
         failure = record.failure
         if failure is not None and failure.http_status != 200:
             raise ApiError(failure.http_status, failure.code, failure.message, failure.retryable)
-        return 200, {**self._status_payload(record), "route_access_token": record.access_token}
+        return 200, self._status_payload(record)
 
     async def get_route_response(
         self, direction: RouteDirection, route_id: str, access_token: str | None,
@@ -221,9 +221,9 @@ class RealRouteService:
     def _register(
         self, direction: RouteDirection, request: RouteRequest, request_key: str, body_hash: str,
     ) -> _RouteRecord:
-        route_id = _random_id("rr_", 16)
+        route_id = _new_id("rr_")
         while route_id in self._records:
-            route_id = _random_id("rr_", 16)
+            route_id = _new_id("rr_")
         record = self._new_record(direction, request, request_key, body_hash, route_id, _random_id("rrt_", 24))
         self._records[route_id] = record
         self._request_keys[record.request_key] = record
@@ -260,7 +260,7 @@ class RealRouteService:
         festival = await asyncio.to_thread(find_festival, request.festival_id)
         self._validate_festival(request, festival)
         assert festival is not None
-        route_id = _random_id("rr_", 16)
+        route_id = _new_id("rr_")
         record = self._new_record(direction, request, request_key, body_hash, route_id, self._db_token(route_id))
         record.festival = festival
         origin_type, origin_hash = self._place_fields(request.origin)
@@ -556,9 +556,9 @@ class RealRouteService:
             return 200, self._state_payload(route_id, "unavailable", self._now(), _ACCESS_EXPIRED)
         if failure is not None and failure.http_status != 200:
             raise ApiError(failure.http_status, failure.code, failure.message, failure.retryable)
-        payload["route_access_token"] = token
         if payload["route_status"] in ("queued", "processing"):
             payload["status_url"] = f"/api/v1/routes/{direction}/{route_id}"
+            payload["route_access_token"] = token
             return 202, payload
         return 200, payload
 
@@ -593,7 +593,8 @@ class RealRouteService:
                 "queried_at": as_kst(result["queried_at"]).isoformat(),
                 "verification_status": "control_unverified",
                 "constraint_status": self._constraint_status(request["constraints"]),
-                "coverage": {"scope": "national", "supported": True}, "score_version": None,
+                "coverage": {"scope": "national", "region_code": request["region_code"], "supported": True},
+                "score_version": None,
                 "notices": [_CONTROL_NOTICE, *result["evidence"].get("notices", [])],
             })
         return failure, payload
@@ -652,7 +653,6 @@ class RealRouteService:
         return {
             "route_request_id": record.route_id,
             "route_status": "ready",
-            "route_access_token": record.access_token,
             "direction": record.direction,
             "festival_id": festival.festival_id,
             "origin": _format_endpoint(request.origin, festival),
