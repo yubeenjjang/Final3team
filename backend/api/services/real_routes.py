@@ -11,8 +11,9 @@ from functools import lru_cache
 from typing import Protocol
 
 from sqlalchemy import RowMapping
+from sqlalchemy.exc import TimeoutError as DBPoolTimeout
 
-from api.errors import ApiError
+from api.errors import SERVICE_BUSY_CODE, SERVICE_BUSY_MESSAGE, ApiError
 from api.providers.kakao import KakaoClient
 from api.providers.quota import QuotaGuard, QuotaProvider
 from api.providers.route_base import (
@@ -67,6 +68,7 @@ _ACCESS_EXPIRED = _Failure("ROUTE_ACCESS_EXPIRED", "경로 조회 시간이 지�
 _DB_UNAVAILABLE = _Failure(
     "ROUTE_STORE_UNAVAILABLE", "귀가 요청 저장소에 연결할 수 없어요.", True, http_status=503,
 )
+_DB_BUSY = _Failure(SERVICE_BUSY_CODE, SERVICE_BUSY_MESSAGE, True, http_status=503)
 _PROVIDER_FAILURES: dict[ErrorKind, _Failure] = {
     "too_close": _Failure("ROUTE_NO_RESULT", "걸어서 갈 수 있는 거리예요"),
     "no_result": _Failure(*_FAILURES["async_no_result"]),
@@ -120,7 +122,8 @@ class _RouteRecord:
     source_type: str = "fresh"
 
 
-_FlightResult = _CachedRoute | ProviderResult | _Failure
+_RouteOutcome = _CachedRoute | ProviderResult | _Failure
+_PrimaryResult = _CachedRoute | _Failure | ErrorKind
 
 
 def uses_real_routes() -> bool:
@@ -136,6 +139,7 @@ class RealRouteService:
         quota: _Quota | None = None,
         now: Callable[[], datetime] | None = None,
         store: RouteStore | None = None,
+        control_version: str | None = None,
     ) -> None:
         self._tmap = tmap
         self._kakao = kakao
@@ -146,10 +150,11 @@ class RealRouteService:
             raise ApiError(503, "ROUTE_STORE_UNAVAILABLE", "귀가 저장소 설정을 확인해 주세요.", True)
         self._secret = secret.encode() if secret else _STARTUP_SECRET
         self._store = store
+        self._control_version = control_version or "none"
         self._records: dict[str, _RouteRecord] = {}
         self._request_keys: dict[str, _RouteRecord] = {}
         self._cache: dict[str, _CachedRoute] = {}
-        self._flights: dict[str, asyncio.Task[_FlightResult]] = {}
+        self._flights: dict[str, asyncio.Task[_PrimaryResult]] = {}
 
     async def create_route(
         self, direction: RouteDirection, request: RouteRequest, body: dict[str, object]
@@ -268,7 +273,8 @@ class RealRouteService:
             "destination_type": destination_type, "destination_hash": destination_hash,
             "travel_mode": request.travel_mode, "route_preference": request.route_preference,
             "constraints": request.user_constraints.model_dump_json(),
-            "route_key": self._private_hash("pending-route", route_id), "now": record.depart_at,
+            "route_key": "pending:" + self._private_hash("pending-route", route_id),
+            "now": record.depart_at,
         })
         if not created:
             existing = await asyncio.to_thread(self._store.request_for_retry, request_key, body_hash)
@@ -302,6 +308,8 @@ class RealRouteService:
                 result = await self._find_route(record, query)
         except TimeoutError:
             result = _TIMEOUT
+        except DBPoolTimeout:
+            result = _DB_BUSY
         except ApiError as error:
             result = _Failure(error.code, error.message, error.retryable, http_status=error.status)
         except ProviderError as error:
@@ -312,6 +320,8 @@ class RealRouteService:
         if self._store is not None:
             try:
                 await asyncio.to_thread(self._persist_result, record, result)
+            except DBPoolTimeout:
+                result = _DB_BUSY
             except ApiError:
                 result = _DB_UNAVAILABLE
 
@@ -382,20 +392,29 @@ class RealRouteService:
             raise ProviderError("quota", "kakao")
         return self._kakao().search_place(query)
 
-    def _route_key(self, record: _RouteRecord, query: RouteQuery) -> str:
-        start_lat, start_lng = query.origin
-        end_lat, end_lng = query.destination
+    def _route_key(self, record: _RouteRecord, query: RouteQuery, provider: ProviderName) -> str:
         request = record.request
         assert request is not None
-        parts = (
-            record.direction, f"{start_lat:.4f},{start_lng:.4f}", f"{end_lat:.4f},{end_lng:.4f}",
-            request.travel_mode, request.route_preference,
-            str(int(record.depart_at.timestamp()) // 300),
-        )
-        return hmac.digest(self._secret, "|".join(parts).encode(), "sha256").hex()
+        conditions = {
+            "direction": record.direction,
+            "festival_id": request.festival_id,
+            "origin_type": request.origin.type,
+            "destination_type": request.destination.type,
+            "origin": [f"{value:.4f}" for value in query.origin],
+            "destination": [f"{value:.4f}" for value in query.destination],
+            "travel_mode": request.travel_mode,
+            "route_preference": request.route_preference,
+            "user_constraints": request.user_constraints.model_dump(),
+            "departure": request.departure,
+            "departure_bucket": int(record.depart_at.timestamp()) // 300,
+            "control_version": self._control_version,
+            "provider": provider,
+        }
+        normalized = json.dumps(conditions, sort_keys=True, separators=(",", ":"))
+        return "v2:" + self._private_hash("route-key-v2", normalized)
 
-    async def _find_route(self, record: _RouteRecord, query: RouteQuery) -> _FlightResult:
-        key = self._route_key(record, query)
+    async def _find_route(self, record: _RouteRecord, query: RouteQuery) -> _RouteOutcome:
+        key = self._route_key(record, query, "tmap")
         record.route_key = key
         cached = self._cache.get(key)
         if cached is not None and self._live_result(cached) is not None:
@@ -403,24 +422,26 @@ class RealRouteService:
             return cached
         flight = self._flights.get(key)
         if flight is None:
-            flight = asyncio.create_task(self._fetch(key, query, record.sync_deadline))
+            flight = asyncio.create_task(self._fetch_tmap(key, query))
             self._flights[key] = flight
         else:
             record.source_type = "shared"
-        return await asyncio.shield(flight)
+        outcome = await asyncio.shield(flight)
+        if isinstance(outcome, str):
+            return await self._fallback(record, query, outcome)
+        return outcome
 
-    async def _fetch(self, key: str, query: RouteQuery, sync_deadline: float) -> _FlightResult:
+    async def _fetch_tmap(self, key: str, query: RouteQuery) -> _PrimaryResult:
         try:
             loop = asyncio.get_running_loop()
             deadline = loop.time() + _FLIGHT_LIMIT_S
             async with asyncio.timeout_at(deadline):
-                try:
-                    result = await asyncio.to_thread(
-                        self._query_provider, "tmap", query, deadline, loop.time,
-                    )
-                except ProviderError as error:
-                    return await self._fallback(query, error.kind, sync_deadline)
+                result = await asyncio.to_thread(
+                    self._query_provider, "tmap", query, deadline, loop.time,
+                )
                 return self._cache_result(key, result)
+        except ProviderError as error:
+            return error.kind
         except TimeoutError:
             return _TIMEOUT
         except Exception:
@@ -429,13 +450,17 @@ class RealRouteService:
             del self._flights[key]
 
     async def _fallback(
-        self, query: RouteQuery, primary_error: ErrorKind, sync_deadline: float
+        self, record: _RouteRecord, query: RouteQuery, primary_error: ErrorKind,
     ) -> ProviderResult | _Failure:
         if primary_error in ("too_close", "bad_request", "service_ended"):
             return _PROVIDER_FAILURES[primary_error]
         loop = asyncio.get_running_loop()
+        sync_deadline = record.sync_deadline
         if loop.time() >= sync_deadline:
             return _SECONDARY_ONLY
+        # 카카오 결과는 각 요청의 동기 응답에서만 제공한다.
+        record.route_key = self._route_key(record, query, "kakao")
+        record.source_type = "fresh"
         try:
             async with asyncio.timeout_at(sync_deadline):
                 return await asyncio.to_thread(
@@ -490,7 +515,7 @@ class RealRouteService:
             record.updated_at = self._now()
         return result
 
-    def _persist_result(self, record: _RouteRecord, outcome: _FlightResult) -> None:
+    def _persist_result(self, record: _RouteRecord, outcome: _RouteOutcome) -> None:
         assert self._store is not None
         now = self._now()
         result = outcome.result if isinstance(outcome, _CachedRoute) else None

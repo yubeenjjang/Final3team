@@ -83,9 +83,9 @@
 - `X-Mock-Scenario` 헤더는 `real`에서 무시(시험용 기능이라).
 ### P10. 처리 순서
 1. 축제 찾기(`find_festival`) → 출발·도착 좌표. 사용자 장소는 `query`면 장소 검색(P7), `lat·lng`면 그대로. 실패: 장소 검색 `no_result` → 400 `ROUTE_INVALID`.
-2. `route_key` = **HMAC-SHA256**(키 `ROUTE_KEY_SECRET`, 없으면 서버 시작 때 임의 생성) of `방향|출발(소수 4자리)|도착(4자리)|travel_mode|route_preference|출발 시각 5분 구간` — 원문 좌표를 키에 남기지 않음(강사 DB 피드백 2).
+2. `route_key`는 STEP7 P23의 v2 HMAC을 사용한다. 해석된 좌표와 요청 조건·통제 버전·공급원을 입력으로 사용하며 키에는 원문 좌표가 없다.
 3. **캐시(TMAP 결과만, 60초, 메모리):** 같은 `route_key`가 있으면 공급원을 부르지 않고 그 결과로 `ready`.
-4. **요청 병합:** 같은 `route_key`가 처리 중이면 새로 부르지 않고 그 결과를 기다린다(메모리, 12초 뒤 풀림).
+4. **요청 병합:** 같은 TMAP `route_key`가 처리 중이면 그 조회 결과를 기다린다(메모리, 12초 뒤 풀림). 카카오 전환은 요청별 동기 대기 시간 안에 처리한다.
 5. 1차 TMAP: `quota.try_acquire("tmap")`가 False면 건너뜀. 호출 → 성공이면 `ready`(provider tmap, primary), 캐시 저장.
 6. 1차 실패(`temporary`·`timeout`·`quota`·`config`·`no_result`(12~14)·`region`) 또는 건너뜀 → **접수 뒤 3초 안이면** 2차 카카오 1회(`try_acquire("kakao")`). `too_close`·`bad_request`·`service_ended`는 2차로 안 넘김.
 7. 결과 판정: 성공 → `ready`(`completed_valid_route=True`). 실패 → `unavailable` + 오류 코드: `too_close`·`no_result`·`service_ended` → `ROUTE_NO_RESULT`(`retryable=false`, `too_close` 문구 "걸어서 갈 수 있는 거리예요", `service_ended` 문구 "지금은 대중교통으로 갈 수 없어요") · `bad_request` → `ROUTE_INVALID` · 두 공급원 모두 `quota`/건너뜀 → `ROUTE_QUOTA_EXCEEDED` · `timeout` → `timed_out`+`ROUTE_TIMEOUT` · 그 밖 → `ROUTE_UPSTREAM_ERROR`(retryable true).
@@ -151,7 +151,7 @@
 
 ### P20. 서비스 세션
 
-- A04 접수·상태 변경·결과 저장과 A05 요청 조회·토큰 해시 비교·결과 조회 및 정리는 공통 `shared.db.session.service_db_session()`으로 처리한다. A05는 해시 검증 뒤 결과에 접근한다. 커밋·롤백과 풀 반납 시 `RESET ALL`은 공통 연결층이 담당한다. 설정·연결 오류는 기존 503 `ROUTE_STORE_UNAVAILABLE`로 응답한다.
+- A04 접수·상태 변경·결과 저장과 A05 요청 조회·토큰 해시 비교·결과 조회 및 정리는 공통 `shared.db.session.service_db_session()`으로 처리한다. A05는 해시 검증 뒤 결과에 접근한다. 커밋·롤백과 풀 반납 시 `RESET ALL`은 공통 연결층이 담당한다. 풀 대기 시간 초과는 P24 기준을 따른다. 귀가 저장소의 기타 설정·연결 오류는 503 `ROUTE_STORE_UNAVAILABLE`로 응답한다.
 - **API 컨테이너 DB 설정 확정(신유빈, 11/24 10:29).** `.env.example`의 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER_USERNAME`, `DB_USER_PASSWORD`, `DB_SERVICE_USERNAME`, `DB_SERVICE_PASSWORD`를 전달한다. `DB_MIGRATION_DSN`은 관리자용 실행 환경에만 둔다. 축제 조회는 `DB_USER_USERNAME`·`DB_USER_PASSWORD`, 수집은 `DB_SERVICE_USERNAME`·`DB_SERVICE_PASSWORD`를 읽는다.
 
 ### P21. 마이그레이션 파일 선택과 시험
@@ -162,5 +162,22 @@
 ## 9. STEP6 TMAP 결과 정리 명령
 
 - 013까지 적용한 DB에서 `service_db_session()`으로 `queried_at`부터 기본 23시간 이상 된 미정리 TMAP 결과를 처리한다. `ROUTE_PURGE_AFTER_HOURS`는 1~23 사이의 정수만 허용한다. 시간당 실행이 정상적으로 이어지면 본문은 최대 24시간 보관된다. 유효 토큰의 A05 조회에는 정리된 결과를 `ROUTE_RESULT_EXPIRED`(`retryable=false`)로 반환한다. 후보·근거·공급원 참조·검증 상세를 비우고 `route_results.purged_at`을 기록하면, 트리거가 같은 트랜잭션에서 `route_requests.result_purged_at`에 같은 값을 기록한다. 요청·결과 행과 메타데이터는 보존한다. 카카오 응답은 API의 동기 응답에만 있다.
-- `backend/`에서 `python -m api.jobs.purge_route_results`, 루트에서 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행한다. `--dry-run`은 대상 건수만 출력한다. 트랜잭션 advisory lock으로 동시 실행을 막고, 재실행은 이미 정리한 행을 건너뛴다.
+- `backend/`에서 `python -m api.jobs.purge_route_results`, 루트에서 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행한다. `--dry-run`은 대상 건수만 출력한다. 트랜잭션 advisory lock으로 동시 실행을 막는다. P25의 정리 기준을 이미 충족한 행은 재실행 때 건너뛴다.
 - `0`은 성공(0건 포함), `1`은 실행 실패, `2`는 인자 또는 정리 기준 설정 오류, `3`은 중복 실행이다. 신유빈이 W64·W65에서 시간당 실행과 감시를 구성한다. 정기 작업에서 0 이외 종료나 65분 동안 성공 로그 누락을 경보로 잡는다. 일반 실행 로그는 처리 건수와 소요 시간을 한 줄로 남긴다.
+
+## 10. STEP7 귀가 경로 후속
+
+### P23. 경로 키 v2 (분석 #26)
+
+- `v2:` 뒤에 정규화한 JSON의 HMAC-SHA256을 붙인다. 입력은 방향·축제 ID·출발/도착 유형과 해석된 좌표(소수 4자리)·이동수단·추천 기준·이동 제약(생략 시 스키마 기본값)·`departure`와 5분 구간·통제 버전(현재 `none`)·공급원이다. 메모리 모드는 비밀키가 없으면 프로세스 시작 시 임의 키를 만든다. DB 모드는 일관된 키를 위해 비밀키 설정이 필요하다.
+- TMAP 캐시와 병합은 v2 키의 완전 일치로 판단한다. 카카오 결과는 요청별 동기 응답으로만 제공한다. 복구 후보를 고를 때도 v2 완전 일치를 적용한다. 무접두사 기존 키 및 해석 전 `pending:` 키는 재사용 대상에서 제외한다.
+- 기존 요청 행은 키를 다시 계산하지 않고 요청 ID·본문 HMAC·조회 토큰으로 재전송 및 A05 조회를 처리한다. 같은 요청 ID에 다른 본문은 409다.
+
+### P24. DB 풀 대기 시간 초과 (DB-14)
+
+- SQLAlchemy `TimeoutError`가 요청 처리 중 발생하면 공통 오류 형식의 HTTP 503 `SERVICE_BUSY`, `retryable=true`, `Retry-After: 1`을 반환한다. 풀 원본 예외 내용은 기록하지 않는다. 이미 202를 돌려준 요청은 A05로 상태를 확인한다.
+
+### P25. TMAP 정리 (SK 회신 없이 적용하는 확정 기준 2-2)
+
+- 24시간 이내에 TMAP 후보 전체(소요 시간·요금·환승 수·경로 요약 포함), 근거·공급원 참조·검증 상세, 후보에서 만든 `route_hash` 및 점수 버전·캐시 참조를 비운다. 이전에 정리한 행의 잔여 값도 제거한다. `route_hash`는 빈 문자열을 사용하고 캐시·대체 결과의 검사 JSON은 빈 객체로 둔다.
+- 접수·시작·완료·공급원 조회 시각, 자체 측정 처리 시간, 성공 여부·상태, 공급원, 오류 코드와 원래 삭제 시각은 보존한다. `route_requests`에 TMAP 후보 필드나 후보 해시를 복제하지 않는다. 로그는 요청·공급원 처리 상태와 정리 건수·소요 시간을 기록한다. 운영 지표에는 자체 측정값만 사용한다.

@@ -277,10 +277,10 @@ def test_P18_db_sweeper_clears_cached_api_result_at_23h(route_engine, app_engine
         assert "route_candidates" not in expired
     with route_engine.connect() as connection:
         row = connection.execute(text("""
-            SELECT source_type, candidates, evidence, validity_check, purged_at
+            SELECT source_type, candidates, evidence, validity_check, route_hash, purged_at
             FROM public.route_results WHERE route_request_id = :id
         """), {"id": cached_id}).one()
-    assert row == ("cache", None, {}, {}, clock.now)
+    assert row == ("cache", None, {}, {}, "", clock.now)
 
 
 def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festival_id, monkeypatch):
@@ -302,10 +302,10 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
             connection.execute(text("""
                 INSERT INTO public.route_results (
                     route_request_id, provider, provider_tier, provider_ref, candidates, evidence,
-                    route_hash, source_type, validity_check, queried_at, validation_status, is_mock
+                    route_hash, score_version, source_type, validity_check, queried_at, validation_status, is_mock
                 ) VALUES (
                     :id, :provider, :tier, 'synthetic-ref', CAST(:candidates AS jsonb), '{"fixture": true}',
-                    :digest, :source, '{"fixture": true}', :queried_at, 'control_unverified', false
+                    :digest, 'synthetic-score', :source, '{"fixture": true}', :queried_at, 'control_unverified', false
                 )
             """), {
                 "id": route_id, "provider": provider, "digest": digest, "queried_at": queried_at,
@@ -328,7 +328,8 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
     def result_state(route_id):
         with route_engine.connect() as connection:
             return connection.execute(text("""
-                SELECT candidates, evidence, provider_ref, validity_check, purged_at, result_purged_at
+                SELECT candidates, evidence, provider_ref, validity_check, route_hash, score_version,
+                       purged_at, result_purged_at
                 FROM public.route_results JOIN public.route_requests USING (route_request_id)
                 WHERE route_request_id = :id
             """), {"id": route_id}).one()
@@ -342,8 +343,8 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
     assert store.purge_expired(clock.now) == count
     assert store.purge_expired(clock.now) == 0
     assert store.purge_expired(clock.now, dry_run=True) == 0
-    assert result_state(expired_id) == (None, {}, None, {}, clock.now, clock.now)
-    assert result_state(older_id) == (None, {}, None, {}, clock.now, clock.now)
+    assert result_state(expired_id) == (None, {}, None, {}, "", None, clock.now, clock.now)
+    assert result_state(older_id) == (None, {}, None, {}, "", None, clock.now, clock.now)
     assert result_state(fresh_id) == fresh_before
     assert result_state(kakao_id) == kakao_before
 

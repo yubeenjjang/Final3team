@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import RowMapping, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, TimeoutError as DBPoolTimeout
 from sqlalchemy.orm import Session
 
 from api.errors import ApiError
@@ -28,15 +28,24 @@ _STATUS = """
       FROM public.route_requests
      WHERE route_request_id = :route_id AND direction = :direction AND request_body_hash IS NOT NULL
 """
-_EXPIRED_RESULTS = """
-    WHERE provider = 'tmap' AND purged_at IS NULL AND queried_at <= :cutoff
+_EMPTY_VALIDITY_CHECK = "CASE WHEN source_type IN ('cache','alternate') THEN CAST('{}' AS jsonb) END"
+_EXPIRED_RESULTS = f"""
+    WHERE provider = 'tmap' AND (
+        (purged_at IS NULL AND queried_at <= :cutoff)
+        OR (purged_at IS NOT NULL AND (
+            candidates IS NOT NULL OR evidence <> '{{}}' OR provider_ref IS NOT NULL
+            OR route_hash <> '' OR score_version IS NOT NULL OR cache_key IS NOT NULL
+            OR validity_check IS DISTINCT FROM ({_EMPTY_VALIDITY_CHECK})
+        ))
+    )
 """
 # A05와 정리 명령이 공유한다. 013 트리거가 같은 트랜잭션에서 삭제 시각을 요청 행에 기록한다.
-_PURGE = """
+_PURGE = f"""
     UPDATE public.route_results
-       SET candidates = NULL, evidence = '{}', provider_ref = NULL,
-           validity_check = CASE WHEN source_type IN ('cache','alternate') THEN '{}'::jsonb END,
-           purged_at = :now
+       SET candidates = NULL, evidence = '{{}}', provider_ref = NULL,
+           route_hash = '', score_version = NULL, cache_key = NULL,
+           validity_check = {_EMPTY_VALIDITY_CHECK},
+           purged_at = COALESCE(purged_at, :now)
 """ + _EXPIRED_RESULTS
 _COUNT_EXPIRED = text("SELECT count(*) FROM public.route_results " + _EXPIRED_RESULTS)
 _PURGE_LOCK = text("SELECT pg_try_advisory_xact_lock(hashtext('noldaga.purge_route_results'))")
@@ -87,6 +96,8 @@ class RouteStore:
         try:
             with self._session() as session:
                 yield session
+        except DBPoolTimeout:
+            raise
         except (SQLAlchemyError, ValueError):
             raise ApiError(503, "ROUTE_STORE_UNAVAILABLE", "귀가 요청 저장소에 연결할 수 없어요.", True) from None
 

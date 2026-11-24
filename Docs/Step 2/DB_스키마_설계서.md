@@ -609,8 +609,8 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 | `route:req` 만료·Redis 장애 | 상태는 PostgreSQL `route_requests`에서 읽음(느려질 뿐 틀리지 않음) |
 | Redis 장애로 `revoked:{jti}` 확인 불가 | 보호 API 중 **읽기는 그대로 처리**, **쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`**. 공개 API는 영향 없음(API 설계서 1-1절, 권오현 W18 시험 예정) |
 
-- **`route_key` 현재 동작(코드 기준, 11/23):** `backend/api/services/real_routes.py`의 HMAC-SHA256 입력은 방향(return/visit), 출발·도착 좌표(소수 4자리), `travel_mode`, `route_preference`, 5분 시간 구간입니다. `ROUTE_KEY_SECRET`이 비어 있으면 프로세스 시작 때 만든 임의 키를 씁니다. 확인 시험은 `backend/tests/routes/test_p9_real_routes.py`의 `test_P10_cache_key_uses_hmac_and_rounded_coordinates`입니다.
-- **구현 예정:** 정규화한 `user_constraints`·통제 버전·공급원은 현재 키에 없으므로 이 값만 다르면 같은 키를 쓸 수 있습니다. 권오현이 조건 반영과 복구 조치(W48, 12/04) 전에 키에 추가합니다(API 설계서 17-3절).
+- **`route_key` v2(분석 #26)**. 정규화한 방향·축제 ID·출발/도착 유형과 좌표(소수 4자리)·이동수단·추천 기준·이동 제약·출발 기준과 5분 구간·통제 공지 버전(현재 `none`)·공급원에 HMAC-SHA256을 적용해 `v2:`를 붙입니다. `TEXT` 컬럼을 그대로 사용합니다. 메모리 모드에 한해 `ROUTE_KEY_SECRET`이 없으면 시작할 때 임의 키를 씁니다. P23에서 키 분리와 같음, 좌표 원문 부재를 확인합니다.
+- 기존 무접두사 키는 DB에 보존합니다. 새 캐시·병합·복구 후보에는 완전히 일치하는 v2 키만 씁니다. 해석 전 `pending:` 키도 재사용에서 제외합니다. A05와 멱등 조회는 기존 요청 ID·본문 해시·조회 토큰 검증을 사용합니다(API 17-3절).
 - 캐시가 처음부터 항상 켜진 것은 "기본 성능 설계"이고, 오토힐링은 `policy:route:active`에 **감지 뒤 켜진 기록**이 있어야 설명됩니다 (강사 11/17·11/18 의견).
 
 ---
@@ -688,7 +688,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | candidates | JSONB / `provider='kakao'`면 항상 NULL, 나머지는 NOT NULL — 단 `purged_at`이 있으면 NULL 허용(CHECK) | 경로 후보·점수(필드는 실호출 후 확정, 03 문서 10-2). **STEP4는 카카오 결과 행을 만들지 않고 요청 상태와 오류 코드만 남김** |
 | | **evidence** | JSONB / DEFAULT '{}' | `{area_evidence: 혼잡 구역·교통 돌발, mode_evidence: 버스 차내 혼잡(서울만)}` (D-024·D-033) |
 | | score_version | TEXT / NULL | 점수 비율 버전(D-025, 미정이면 NULL) |
-| | route_hash | TEXT / NOT NULL | 결과 동일성 확인 |
+| | route_hash | TEXT / NOT NULL | 보관 중 결과 동일성 확인. TMAP 정리 때 빈 문자열로 덮어씀(7-0) |
 | | source_type | TEXT / CHECK IN ('fresh','cache','shared','alternate') | 새 조회·캐시·병합 공유·대체 공급원 |
 | | cache_key | TEXT / FK route_cache_entries NULL | 캐시로 제공했으면 |
 | | **validity_check** | JSONB / `source_type`이 cache·alternate면 NOT NULL(CHECK) | 캐시·대체 경로 유효성 검사 결과(조건·시각·`valid_until`·통제 버전 일치 여부와 이유) (강사 일일 피드백 4) |
@@ -1006,7 +1006,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 
 | 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것(이력) | 근거 | 상태 | 담당·확정 |
 |---|---|---|---|---|---|---|---|
-| TMAP 경로 내용 | `route_results.candidates`·`evidence`·`provider_ref`·`validity_check` | 시간당 정기 실행은 조회 후 기본 23시간 이상 된 본문을 정리(정상 실행 시 최대 24시간 보관). 유효 토큰 A05 조회의 정리 기준은 24시간 | `candidates`·`provider_ref` → NULL, `evidence` → `{}`, `validity_check` → 캐시·대체 결과는 `{}`, 그 외는 NULL | 결과 메타데이터와 `route_results.purged_at`. 같은 트랜잭션에서 `route_requests.result_purged_at`을 기록해 백업에 보존 | TMAP 약관 "저장 후 24시간 넘게 사용 불가"(11/19 한태경) | 외부 고정 | 권오현(명령) · 신유빈(W64·W65) |
+| TMAP 경로 내용 및 파생 값 | `route_results` | 조회 후 기본 23시간부터 시간당 정리(정상 실행 시 최대 24시간). 유효 토큰 A05의 정리 기준은 24시간 | 총 소요 시간·요금·환승 수·요약 등 `candidates`, `provider_ref`·`score_version`·`cache_key` → NULL, `evidence` → `{}`, `route_hash` → 빈 문자열, `validity_check` → 캐시·대체는 `{}`, 그 외는 NULL. 이전에 정리한 행도 잔여 값을 비움 | 요청·조회·처리 시작·완료 시각, 자체 측정 처리 시간, 처리 상태·오류 코드·공급원 및 최초 `route_results.purged_at`과 `route_requests.result_purged_at` | TMAP 약관 24시간 제한(11/19 한태경), 2-2 | **SK 회신 없이 적용하는 확정 기준** | 권오현(명령) · 신유빈(W64·W65) |
 | 카카오맵 경로 내용 | **어디에도 저장 안 함** — DB·Redis·큐·로그·대화 상태·챗봇 답변 모두 | 0 | — | STEP4는 `route_requests`의 상태와 오류 코드만 기록 | 카카오 공식 답변(데브톡 6/29, 11/20 한태경) "실시간 호출만·저장 불가" | 외부 고정 | 권오현 |
 | 경로 캐시 | Redis `route:cache` | 60초 | 키 자동 삭제 | `route_cache_entries`(메타·`valid_until`) | TMAP 24시간 안, 카카오는 캐시 안 함 | 임시(9-1 ④) | 신유빈 · W96 12/04 |
 | 경로 캐시 메타 | `route_cache_entries` | 30일 | 행 삭제 | 없음(지표는 `route_query_metrics`) | `route_requests`와 같게 | 임시 | 권오현 · W16 11/20 |
@@ -1047,7 +1047,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | 사건·진단·복구 기록 | `incident_logs`·`incident_events`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`·`agent_runs` | 프로젝트 종료까지 | 수정·삭제 금지(트리거 6개, T6) | 전부 | Auto-Healing 결과서 근거. **개인정보 칸 없음**(11/20 확인: 사용자 ID·장소·질문 원문 칸이 없고, 행위자는 `detector`·`recovery_agent` 같은 역할 이름. `agent_runs` 입출력 원문은 30일 지나면 파일만 삭제) | 설계 고정 | 신유빈 |
 | 지금 핫한 축제 크롤링 결과 | `festival_trends`(004) | 30일 | 행 삭제 | 없음 | 축제 이름·순위·언급 수·주소만(본문·작성자 저장 안 함) | 임시 | 신유빈 |
 | 부하 시험 | `load_simulations`, 시험 구간 `route_query_metrics` | 프로젝트 종료까지 | — | 전부(결과 JSON에 `LIMITS_VERSION`) | 같은 조건 재시험(강사 2차 의견 5) | 설계 고정 | 신유빈 |
-| 운영 중 지표 | `route_query_metrics`(`phase='live'`) | 30일 | 행 삭제 | 사건에 연결된 구간은 사건 기록으로 남음 | 그래프는 최근 24시간만 씀 | 임시 | 신유빈 · W96 12/04 |
+| 운영 중 지표 | `route_query_metrics`(`phase='live'`) | 30일 | 행 삭제 | 사건에 연결된 구간은 사건 기록으로 남음 | 그래프는 최근 24시간만 씀. 건수·성공 여부·서비스 응답 시간 등 자체 측정값만 사용하며 TMAP 경로 소요 시간·요금·환승 수·요약은 기록 금지 | 임시 | 신유빈 · W96 12/04 |
 | Redis 단기 키(토큰·잠금·상태·한도·켜진 조치) | `revoked:*`·`route:token`·`route:req`·`rl:*`·`quota:*`·`policy:route:active` 등 | 03 문서 9-1 ⑥ | 키 자동 삭제 | DB가 원본(상태는 `route_requests`, 조치는 `recovery_attempts`) | 9-1 | 9-1 따름 | 9-1 담당 |
 
 **④ 로그·백업 — 지운 데이터가 여기서 다시 살아나지 않게**
@@ -1288,6 +1288,8 @@ T25a·b는 11/24 로컬 복원 DB에서 `route_results` 0행과 공급원·조�
 - 시험 데이터는 모두 가짜(`@test.local`)이고 시험 컨테이너는 끝나면 지웁니다.
 
 ---
+
+- DB-14 사용자 풀은 기본 연결 5개와 추가 연결 10개를 사용합니다. SQLAlchemy가 30초 동안 연결을 얻지 못해 대기 시간 초과를 발생시키면 API는 503 `SERVICE_BUSY`, `retryable=true`, `Retry-After: 1`로 응답합니다. P24 단위 시험은 풀 시간 초과를 모의합니다(API 6절).
 
 ## 10-A. 11/23~24 추가 실행 확인 (강사 11/20 DB 피드백 1·3·4)
 
@@ -2559,3 +2561,4 @@ ALTER TABLE rag_documents
 | v0.4 | 2026-11-24 | `ohyun` `f24671e` 기준 011·012 및 T25a·b 로컬 SQL·복원 결과(PASS 표기 164건)와 P18 포함 DB pytest 12개 통과를 기록하고 0-A 및 보존·시험 표를 갱신. |
 | v0.4 | 2026-11-24 | 012 복원 후 `ready` 요청의 결과 행이 없으면 A05가 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 새 경로 요청 안내를 반환하는 동작을 명시하고 P18 회귀 시험 추가(7-0 ④·10절 012 항목). |
 | v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 TMAP 본문 삭제 시각을 요청에 이관·동기화하고 T25c 백업 복원 검사 추가(7-0 ④·8·10절). SQL 재실행 대기. |
+| v0.4 | 2026-11-24 | STEP7 경로 키 v2와 기존 행 호환, DB-14 풀 대기 초과 응답, SK 회신 없이 적용하는 TMAP 파생 값 정리·보존표를 반영했습니다(4·7-0·10절). |
