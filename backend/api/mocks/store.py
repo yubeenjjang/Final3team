@@ -63,6 +63,7 @@ class MockUser:
     password_hash: bytes = field(repr=False)
     birth_year: int
     gender: str
+    disabled: bool = False
 
 
 @dataclass(frozen=True)

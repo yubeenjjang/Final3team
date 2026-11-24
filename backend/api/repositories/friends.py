@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from api.auth.tokens import unauthorized
+from api.repositories.notifications import add as add_notifications
 from api.schemas.friends import (
     ACTION_STATUS,
     FRIENDS_PAGE_SIZE,
@@ -112,7 +113,7 @@ def _blocked(db: Session, actor: UUID, other: UUID) -> bool:
 
 
 def _resolve(
-    db: Session, request_id: str, status: RequestStatus, pair: dict[str, UUID],
+    db: Session, request_id: str, status: RequestStatus, pair: dict[str, UUID], sender: UUID,
 ) -> FriendRequestResult:
     db.execute(text("""
         UPDATE public.friend_requests SET status = :status, responded_at = statement_timestamp()
@@ -123,6 +124,7 @@ def _resolve(
             INSERT INTO public.friendships (user_a, user_b, request_id, created_at)
             VALUES (:a, :b, :id, statement_timestamp())
         """), {**pair, "id": request_id})
+        add_notifications(db, [sender], "friend_accepted", "friend_request", request_id)
     return FriendRequestResult(request_id=request_id, status=status)
 
 
@@ -149,13 +151,14 @@ def create_request(actor: UUID, other: UUID) -> FriendRequestResult:
         if pending is not None:
             if pending.from_user == actor:
                 raise rules.request_pending()
-            return _resolve(db, pending.request_id, "accepted", pair)
+            return _resolve(db, pending.request_id, "accepted", pair, pending.from_user)
 
         request_id = rules.new_request_id()
         db.execute(text("""
             INSERT INTO public.friend_requests (request_id, from_user, to_user, created_at)
             VALUES (:id, :actor, :other, statement_timestamp())
         """), {"id": request_id, "actor": actor, "other": other})
+        add_notifications(db, [other], "friend_requested", "friend_request", request_id)
         return FriendRequestResult(request_id=request_id, status="pending")
 
 
@@ -177,7 +180,7 @@ def act_on_request(actor: UUID, other: UUID, request_id: str, action: RequestAct
                 raise rules.request_not_found()
             if _blocked(db, actor, other):
                 raise rules.blocked()
-        return _resolve(db, request_id, ACTION_STATUS[action], pair)
+        return _resolve(db, request_id, ACTION_STATUS[action], pair, row.from_user)
 
 
 def _delete_friend(db: Session, pair: dict[str, UUID]) -> None:

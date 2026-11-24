@@ -1397,6 +1397,7 @@ Content-Type: application/json
 | `ROUTE_REQUEST_NOT_FOUND` | 404 | 없는 `route_request_id` (A05) |
 | `MEET_AT_INVALID` | 400 | 동행 만남 시각이 축제 기간 밖이거나 과거 (A58) |
 | `OWN_POST` / `APPLICATION_EXISTS` / `POST_CLOSED` / `CAPACITY_FULL` / `APPLICATION_NOT_PENDING` | 403 / 409 / 409 / 409 / 409 | 동행 신청·승인 (A60·A62) |
+| `REPORT_ALREADY_SUBMITTED` | 409 | A76에서 동일 신고자·대상 유형·대상 ID의 KST 날짜당 신고 한도 초과 |
 | `NOT_FRIENDS` | 403 | 친구가 아닌 사람과 채팅방 (A67·A68) |
 | `ROOM_READ_ONLY` / `STORE_FAILED` | WS `error` | 종료된 방에 전송 / DB 저장 실패(ACK 없음) |
 | `COURSE_OUT_OF_PERIOD` | 400 | 방문 코스 시작 시각이 축제 기간 밖 (A51) |
@@ -2376,14 +2377,16 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 
 **구현 상태 (ohyun-chat)** — A74·A75를 구현했습니다. 본인의 알림을 조회하고 읽음 처리합니다. WebSocket은 `{"type":"notification","notification":{...}}`으로 새 알림을 전달합니다.
 
+**구현 상태 (ohyun-notify)** — A74·A75에 동행 신청·승인, 친구 신청·수락, 채팅 초대 알림을 연결했습니다. A76은 접수 시 대상 권한과 KST 날짜 기준 중복을 확인합니다. A77은 `operator`·`admin`이 서비스 계정으로 조회·처리합니다. 첫 상세 조회에서 `reviewing`으로 전환하며, 바로 처리하면 같은 트랜잭션에서 `reviewing`을 거칩니다. 채팅 신고 상세는 신고 사유를 열람 이유로 기록한 뒤 응답합니다. 사용자 차단은 계정을 `disabled`로 전환합니다.
+
 **마이페이지 API** — 관심 축제(A11~A13), 축제 취향(A36·A37), 본인 프로필(A78), 내 동행 내역(A79), 탈퇴(A80)를 제공합니다. A78·A79는 `ohyun-me` 구현 범위에 포함하며 11/24 이전 명세의 경로와 응답을 사용합니다. `AUTH_PROVIDER=db`에서 실제 DB를 사용하며 기본은 모의 모드입니다. 모의 동행 내역은 빈 배열입니다. 운영 공지·이용약관은 고정 문서 링크를 사용합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A74** `GET /api/v1/me/notifications` | `unread_only`·`page` | `{items[] {notification_id, type, ref_type, ref_id, created_at, read_at}, unread_count}` | user, 본인 것만(RLS, T39c). **앱 안 알림만**(외부 푸시는 범위 밖, FR-COM21). 화면은 WebSocket 연결 중이면 `notification` 이벤트로도 받음 | 401 |
 | **A75** `POST /api/v1/me/notifications/read` | `{ids[]}` 또는 `{all: true}` | 204 | 읽음 칸만 바꿈(T39a·b) | 401 |
-| **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 하루 1회(9-1 ⑧). 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
-| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 그 시험은 **구현 예정**(W128 권한 검증, 12/17–18. T40c는 기록 삭제 차단만 확인, 18-2). 메시지 숨김은 `chat_messages.deleted_at`(+ Redis 최근 목록에서 삭제), 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
+| **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 KST 날짜 기준 하루 1회(9-1 ⑧). 방 신고는 현재 입장한 멤버, 메시지 신고는 해당 메시지 열람 권한이 있는 멤버만 접수. 신고자는 자기 신고만 봄(T40d) | 401 / 404 / 409 |
+| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | operator·admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(11/20 '채팅 열람 = 참여자·관리자', 기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 시험은 18-2절에 연결. 메시지 숨김은 `chat_messages.deleted_at`으로 처리하고 다음 이력 조회에서 제외, 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임) | 401 / 403 / 404 |
 | **A78** `GET`·`PATCH /api/v1/me/profile` | PATCH `{display_name?}` (닉네임 변경 가능, 2~12자·중복 검사) | `{user_id, display_name, birth_year, gender, onboarding_status}` (출생연도·성별은 본인 화면용. 다른 사람에게는 **동행 신청 때 그 글 작성자에게만 나이·성별**이 보임 — A61) | user, 본인만. 이메일·전화번호·나이·성별은 다른 사람에게 보이지 않음(FR-COM22) | 401 / 409 `NICKNAME_TAKEN` / 422 |
 | **A79** `GET /api/v1/me/companion-activity` | `type`: `posts`·`applications` | 200 `{items[]}`, 조회 유형별 항목 필드는 아래 A79 표 | user, 본인 내역(작성 글 또는 보낸 신청), 생성 최신순 | 401 / 422 |
 | **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(DB 설계서 7-0 ②): Refresh 토큰·관심·취향·알림·친구 신청·관계·차단 행 삭제, 진행 중 동행 글·신청 취소, 채팅방 퇴장과 방장 승계, 챗봇 질문·답변·방문 코스 결과 삭제, 프로필 개인정보 NULL, 계정 이메일·비밀번호 해시 덮어쓰기와 `status='deleted'`. 같은 DB에 LangGraph 체크포인트 테이블이 있으면 본인 대화 상태도 함께 삭제. 커밋 뒤 현재 Access의 `jti`를 폐기하며 모든 기기의 Access는 계정 상태 검사에서 거부. 열린 WebSocket 종료는 채팅 연결 구현 시 연동. 메시지는 화면에서 작성자 ‘알 수 없음’으로 표시하고 본문은 방 보존 정책을 따름. 백업에서 복원하면 탈퇴 목록으로 다시 지움 | 401 / 403 `PASSWORD_MISMATCH` / 422 |
@@ -3923,7 +3926,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | 에이전트 도구 입력에 채팅 원문·좌표가 없음 | ⬜ 예정 | 한다영 W24·W25(11/27) 도구 스키마 시험 |
 | A04 TMAP 캐시 만료 뒤 메모리 저장소에 출발·도착 좌표·장소 검색어가 없음 | ✅ 오프라인 통과 | `backend/tests/routes/test_p9_real_routes.py`의 `test_a3_memory_expiry_removes_raw_places_from_all_cached_requests`. `ROUTE_STORE=memory`에서 공유 캐시·요청 기록과 재전송 검사 |
 | 만료·삭제 뒤 Redis에 장소 원문이 없음 | ⬜ 연결 후 시험 | 권오현, Redis 장소 라벨 연동 후 |
-| 관리자 채팅 열람은 신고된 메시지만(서버 검사 + `chat_admin_access` 기록) | ⬜ 예정 | 채팅·신고 구현(A77) 때. DB T40c는 열람 기록 삭제 차단만 확인 |
+| 관리자 채팅 열람은 신고된 메시지만(서버 검사 + `chat_admin_access` 기록) | 구현 | `test_notify.py`·`test_notify_postgres.py`, T40c·T022. 실제 DB 시험에는 일회용 `TEST_DB_URL` 필요 |
 
 ## 19. 결정 반영 기록 (강사 11/20 API 4)
 아래는 11/23~24 검토 기록입니다. 11/24 오후 신유빈 님이 확인한 팀 결정 14건은 이어지는 표에 기록합니다.
@@ -3968,6 +3971,7 @@ python3 'Docs/Step 2/evidence/first_flow_2026-11-23/run_first_flow.py' \
 | 버전 | 날짜 | 바뀐 점 |
 |---|---|---|
 | v0.5 | 2026-11-24 | A28 경찰청·UTIC·서울 TOPIS 어댑터, 반경·병합·캐시를 연결하고 A29 승인 매핑 설정과 서울빛초롱축제 후보 근거를 기록했습니다(6-2절). |
+| v0.5 | 2026-11-24 | A74·A75 이벤트 연결, A76 신고 접수·일일 한도, A77 운영자 열람 기록과 조치를 구현했습니다(6-4-6·18-2). |
 | v0.5 | 2026-11-24 | A43~A50의 DB·mock 동작, 닉네임 검색 한도, 신청·차단 트랜잭션과 채팅 차단 해제 연동 지점을 구현했습니다(6-4-3). |
 | v0.5 | 2026-11-24 | A24의 검토 필터·사유 필수·승인·거절·숨김, 운영자 권한과 서비스 계정 처리 명세를 구현과 맞췄습니다(6-2절). |
 | v0.5 | 2026-11-24 | A57~A65 동행 API 구현 상태, 글 수정과 수동 마감, 72시간 내용 보존을 반영했습니다(6-4-4절). |

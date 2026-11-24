@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -65,6 +66,20 @@ class ReadNotificationsByID(ChatInput):
 
 class ReadAllNotifications(ChatInput):
     all: Literal[True]
+
+
+class NotificationItem(BaseModel):
+    notification_id: int
+    type: str
+    ref_type: str
+    ref_id: str
+    created_at: datetime
+    read_at: datetime | None
+
+
+class NotificationPage(BaseModel):
+    items: list[NotificationItem]
+    unread_count: int
 
 
 class Subscribe(ChatInput):

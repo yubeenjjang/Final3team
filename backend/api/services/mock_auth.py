@@ -53,7 +53,7 @@ def login(request: LoginRequest) -> dict[str, object]:
         user = users_by_email.get(request.email.lower())
         salt = user.salt if user is not None else bytes(16)
         digest = _password_hash(request.password.get_secret_value(), salt)
-        if user is None or not secrets.compare_digest(user.password_hash, digest):
+        if user is None or user.disabled or not secrets.compare_digest(user.password_hash, digest):
             raise ApiError(401, "INVALID_CREDENTIALS", "이메일이나 비밀번호를 확인해 주세요.")
         return _issue_tokens(user, datetime.now(timezone.utc))
 
@@ -75,6 +75,22 @@ def _issue_tokens(user: MockUser, now: datetime) -> dict[str, object]:
         "user": {"user_id": user.user_id, "display_name": user.display_name, "role": "user"},
         "is_mock": True,
     }
+
+
+def disable_account(user_id: str) -> bool:
+    with auth_lock:
+        account = next(((email, user) for email, user in users_by_email.items() if user.user_id == user_id), None)
+        if account is None:
+            return False
+        email, user = account
+        users_by_email[email] = replace(user, disabled=True)
+        for token, session in tuple(access_sessions.items()):
+            if session.user_id == user_id:
+                del access_sessions[token]
+        for token, session in tuple(refresh_sessions.items()):
+            if session.user.user_id == user_id:
+                _retire_refresh(token, user_id)
+        return True
 
 
 def _retire_refresh(token: str, user_id: str) -> None:
