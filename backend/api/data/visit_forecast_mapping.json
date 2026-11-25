@@ -1,1 +1,22 @@
-{}
+{
+  "fst_01M835B57450M888RBNEFVRWWA": {
+    "festival_name": "서울빛초롱축제",
+    "attraction": "청계광장",
+    "area_code": "11",
+    "district_code": "11140",
+    "approved": true,
+    "approved_by": "권오현",
+    "approved_at": "2026-11-25",
+    "approval_note": "11/25 승인(권오현): 관광공사 관광지 집중률 tatsCnctrRatedList 실호출(areaCd=11, signguCd=11140)에 '청계광장' 존재, 축제 장소 '청계천(청계광장 ~ 삼일교)'·주소 중구 태평로1가와 일치"
+  },
+  "fst_01M835BMB1QD1DFYQEN3GR8FVK": {
+    "festival_name": "청계천의 빛",
+    "attraction": "청계광장",
+    "area_code": "11",
+    "district_code": "11140",
+    "approved": true,
+    "approved_by": "권오현",
+    "approved_at": "2026-11-25",
+    "approval_note": "11/25 승인(권오현): 관광공사 관광지 집중률 tatsCnctrRatedList 실호출(areaCd=11, signguCd=11140)에 '청계광장' 존재, 축제 장소 '청계천(청계광장 ~ 삼일교)'·주소 중구 태평로1가와 일치"
+  }
+}

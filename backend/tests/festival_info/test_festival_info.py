@@ -413,15 +413,20 @@ def test_tour_forecast_uses_explicit_approval_and_confirmed_venue(monkeypatch, t
     festival_id = "fst_01M835B57450M888RBNEFVRWWA"
     venue = "청계천(청계광장 ~ 삼일교)"
     monkeypatch.delenv("VISIT_FORECAST_MAPPING_FILE", raising=False)
-    assert visit_forecast.find_attraction(festival_id, venue) is None
+    # 기본 연결 파일: 11/25 승인된 청계광장(중구) 연결
+    default = visit_forecast.find_attraction(festival_id, venue)
+    assert default is not None and (default.attraction, default.district_code) == ("청계광장", "11140")
+    assert visit_forecast.find_attraction("fst_01M835BMB1QD1DFYQEN3GR8FVK", "서울특별시 중구 청계천 청계광장 일대")
 
-    candidate = {"area_code": "11", "district_code": "11110", "attraction": venue}
+    candidate = {"area_code": "11", "district_code": "11140", "attraction": "청계광장"}
     for approval in ({}, {"approved": False}, {"approved": True}):
         config = tmp_path / f"attraction-{approval.get('approved')}.json"
         config.write_text(json.dumps({festival_id: candidate | approval}), encoding="utf-8")
         monkeypatch.setenv("VISIT_FORECAST_MAPPING_FILE", str(config))
         assert (visit_forecast.find_attraction(festival_id, venue) is not None) == (approval.get("approved") is True)
-        assert visit_forecast.find_attraction(festival_id, "청계광장") is None
+        # 장소가 바뀌어 관광지 이름이 들어 있지 않으면 승인돼 있어도 쓰지 않는다.
+        assert visit_forecast.find_attraction(festival_id, "광화문광장") is None
+        assert visit_forecast.find_attraction(festival_id, None) is None
 
 
 def test_new_endpoints_default_to_mock(setup, monkeypatch):
