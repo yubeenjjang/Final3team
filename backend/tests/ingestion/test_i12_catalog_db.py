@@ -4,10 +4,13 @@ from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from api.ingestion.festivals.normalize import KST
-from api.services import festival_store
+from shared.db import session as sessions
+from shared.db.connection import _reset_on_return
 
 pytestmark = pytest.mark.db
 
@@ -19,7 +22,7 @@ def app_engine() -> Iterator[Engine]:
     url = os.environ.get("TEST_DB_APP_URL")
     if not url or not os.environ.get("TEST_DB_URL"):
         pytest.skip("일회용 DB의 TEST_DB_URL과 TEST_DB_APP_URL이 필요합니다.")
-    engine = create_engine(url, hide_parameters=True)
+    engine = create_engine(make_url(url).set(drivername="postgresql+psycopg"), hide_parameters=True)
     try:
         yield engine
     finally:
@@ -27,8 +30,18 @@ def app_engine() -> Iterator[Engine]:
 
 
 @pytest.fixture
+def catalog_user_engine(app_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> AsyncEngine:
+    engine = create_async_engine(
+        app_engine.url, pool_size=1, max_overflow=0, pool_reset_on_return=None, hide_parameters=True,
+    )
+    _reset_on_return(engine)
+    monkeypatch.setattr(sessions, "_user_engine", lambda: engine)
+    return engine
+
+
+@pytest.fixture
 def catalog_client(
-    app_engine: Engine, db_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    catalog_user_engine: AsyncEngine, db_engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[TestClient]:
     from api.main import app
 
@@ -81,9 +94,11 @@ def catalog_client(
         """))
 
     monkeypatch.setenv("FESTIVAL_DATA", "db")
-    monkeypatch.setattr(festival_store, "get_festival_engine", lambda: app_engine)
     with TestClient(app) as client:
-        yield client
+        try:
+            yield client
+        finally:
+            client.portal.call(catalog_user_engine.dispose)
 
 
 def test_I12_catalog_returns_public_festivals_and_filters_in_db(catalog_client: TestClient) -> None:
@@ -114,6 +129,44 @@ def test_I12_catalog_returns_public_festivals_and_filters_in_db(catalog_client: 
     assert response.status_code == 200
     assert response.json()["total"] == 3
     assert [item["festival_id"] for item in response.json()["items"]] == ["fst_I12003"]
+
+
+def test_db2b_list_keeps_snapshot_across_concurrent_publish_change(
+    catalog_client: TestClient, catalog_user_engine: AsyncEngine, db_engine: Engine,
+) -> None:
+    async def connection_state():
+        async with sessions.user_db_session(user_id=None) as db:
+            result = await db.execute(text("""
+                SELECT pg_backend_pid(), current_setting('transaction_isolation'), current_user
+            """))
+            return result.one()
+
+    original = catalog_client.portal.call(connection_state)
+    assert original[2] == "noldaga_app"
+    changed = False
+
+    @event.listens_for(catalog_user_engine.sync_engine, "after_cursor_execute")
+    def unpublish_after_count(connection, cursor, statement, parameters, context, executemany):
+        nonlocal changed
+        if changed or not statement.startswith("SELECT count("):
+            return
+        assert connection.get_isolation_level() == "REPEATABLE READ"
+        with db_engine.begin() as writer:
+            writer.execute(text("UPDATE festivals SET published_at = NULL WHERE festival_id = 'fst_I12001'"))
+        changed = True
+
+    response = catalog_client.get(_URL, params={"q": "봄맞이"})
+    assert response.status_code == 200
+    assert changed
+    assert response.json()["total"] == 1
+    assert [item["festival_id"] for item in response.json()["items"]] == ["fst_I12001"]
+    assert catalog_client.portal.call(connection_state) == original
+
+    response = catalog_client.get(_URL, params={"q": "봄맞이"})
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+    assert response.json()["items"] == []
+    assert catalog_client.get(f"{_URL}/fst_I12001").status_code == 404
 
 
 def test_I12_catalog_detail_reads_tourapi_source(catalog_client: TestClient) -> None:

@@ -74,7 +74,7 @@ def is_transient(error: Exception) -> bool:
 class MockFestivalRunner:
     def run(self, job: RunInput, step: Callable[[str], None]) -> AgentResult:
         step("supervisor")
-        payload = mock_assistant.complete_run(job.query, in_process_routes=False)
+        payload = asyncio.run(mock_assistant.complete_run(job.query, in_process_routes=False))
         step("festival")
         error = payload.get("error") or {}
         return AgentResult.model_validate({

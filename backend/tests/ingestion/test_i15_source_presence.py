@@ -40,8 +40,8 @@ def test_I15_only_complete_listing_is_forwarded(
     engine = Mock()
     lock = Mock()
     lock.scalar.return_value = True
-    engine.begin.return_value = nullcontext(lock)
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: engine)
+    lock.get_bind.return_value = engine
+    monkeypatch.setattr(collect, "service_db_session", lambda: nullcontext(lock))
     monkeypatch.setattr(collect, "FestivalStore", lambda engine: store)
     if scenario == "quota":
         monkeypatch.setattr("api.providers.tourapi.LIST_CALL_LIMIT", 1)
@@ -78,7 +78,6 @@ def festival_state(engine: Engine) -> tuple[str, bool, str, str]:
 def test_I16_I17_same_scope_missing_and_reappearance_keep_review(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
     original = lambda request: list_response(1, total=1)
     empty = lambda request: list_response(1, total=0, present=False)
     assert run_collector(tmp_path, original, "--db", "--no-detail") == 0
@@ -128,7 +127,6 @@ def test_I16_I17_same_scope_missing_and_reappearance_keep_review(
 def test_I15_page_failure_leaves_public_festival_and_no_history(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
     assert run_collector(tmp_path, lambda request: list_response(1, total=1), "--db", "--no-detail") == 0
 
     def interrupted(request: httpx2.Request) -> httpx2.Response:
@@ -149,7 +147,6 @@ def test_I15_page_failure_leaves_public_festival_and_no_history(
 def test_I18_legacy_public_row_missing_from_first_baseline_is_held_for_classification(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
     original = lambda request: httpx2.Response(200, json=listing())
     empty = lambda request: list_response(1, total=0, present=False)
     assert run_collector(tmp_path, original, "--db", "--no-detail", "--limit", "2") == 0

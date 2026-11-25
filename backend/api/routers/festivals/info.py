@@ -26,7 +26,7 @@ async def get_notices(
     if real_festival_info.uses_real_info("notices"):
         result = await real_festival_info.get_service().notices(festival_id, notice_type, active_only)
     else:
-        result = mock_festival_info.get_notices(festival_id, notice_type, active_only, scenario)
+        result = await mock_festival_info.get_notices(festival_id, notice_type, active_only, scenario)
     request.state.result_status = result.status
     return result
 
@@ -36,7 +36,7 @@ async def get_weather(request: Request, festival_id: FestivalId, scenario: Scena
     if real_festival_info.uses_real_info("weather"):
         result = await real_festival_info.get_service().weather(festival_id)
     else:
-        result = mock_festival_info.get_weather(festival_id, scenario)
+        result = await mock_festival_info.get_weather(festival_id, scenario)
     request.state.result_status = result.status
     return result
 
@@ -51,7 +51,7 @@ async def get_transit(
     if real_festival_info.uses_real_info("transit"):
         result = await real_festival_info.get_service().transit(festival_id, mode, radius_m, limit)
     else:
-        result = mock_festival_info.get_transit(festival_id, mode, radius_m, limit, scenario)
+        result = await mock_festival_info.get_transit(festival_id, mode, radius_m, limit, scenario)
     request.state.result_status = result.status
     return result
 
@@ -66,7 +66,7 @@ async def get_traffic_incidents(
     if real_festival_info.uses_real_info("traffic-incidents"):
         result = await real_festival_info.get_service().traffic(festival_id, radius_m, kind)
     else:
-        result = mock_festival_info.get_traffic_incidents(festival_id, radius_m, kind, scenario)
+        result = await mock_festival_info.get_traffic_incidents(festival_id, radius_m, kind, scenario)
     request.state.result_status = result.status
     return result
 
@@ -79,7 +79,7 @@ async def get_visit_forecast(
     if real_festival_info.uses_real_info("visit-forecast"):
         result = await real_festival_info.get_service().forecast(festival_id, days)
     else:
-        result = mock_festival_info.get_visit_forecast(festival_id, days, scenario)
+        result = await mock_festival_info.get_visit_forecast(festival_id, days, scenario)
     request.state.result_status = result.status
     return result
 
@@ -91,6 +91,6 @@ async def get_crowd(
     if seoul_crowd.uses_real_crowd():
         result = await seoul_crowd.get_service().get_crowd(festival_id)
     else:
-        result = mock_festival_info.get_crowd(festival_id, scenario)
+        result = await mock_festival_info.get_crowd(festival_id, scenario)
     request.state.result_status = result.status
     return result

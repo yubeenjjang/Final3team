@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx2
 import pytest
@@ -167,7 +168,7 @@ def test_subway_preserves_zero_eta_message_and_unsupported(setup, monkeypatch):
     monkeypatch.setenv("TRANSIT_PROVIDER", "real")
     station = _station("subway", "서울역", 37.5758, 126.9768, "SEOUL", "subway", None, "1")
     calls, now, _ = setup({"subway": "subway"})
-    monkeypatch.setattr(repository, "nearby_facilities", lambda *args: [station])
+    monkeypatch.setattr(repository, "nearby_facilities", AsyncMock(return_value=[station]))
     with TestClient(app) as client:
         resp = client.get(_url("transit"), params={"mode": "subway"})
         assert "X-Mock" not in resp.headers
@@ -188,7 +189,7 @@ def test_subway_preserves_zero_eta_message_and_unsupported(setup, monkeypatch):
 def test_subway_path_key_is_hidden_on_body_error(setup, monkeypatch, caplog):
     monkeypatch.setenv("TRANSIT_PROVIDER", "real")
     station = _station("subway", "서울역", 37.5758, 126.9768, "SEOUL", "subway", None, "1")
-    monkeypatch.setattr(repository, "nearby_facilities", lambda *args: [station])
+    monkeypatch.setattr(repository, "nearby_facilities", AsyncMock(return_value=[station]))
     caplog.set_level(logging.DEBUG)
 
     def respond(request):
@@ -210,7 +211,7 @@ def test_tago_retries_matches_city_and_uses_radius_and_limit(setup, monkeypatch)
     station = _station("bus", "서면역", 35.1004, 129.0337, "BUSAN", "tago_stop", None, "BSB164680201")
     far = _station("bus", "먼정류장", 35.1199, 129.0337, "BUSAN", "tago_stop", None, "far")
     station2 = _station("bus", "가까운정류장", 35.105, 129.0337, "BUSAN", "tago_stop", None, "other")
-    monkeypatch.setattr(repository, "nearby_facilities", lambda *args: [far, station2, station])
+    monkeypatch.setattr(repository, "nearby_facilities", AsyncMock(return_value=[far, station2, station]))
     count = 0
 
     def arrival(request):
@@ -239,7 +240,7 @@ def test_tago_retries_matches_city_and_uses_radius_and_limit(setup, monkeypatch)
 def test_tago_empty_and_body_error(setup, monkeypatch, fixture, expected):
     monkeypatch.setenv("TRANSIT_PROVIDER", "real")
     station = _station("bus", "부산역", 35.1004, 129.0337, "BUSAN", "tago_stop", "21:BSB300550000", "BSB300550000")
-    monkeypatch.setattr(repository, "nearby_facilities", lambda *args: [station])
+    monkeypatch.setattr(repository, "nearby_facilities", AsyncMock(return_value=[station]))
     calls, _, _ = setup({"getSttnAcctoArvlPrearngeInfoList": fixture})
     with TestClient(app) as client:
         body = client.get(_url("transit", "fst_000003"), params={"mode": "bus"}).json()
@@ -252,7 +253,7 @@ def test_tago_empty_and_body_error(setup, monkeypatch, fixture, expected):
 def test_seoul_bus_crowding_requires_match_and_ignores_item_count(setup, monkeypatch, matched):
     monkeypatch.setenv("TRANSIT_PROVIDER", "real")
     station = _station("bus", "연신내역.로데오거리", 37.5758, 126.9768, "SEOUL", "seoul_bus_stop", "12203", "111000115")
-    monkeypatch.setattr(repository, "nearby_facilities", lambda *args: [station])
+    monkeypatch.setattr(repository, "nearby_facilities", AsyncMock(return_value=[station]))
 
     def bus_route(request):
         response = _load("seoul_bus_route")
@@ -291,8 +292,8 @@ def test_tour_forecast_strict_attraction_and_monthly_demand(setup, monkeypatch, 
     }))
     original = real_festival_info.find_festival
 
-    def festival(festival_id):
-        result = original(festival_id)
+    async def festival(festival_id):
+        result = await original(festival_id)
         if festival_id == "fst_000004":
             return result.model_copy(update={"venue_name": "SEA LIFE 부산아쿠아리움"})
         return result
@@ -372,11 +373,11 @@ def test_forecast_daily_snapshots_reused_after_service_restart(setup, monkeypatc
         assert client.get(_url("visit-forecast", "fst_000004")).json() == body
 
 
-def test_notice_queries_real_repository_filters_and_nullable_fields(setup, monkeypatch):
+def test_notice_queries_real_repository_filters_and_nullable_fields(setup, monkeypatch, use_sqlite_user_session):
     monkeypatch.setenv("NOTICES_PROVIDER", "real")
     setup({})
     engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    monkeypatch.setattr(repository, "get_festival_engine", lambda: engine)
+    use_sqlite_user_session(repository, engine)
     with engine.begin() as connection:
         connection.execute(text("""
             CREATE TABLE official_notices (

@@ -323,7 +323,7 @@ class RealRouteService:
         if existing is not None:
             return await asyncio.to_thread(self._replay, direction, existing)
 
-        festival = await asyncio.to_thread(find_festival, request.festival_id)
+        festival = await find_festival(request.festival_id)
         self._validate_festival(request, festival)
         assert festival is not None
         route_id = _new_id("rr_")
@@ -423,7 +423,7 @@ class RealRouteService:
         assert request is not None
         festival = record.festival
         if festival is None:
-            festival = await asyncio.to_thread(find_festival, request.festival_id)
+            festival = await find_festival(request.festival_id)
         self._validate_festival(request, festival)
         assert festival is not None
         record.festival = festival

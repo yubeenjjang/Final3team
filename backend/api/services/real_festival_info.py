@@ -29,7 +29,7 @@ _PROVIDER_ENVS: dict[ModeName, str] = {
     "transit": "TRANSIT_PROVIDER", "traffic-incidents": "TRAFFIC_INCIDENT_PROVIDER",
     "visit-forecast": "VISIT_FORECAST_PROVIDER",
 }
-_DB_ERRORS = (SQLAlchemyError, RuntimeError)
+_DB_ERRORS = (SQLAlchemyError, RuntimeError, ValueError)
 _STALE_NOTICE = "정보가 오래됐어요"
 _NO_FORECAST = "이 축제 장소의 예측 자료가 없어요"
 
@@ -84,7 +84,7 @@ class FestivalInfoService:
         return as_kst(self.source.now())
 
     async def _festival(self, festival_id: str) -> FestivalDetail:
-        festival = await asyncio.to_thread(find_festival, festival_id)
+        festival = await find_festival(festival_id)
         if festival is None:
             raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
         return festival
@@ -96,9 +96,7 @@ class FestivalInfoService:
         response = NoticeResponse(festival_id=festival_id, source="operator", coverage=_coverage(festival), is_mock=False)
         now = self._now()
         try:
-            response.items = await asyncio.to_thread(
-                repository.approved_notices, festival_id, notice_type, active_only, now,
-            )
+            response.items = await repository.approved_notices(festival_id, notice_type, active_only, now)
         except _DB_ERRORS:
             _mark_error(response, _format_error("승인된 공지를 조회할 수 없어요.", retryable=True))
             return response
@@ -152,7 +150,7 @@ class FestivalInfoService:
             )
             return response
         try:
-            facilities = await asyncio.to_thread(repository.nearby_facilities, *coordinates, radius_m, mode)
+            facilities = await repository.nearby_facilities(*coordinates, radius_m, mode)
         except _DB_ERRORS:
             _mark_error(response, _format_error("주변 정류장·역 위치를 조회할 수 없어요.", retryable=True))
             return response
@@ -352,7 +350,7 @@ class FestivalInfoService:
             _mark_error(response, exc.error)
             response.forecast.status = "unavailable"
             return response
-        except (ValueError, TypeError, KeyError, OverflowError, *_DB_ERRORS):
+        except (TypeError, KeyError, OverflowError, *_DB_ERRORS):
             _mark_error(response, _format_error("방문 집중 예측 정보를 확인할 수 없어요."))
             response.forecast.status = "unavailable"
             return response

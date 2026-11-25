@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 from httpx2 import Response
@@ -22,7 +24,7 @@ def db_festival(monkeypatch: pytest.MonkeyPatch) -> FestivalDetail:
         "is_mock": False,
     })
 
-    def get_festival(festival_id: str) -> FestivalDetail | None:
+    async def get_festival(festival_id: str) -> FestivalDetail | None:
         return festival if festival_id == _DB_ID else None
 
     monkeypatch.setenv("FESTIVAL_DATA", "db")
@@ -38,14 +40,14 @@ def _assert_mock_response(response: Response, status: int) -> None:
 
 def test_I14_mock_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("FESTIVAL_DATA", raising=False)
-    festival = find_festival("fst_000001")
+    festival = asyncio.run(find_festival("fst_000001"))
     assert festival == festivals["fst_000001"]
-    assert find_festival(_UNKNOWN_ID) is None
+    assert asyncio.run(find_festival(_UNKNOWN_ID)) is None
 
 
 def test_I14_db_lookup_and_return_route(client: TestClient, db_festival: FestivalDetail) -> None:
-    assert find_festival(_DB_ID) == db_festival
-    assert find_festival("fst_000001") is None
+    assert asyncio.run(find_festival(_DB_ID)) == db_festival
+    assert asyncio.run(find_festival("fst_000001")) is None
 
     request = {"request_id": "lookup-route-01", "destination": {"query": "서울역"}}
     response = client.post("/api/v1/routes/return", json={**request, "festival_id": _DB_ID})
@@ -99,7 +101,7 @@ def test_I14_db_favorites(client: TestClient, db_festival: FestivalDetail) -> No
 def test_I14_db_assistant_route(
     client: TestClient, db_festival: FestivalDetail, monkeypatch: pytest.MonkeyPatch, selection: str
 ) -> None:
-    def list_festivals(query: FestivalQuery) -> FestivalPage:
+    async def list_festivals(query: FestivalQuery) -> FestivalPage:
         assert selection != "explicit"
         assert query == FestivalQuery(status="ongoing", page_size=1)
         items = [] if selection == "empty" else [db_festival]

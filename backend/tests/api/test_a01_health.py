@@ -1,9 +1,10 @@
 import asyncio
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
-from psycopg import OperationalError
+from sqlalchemy.exc import OperationalError
 
 from api.routers import health
 
@@ -23,16 +24,18 @@ def db_connection(monkeypatch: pytest.MonkeyPatch) -> tuple[AsyncMock, AsyncMock
     for mode in _DB_MODES:
         for name in mode:
             monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr(health, "find_dotenv", lambda **_: "")
-    monkeypatch.setattr(health, "dotenv_values", lambda _: {})
-    monkeypatch.setenv("DB_USER_USERNAME", "noldaga_app")
-    monkeypatch.setenv("DB_USER_PASSWORD", "fixture-password")
-    monkeypatch.setenv("DB_HOST", "fixture.invalid")
-    monkeypatch.setenv("DB_PORT", "55432")
-    monkeypatch.setenv("DB_NAME", "fixture-db")
     connection = AsyncMock()
     connect = AsyncMock(return_value=connection)
-    monkeypatch.setattr(health.AsyncConnection, "connect", connect)
+
+    @asynccontextmanager
+    async def session(user_id):
+        db = await connect(user_id=user_id)
+        try:
+            yield db
+        finally:
+            await db.close()
+
+    monkeypatch.setattr(health, "user_db_session", session)
     return connect, connection
 
 
@@ -63,11 +66,10 @@ def test_a01_db_executes_probe_as_app(
         "status": "ok", "db": "ok", "redis": "not_configured", "version": "0.1.0-mock", "is_mock": False,
     }
     assert "X-Mock" not in response.headers
-    connect.assert_awaited_once_with(
-        host="fixture.invalid", port=55432, dbname="fixture-db", user="noldaga_app",
-        password="fixture-password", autocommit=True, options="-c statement_timeout=1000",
-    )
-    connection.execute.assert_awaited_once_with("SELECT 1")
+    connect.assert_awaited_once_with(user_id=None)
+    assert [str(call.args[0]) for call in connection.execute.await_args_list] == [
+        "SET LOCAL statement_timeout = 1000", "SELECT 1",
+    ]
     connection.close.assert_awaited_once()
 
 
@@ -81,12 +83,13 @@ def test_a01_returns_health_payload_on_db_failure(
 
     monkeypatch.setenv("AUTH_PROVIDER", "db")
     connect, connection = db_connection
+    db_error = OperationalError(None, None, OSError("fixture DB error"))
     if failure == "configuration":
-        monkeypatch.delenv("DB_USER_PASSWORD")
+        connect.side_effect = ValueError("fixture DB configuration error")
     elif failure == "connect":
-        connect.side_effect = OperationalError("fixture DB connection error")
+        connect.side_effect = db_error
     elif failure == "query":
-        connection.execute.side_effect = OperationalError("fixture DB query error")
+        connection.execute.side_effect = db_error
     elif failure == "connect_timeout":
         connect.side_effect = stalled
     else:

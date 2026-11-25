@@ -16,7 +16,7 @@ from api.main import app
 from api.providers import festival_source, traffic_incidents
 from api.providers.festival_source import FestivalSource
 from api.providers.route_base import KST
-from api.services import festival_store, real_festival_info
+from api.services import real_festival_info
 
 _NOW = datetime(2026, 11, 19, 17, 23, tzinfo=KST)
 _POLICE = "https://apis.data.go.kr/fixture/incident"
@@ -216,7 +216,7 @@ def test_traffic_concurrent_requests_share_a_fetch(upstream):
 
 
 @pytest.mark.db
-def test_traffic_and_forecast_only_use_public_ev01_festivals_under_rls(upstream, monkeypatch):
+def test_traffic_and_forecast_only_use_public_ev01_festivals_under_rls(upstream, monkeypatch, use_user_db):
     admin_url = make_url(os.environ["TEST_DB_URL"]).set(drivername="postgresql+psycopg")
     app_url = make_url(os.environ.get("TEST_DB_APP_URL") or admin_url).set(drivername="postgresql+psycopg")
     admin = create_engine(admin_url, hide_parameters=True)
@@ -224,7 +224,7 @@ def test_traffic_and_forecast_only_use_public_ev01_festivals_under_rls(upstream,
     if not os.environ.get("TEST_DB_APP_URL"):
         event.listen(public, "begin", lambda conn: conn.exec_driver_sql("SET LOCAL ROLE noldaga_app"))
     calls, _ = upstream(police="police_traffic_synthetic.xml")
-    monkeypatch.setattr(festival_store, "get_festival_engine", lambda: public)
+    use_user_db(app_url, role=None if os.environ.get("TEST_DB_APP_URL") else "noldaga_app")
     monkeypatch.setenv("FESTIVAL_DATA", "db")
     monkeypatch.setenv("AUTH_PROVIDER", "db")
     monkeypatch.setenv("VISIT_FORECAST_PROVIDER", "real")

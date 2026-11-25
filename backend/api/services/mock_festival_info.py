@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 
+from starlette.concurrency import run_in_threadpool
+
 from api.errors import ApiError
 from api.mocks.clock import MOCK_NOW
-from api.mocks.notices import NOTICES
 from api.providers.traffic_incidents import Incident, IncidentReading, nearby_incidents
 from api.mocks import notices as mock_notices
 from api.services.notices import active_at
@@ -90,8 +91,8 @@ _CROWD_AREAS = {
 }
 
 
-def _find_festival(festival_id: str) -> FestivalDetail:
-    festival = find_festival(festival_id)
+async def _find_festival(festival_id: str) -> FestivalDetail:
+    festival = await find_festival(festival_id)
     if festival is None:
         raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
     return festival
@@ -134,10 +135,10 @@ def _can_supply_data(
     return True
 
 
-def get_notices(
+async def get_notices(
     festival_id: str, notice_type: NoticeType | None, active_only: bool, scenario: str | None
 ) -> NoticeResponse:
-    festival = _find_festival(festival_id)
+    festival = await _find_festival(festival_id)
     response = NoticeResponse(
         festival_id=festival_id,
         coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
@@ -150,7 +151,9 @@ def get_notices(
             if (notice_type is None or notice.type == notice_type)
             and (not active_only or active_at(notice.effective_from, notice.effective_to, MOCK_NOW))
         ]
-        managed = mock_notices.memory_store.approved(festival_id, notice_type, active_only)
+        managed = await run_in_threadpool(
+            mock_notices.memory_store.approved, festival_id, notice_type, active_only,
+        )
         response.items = sorted(
             [*fixtures, *managed],
             key=lambda notice: notice.effective_from or datetime.min.replace(tzinfo=MOCK_NOW.tzinfo),
@@ -161,8 +164,8 @@ def get_notices(
     return response
 
 
-def get_weather(festival_id: str, scenario: str | None) -> WeatherResponse:
-    festival = _find_festival(festival_id)
+async def get_weather(festival_id: str, scenario: str | None) -> WeatherResponse:
+    festival = await _find_festival(festival_id)
     response = WeatherResponse(
         festival_id=festival_id,
         coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
@@ -180,10 +183,10 @@ def get_weather(festival_id: str, scenario: str | None) -> WeatherResponse:
     return response
 
 
-def get_traffic_incidents(
+async def get_traffic_incidents(
     festival_id: str, radius_m: int, kind: TrafficIncidentType | None, scenario: str | None,
 ) -> TrafficIncidentResponse:
-    festival = _find_festival(festival_id)
+    festival = await _find_festival(festival_id)
     response = TrafficIncidentResponse(
         festival_id=festival_id, coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
         source="police_incident",
@@ -207,8 +210,8 @@ def get_traffic_incidents(
     return response
 
 
-def get_crowd(festival_id: str, scenario: str | None) -> CrowdResponse:
-    festival = _find_festival(festival_id)
+async def get_crowd(festival_id: str, scenario: str | None) -> CrowdResponse:
+    festival = await _find_festival(festival_id)
     is_seoul = festival.region_code == "SEOUL"
     response = CrowdResponse(
         festival_id=festival_id,
@@ -246,10 +249,10 @@ _MOCK_STATIONS = {
 }
 
 
-def get_transit(
+async def get_transit(
     festival_id: str, mode: TransitMode, radius_m: int, limit: int, scenario: str | None,
 ) -> TransitResponse:
-    festival = _find_festival(festival_id)
+    festival = await _find_festival(festival_id)
     is_seoul = festival.region_code == "SEOUL"
     supported = mode != "subway" or is_seoul
     response = TransitResponse(
@@ -283,8 +286,8 @@ def get_transit(
     return response
 
 
-def get_visit_forecast(festival_id: str, days: int, scenario: str | None) -> VisitForecastResponse:
-    festival = _find_festival(festival_id)
+async def get_visit_forecast(festival_id: str, days: int, scenario: str | None) -> VisitForecastResponse:
+    festival = await _find_festival(festival_id)
     response = VisitForecastResponse(
         festival_id=festival_id,
         coverage=Coverage(scope="national", region_code=festival.region_code, supported=True),
