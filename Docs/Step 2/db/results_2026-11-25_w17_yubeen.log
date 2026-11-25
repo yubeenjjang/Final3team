@@ -1,4 +1,4 @@
-# 놀다가 DB 시험 결과 — 2026-11-25 10:09:32    
+# 놀다가 DB 시험 결과 — 2026-11-25 10:26:25
 ## 환경
 PostgreSQL 17.11 (Debian 17.11-1.pgdg12+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
 이미지: pgvector/pgvector:pg17 (pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8)
@@ -172,8 +172,8 @@ PASS T43g 출발·도착 둘 다 축제 장소 — 거부됨: new row for relati
 PASS T43h 귀갓길 출발을 사용자가 고른 곳으로(S06) — 1 행 바뀜
 PASS T43i 축제 장소인데 장소 해시가 있음 — 거부됨: new row for relation "route_requests" violates check constraint "route_requests_origin_hash_check"
 PASS T43j 채팅방 신고(S07) — 1 행 바뀜
-PASS T43k 앱 사용법 문서에 앱 버전 없음 — 거부됨: new row for relation "rag_documents" violates check constraint "rag_documents_app_guide_check"
 ALL SQL TESTS PASSED
+PASS T43k 앱 사용법 문서에 앱 버전 없음 — 거부됨: new row for relation "rag_documents" violates check constraint "rag_documents_app_guide_check"
 ## 4. 010 공개 원본 권한 적용·되돌리기·재적용
 psql:<stdin>:50: NOTICE:  T010a PASS: 공개 축제 원본 번호만 조회
 psql:<stdin>:50: NOTICE:  T010b PASS: 공개 축제와 원본만 조인
@@ -243,24 +243,24 @@ psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 
  
 (1 row)
 
-psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_count 
 --------------
  
 (1 row)
 
+psql:<stdin>:27: NOTICE:  PASS T017b 증가율·신호 저장 및 연결된 행만 공개 — 2 행
  expect_error 
 --------------
  
 (1 row)
 
 psql:<stdin>:33: NOTICE:  PASS T017c 음수 증가율 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_trend_ratio_check"
+psql:<stdin>:37: NOTICE:  PASS T017c 미정의 신호 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_signal_check"
  expect_error 
 --------------
  
 (1 row)
 
-psql:<stdin>:37: NOTICE:  PASS T017c 미정의 신호 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_signal_check"
  expect_error 
 --------------
  
@@ -274,11 +274,6 @@ psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null valu
 
 psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
 T017e PASS: 004 제약에 맞지 않는 행이 있으면 되돌리기 차단
- expect_count 
---------------
- 
-(1 row)
-
 psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 — 0 행
  expect_count 
 --------------
@@ -286,18 +281,23 @@ psql:<stdin>:51: NOTICE:  PASS T017d 되돌리기 후 두 추가 컬럼 제거 �
 (1 row)
 
 psql:<stdin>:55: NOTICE:  PASS T017d 되돌리기 후 기존 행 보존 — 2 행
+ expect_count 
+--------------
+ 
+(1 row)
+
 psql:<stdin>:59: NOTICE:  PASS T017d 004 제약 복원 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_check1"
  expect_error 
 --------------
  
 (1 row)
 
-psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 보존 — 2 행
  expect_count 
 --------------
  
 (1 row)
 
+psql:<stdin>:10: NOTICE:  PASS T017a 기존 순위·언급 수와 기본 신호 보존 — 2 행
  expect_count 
 --------------
  
@@ -322,12 +322,12 @@ psql:<stdin>:41: NOTICE:  PASS T017c NULL 신호 거부 — 거부됨: null valu
  
 (1 row)
 
+psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
  expect_error 
 --------------
  
 (1 row)
 
-psql:<stdin>:45: NOTICE:  PASS T017c 지표가 없는 ok 거부 — 거부됨: new row for relation "festival_trends" violates check constraint "festival_trends_measurement_check"
 ## 5-5. 018 축제 공개·좌표 출처 적용·되돌리기·재적용
 psql:<stdin>:49: NOTICE:  T018a~b PASS: 미분류 전환·이력 및 좌표 출처 제약
 psql:<stdin>:62: NOTICE:  T018c PASS: 축제와 원본 RLS 모두 EV01만 공개
@@ -415,23 +415,23 @@ psql:<stdin>:37: NOTICE:  PASS T25a: 복원된 route_results에 공급원 원본
 psql:<stdin>:37: NOTICE:  PASS T25b: 복원 뒤 공급원·조회 시각·요청 상태·오류 코드 보존
 psql:<stdin>:25: NOTICE:  PASS T25c: 복원 뒤 실제 삭제 시각 보존, 미정리·결과 없는 요청은 NULL
 PASS T20b TMAP 경로 내용을 purged_at과 함께 지움 — 1 행 바뀜
-AFTER-BACKUP TESTS PASSED
 PASS T20c 정리 작업 조건: 23시간 지난 TMAP 내용 찾기 쿼리 실행 가능 — 0 행
+AFTER-BACKUP TESTS PASSED
 ## 6. 실행 계획 (explain_v0.3.2.sql)
 --- (1) 인덱스를 쓰지 않게 했을 때 (enable_indexscan/bitmapscan off) ---
 Buffers: shared hit=297
-->  Seq Scan on festivals (actual time=0.203..2.787 rows=26 loops=1)
+->  Seq Scan on festivals (actual time=0.170..2.164 rows=26 loops=1)
 Rows Removed by Filter: 19987
 Buffers: shared hit=297
 Buffers: shared hit=97
-Planning Time: 0.382 ms
-Execution Time: 2.829 ms
+Planning Time: 0.350 ms
+Execution Time: 2.197 ms
 --- (2) idx_festivals_search (region_code, start_date, end_date) WHERE published_at IS NOT NULL 사용 ---
 Buffers: shared hit=37
-->  Bitmap Heap Scan on festivals (actual time=0.280..0.364 rows=26 loops=1)
+->  Bitmap Heap Scan on festivals (actual time=0.103..0.171 rows=26 loops=1)
 Buffers: shared hit=37
-->  Bitmap Index Scan on idx_festivals_search (actual time=0.255..0.255 rows=26 loops=1)
+->  Bitmap Index Scan on idx_festivals_search (actual time=0.093..0.094 rows=26 loops=1)
 Buffers: shared hit=11
-Planning Time: 0.202 ms
-Execution Time: 0.547 ms
+Planning Time: 0.129 ms
+Execution Time: 0.211 ms
 ## 끝 — 시험용 컨테이너는 지움 (AWS 서버 실행 아님)
