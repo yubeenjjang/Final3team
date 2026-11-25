@@ -262,6 +262,7 @@ class FestivalInfoService:
 
     async def traffic(
         self, festival_id: str, radius_m: int, kind: TrafficIncidentType | None,
+        *, utic_store: traffic_incidents.UticSnapshotStore | None = None,
     ) -> TrafficIncidentResponse:
         festival = await self._festival(festival_id)
         response = TrafficIncidentResponse(
@@ -280,14 +281,16 @@ class FestivalInfoService:
             except FestivalSourceError as exc:
                 return exc.error
 
-        nationwide = [fetch(traffic_incidents.public_incidents)]
-        if traffic_incidents.utic_enabled():
-            nationwide.append(fetch(traffic_incidents.utic_incidents))
         local = []
         if festival.region_code == "SEOUL" and os.environ.get(traffic_incidents.SEOUL_KEY, "").strip():
             local.append(fetch(traffic_incidents.topis_incidents))
 
-        results = await asyncio.gather(*nationwide, *local)
+        results = await asyncio.gather(fetch(traffic_incidents.public_incidents), *local)
+        utic = await utic_store.read() if utic_store is not None else None
+        max_age = timedelta(seconds=2 * traffic_incidents.INCIDENT_TTL_S)
+        now = self._now()
+        if utic is not None and now - utic.observed_at <= max_age:
+            results.insert(1, utic)
         readings = [result for result in results if isinstance(result, traffic_incidents.IncidentReading)]
         if not readings:
             errors = [result for result in results if isinstance(result, SourceError)]
@@ -302,7 +305,7 @@ class FestivalInfoService:
             response.notices.append("서울 TOPIS 정보를 가져오지 못했어요.")
         response.observed_at = min(reading.observed_at for reading in readings)
         response.items = traffic_incidents.nearby_incidents(readings, coordinates, radius_m, kind)
-        if self._now() - response.observed_at > timedelta(seconds=2 * traffic_incidents.INCIDENT_TTL_S):
+        if now - response.observed_at > max_age:
             _stale(response)
         return response
 
