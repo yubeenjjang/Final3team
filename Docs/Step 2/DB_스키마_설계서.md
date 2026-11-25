@@ -1,6 +1,6 @@
 # 04. 데이터베이스 스키마 설계서
 
-놀다가(NOLDAGA) / 3팀 수다수다 | 문서 버전 **v0.7** | 작성 상태: **학원 산출물 양식(04. 데이터베이스 스키마 설계서, 1~7절)에 맞춰 재구성, 구현·검증 기록은 별도 문서로 분리(11/25)** | 작성 2026-11-17 · 수정 2026-11-25 · 권오현(백엔드) — AI 초안 후 본인 검토
+놀다가(NOLDAGA) / 3팀 수다수다 | 문서 버전 **v0.7** | 작성 상태: **제출본**
 
 문서명: DB 스키마 설계서
 
@@ -10,14 +10,14 @@
 |---|---|
 | **정본(이 문서의 기준 위치)** | GitHub `yubeenjjang/Final3team` → `Docs/Step 2/DB_스키마_설계서.md`. **이 경로만 정본**이며 로컬 파일·Discord 첨부는 사본입니다 |
 | 짝 문서 | `Docs/Step 2/API_설계문서.md` v0.7 — ID 형식은 03 문서 0절, API 필드 ↔ DB 컬럼 대응은 03 문서 6-2절 |
-| 구현·검증 기록 | [`Docs/Step 2/DB_구현_검증기록.md`](DB_구현_검증기록.md) — 진행 단계·제출 기준 커밋·SQL 실행 결과, 검토 기록, 강사 피드백 반영표([기록 0-A](DB_구현_검증기록.md#0-a-강사-1120-피드백-반영표-v05-2026-11-24)), 실제 데이터 근거·미확인 항목([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)), 다른 문서와의 연결([기록 9](DB_구현_검증기록.md#9-다른-문서와의-연결)), 실행 확인 기록([기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)·10-A), 결정 기록([기록 19](DB_구현_검증기록.md#19-결정-반영-기록)). 이 문서에서 '기록 N절'은 그 문서의 절입니다 |
+| 구현·검증 기록 | [`Docs/Step 2/DB_구현_검증기록.md`](DB_구현_검증기록.md) — 진행 단계·제출 기준 커밋·SQL 실행 결과, 검토 기록, 피드백 반영표([기록 0-A](DB_구현_검증기록.md#0-a-강사-1120-피드백-반영표-v05-2026-11-24)), 실제 데이터 근거·미확인 항목([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)), 다른 문서와의 연결([기록 9](DB_구현_검증기록.md#9-다른-문서와의-연결)), 실행 확인 기록([기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)·10-A), 결정 기록([기록 19](DB_구현_검증기록.md#19-결정-반영-기록)). 이 문서에서 '기록 N절'은 그 문서의 절입니다 |
 | 목차(양식 04) | 1 ERD 관계 명세 · 2 pgvector 스키마 · 3 권한(GRANT·RLS) · 4 JWT·Redis 세션 수명주기 · 5 쿼리 최적화 기준 · 6 엔터티 정의 · 7 관계·운영 규칙(보존·열람 범위) · 부록 마이그레이션 파일 목록 |
-| 기준 문서 | **기획서 최신본**([놀다가 기획서](../Step%201/놀다가_기획서.md), 11/19 05:18 신유빈 님 공유, v3.1 다음판) · [WBS 128개](../Step%201/놀다가_WBS.md), 결정대장 D-009~D-039 + 11/20 결정(추천 취향 아기 동반 제외), 팀 자체 평가 BFCL 30문항(한다영 브랜치 원본, API 최신판 v0.5로 채점), 강사 2차 의견(11/18)·일일 피드백(11/19), 수업 가이드 「DB 스키마 설계서 작성법」(11/18) |
-| DB | **AWS 위 Docker PostgreSQL 17 + pgvector**(이미지 `pgvector/pgvector:pg17`) / 캐시·임시 상태: Docker Redis. **인증은 FastAPI 자체 JWT**(Supabase 사용 안 함, **D-037 11/19 결정** — 기획서·WBS 최신본과 일치, 11/20 GitHub 대조) |
+| 기준 문서 | [놀다가 기획서](../Step%201/놀다가_기획서.md) · [WBS](../Step%201/놀다가_WBS.md) · 팀 자체 평가 30문항(BFCL) · 수업 가이드 「DB 스키마 설계서 작성법」 |
+| DB | **AWS 위 Docker PostgreSQL 17 + pgvector**(이미지 `pgvector/pgvector:pg17`) / 캐시·임시 상태: Docker Redis. **인증은 FastAPI 자체 JWT**(Supabase 사용 안 함) |
 
 > 테이블은 **설계안**이며 실제 AWS 서버에는 아직 만들지 않았습니다. 외부 공급원 필드(TourAPI·TMAP·카카오맵 등)는 실호출 뒤 확정합니다([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)절).
 > 표시: **[1차]** = 1차 시연(귀가 조회 부하·복구)에 꼭 필요 · [최종] = 최종 MVP · [보조] = 혼잡 보조 시험 · [Should] = 있으면 좋은 기능 · 실행 기준은 001 DDL(`db/001_schema_v0.3.1.sql`)(표와 다르면 DDL이 기준이고 표를 고침) · [제안] = 기획서 5.4에 없어 이 문서에서 새로 제안
-> 지금 문서는 완성본이 아닙니다(D-034). 서비스 부가 기능이 정해지면 테이블을 **추가**하는 방식으로 붙입니다(7절 '확장 규칙').
+> 지금 문서는 완성본이 아닙니다. 서비스 부가 기능이 정해지면 테이블을 **추가**하는 방식으로 붙입니다(7절 '확장 규칙').
 
 ## 1. ERD 관계 명세
 
@@ -468,22 +468,22 @@ erDiagram
 
 | 항목 | 값 | 상태 |
 |---|---|---|
-| 임베딩 모델 | **OpenAI `text-embedding-3-small`, 요청 차원 `dimensions=1024`** (문서와 질문에 같은 설정, 별도 모델 서버 없음). | **확정(11/24 한다영 초안 · 권오현 결정)** — 검색 품질이 부족하면 BGE-M3 1024차원으로 바꾸고 전체 재적재 |
+| 임베딩 모델 | **OpenAI `text-embedding-3-small`, 요청 차원 `dimensions=1024`** (문서와 질문에 같은 설정, 별도 모델 서버 없음). | **확정** — 검색 품질이 부족하면 BGE-M3 1024차원으로 바꾸고 전체 재적재 |
 | 차원 ↔ 컬럼 | `VECTOR(n)`의 n = 모델 출력 차원. 모델을 바꾸면 다시 적재(섞어 쓰지 않음, `embedding_model`·`embedding_version`으로 구분) | 규칙 확정 |
-| 인덱스 연산자 ↔ 검색식 | `vector_cosine_ops` ↔ `<=>` (코사인 거리), 상위 5개(`top_k=5`). 승인(`approval_status='approved'`)·선택한 `festival_id`·기준 시각의 유효기간·같은 `embedding_model`·`embedding_version` 조건을 **벡터 정렬 전에** 적용 | 확정(11/24) |
-| 청크 나누기 | 제목·소제목·공지 항목 단위로 먼저 나누고, 긴 항목만 약 500자·50자 겹침. 출처·유효기간이 다른 공지는 한 청크에 합치지 않음 | 확정(11/24, 검색 결과에 따라 길이만 조정) |
+| 인덱스 연산자 ↔ 검색식 | `vector_cosine_ops` ↔ `<=>` (코사인 거리), 상위 5개(`top_k=5`). 승인(`approval_status='approved'`)·선택한 `festival_id`·기준 시각의 유효기간·같은 `embedding_model`·`embedding_version` 조건을 **벡터 정렬 전에** 적용 | 확정 |
+| 청크 나누기 | 제목·소제목·공지 항목 단위로 먼저 나누고, 긴 항목만 약 500자·50자 겹침. 출처·유효기간이 다른 공지는 한 청크에 합치지 않음 | 확정 |
 
-- `pgvector/pgvector:pg17` 이미지에 `vector` 확장이 들어 있어 `CREATE EXTENSION IF NOT EXISTS vector;`로 켭니다(001 DDL(`db/001_schema_v0.3.1.sql`) 첫 줄, 실행 확인).
+- `pgvector/pgvector:pg17` 이미지에 `vector` 확장이 들어 있어 `CREATE EXTENSION IF NOT EXISTS vector;`로 켭니다(001 DDL(`db/001_schema_v0.3.1.sql`) 첫 줄).
 - **앱 사용법 문서(009, 시나리오 S05):** `category='app_guide'` — 팀이 LLM으로 초안을 만들고(`authored_by='llm_draft'`) 관리자가 승인한 것만 검색, 축제와 무관(`festival_id` NULL)하고 `app_version` 필수(앱이 바뀌면 다시 생성·승인). 챗봇이 '친구 신청은 어떻게 해?' 같은 질문에 이 문서로 답하고, 없는 기능은 가능하다고 말하지 않음.
 - 검색은 `approval_status='approved'` 이고 **지금 유효한**(`(effective_from IS NULL OR effective_from <= now()) AND (effective_to IS NULL OR effective_to > now())`) 문서만 대상으로 합니다.
 - RAG는 1차 시연 필수가 아닙니다. 실시간 혼잡·날씨·경로를 RAG로 대신하지 않습니다.
-- **RAG 사용 범위(강사 DB 피드백 5, 11/24 확정):** 검색 자료는 **축제 공식 안내문**(W27)만 사용합니다. 009의 앱 사용법(`app_guide`) 구조는 유지하며, 승인된 앱 사용법 문서가 준비되면 같은 승인·버전 규칙으로 추가합니다. 실시간 값·경로·사용자 대화는 검색 자료에서 제외합니다. 유효기간 끝이 날짜만 있으면 다음 날 0시(KST)를 상한으로 저장합니다(수집 담당 한다영 확인).
+- **RAG 사용 범위:** 검색 자료는 **축제 공식 안내문**만 사용합니다. 009의 앱 사용법(`app_guide`) 구조는 유지하며, 승인된 앱 사용법 문서가 준비되면 같은 승인·버전 규칙으로 추가합니다. 실시간 값·경로·사용자 대화는 검색 자료에서 제외합니다. 유효기간 끝이 날짜만 있으면 다음 날 0시(KST)를 상한으로 저장합니다.
 
 ### 2-1. 에이전트 메모리 저장 위치 (수업 가이드 S20)
 
 | 메모리 | 저장 위치 | 설계 |
 |---|---|---|
-| **단기(대화·그래프 상태 체크포인트)** | LangGraph `PostgresSaver`가 만드는 테이블(`checkpoints`·`checkpoint_blobs`·`checkpoint_writes`·`checkpoint_migrations`), 별도 스키마 `langgraph` | 라이브러리가 `setup()`으로 직접 만듦 — **이 문서에서 컬럼을 설계하지 않음**. `thread_id` = **대화 세션 ID**(`cv_` + ULID, 여러 질문이 이어지는 대화 하나). 질문 1회의 실행 ID `run_id`와 다름(A06 요청의 `conversation_id`, 03 문서 7-6). 보존 7일(7-0 보존표, 11/24 팀 결정). **경로 내용은 넣지 않음**(7-0) |
+| **단기(대화·그래프 상태 체크포인트)** | LangGraph `PostgresSaver`가 만드는 테이블(`checkpoints`·`checkpoint_blobs`·`checkpoint_writes`·`checkpoint_migrations`), 별도 스키마 `langgraph` | 라이브러리가 `setup()`으로 직접 만듦 — **이 문서에서 컬럼을 설계하지 않음**. `thread_id` = **대화 세션 ID**(`cv_` + ULID, 여러 질문이 이어지는 대화 하나). 질문 1회의 실행 ID `run_id`와 다름(A06 요청의 `conversation_id`, 03 문서 7-6). 보존 7일(7-0 보존표). **경로 내용은 넣지 않음**(7-0) |
 | **실행 기록(감사)** | `agent_runs`(6-2절) | 에이전트별 입력·출력 위치, 도구 호출, 토큰·비용, 상태 |
 | **장기 메모리** | 지금은 없음(공식 안내 RAG 문서만, 위 표) | 사용자별 장기 기억은 개인정보 문제로 1차에 만들지 않음. 필요해지면 확장 규칙(7절)으로 추가 |
 
@@ -491,7 +491,7 @@ erDiagram
 
 ## 3. 권한 정책: 접속 역할 · GRANT · RLS (역할 × 명령)
 
-Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 검사는 FastAPI**(JWT 역할·소유권, 03 문서 1절·각 API의 403 조건), **DB는 2차 안전장치**입니다.
+Supabase를 쓰지 않으므로 권한을 이렇게 나눕니다. **1차 검사는 FastAPI**(JWT 역할·소유권, 03 문서 1절·각 API의 403 조건), **DB는 2차 안전장치**입니다.
 
 | 층 | 무엇 | 내용 |
 |---|---|---|
@@ -547,9 +547,9 @@ Supabase를 쓰지 않으므로(D-037) 권한을 이렇게 나눕니다. **1차 
 
 추가 테이블 21개의 `noldaga_service`는 SELECT 권한과 RLS 우회 권한이 있습니다. INSERT·UPDATE·DELETE 칸의 `service`는 `noldaga_app`에 해당 명령 권한이 없고 `noldaga_service`에 있다는 뜻입니다. 두 역할이 모두 허용된 칸에는 각각 표시했습니다.
 
-'(service 경유)'는 FastAPI가 권한을 확인한 뒤 `noldaga_service`로 읽고 쓴다는 뜻입니다. 운영자 화면의 DB 조회는 FastAPI가 권한을 확인한 뒤 서버 계정 `noldaga_service`를 통해서만 합니다(11/24 팀 결정). 아래 정책 SQL과 [기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절의 역할별 시험은 DB 권한 자체의 검증 기록입니다.
+'(service 경유)'는 FastAPI가 권한을 확인한 뒤 `noldaga_service`로 읽고 쓴다는 뜻입니다. 운영자 화면의 DB 조회는 FastAPI가 권한을 확인한 뒤 서버 계정 `noldaga_service`를 통해서만 합니다. 아래 정책 SQL과 [기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절의 역할별 시험은 DB 권한 자체의 검증 기록입니다.
 
-**사용자 정보 설정 시점과 트랜잭션 종료 규칙 (강사 11/19 DB 피드백 2 — [기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절 T21~T23으로 시험함)**
+**사용자 정보 설정 시점과 트랜잭션 종료 규칙**
 
 | 단계 | 규칙 |
 |---|---|
@@ -582,7 +582,7 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
   USING (EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = app_current_user() AND p.role IN ('operator','admin')));
 ```
 
-전체(공개 조회 6개·관심 3개·프로필 2개·후기 4개·사건 1개 정책과 GRANT)는 001 DDL(`db/001_schema_v0.3.1.sql`)에 있고, 다른 사용자로 조회해 0건·거부가 나오는 것을 확인했습니다([기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절 T1~T5·T12·T16·T17).
+전체(공개 조회 6개·관심 3개·프로필 2개·후기 4개·사건 1개 정책과 GRANT)는 001 DDL(`db/001_schema_v0.3.1.sql`)에 있습니다.
 
 ---
 
@@ -590,9 +590,9 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 
 아래 Redis 키는 연결 예정입니다. 실제 경로의 **기본 메모리 모드**는 TMAP 결과 본문과 요청 원문을 캐시 만료(60초) 때 정리합니다(`ROUTE_RESULT_EXPIRED`, `retryable=true`). 카카오·실패 요청의 원문은 처리 끝에 정리합니다. **011 DB 모드**는 접수 후 10분 토큰과 TMAP 요약의 최대 24시간 보존 정책을 적용합니다. 유효 토큰으로 조회한 정리된 결과에는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”를 반환합니다.
 
-공통 Redis 연결(`backend/shared/redis.py`, 신유빈 담당)은 설정 주석만 있으며 구현 대기입니다.
+공통 Redis 연결은 `backend/shared/redis.py`에서 합니다.
 
-**인증 흐름 (FastAPI 자체 JWT — D-037)**
+**인증 흐름 (FastAPI 자체 JWT)**
 ① `POST /api/v1/auth/login`(이메일·비밀번호, `users.password_hash`는 argon2id) → **Access JWT**(수명 30분, `sub`=user_id, `role`, `jti` 포함) + **Refresh Token**(수명 14일, 원문은 사용자에게만, DB `refresh_tokens`에는 해시만) → ② FastAPI가 요청마다 서명·만료·발급자 검증 → ③ `profiles.role`로 역할 확인(JWT 클레임과 다르면 DB 값 우선) → ④ Access 만료 시 `POST /api/v1/auth/refresh` — **Refresh는 쓸 때마다 새로 발급하고 이전 것은 `revoked_at` 기록(교체 방식)**, 폐기된 Refresh가 다시 오면 그 사용자의 Refresh 전부 폐기 → ⑤ `POST /api/v1/auth/logout` 시 Refresh 폐기 + Redis `revoked:{jti}` 등록(남은 Access 수명만큼 TTL).
 - Redis TTL은 모두 **고정**(조회할 때 늘리지 않음). 세션 연장은 Refresh 교체로만 합니다.
 
@@ -603,8 +603,8 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 | `revoked:{jti}` | `1` | Access 남은 수명 | 로그아웃한 토큰 차단 |
 | `ws:ticket:{hash}` | WebSocket 연결용 1회용 티켓 | 30초 | A73 발급, 연결할 때 한 번 사용(API 7-16-5절) |
 | `fault:crowd` | 혼잡 어댑터의 시험 장애 상태 | `duration_s`초 | A22 시험 장애 주입, A10 어댑터의 모의 응답에 적용(API 설계서 7-15절) |
-| `eng:{festival_id}:{day}` | 중복 집계를 막는 세션 HMAC 집합 | 일자는 KST 기준. 다음 날 00:10 KST 집계 작업이 숫자를 `festival_engagement_daily`에 반영한 뒤 삭제하고, 집계가 실패해도 남지 않게 TTL 48시간(11/24 확정) | A39 인기 축제. 숫자만 `festival_engagement_daily`에 저장(API 7-16-2절) |
-| `route:inflight:{route_key}` | 진행 중인 조회의 `route_request_id` | **12초**(= 경로 전체 처리 제한 10초 + 2초, 초기값 — 확정값은 [API 구현·검증 기록 25](API_구현_검증기록.md#25-제한값-확정-기록-설계서-8-2의-초기값--측정-뒤-확정값)절. v0.3의 5초는 처리보다 먼저 만료돼 고침) | **동일 요청 병합(singleflight)** — 같은 키가 있으면 새 조회 대신 결과를 기다림 |
+| `eng:{festival_id}:{day}` | 중복 집계를 막는 세션 HMAC 집합 | 일자는 KST 기준. 다음 날 00:10 KST 집계 작업이 숫자를 `festival_engagement_daily`에 반영한 뒤 삭제하고, 집계가 실패해도 남지 않게 TTL 48시간 | A39 인기 축제. 숫자만 `festival_engagement_daily`에 저장(API 7-16-2절) |
+| `route:inflight:{route_key}` | 진행 중인 조회의 `route_request_id` | **12초**(= 경로 전체 처리 제한 10초 + 2초, 초기값 — 확정값은 [API 구현·검증 기록 25](API_구현_검증기록.md#25-제한값-확정-기록-설계서-8-2의-초기값--측정-뒤-확정값)절.) | **동일 요청 병합(singleflight)** — 같은 키가 있으면 새 조회 대신 결과를 기다림 |
 | `route:req:{route_request_id}` | 상태(`queued`…`ready`) | 10분 | 상태 조회 API 빠른 응답 |
 | `route:token:{route_request_id}` | 요청 토큰 해시 | 10분 | A05에서 본인 요청 확인(로그인·비로그인 공통) |
 | `policy:route:active` | 켜진 조치 목록 `{action, enabled_at, incident_id}` | 정책 코드가 직접 해제 + **안전 TTL `stop_condition.max_minutes`+60초**(코드가 죽어도 조치가 계속 켜져 있지 않게) | **장애 감지 후에만** 켜지는 복구 조치 상태 — 처음부터 켜 두지 않음 |
@@ -613,7 +613,7 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 | `ext:{source_id}:{target_id}` | 최신 외부 응답(도착·돌발·날씨·혼잡·자전거) | 공급원별(도착 30초, 돌발·혼잡·자전거 1분, 날씨 10분). 7-0 보존표 기준 | 같은 화면을 여러 사람이 볼 때 외부 호출 줄이기 |
 | `posts:{festival_id}` | 정상 A81 결과의 제목·링크·게시일·출처 종류 | 10분(`POSTS_CACHE_TTL_S` = 600초) | 축제 상세의 요즘 올라온 글. PostgreSQL에는 적재하지 않음 |
 
-요청 수 제한 카운터(11/24 확정, API 설계서 8-2 ⑤의 분당 한도): 고정 1분 창 카운터로 `INCR` 후 처음 만들 때 `EXPIRE 60`.
+요청 수 제한 카운터(API 설계서 8-2 ⑤의 분당 한도): 고정 1분 창 카운터로 `INCR` 후 처음 만들 때 `EXPIRE 60`.
 
 | 키 | 대상 | 한도 | TTL |
 |---|---|---|---|
@@ -621,7 +621,7 @@ CREATE POLICY incident_logs_select_operator ON incident_logs FOR SELECT TO nolda
 | `rl:route:{ip_or_session_hash}:{yyyymmddHHMM}` | A04·A25 귀가·가는 길 | IP·세션당 분당 10회(`ROUTE_RATE_LIMIT_PER_MIN`) | 60초 |
 | `rl:assistant:{ip_or_session_hash}:{yyyymmddHHMM}` | A06 챗봇·A51 방문 코스 | IP·세션당 분당 10회(`ASSISTANT_RATE_LIMIT_PER_MIN`) | 60초 |
 
-IP·세션 값은 원문 대신 HMAC 해시를 키에 씁니다. 공통 Redis 연결(`backend/shared/redis.py`, 신유빈 담당) 전까지 A33과 A04·A25는 메모리 카운터를 사용합니다. 경로 요청은 IP와 로그인 세션을 각각 같은 분 단위로 집계합니다.
+IP·세션 값은 원문 대신 HMAC 해시를 키에 씁니다. 공통 Redis 연결 전까지 A33과 A04·A25는 메모리 카운터를 사용합니다. 경로 요청은 IP와 로그인 세션을 각각 같은 분 단위로 집계합니다.
 
 **JWT 만료와 Redis TTL 중 먼저 끝나는 쪽 (수업 가이드 S18)**
 
@@ -631,11 +631,11 @@ IP·세션 값은 원문 대신 HMAC 해시를 키에 씁니다. 공통 Redis �
 | `revoked:{jti}`가 먼저 만료 | 생기지 않게 TTL을 JWT 남은 수명과 같게 둠 |
 | `route:token`(10분)이 먼저 만료 | 상태 조회 401. 011에서 로그인·비로그인 모두 A05 조회 토큰의 해시로 확인하며 `route_requests`에 `user_id` 또는 토큰 원문을 저장하지 않음. DB 모드는 접수 시각으로 10분을 계산하며 만료 후에는 새 `request_id`를 사용([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)절) |
 | `route:req` 만료·Redis 장애 | 상태는 PostgreSQL `route_requests`에서 읽음(느려질 뿐 틀리지 않음) |
-| Redis 장애로 `revoked:{jti}` 확인 불가 | 보호 API 중 **읽기는 그대로 처리**, **쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`**. 공개 API는 영향 없음(API 설계서 1-1절, 권오현 W18 시험 예정) |
+| Redis 장애로 `revoked:{jti}` 확인 불가 | 보호 API 중 **읽기는 그대로 처리**, **쓰기·관리자 API는 503 `AUTH_CHECK_UNAVAILABLE`**. 공개 API는 영향 없음(API 설계서 1-1절) |
 
 - **`route_key` v2(분석 #26)**. 정규화한 방향·축제 ID·출발/도착 유형과 좌표(소수 4자리)·이동수단·추천 기준·이동 제약·출발 기준과 5분 구간·통제 공지 버전(현재 `none`)·공급원에 HMAC-SHA256을 적용해 `v2:`를 붙입니다. `TEXT` 컬럼을 그대로 사용합니다. 메모리 모드에 한해 `ROUTE_KEY_SECRET`이 없으면 시작할 때 임의 키를 씁니다. P23에서 키 분리와 같음, 좌표 원문 부재를 확인합니다.
 - 기존 무접두사 키는 DB에 보존합니다. 새 캐시·병합·복구 후보에는 완전히 일치하는 v2 키만 씁니다. 해석 전 `pending:` 키도 재사용에서 제외합니다. A05와 멱등 조회는 기존 요청 ID·본문 해시·조회 토큰 검증을 사용합니다([API 구현·검증 기록 17-3](API_구현_검증기록.md#17-3-저장캐시-규칙--실제-코드-강사-1120-api-2)절).
-- 캐시가 처음부터 항상 켜진 것은 "기본 성능 설계"이고, 오토힐링은 `policy:route:active`에 **감지 뒤 켜진 기록**이 있어야 설명됩니다 (강사 11/17·11/18 의견).
+- 캐시가 처음부터 항상 켜진 것은 "기본 성능 설계"이고, 오토힐링은 `policy:route:active`에 **감지 뒤 켜진 기록**이 있어야 설명됩니다 .
 
 ---
 
@@ -678,10 +678,10 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | request_body_hash (011) | TEXT / NULL, 소문자 HEX 64자리 | 멱등 비교용 접수 본문 HMAC. NULL은 011 이전 요청 |
 | | error_detail (011) | JSONB / NULL | API가 정한 오류 안내·재시도 정보 |
 | | run_id | TEXT / NULL, CHECK `^run_` | 에이전트 실행 ID(챗봇 경유 시) |
-| | **direction** | TEXT / CHECK IN ('return','visit') DEFAULT 'return' | 귀가 / 축제 가는 길 (D-015) |
+| | **direction** | TEXT / CHECK IN ('return','visit') DEFAULT 'return' | 귀가 / 축제 가는 길 |
 | | festival_id | TEXT / FK festivals, NOT NULL | 귀가면 출발 축제, 가는 길이면 도착 축제 |
 | | festival_lat, festival_lng | NUMERIC(9,6) / 009에서 NULL 허용 | 공개 축제 좌표. 축제 장소가 출발·도착에 포함되면 필수 |
-| | **origin_type·destination_type / origin_place_hash·destination_place_hash** (009, 옛 `user_place_hash` 대체) | TEXT `festival`·`user` / TEXT NULL 허용 | 출발·도착이 축제 장소인지 사용자가 고른 곳인지(귀가 기본 출발=축제, 가는 길 기본 도착=축제, **둘 다 축제는 불가**). 사용자가 고른 곳만 **HMAC-SHA256(서버 비밀키)** — 역명·좌표는 경우의 수가 적어 일반 해시는 되돌릴 수 있음(11/20 한태경). 원문 저장 안 함 |
+| | **origin_type·destination_type / origin_place_hash·destination_place_hash** (009, 옛 `user_place_hash` 대체) | TEXT `festival`·`user` / TEXT NULL 허용 | 출발·도착이 축제 장소인지 사용자가 고른 곳인지(귀가 기본 출발=축제, 가는 길 기본 도착=축제, **둘 다 축제는 불가**). 사용자가 고른 곳만 **HMAC-SHA256(서버 비밀키)** — 역명·좌표는 경우의 수가 적어 일반 해시는 되돌릴 수 있음. 원문 저장 안 함 |
 | | ~~user_place_label~~ | **004에서 삭제** | 화면 표시 이름은 DB가 아니라 Redis `route:label:{route_request_id}`(24시간)에만 — DB에 두면 매일 백업(7일)에 남기 때문 |
 | | travel_mode | TEXT / CHECK IN ('transit','walk','car','taxi') | 이동 수단 |
 | | **route_preference** | TEXT / CHECK IN ('fastest','less_crowded','accessible','min_walk','fewest_transfers') DEFAULT 'fastest' | 추천 기준 = 기획서 FR-R01~R05(최단시간·혼잡 회피·교통약자·최소 도보·최소 환승) |
@@ -698,33 +698,33 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | is_mock | BOOLEAN / NOT NULL | 시험용 어댑터 사용 여부 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | 행 생성 시각(`submitted_at`과 같은 값으로 시작) |
 | **route_results** | route_request_id | TEXT / PK, FK route_requests | 요청 1건당 결과 1건 |
-| | provider | TEXT / CHECK IN ('tmap','kakao','mock_adapter') | 실제로 답한 공급원 (D-038: 1차 TMAP, 2차 카카오맵) |
+| | provider | TEXT / CHECK IN ('tmap','kakao','mock_adapter') | 실제로 답한 공급원 (2차 카카오맵) |
 | | **provider_tier** | TEXT / CHECK IN ('primary','secondary','mock') | 1차·2차·모의 |
 | | provider_ref | TEXT / NULL | 공급원 응답 ID |
 | | candidates | JSONB / `provider='kakao'`면 항상 NULL, 나머지는 NOT NULL — 단 `purged_at`이 있으면 NULL 허용(CHECK) | 경로 후보·점수(필드는 실호출 후 확정, [API 구현·검증 기록 10-2](API_구현_검증기록.md#10-2-원본-응답--내부-api--db-연결표-1119-실호출-반영)). **STEP4는 카카오 결과 행을 만들지 않고 요청 상태와 오류 코드만 남김** |
-| | **evidence** | JSONB / DEFAULT '{}' | 경로 전체 근거 `{notices: 통제 공지, control_version: 통제 버전}`. 후보별 `area_evidence`(혼잡 구역·교통 돌발)·`mode_evidence`(버스 차내 혼잡, 서울만)는 `candidates[]` 안에 저장 (D-024·D-033) |
-| | score_version | TEXT / NULL | 점수 비율 버전(D-025, 미정이면 NULL) |
+| | **evidence** | JSONB / DEFAULT '{}' | 경로 전체 근거 `{notices: 통제 공지, control_version: 통제 버전}`. 후보별 `area_evidence`(혼잡 구역·교통 돌발)·`mode_evidence`(버스 차내 혼잡, 서울만)는 `candidates[]` 안에 저장 |
+| | score_version | TEXT / NULL | 점수 비율 버전(미정이면 NULL) |
 | | route_hash | TEXT / NOT NULL | 보관 중 결과 동일성 확인. TMAP 정리 때 빈 문자열로 덮어씀(7-0) |
 | | source_type | TEXT / CHECK IN ('fresh','cache','shared','alternate') | 새 조회·캐시·병합 공유·대체 공급원 |
 | | cache_key | TEXT / FK route_cache_entries NULL, `ON DELETE SET NULL`(028) | 캐시로 제공했으면 |
-| | **validity_check** | JSONB / `source_type`이 cache·alternate면 NOT NULL(CHECK) | 캐시·대체 경로 유효성 검사 결과(조건·시각·`valid_until`·통제 버전 일치 여부와 이유) (강사 일일 피드백 4) |
+| | **validity_check** | JSONB / `source_type`이 cache·alternate면 NOT NULL(CHECK) | 캐시·대체 경로 유효성 검사 결과(조건·시각·`valid_until`·통제 버전 일치 여부와 이유) |
 | | queried_at | TIMESTAMPTZ / NOT NULL | 공급원 조회 시각 |
 | | validated_at | TIMESTAMPTZ / NULL | 검증 시각 |
 | | validation_status | TEXT / CHECK IN ('verified_basic','constraint_unverified','control_unverified','failed') | 검증 결과 |
 | | is_mock | BOOLEAN / NOT NULL | |
-| | **purged_at** | TIMESTAMPTZ / NULL | 만료된 경로 내용을 실제로 지운 시각. **TMAP은 받은 데이터를 24시간 넘게 쓸 수 없음**(11/19 한태경 님 약관 확인). A05 조회 또는 정기 작업이 본문을 정리하며 기록 |
+| | **purged_at** | TIMESTAMPTZ / NULL | 만료된 경로 내용을 실제로 지운 시각. **TMAP은 받은 데이터를 24시간 넘게 쓸 수 없음**. A05 조회 또는 정기 작업이 본문을 정리하며 기록 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 | **route_cache_entries** | cache_key | TEXT / PK (= route_key) | |
 | | **festival_id** | TEXT / FK festivals, NOT NULL | 통제 공지가 바뀌면 이 축제의 캐시를 한꺼번에 무효화(7절) |
 | | route_hash | TEXT / NOT NULL | 저장한 경로 |
-| | provider | TEXT / CHECK IN ('tmap','mock_adapter') | 카카오맵 응답은 캐시하지 않음(D-038) |
+| | provider | TEXT / CHECK IN ('tmap','mock_adapter') | 카카오맵 응답은 캐시하지 않음 |
 | | control_version | TEXT / NULL | 저장 당시 통제 정보 버전(바뀌면 무효) |
 | | created_at / verified_at / valid_until | TIMESTAMPTZ / valid_until NOT NULL | 생성·검증·만료 |
 | | hit_count | INT / DEFAULT 0 | 사용 횟수 |
 | **route_query_metrics** | metric_id | BIGSERIAL / PK | |
 | | simulation_id | TEXT / FK load_simulations NULL (운영 중 지표는 NULL) | |
 | | **phase** | TEXT / CHECK IN ('live','baseline','fault','after_action') DEFAULT 'live', `UNIQUE NULLS NOT DISTINCT(simulation_id, phase, window_at)` | 평소·장애·조치 뒤 구간 (03 문서 7-0). 운영 중 지표(시뮬레이션 없음)도 중복 방지 |
-| | window_at | TIMESTAMPTZ / NOT NULL | 시간창 시작(10초 단위, 11/24 확정, API 8-2 ⑧) |
+| | window_at | TIMESTAMPTZ / NOT NULL | 시간창 시작(10초 단위, API 8-2 ⑧) |
 | | offered_requests / accepted_count / valid_completed_count | INT / NOT NULL | 제공·접수·**검증된 경로 완료** |
 | | rejections / timeouts / errors | INT / NOT NULL | 거절·시간초과·오류 |
 | | unique_route_keys / backend_execution_count / shared_request_count / cache_hits | INT / NOT NULL | 중복·병합 판단 근거 |
@@ -744,7 +744,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | **fault** | JSONB / NULL | 주입한 장애(`{type, delay_ms}`), 없으면 평소 구간만 |
 | | seed | INT / NULL | 같은 입력 재현 |
 | | cache_state | TEXT / CHECK IN ('cold','warm') | 캐시 사전 적재 여부 |
-| | **repeat_group / run_index** | TEXT / INT DEFAULT 1 | 같은 조건 반복 묶음과 몇 번째 실행인지 (강사 2차 의견 5) |
+| | **repeat_group / run_index** | TEXT / INT DEFAULT 1 | 같은 조건 반복 묶음과 몇 번째 실행인지 |
 | | upstream | TEXT / NOT NULL DEFAULT 'mock_adapter', CHECK = 'mock_adapter' | 외부 공급원 부하 금지 |
 | | code_version | TEXT / NOT NULL | 시험한 커밋 |
 | | **result_ref / report_ref** | TEXT / NULL | 결과 JSON·보고서 위치(GitHub 경로) |
@@ -770,7 +770,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | status | TEXT / CHECK IN ('open','diagnosing','recovering','validating','closed') | **현재 상태만**. 바뀔 때마다 `incident_events`에 한 줄 추가 |
 | | closed_at | TIMESTAMPTZ / NULL | |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
-| **incident_events** [제안] | event_id | BIGSERIAL / PK | 사건 상태 변경 이력 (기획서 v2.8 정합성 항목 "현재 상태와 불변 감사 이력의 경계") |
+| **incident_events** [제안] | event_id | BIGSERIAL / PK | 사건 상태 변경 이력 |
 | | incident_id | TEXT / FK NOT NULL | |
 | | from_status / to_status | TEXT / CHECK IN ('open','diagnosing','recovering','validating','closed'), to_status NOT NULL | 상태 변경 |
 | | actor | TEXT / CHECK IN ('detector','service','rule_policy','recovery_agent','operator') | 누가 바꿨는지 |
@@ -826,7 +826,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | closed_at | TIMESTAMPTZ / NOT NULL | |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 
-**복구 성공률·소요 시간 계산 (11/17 강사 일일 피드백 6):** 성공률 = `incident_outcomes JOIN incident_logs`에서 `final_mode='normal_recovered'`인 사건 수 ÷ 닫힌 사건 수 — `incident_logs.injected_test`(시험/실제)별, 필요하면 `load_simulations.comparison_arm`별로 따로 셉니다. 소요 시간 = `incident_outcomes.mttr_s`, 단계별 시간은 `incident_events.occurred_at` 차이.
+**복구 성공률·소요 시간 계산 :** 성공률 = `incident_outcomes JOIN incident_logs`에서 `final_mode='normal_recovered'`인 사건 수 ÷ 닫힌 사건 수 — `incident_logs.injected_test`(시험/실제)별, 필요하면 `load_simulations.comparison_arm`별로 따로 셉니다. 소요 시간 = `incident_outcomes.mttr_s`, 단계별 시간은 `incident_events.occurred_at` 차이.
 
 - **대응 방식 비교:** 같은 `repeat_group`의 사건을 `incident_outcomes.responder_type`(none·rule·agent)별로 나눠 유효한 경로 제공률(`verified_route_count ÷ offered_requests`)·MTTR·p95를 비교합니다. 결론을 미리 정하지 않고 차이가 없으면 그대로 기록합니다.
 
@@ -843,9 +843,9 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | region_code | TEXT / NOT NULL | 03 문서 0-1절 코드(`SEOUL` 등) |
 | | category | TEXT / NULL | TourAPI `lclsSystm2` 대응. `EV01` → `festival`(공개 대상), `EV02` → `performance`, `EV03` → `event`, 미분류 → `unknown` |
 | | source_class_level1 / source_class_level2 / source_class_code (014) | TEXT / NULL | TourAPI `searchFestival2`의 `lclsSystm1` / `lclsSystm2` / `lclsSystm3` 원본 코드. 빈 값이면 NULL |
-| | summary | TEXT / NULL | 간단한 소개 (D-015) |
-| | admission_fee_text | TEXT / NULL | 입장료 원문(예: "무료") (D-015) |
-| | description / image_url / official_url / organizer | TEXT / NULL | 선택값. `image_url` = TourAPI `firstimage`(대표 이미지 **주소만**, 파일 복사 안 함, D-031) |
+| | summary | TEXT / NULL | 간단한 소개 |
+| | admission_fee_text | TEXT / NULL | 입장료 원문(예: "무료") |
+| | description / image_url / official_url / organizer | TEXT / NULL | 선택값. `image_url` = TourAPI `firstimage`(대표 이미지 **주소만**, 파일 복사 안 함) |
 | | **thumbnail_url** (003) | TEXT / NULL | 목록·지도용 작은 이미지 = `firstimage2` |
 | | **image_copyright_type** (003) | TEXT / CHECK IN ('Type1','Type3'), `image_url`이 있으면 NOT NULL | TourAPI `cpyrhtDivCd`. `Type3` = 출처 표시 + 변경 금지(03 문서 7-13 이미지 규칙) |
 | | event_status | TEXT / `NOT NULL DEFAULT 'upcoming' CHECK (event_status IN ('upcoming','ongoing','ended','cancelled','needs_review'))` | 기간·취소 공지로 계산 |
@@ -887,7 +887,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | reviewer | UUID / FK profiles, NULL | 처리한 operator·admin |
 | | reviewed_at | TIMESTAMPTZ / NULL | |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
-| **users** [최종] | user_id | UUID / PK | 회원(자체 인증, D-037) |
+| **users** [최종] | user_id | UUID / PK | 회원(자체 인증) |
 | | email | TEXT / NOT NULL, UNIQUE | 로그인 ID |
 | | password_hash | TEXT / NOT NULL | argon2id 해시. API 역할(`noldaga_app`)은 조회 권한 없음 |
 | | status | TEXT / CHECK IN ('active','disabled','deleted') DEFAULT 'active' | 탈퇴는 `deleted`로 |
@@ -896,7 +896,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | **refresh_tokens** [최종] | token_id | TEXT / PK, CHECK `^rt_` | Refresh Token 1개 |
 | | user_id | UUID / FK users, NOT NULL | |
 | | token_hash | TEXT / NOT NULL, UNIQUE | 원문은 저장 안 함 |
-| | expires_at | TIMESTAMPTZ / NOT NULL | 14일(11/24 팀 결정) |
+| | expires_at | TIMESTAMPTZ / NOT NULL | 14일 |
 | | revoked_at | TIMESTAMPTZ / NULL | 교체·로그아웃·비밀번호 변경(A82, 그 계정 전체)·재사용 감지(그 계정 전체) 시 기록 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 | **profiles** | user_id | UUID / PK, FK users | 회원 1명당 1행 |
@@ -925,8 +925,8 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | ended_at (023) | TIMESTAMPTZ / NULL | 수동 종료 시각. A07 실효 종료는 이 시각과 예정 종료 중 빠른 시각 |
 | | approval_status | TEXT / CHECK IN ('pending','approved','rejected') | 미승인은 경로 차단 규칙에 적용 안 함 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
-| **facilities** | facility_id | TEXT / PK | 지도 표시용 위치 (FR-F04·F11, D-014). 주차는 A08 주차장 위치만 제공 |
-| | category | TEXT / CHECK IN ('toilet','parking','locker','hospital','emergency','pharmacy','subway_station','bus_stop','bike_zone','taxi_stand','food','attraction') | 1차 10종. `locker`·`pharmacy`는 **보류**(D-021, BFCL 값과 맞추려고 허용값에만 남김). `bike_zone`·`taxi_stand` = **둘 다** 전국 통합 공급원·좌표 확인 시 전국, 없으면 검증된 서울 공급원, 위치만(D-036) |
+| **facilities** | facility_id | TEXT / PK | 지도 표시용 위치 (FR-F04·F11). 주차는 A08 주차장 위치만 제공 |
+| | category | TEXT / CHECK IN ('toilet','parking','locker','hospital','emergency','pharmacy','subway_station','bus_stop','bike_zone','taxi_stand','food','attraction') | 1차 10종. `locker`·`pharmacy`는 **보류**(BFCL 값과 맞추려고 허용값에만 남김). `bike_zone`·`taxi_stand` = **둘 다** 전국 통합 공급원·좌표 확인 시 전국, 없으면 검증된 서울 공급원, 위치만 |
 | | name | TEXT / NOT NULL | 지도와 시설 목록에 표시할 이름 |
 | | lat / lng | NUMERIC(9,6) / NOT NULL, 대한민국 범위 | |
 | | address / region_code | TEXT / NULL | |
@@ -937,7 +937,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | collected_at | TIMESTAMPTZ / NOT NULL | 공급원에서 시설 정보를 수집한 시각 |
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 
-**마이페이지 범위** — 11/24 팀 결정의 필수 범위는 비밀번호 변경(A82)·탈퇴(A80)·관심 축제(A11~A13)이고, 이미 만든 본인 프로필(A78)·내 동행 내역(A79)·축제 취향(A36·A37)도 함께 제공합니다(11/25, 화면에 넣을지는 화면 담당이 결정). 운영 공지·이용약관은 고정 문서 링크(별도 API 없음). API 설계서 7-16-6을 따릅니다.
+**마이페이지 범위** — 필수 범위는 비밀번호 변경(A82)·탈퇴(A80)·관심 축제(A11~A13)이고, 이미 만든 본인 프로필(A78)·내 동행 내역(A79)·축제 취향(A36·A37)도 함께 제공합니다(화면에 넣을지는 화면 담당이 결정). 운영 공지·이용약관은 고정 문서 링크(별도 API 없음). API 설계서 7-16-6을 따릅니다.
 
 ### 6-4. [최종] 외부 실시간 데이터
 
@@ -947,7 +947,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | name / provider_org | TEXT / name NOT NULL | 이름·제공 기관 |
 | | scope | TEXT / CHECK IN ('national','seoul_only','region_specific') | 데이터가 있는 지역 범위 |
 | | region_codes | TEXT[] / DEFAULT '{}' | 데이터가 있는 지역 |
-| | enabled_region_codes | TEXT[] / DEFAULT '{}' | 지금 켠 지역(D-022·D-036: 한 공급원에서 전국을 받으면 17개 시·도, 아니면 `{SEOUL}`) |
+| | enabled_region_codes | TEXT[] / DEFAULT '{}' | 지금 켠 지역(한 공급원에서 전국을 받으면 17개 시·도, 아니면 `{SEOUL}`) |
 | | is_realtime | BOOLEAN / NOT NULL | |
 | | refresh_s | INT / NULL | 갱신 주기(초) — '오래된 정보' 판단 기준(03 문서 0-3) |
 | | key_site | TEXT / NULL | 발급 사이트 이름만, **키 값 저장 금지** |
@@ -956,7 +956,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | created_at | TIMESTAMPTZ / NOT NULL DEFAULT now() | |
 | **realtime_snapshots** | id | BIGSERIAL / PK | 외부 값 하나 = 한 행 |
 | | source_id | TEXT / FK data_sources, NOT NULL | |
-| | data_type | TEXT / CHECK IN ('crowd','subway_arrival','bus_arrival','bus_crowding','parking_live','traffic_incident','weather','visit_forecast','region_demand') | 자전거 실시간 대수는 1차 보류. 기존 DDL의 `parking_live` 값은 유지하며 운영 범위에서 사용하지 않음(A27 **채택 안 함(11/24)**, A08 위치만) |
+| | data_type | TEXT / CHECK IN ('crowd','subway_arrival','bus_arrival','bus_crowding','parking_live','traffic_incident','weather','visit_forecast','region_demand') | 자전거 실시간 대수는 1차 보류. 기존 DDL의 `parking_live` 값은 유지하며 운영 범위에서 사용하지 않음(A27 **채택 안 함**, A08 위치만) |
 | | target_type / target_id | TEXT / NOT NULL | 대상 종류(area/station/stop/parking/grid/region/attraction)·ID |
 | | region_code | TEXT / NULL | |
 | | observed_at / received_at / valid_until | TIMESTAMPTZ / received NOT NULL | 관측·수신·유효 시각 |
@@ -987,11 +987,11 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 - **A42 점수**는 기존 004·017의 회차별 값으로 API에서 계산합니다. 네이버 점수는 `trend_ratio`(최근 7일 평균 ÷ 직전 7일 평균)를 같은 회차의 유효한 증가율 최댓값으로 나눈 0~1 값입니다. 구석구석 점수는 1 − (`source_rank` − 1) / (같은 회차에서 매칭 전 수집한 구석구석 순위 개수)입니다. 두 점수가 있으면 0.6 × 네이버 점수 + 0.4 × 구석구석 점수(`TREND_SCORE_WEIGHTS`)로 계산하고 점수 내림차순으로 표시합니다.
 - **A42는 한쪽 점수가 없으면**(`no_signal`, 수집 실패·한도 초과·오래됨 등) 있는 쪽 점수를 그대로 사용해 `partial_sources: true`와 '일부 출처만 반영'을 표시합니다. 6시간마다 수집하고 마지막 성공 후 12시간을 초과한 출처는 현재 점수에서 제외합니다. 두 출처 모두 사용할 점수가 없으면 마지막 성공 목록과 기준 시각을 `stale`로 반환하며, 성공 목록이 없으면 `unavailable`과 빈 목록을 반환합니다(API 설계서 7-15·8-2).
 - **A81 요즘 올라온 글**의 제목·링크·게시일·출처 종류는 Redis `posts:{festival_id}`에 10분간 캐시합니다. 카페 게시일은 `null`이며 날짜 필터는 블로그·뉴스에만 적용합니다(API 설계서 7-15). 글 목록은 PostgreSQL 적재 및 A42 점수 산출 대상에서 제외합니다.
-- **서울 혼잡 시연 대상(11/24 팀 결정)**은 서울빛초롱축제(`fst_01M835B57450M888RBNEFVRWWA`)입니다. 주변 구역은 광화문·덕수궁 POI009, 시의회 앞 POI130, 명동 관광특구 POI003입니다. 숭례문 파수의식은 TourAPI EV03 행사로 범위에서 제외합니다. 실연동 매핑 검증 절차는 API 설계서 A10을 따릅니다.
-- 혼잡 응답(OA-21778)은 `payload`에 원본 필드(`AREA_CONGEST_LVL`·`AREA_PPLTN_MIN/MAX`·`PPLTN_TIME`·`FCST_PPLTN[]`)를 그대로 두고, 자주 쓰는 값은 API에서 꺼내 씁니다. 필드 이름은 11/16 실제 응답 원본으로 확인했습니다([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)절).
-- 방문 집중 예측(`visit_forecast`)은 **상대값(0~100)** 이라 `crowd`와 다른 `data_type`으로 나눠, 화면에서 실시간 혼잡처럼 보이지 않게 합니다 (D-018).
+- **서울 혼잡 시연 대상**은 서울빛초롱축제(`fst_01M835B57450M888RBNEFVRWWA`)입니다. 주변 구역은 광화문·덕수궁 POI009, 시의회 앞 POI130, 명동 관광특구 POI003입니다. 숭례문 파수의식은 TourAPI EV03 행사로 범위에서 제외합니다. 실연동 매핑 검증 절차는 API 설계서 A10을 따릅니다.
+- 혼잡 응답(OA-21778)은 `payload`에 원본 필드(`AREA_CONGEST_LVL`·`AREA_PPLTN_MIN/MAX`·`PPLTN_TIME`·`FCST_PPLTN[]`)를 그대로 두고, 자주 쓰는 값은 API에서 꺼내 씁니다.
+- 방문 집중 예측(`visit_forecast`)은 **상대값(0~100)** 이라 `crowd`와 다른 `data_type`으로 나눠, 화면에서 실시간 혼잡처럼 보이지 않게 합니다 .
 - **A28·A29 동작 규칙.** 두 조회는 기존 공개 축제의 EV01·승인·게시 조건(018)을 적용합니다. A28은 60초 메모리 캐시를 사용합니다. A29는 승인된 설정 파일의 축제 연결과 기존 `realtime_snapshots`의 선택적 일일 적재를 사용합니다. [info2 명세](../../backend/Doc/info2/SPEC.md)
-- **버스 차내 혼잡 동작 규칙.** A05는 정규화한 정류장 이름·30m 이내 거리·노선 번호·진행 방향이 모두 일치하는 서울 승차 정류장 한 곳에서 선택한 귀가 후보의 차내 혼잡을 확인합니다(D-024·D-025·D-033). 관측값은 60초 메모리 캐시에서 읽어 응답에 붙입니다. DB 모드도 011의 경로 조회 토큰과 기존 RLS를 사용합니다. 60초 경로 캐시에서 승차 좌표를 찾을 수 없으면 차내 혼잡은 `unknown`입니다.
+- **버스 차내 혼잡 동작 규칙.** A05는 정규화한 정류장 이름·30m 이내 거리·노선 번호·진행 방향이 모두 일치하는 서울 승차 정류장 한 곳에서 선택한 귀가 후보의 차내 혼잡을 확인합니다. 관측값은 60초 메모리 캐시에서 읽어 응답에 붙입니다. DB 모드도 011의 경로 조회 토큰과 기존 RLS를 사용합니다. 60초 경로 캐시에서 승차 좌표를 찾을 수 없으면 차내 혼잡은 `unknown`입니다.
 - **후속 후보(지금 테이블 없음):** `crowd_prediction_signals`(혼잡 예측 신호, 기획서 5.4) — 기능을 넣기로 하면 7절 확장 규칙으로 추가합니다. ERD·RLS에서 뺐습니다.
 
 ### 6-5. 챗봇·AI 방문 코스
@@ -1001,31 +1001,31 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
 |---|---|---|---|
 | **assistant_runs** (002) | run_id | TEXT / `PRIMARY KEY CHECK (run_id ~ '^run_[0-9A-Za-z]{6,26}$')` | 챗봇 또는 AI 방문 코스 작업 ID |
-|  | request_id | TEXT / `NOT NULL UNIQUE` | A06·A51 요청의 멱등 키 |
-|  | conversation_id | TEXT / `NOT NULL CHECK (conversation_id ~ '^cv_[0-9A-Za-z]{6,26}$')` | 대화 세션 ID |
-|  | user_id | UUID / NULL, `REFERENCES users(user_id)` | 로그인한 작업 소유자 |
-|  | run_token_hash | TEXT / NULL | 비로그인 작업 조회 토큰의 해시 |
-|  | run_status | TEXT / `NOT NULL DEFAULT 'queued' CHECK (run_status IN ('queued','running','retrying','succeeded','failed'))` | 작업 처리 상태 |
-|  | attempt | INT / `NOT NULL DEFAULT 0 CHECK (attempt BETWEEN 0 AND 2)` | 실행 횟수(재시도 1회까지) |
-|  | message | TEXT / NULL, `CHECK (char_length(message) BETWEEN 1 AND 500)` | 질문 원문. 보존 기간이 지나면 NULL |
-|  | answer | TEXT / NULL | 챗봇 답변. 경로 구간·정류장 내용 제외 |
-|  | error_code | TEXT / NULL | 실패 오류 코드 |
-|  | route_request_id | TEXT / NULL, `REFERENCES route_requests(route_request_id) ON DELETE SET NULL` | 작업에서 생성한 경로 요청 |
-|  | is_mock | BOOLEAN / `NOT NULL DEFAULT false` | 모의 실행 여부 |
-|  | queued_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 작업 접수 시각 |
-|  | started_at | TIMESTAMPTZ / NULL | 워커 실행 시작 시각 |
-|  | ended_at | TIMESTAMPTZ / NULL | 작업 종료 시각 |
-|  | purged_at | TIMESTAMPTZ / NULL | 보존 만료로 질문·답변·코스 결과를 정리한 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
-|  | run_kind (006) | TEXT / `NOT NULL DEFAULT 'chat' CHECK (run_kind IN ('chat','visit_course'))` | 챗봇 질문 또는 AI 방문 코스 |
+| | request_id | TEXT / `NOT NULL UNIQUE` | A06·A51 요청의 멱등 키 |
+| | conversation_id | TEXT / `NOT NULL CHECK (conversation_id ~ '^cv_[0-9A-Za-z]{6,26}$')` | 대화 세션 ID |
+| | user_id | UUID / NULL, `REFERENCES users(user_id)` | 로그인한 작업 소유자 |
+| | run_token_hash | TEXT / NULL | 비로그인 작업 조회 토큰의 해시 |
+| | run_status | TEXT / `NOT NULL DEFAULT 'queued' CHECK (run_status IN ('queued','running','retrying','succeeded','failed'))` | 작업 처리 상태 |
+| | attempt | INT / `NOT NULL DEFAULT 0 CHECK (attempt BETWEEN 0 AND 2)` | 실행 횟수(재시도 1회까지) |
+| | message | TEXT / NULL, `CHECK (char_length(message) BETWEEN 1 AND 500)` | 질문 원문. 보존 기간이 지나면 NULL |
+| | answer | TEXT / NULL | 챗봇 답변. 경로 구간·정류장 내용 제외 |
+| | error_code | TEXT / NULL | 실패 오류 코드 |
+| | route_request_id | TEXT / NULL, `REFERENCES route_requests(route_request_id) ON DELETE SET NULL` | 작업에서 생성한 경로 요청 |
+| | is_mock | BOOLEAN / `NOT NULL DEFAULT false` | 모의 실행 여부 |
+| | queued_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 작업 접수 시각 |
+| | started_at | TIMESTAMPTZ / NULL | 워커 실행 시작 시각 |
+| | ended_at | TIMESTAMPTZ / NULL | 작업 종료 시각 |
+| | purged_at | TIMESTAMPTZ / NULL | 보존 만료로 질문·답변·코스 결과를 정리한 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
+| | run_kind (006) | TEXT / `NOT NULL DEFAULT 'chat' CHECK (run_kind IN ('chat','visit_course'))` | 챗봇 질문 또는 AI 방문 코스 |
 | | result (006) | JSONB / NULL | 방문 코스 결과(장소 ID·시간·검증 여부) |
-|  | request_body_hash (025) | TEXT / NULL | 같은 `request_id` 재전송 판정용 본문 HMAC. 정리 시 NULL |
-|  | anonymous_session_hash (025) | TEXT / NULL | 비로그인 재제출·이어 가기 확인용 세션 해시. 정리 시 NULL |
-|  | execution_context (025) | JSONB / NULL | 워커에 넘기는 대화 문맥(선택 축제 등). 정리 시 NULL |
-|  | next_attempt_at (025) | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 큐에서 꺼낼 수 있는 시각(재시도 5초 뒤) |
-|  | used_tools (025) | JSONB / `NOT NULL DEFAULT '[]'` | A06-1 `used_tools[]` 원본. 정리 시 `[]` |
-|  | evidence (025) | JSONB / `NOT NULL DEFAULT '[]'` | A06-1 `evidence[]` 원본. 정리 시 `[]` |
-|  | error_retryable (025) | BOOLEAN / `NOT NULL DEFAULT true` | A06-1 `error.retryable` |
+| | request_body_hash (025) | TEXT / NULL | 같은 `request_id` 재전송 판정용 본문 HMAC. 정리 시 NULL |
+| | anonymous_session_hash (025) | TEXT / NULL | 비로그인 재제출·이어 가기 확인용 세션 해시. 정리 시 NULL |
+| | execution_context (025) | JSONB / NULL | 워커에 넘기는 대화 문맥(선택 축제 등). 정리 시 NULL |
+| | next_attempt_at (025) | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 큐에서 꺼낼 수 있는 시각(재시도 5초 뒤) |
+| | used_tools (025) | JSONB / `NOT NULL DEFAULT '[]'` | A06-1 `used_tools[]` 원본. 정리 시 `[]` |
+| | evidence (025) | JSONB / `NOT NULL DEFAULT '[]'` | A06-1 `evidence[]` 원본. 정리 시 `[]` |
+| | error_retryable (025) | BOOLEAN / `NOT NULL DEFAULT true` | A06-1 `error.retryable` |
 
 - `assistant_runs`의 행 제약 `CHECK (user_id IS NOT NULL OR run_token_hash IS NOT NULL)`, `CHECK (purged_at IS NOT NULL OR message IS NOT NULL)`, `CHECK (purged_at IS NULL OR (message IS NULL AND answer IS NULL))`, `CHECK (run_status <> 'succeeded' OR answer IS NOT NULL OR purged_at IS NOT NULL)`, `CHECK (run_status <> 'failed' OR error_code IS NOT NULL)`, `CHECK (run_kind = 'visit_course' OR result IS NULL)`, `CHECK (purged_at IS NULL OR result IS NULL)`.
 
@@ -1033,47 +1033,47 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 
 A36·A37은 요청 트랜잭션에 설정된 `app.user_id`의 취향 행만 `noldaga_app`으로 읽고 저장합니다. A78은 009의 `profiles`에 있는 본인 프로필과 취향 상태를 조회하며, 닉네임 수정은 `display_name` 컬럼 권한과 `uq_profiles_nickname`을 사용합니다.
 
-추천 API(A36~A41) 담당은 신유빈입니다(협업 규칙, 11/24 팀 확인).
+
 
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
 |---|---|---|---|
 | **user_festival_preferences** (005) | user_id | UUID / `PRIMARY KEY REFERENCES users(user_id)` | 취향의 소유자 |
-|  | scenarios | TEXT[] / `NOT NULL DEFAULT '{}' CHECK (scenarios <@ ARRAY['family_relaxed','friends_activity','couple_photo','pet','solo']::text[])` | 추천에 사용할 복수 선택 취향 |
-|  | onboarding_status | TEXT / `NOT NULL DEFAULT 'pending' CHECK (onboarding_status IN ('pending','completed','skipped'))` | 취향 입력 진행 상태 |
-|  | updated_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 취향의 마지막 수정 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
+| | scenarios | TEXT[] / `NOT NULL DEFAULT '{}' CHECK (scenarios <@ ARRAY['family_relaxed','friends_activity','couple_photo','pet','solo']::text[])` | 추천에 사용할 복수 선택 취향 |
+| | onboarding_status | TEXT / `NOT NULL DEFAULT 'pending' CHECK (onboarding_status IN ('pending','completed','skipped'))` | 취향 입력 진행 상태 |
+| | updated_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 취향의 마지막 수정 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
 | **festival_tags** (005) | tag_id | BIGSERIAL / `PRIMARY KEY` | 축제 태그 판정 ID |
-|  | festival_id | TEXT / `NOT NULL REFERENCES festivals(festival_id)` | 분류할 축제 |
-|  | tag | TEXT / `NOT NULL CHECK (tag IN ('family_program','relaxed','activity','photo_spot', 'pet_allowed','solo_friendly'))` | 추천 태그 |
-|  | status | TEXT / `NOT NULL DEFAULT 'candidate' CHECK (status IN ('candidate','verified','rejected','insufficient','revoked'))` | 태그 검증 상태 |
-|  | rule_id | TEXT / `NOT NULL` | 후보를 만든 분류 규칙 ID |
-|  | evidence_field | TEXT / NULL, `CHECK (evidence_field IN ('overview','program','subevent','agelimit','playtime','festivaltype','cat3','visit_forecast'))` | 공식 원문에서 근거를 가져온 필드 |
-|  | evidence_quote | TEXT / NULL, `CHECK (char_length(evidence_quote) <= 300)` | 공식 원문에서 인용한 근거 문장 |
-|  | source_checksum | TEXT / `NOT NULL`, `UNIQUE (festival_id, tag, source_checksum)` | 분류에 사용한 원문의 체크섬 |
-|  | verified_by | TEXT / NULL, `CHECK (verified_by IN ('llm','rule','admin'))` | 검증 주체 |
-|  | model | TEXT / NULL | 검증에 사용한 LLM 모델 ID |
-|  | prompt_version | TEXT / NULL | 검증에 사용한 프롬프트 버전 |
-|  | decided_at | TIMESTAMPTZ / NULL | 검증 판정 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
+| | festival_id | TEXT / `NOT NULL REFERENCES festivals(festival_id)` | 분류할 축제 |
+| | tag | TEXT / `NOT NULL CHECK (tag IN ('family_program','relaxed','activity','photo_spot', 'pet_allowed','solo_friendly'))` | 추천 태그 |
+| | status | TEXT / `NOT NULL DEFAULT 'candidate' CHECK (status IN ('candidate','verified','rejected','insufficient','revoked'))` | 태그 검증 상태 |
+| | rule_id | TEXT / `NOT NULL` | 후보를 만든 분류 규칙 ID |
+| | evidence_field | TEXT / NULL, `CHECK (evidence_field IN ('overview','program','subevent','agelimit','playtime','festivaltype','cat3','visit_forecast'))` | 공식 원문에서 근거를 가져온 필드 |
+| | evidence_quote | TEXT / NULL, `CHECK (char_length(evidence_quote) <= 300)` | 공식 원문에서 인용한 근거 문장 |
+| | source_checksum | TEXT / `NOT NULL`, `UNIQUE (festival_id, tag, source_checksum)` | 분류에 사용한 원문의 체크섬 |
+| | verified_by | TEXT / NULL, `CHECK (verified_by IN ('llm','rule','admin'))` | 검증 주체 |
+| | model | TEXT / NULL | 검증에 사용한 LLM 모델 ID |
+| | prompt_version | TEXT / NULL | 검증에 사용한 프롬프트 버전 |
+| | decided_at | TIMESTAMPTZ / NULL | 검증 판정 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
 | **festival_engagement_daily** (005) | festival_id | TEXT / `NOT NULL REFERENCES festivals(festival_id)` | 지표를 집계한 축제 |
-|  | day | DATE / `NOT NULL`, `PRIMARY KEY (festival_id, day)` | 지표의 집계 일자 |
-|  | detail_views | INT / `NOT NULL DEFAULT 0 CHECK (detail_views >= 0)` | 중복·봇을 거른 상세 조회 수 |
-|  | favorites_added | INT / `NOT NULL DEFAULT 0 CHECK (favorites_added >= 0)` | 관심 축제 추가 수 |
-|  | updated_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 집계값의 마지막 수정 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
+| | day | DATE / `NOT NULL`, `PRIMARY KEY (festival_id, day)` | 지표의 집계 일자 |
+| | detail_views | INT / `NOT NULL DEFAULT 0 CHECK (detail_views >= 0)` | 중복·봇을 거른 상세 조회 수 |
+| | favorites_added | INT / `NOT NULL DEFAULT 0 CHECK (favorites_added >= 0)` | 관심 축제 추가 수 |
+| | updated_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 집계값의 마지막 수정 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 행 생성 시각 |
 | **friend_requests** (005) | request_id | TEXT / `PRIMARY KEY CHECK (request_id ~ '^frq_[0-9A-Za-z]{6,26}$')` | 친구 신청 ID |
-|  | from_user | UUID / `NOT NULL REFERENCES users(user_id)` | 신청을 보낸 사용자 |
-|  | to_user | UUID / `NOT NULL REFERENCES users(user_id)` | 신청을 받은 사용자 |
-|  | status | TEXT / `NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected','cancelled'))` | 친구 신청 상태 |
-|  | responded_at | TIMESTAMPTZ / NULL | 수락·거절·취소 처리 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 신청 생성 시각 |
+| | from_user | UUID / `NOT NULL REFERENCES users(user_id)` | 신청을 보낸 사용자 |
+| | to_user | UUID / `NOT NULL REFERENCES users(user_id)` | 신청을 받은 사용자 |
+| | status | TEXT / `NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected','cancelled'))` | 친구 신청 상태 |
+| | responded_at | TIMESTAMPTZ / NULL | 수락·거절·취소 처리 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 신청 생성 시각 |
 | **friendships** (005) | user_a | UUID / `NOT NULL REFERENCES users(user_id)` | 친구 쌍에서 ID가 작은 사용자 |
-|  | user_b | UUID / `NOT NULL REFERENCES users(user_id)`, `PRIMARY KEY (user_a, user_b)` | 친구 쌍에서 ID가 큰 사용자 |
-|  | request_id | TEXT / NULL, `REFERENCES friend_requests(request_id)`, `UNIQUE` (015) | 관계를 생성한 수락 신청 ID |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 친구 관계가 시작된 시각(A47 since) |
+| | user_b | UUID / `NOT NULL REFERENCES users(user_id)`, `PRIMARY KEY (user_a, user_b)` | 친구 쌍에서 ID가 큰 사용자 |
+| | request_id | TEXT / NULL, `REFERENCES friend_requests(request_id)`, `UNIQUE` (015) | 관계를 생성한 수락 신청 ID |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 친구 관계가 시작된 시각(A47 since) |
 | **user_blocks** (005) | blocker | UUID / `NOT NULL REFERENCES users(user_id)` | 차단한 사용자 |
-|  | blocked | UUID / `NOT NULL REFERENCES users(user_id)`, `PRIMARY KEY (blocker, blocked)` | 차단당한 사용자 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 차단 등록 시각. 차단으로 닫힌 기존 1:1 방은 차단 해제 뒤에도 닫힌 채 유지 |
+| | blocked | UUID / `NOT NULL REFERENCES users(user_id)`, `PRIMARY KEY (blocker, blocked)` | 차단당한 사용자 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 차단 등록 시각. 차단으로 닫힌 기존 1:1 방은 차단 해제 뒤에도 닫힌 채 유지 |
 
 - `user_festival_preferences`의 행 제약 `CHECK (onboarding_status <> 'completed' OR cardinality(scenarios) >= 1)`.
 - `festival_tags`의 행 제약 `CHECK (status <> 'verified' OR (evidence_quote IS NOT NULL AND evidence_field IS NOT NULL AND verified_by IS NOT NULL AND decided_at IS NOT NULL))`, `CHECK (verified_by <> 'llm' OR (model IS NOT NULL AND prompt_version IS NOT NULL))`, `CHECK (tag <> 'pet_allowed' OR status <> 'verified' OR evidence_field IN ('overview','program','subevent','agelimit'))`.
@@ -1088,13 +1088,13 @@ A36·A37은 요청 트랜잭션에 설정된 `app.user_id`의 취향 행만 `nol
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
 |---|---|---|---|
 | **notice_events** (006) | event_id | BIGSERIAL / `PRIMARY KEY` | 공지 관리 이력 ID |
-|  | notice_id | TEXT / `NOT NULL REFERENCES official_notices(notice_id)` | 변경한 공식 공지 |
-|  | action | TEXT / `NOT NULL CHECK (action IN ('create','update','approve','reject','end'))` | 등록·수정·승인·반려·수동 종료 구분(023) |
-|  | actor | UUID / `NOT NULL REFERENCES profiles(user_id)` | 변경을 실행한 운영자·관리자 |
-|  | before_value | JSONB / NULL | 변경 전 값 |
-|  | after_value | JSONB / NULL | 변경 후 값 |
-|  | reason | TEXT / NULL, `CHECK (char_length(reason) <= 300)` | 변경 사유(반려할 때 필수) |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 변경 이력을 기록한 시각 |
+| | notice_id | TEXT / `NOT NULL REFERENCES official_notices(notice_id)` | 변경한 공식 공지 |
+| | action | TEXT / `NOT NULL CHECK (action IN ('create','update','approve','reject','end'))` | 등록·수정·승인·반려·수동 종료 구분(023) |
+| | actor | UUID / `NOT NULL REFERENCES profiles(user_id)` | 변경을 실행한 운영자·관리자 |
+| | before_value | JSONB / NULL | 변경 전 값 |
+| | after_value | JSONB / NULL | 변경 후 값 |
+| | reason | TEXT / NULL, `CHECK (char_length(reason) <= 300)` | 변경 사유(반려할 때 필수) |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 변경 이력을 기록한 시각 |
 
 - `notice_events`의 행 제약 `CHECK (action <> 'reject' OR reason IS NOT NULL)`. 트리거 `trg_notice_events_append_only`가 이력의 수정·삭제를 막습니다.
 
@@ -1116,94 +1116,94 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
 |---|---|---|---|
 | **chat_rooms** (007) | room_id | TEXT / `PRIMARY KEY CHECK (room_id ~ '^crm_[0-9A-Za-z]{6,26}$')` | 채팅방 ID |
-|  | room_type | TEXT / `NOT NULL CHECK (room_type IN ('companion','direct','friend_group'))` | 동행방·1:1 방·친구 단체방 구분 |
-|  | name | TEXT / NULL, `CHECK (char_length(name) BETWEEN 1 AND 40)` | 방 이름(친구 단체방 필수) |
-|  | owner_id | UUID / NULL, `REFERENCES users(user_id)` | 방장 사용자 ID |
-|  | status | TEXT / `NOT NULL DEFAULT 'active' CHECK (status IN ('active','read_only','closed'))` | 채팅방 상태 |
-|  | direct_key | TEXT / NULL, 부분 UNIQUE(`status <> 'closed'`, 016) | 닫히지 않은 1:1 방의 중복 방지 키(작은 ID와 큰 ID를 순서대로 연결) |
-|  | last_seq | BIGINT / `NOT NULL DEFAULT 0` | 방에서 마지막으로 발급한 메시지 순번 |
-|  | read_only_at | TIMESTAMPTZ / NULL | 동행 종료 등으로 읽기 전용이 된 시각 |
-|  | closed_by_block (021) | BOOLEAN / `NOT NULL DEFAULT false`, `CHECK (NOT closed_by_block OR (room_type = 'direct' AND status = 'closed'))` | 차단 때문에 닫힌 1:1 방. 차단을 풀어도 다시 열지 않음(A49·A50) |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 방 생성 시각 |
+| | room_type | TEXT / `NOT NULL CHECK (room_type IN ('companion','direct','friend_group'))` | 동행방·1:1 방·친구 단체방 구분 |
+| | name | TEXT / NULL, `CHECK (char_length(name) BETWEEN 1 AND 40)` | 방 이름(친구 단체방 필수) |
+| | owner_id | UUID / NULL, `REFERENCES users(user_id)` | 방장 사용자 ID |
+| | status | TEXT / `NOT NULL DEFAULT 'active' CHECK (status IN ('active','read_only','closed'))` | 채팅방 상태 |
+| | direct_key | TEXT / NULL, 부분 UNIQUE(`status <> 'closed'`, 016) | 닫히지 않은 1:1 방의 중복 방지 키(작은 ID와 큰 ID를 순서대로 연결) |
+| | last_seq | BIGINT / `NOT NULL DEFAULT 0` | 방에서 마지막으로 발급한 메시지 순번 |
+| | read_only_at | TIMESTAMPTZ / NULL | 동행 종료 등으로 읽기 전용이 된 시각 |
+| | closed_by_block (021) | BOOLEAN / `NOT NULL DEFAULT false`, `CHECK (NOT closed_by_block OR (room_type = 'direct' AND status = 'closed'))` | 차단 때문에 닫힌 1:1 방. 차단을 풀어도 다시 열지 않음(A49·A50) |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 방 생성 시각 |
 | **companion_posts** (007) | post_id | TEXT / `PRIMARY KEY CHECK (post_id ~ '^cpo_[0-9A-Za-z]{6,26}$')` | 동행 모집 글 ID |
-|  | festival_id | TEXT / `NOT NULL REFERENCES festivals(festival_id)` | 동행 대상 축제 |
-|  | author_id | UUID / `NOT NULL REFERENCES users(user_id)` | 모집 글 작성자 |
-|  | room_id | TEXT / `NOT NULL UNIQUE REFERENCES chat_rooms(room_id)` | 게시할 때 만든 동행 채팅방 |
-|  | meet_at | TIMESTAMPTZ / `NOT NULL` | 만날 시각 |
-|  | capacity | INT / `NOT NULL CHECK (capacity BETWEEN 1 AND 10)` | 작성자를 뺀 모집 인원 |
-|  | approved_count | INT / `NOT NULL DEFAULT 0` | 승인된 참여자 수 |
-|  | age_pref | TEXT / NULL, `CHECK (age_pref IN ('any','20s','30s','40s','50s_plus'))` | 선호 연령대 |
-|  | gender_pref | TEXT / `NOT NULL DEFAULT 'any' CHECK (gender_pref IN ('any','female','male'))` | 선호 성별 |
-|  | memo | TEXT / NULL, `CHECK (char_length(memo) <= 500)` | 모집 글 메모 |
-|  | status | TEXT / `NOT NULL DEFAULT 'open' CHECK (status IN ('open','full','ended','cancelled'))` | 모집 상태 |
-|  | ended_at | TIMESTAMPTZ / NULL | 동행 종료·취소 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 모집 글 생성 시각 |
-|  | hidden_at (008) | TIMESTAMPTZ / NULL | 신고 처리로 글을 숨긴 시각 |
-|  | hidden_by (008) | UUID / NULL, `REFERENCES profiles(user_id)` | 글을 숨긴 관리자 |
-|  | recruitment_closed_at (020) | TIMESTAMPTZ / NULL | 작성자가 모집을 수동 마감한 시각. 정원을 반환해도 공개 상태 `full` 유지 |
+| | festival_id | TEXT / `NOT NULL REFERENCES festivals(festival_id)` | 동행 대상 축제 |
+| | author_id | UUID / `NOT NULL REFERENCES users(user_id)` | 모집 글 작성자 |
+| | room_id | TEXT / `NOT NULL UNIQUE REFERENCES chat_rooms(room_id)` | 게시할 때 만든 동행 채팅방 |
+| | meet_at | TIMESTAMPTZ / `NOT NULL` | 만날 시각 |
+| | capacity | INT / `NOT NULL CHECK (capacity BETWEEN 1 AND 10)` | 작성자를 뺀 모집 인원 |
+| | approved_count | INT / `NOT NULL DEFAULT 0` | 승인된 참여자 수 |
+| | age_pref | TEXT / NULL, `CHECK (age_pref IN ('any','20s','30s','40s','50s_plus'))` | 선호 연령대 |
+| | gender_pref | TEXT / `NOT NULL DEFAULT 'any' CHECK (gender_pref IN ('any','female','male'))` | 선호 성별 |
+| | memo | TEXT / NULL, `CHECK (char_length(memo) <= 500)` | 모집 글 메모 |
+| | status | TEXT / `NOT NULL DEFAULT 'open' CHECK (status IN ('open','full','ended','cancelled'))` | 모집 상태 |
+| | ended_at | TIMESTAMPTZ / NULL | 동행 종료·취소 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 모집 글 생성 시각 |
+| | hidden_at (008) | TIMESTAMPTZ / NULL | 신고 처리로 글을 숨긴 시각 |
+| | hidden_by (008) | UUID / NULL, `REFERENCES profiles(user_id)` | 글을 숨긴 관리자 |
+| | recruitment_closed_at (020) | TIMESTAMPTZ / NULL | 작성자가 모집을 수동 마감한 시각. 정원을 반환해도 공개 상태 `full` 유지 |
 | **companion_applications** (007) | application_id | TEXT / `PRIMARY KEY CHECK (application_id ~ '^cap_[0-9A-Za-z]{6,26}$')` | 동행 신청 ID |
-|  | post_id | TEXT / `NOT NULL REFERENCES companion_posts(post_id)` | 신청 대상 모집 글 |
-|  | applicant_id | UUID / `NOT NULL REFERENCES users(user_id)` | 동행 신청자 |
-|  | message | TEXT / NULL, `CHECK (char_length(message) <= 200)` | 신청할 때 남긴 메시지 |
-|  | status | TEXT / `NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','cancelled'))` | 동행 신청 상태 |
-|  | decided_at | TIMESTAMPTZ / NULL | 승인·거절·취소 처리 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 신청 생성 시각 |
+| | post_id | TEXT / `NOT NULL REFERENCES companion_posts(post_id)` | 신청 대상 모집 글 |
+| | applicant_id | UUID / `NOT NULL REFERENCES users(user_id)` | 동행 신청자 |
+| | message | TEXT / NULL, `CHECK (char_length(message) <= 200)` | 신청할 때 남긴 메시지 |
+| | status | TEXT / `NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','cancelled'))` | 동행 신청 상태 |
+| | decided_at | TIMESTAMPTZ / NULL | 승인·거절·취소 처리 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 신청 생성 시각 |
 | **meeting_places** (007) | post_id | TEXT / `PRIMARY KEY REFERENCES companion_posts(post_id)` | 만남 장소를 정한 모집 글 |
-|  | name | TEXT / `NOT NULL CHECK (char_length(name) BETWEEN 1 AND 60)` | 만남 장소 이름 |
-|  | address | TEXT / NULL | 만남 장소 주소 |
-|  | lat | NUMERIC(9,6) / NULL, `CHECK (lat BETWEEN 33 AND 39)` | 위도 |
-|  | lng | NUMERIC(9,6) / NULL, `CHECK (lng BETWEEN 124 AND 132)` | 경도 |
-|  | guide | TEXT / NULL, `CHECK (char_length(guide) <= 300)` | 만남 장소 안내 |
-|  | updated_by | UUID / `NOT NULL REFERENCES users(user_id)` | 장소 정보를 마지막으로 바꾼 사용자 |
-|  | updated_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 장소 정보를 마지막으로 바꾼 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 장소 정보 생성 시각 |
+| | name | TEXT / `NOT NULL CHECK (char_length(name) BETWEEN 1 AND 60)` | 만남 장소 이름 |
+| | address | TEXT / NULL | 만남 장소 주소 |
+| | lat | NUMERIC(9,6) / NULL, `CHECK (lat BETWEEN 33 AND 39)` | 위도 |
+| | lng | NUMERIC(9,6) / NULL, `CHECK (lng BETWEEN 124 AND 132)` | 경도 |
+| | guide | TEXT / NULL, `CHECK (char_length(guide) <= 300)` | 만남 장소 안내 |
+| | updated_by | UUID / `NOT NULL REFERENCES users(user_id)` | 장소 정보를 마지막으로 바꾼 사용자 |
+| | updated_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 장소 정보를 마지막으로 바꾼 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 장소 정보 생성 시각 |
 | **chat_members** (007) | room_id | TEXT / `NOT NULL REFERENCES chat_rooms(room_id)` | 소속 채팅방 |
-|  | user_id | UUID / `NOT NULL REFERENCES users(user_id)`, `PRIMARY KEY (room_id, user_id)` | 채팅방 멤버 |
-|  | role | TEXT / `NOT NULL DEFAULT 'member' CHECK (role IN ('owner','member'))` | 방장·멤버 역할 |
-|  | status | TEXT / `NOT NULL CHECK (status IN ('invited','joined','declined','left','removed'))` | 초대·입장·거절·퇴장·내보내기 상태 |
-|  | invited_by | UUID / NULL, `REFERENCES users(user_id)` | 초대한 사용자 |
-|  | invited_at | TIMESTAMPTZ / NULL | 방에 초대한 시각 |
-|  | joined_at | TIMESTAMPTZ / NULL | 방에 입장한 시각(이후 메시지부터 열람) |
-|  | left_at | TIMESTAMPTZ / NULL | 퇴장하거나 내보낸 시각 |
-|  | last_read_seq | BIGINT / `NOT NULL DEFAULT 0` | 마지막으로 읽은 메시지의 방별 순번 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 멤버 행 생성 시각 |
+| | user_id | UUID / `NOT NULL REFERENCES users(user_id)`, `PRIMARY KEY (room_id, user_id)` | 채팅방 멤버 |
+| | role | TEXT / `NOT NULL DEFAULT 'member' CHECK (role IN ('owner','member'))` | 방장·멤버 역할 |
+| | status | TEXT / `NOT NULL CHECK (status IN ('invited','joined','declined','left','removed'))` | 초대·입장·거절·퇴장·내보내기 상태 |
+| | invited_by | UUID / NULL, `REFERENCES users(user_id)` | 초대한 사용자 |
+| | invited_at | TIMESTAMPTZ / NULL | 방에 초대한 시각 |
+| | joined_at | TIMESTAMPTZ / NULL | 방에 입장한 시각(이후 메시지부터 열람) |
+| | left_at | TIMESTAMPTZ / NULL | 퇴장하거나 내보낸 시각 |
+| | last_read_seq | BIGINT / `NOT NULL DEFAULT 0` | 마지막으로 읽은 메시지의 방별 순번 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 멤버 행 생성 시각 |
 | **chat_messages** (007) | message_id | BIGSERIAL / `PRIMARY KEY` | 저장된 채팅 메시지 ID |
-|  | room_id | TEXT / `NOT NULL REFERENCES chat_rooms(room_id)` | 메시지를 보낸 채팅방 |
-|  | seq | BIGINT / `NOT NULL`, `UNIQUE (room_id, seq)` | 방별 메시지 순번 |
-|  | sender_id | UUID / NULL, `REFERENCES users(user_id)` | 보낸 사용자(시스템 메시지는 NULL) |
-|  | msg_type | TEXT / `NOT NULL CHECK (msg_type IN ('text','system'))` | 일반·시스템 메시지 구분 |
-|  | body | TEXT / NULL, `CHECK (char_length(body) BETWEEN 1 AND 1000)` | 메시지 본문 |
-|  | client_message_id | TEXT / NULL, `CHECK (char_length(client_message_id) BETWEEN 8 AND 64)`, `UNIQUE (room_id, sender_id, client_message_id)` | 재전송 시 중복 저장을 막는 클라이언트 ID |
-|  | deleted_at | TIMESTAMPTZ / NULL | 보존 기간 정리 또는 신고 처리로 삭제한 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 메시지 저장 시각 |
+| | room_id | TEXT / `NOT NULL REFERENCES chat_rooms(room_id)` | 메시지를 보낸 채팅방 |
+| | seq | BIGINT / `NOT NULL`, `UNIQUE (room_id, seq)` | 방별 메시지 순번 |
+| | sender_id | UUID / NULL, `REFERENCES users(user_id)` | 보낸 사용자(시스템 메시지는 NULL) |
+| | msg_type | TEXT / `NOT NULL CHECK (msg_type IN ('text','system'))` | 일반·시스템 메시지 구분 |
+| | body | TEXT / NULL, `CHECK (char_length(body) BETWEEN 1 AND 1000)` | 메시지 본문 |
+| | client_message_id | TEXT / NULL, `CHECK (char_length(client_message_id) BETWEEN 8 AND 64)`, `UNIQUE (room_id, sender_id, client_message_id)` | 재전송 시 중복 저장을 막는 클라이언트 ID |
+| | deleted_at | TIMESTAMPTZ / NULL | 보존 기간 정리 또는 신고 처리로 삭제한 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 메시지 저장 시각 |
 | **notifications** (007) | notification_id | BIGSERIAL / `PRIMARY KEY` | 앱 알림 ID |
-|  | user_id | UUID / `NOT NULL REFERENCES users(user_id)` | 알림을 받을 사용자 |
-|  | type | TEXT / `NOT NULL CHECK (type IN ('companion_applied','companion_approved','companion_rejected','companion_ended', 'companion_cancelled','meeting_place_changed','friend_requested','friend_accepted','room_invited'))` | 알림을 만든 이벤트 유형 |
-|  | ref_type | TEXT / `NOT NULL CHECK (ref_type IN ('companion_post','companion_application','friend_request','chat_room'))` | 관련 대상 종류 |
-|  | ref_id | TEXT / `NOT NULL` | 관련 대상 ID |
-|  | read_at | TIMESTAMPTZ / NULL | 사용자가 알림을 읽은 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 알림 생성 시각 |
+| | user_id | UUID / `NOT NULL REFERENCES users(user_id)` | 알림을 받을 사용자 |
+| | type | TEXT / `NOT NULL CHECK (type IN ('companion_applied','companion_approved','companion_rejected','companion_ended', 'companion_cancelled','meeting_place_changed','friend_requested','friend_accepted','room_invited'))` | 알림을 만든 이벤트 유형 |
+| | ref_type | TEXT / `NOT NULL CHECK (ref_type IN ('companion_post','companion_application','friend_request','chat_room'))` | 관련 대상 종류 |
+| | ref_id | TEXT / `NOT NULL` | 관련 대상 ID |
+| | read_at | TIMESTAMPTZ / NULL | 사용자가 알림을 읽은 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 알림 생성 시각 |
 | **reports** (007) | report_id | TEXT / `PRIMARY KEY CHECK (report_id ~ '^rpt_[0-9A-Za-z]{6,26}$')` | 신고 ID |
-|  | reporter_id | UUID / `NOT NULL REFERENCES users(user_id)` | 신고한 사용자 |
-|  | target_type (009) | TEXT / `NOT NULL CHECK (target_type IN ('companion_post','chat_message','chat_room','user'))` | 신고 대상 종류 |
-|  | target_id | TEXT / `NOT NULL` | 신고 대상 ID |
-|  | reason | TEXT / `NOT NULL CHECK (reason IN ('spam','abuse','harassment','fraud','privacy','other'))` | 신고 사유 유형 |
-|  | detail | TEXT / NULL, `CHECK (char_length(detail) <= 500)` | 신고 상세 설명 |
-|  | status | TEXT / `NOT NULL DEFAULT 'received' CHECK (status IN ('received','reviewing','actioned','dismissed'))` | 신고 처리 상태 |
-|  | handled_by | UUID / NULL, `REFERENCES profiles(user_id)` | 신고를 처리한 관리자 |
-|  | handled_at | TIMESTAMPTZ / NULL | 신고를 처리한 시각 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 신고 접수 시각 |
+| | reporter_id | UUID / `NOT NULL REFERENCES users(user_id)` | 신고한 사용자 |
+| | target_type (009) | TEXT / `NOT NULL CHECK (target_type IN ('companion_post','chat_message','chat_room','user'))` | 신고 대상 종류 |
+| | target_id | TEXT / `NOT NULL` | 신고 대상 ID |
+| | reason | TEXT / `NOT NULL CHECK (reason IN ('spam','abuse','harassment','fraud','privacy','other'))` | 신고 사유 유형 |
+| | detail | TEXT / NULL, `CHECK (char_length(detail) <= 500)` | 신고 상세 설명 |
+| | status | TEXT / `NOT NULL DEFAULT 'received' CHECK (status IN ('received','reviewing','actioned','dismissed'))` | 신고 처리 상태 |
+| | handled_by | UUID / NULL, `REFERENCES profiles(user_id)` | 신고를 처리한 관리자 |
+| | handled_at | TIMESTAMPTZ / NULL | 신고를 처리한 시각 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 신고 접수 시각 |
 | **chat_admin_access** (007) | access_id | BIGSERIAL / `PRIMARY KEY` | 관리자 열람 기록 ID |
-|  | admin_id | UUID / `NOT NULL REFERENCES profiles(user_id)` | 채팅을 열람한 관리자 |
-|  | room_id | TEXT / `NOT NULL REFERENCES chat_rooms(room_id)` | 열람한 채팅방 |
-|  | report_id | TEXT / NULL, `REFERENCES reports(report_id)` | 열람 사유와 관련된 신고 |
-|  | reason | TEXT / `NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 200)` | 관리자가 채팅을 열람한 이유 |
-|  | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 열람 기록을 남긴 시각 |
+| | admin_id | UUID / `NOT NULL REFERENCES profiles(user_id)` | 채팅을 열람한 관리자 |
+| | room_id | TEXT / `NOT NULL REFERENCES chat_rooms(room_id)` | 열람한 채팅방 |
+| | report_id | TEXT / NULL, `REFERENCES reports(report_id)` | 열람 사유와 관련된 신고 |
+| | reason | TEXT / `NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 200)` | 관리자가 채팅을 열람한 이유 |
+| | created_at | TIMESTAMPTZ / `NOT NULL DEFAULT now()` | 열람 기록을 남긴 시각 |
 | **report_moderation** (022) | report_id | TEXT / `PRIMARY KEY REFERENCES reports(report_id)` | 조치한 신고 |
-|  | action | TEXT / `NOT NULL`, A77 조치 5종 CHECK | 실제로 적용한 조치 |
-|  | note | TEXT / `NOT NULL` | 운영자 처리 메모. 서비스 역할만 읽고 추가 가능 |
+| | action | TEXT / `NOT NULL`, A77 조치 5종 CHECK | 실제로 적용한 조치 |
+| | note | TEXT / `NOT NULL` | 운영자 처리 메모. 서비스 역할만 읽고 추가 가능 |
 
-- **1:1 방 재개설(11/24 팀 결정):** 차단 시 기존 방을 `closed`로 전환합니다. 차단 해제 뒤에도 기존 방은 닫힌 채 유지하고, 다시 친구가 된 두 사람이 대화를 시작할 때 새 방을 만듭니다(A49·A50·A67). 016은 007의 전역 UNIQUE를 `status <> 'closed'` 부분 UNIQUE로 바꿉니다. 닫힌 방의 키는 보존하고 닫히지 않은 방은 사용자 쌍당 한 개만 허용합니다([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)·[기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)).
+- **1:1 방 재개설:** 차단 시 기존 방을 `closed`로 전환합니다. 차단 해제 뒤에도 기존 방은 닫힌 채 유지하고, 다시 친구가 된 두 사람이 대화를 시작할 때 새 방을 만듭니다(A49·A50·A67). 016은 007의 전역 UNIQUE를 `status <> 'closed'` 부분 UNIQUE로 바꿉니다. 닫힌 방의 키는 보존하고 닫히지 않은 방은 사용자 쌍당 한 개만 허용합니다([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)·[기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)).
 - `chat_rooms`의 행 제약 `CHECK ((room_type = 'direct') = (direct_key IS NOT NULL))`, `CHECK (room_type <> 'friend_group' OR name IS NOT NULL)`, `CHECK (status = 'active' OR read_only_at IS NOT NULL OR status = 'closed')`.
 - `companion_posts`의 행 제약 `CHECK (approved_count BETWEEN 0 AND capacity)`, `CHECK (status NOT IN ('ended','cancelled') OR ended_at IS NOT NULL)`, `CHECK (hidden_at IS NULL OR hidden_by IS NOT NULL)`.
 - `companion_applications`의 행 제약 `CHECK (status = 'pending' OR decided_at IS NOT NULL)`. 부분 UNIQUE 인덱스 `uq_companion_applications_active`는 `status IN ('pending','approved','rejected')`인 행에서 `(post_id, applicant_id)`의 중복을 막습니다.
@@ -1218,7 +1218,7 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 | 테이블 | 컬럼 | 타입/제약 | 의미 |
 |---|---|---|---|
 | **scheduled_job_runs** (026) | job_name | TEXT / PK | 정기 작업 이름(수집·보존 정리·동행 종료·경로 결과 정리) |
-|  | last_success_slot | TIMESTAMPTZ / `NOT NULL` | 마지막으로 성공한 실행 회차. 같은 회차를 두 번 실행하지 않음. 실패하면 같은 회차 안에서 다시 실행할 때 재시도하고, 다음 회차로 넘어가면 그 회차만 실행(지난 실패 회차는 건너뜀) |
+| | last_success_slot | TIMESTAMPTZ / `NOT NULL` | 마지막으로 성공한 실행 회차. 같은 회차를 두 번 실행하지 않음. 실패하면 같은 회차 안에서 다시 실행할 때 재시도하고, 다음 회차로 넘어가면 그 회차만 실행(지난 실패 회차는 건너뜀) |
 
 - RLS를 켜고 `noldaga_service`에만 SELECT·INSERT·UPDATE를 줍니다(앱 역할 권한 없음). 실행기는 `python -m api.jobs.scheduler`(7-0).
 
@@ -1229,20 +1229,20 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 |---|---|
 | **삭제 대신 상태** | 축제는 물리 삭제하지 않고 `review_status`·`published_at`으로 숨깁니다. 원본에서 사라져도 관심·후기 연결 보존 (FR-D10) |
 | **수집 멱등성** | `UNIQUE(source_id, source_item_id)` + `raw_checksum`이 같으면 갱신하지 않음. 바뀌면 `festival_change_history`에 기록 |
-| **공급원 약관에 따른 보관 (D-038, 11/19)** | (기준: 7-0 보존표) TMAP 경로 내용은 **23시간 기준으로 시간당 정리해 최대 24시간 보관**합니다(정상 실행 기준). A05 조회 정리와 시간당 작업은 본문을 지울 때 `route_results.purged_at`과 `route_requests.result_purged_at`에 같은 시각을 기록. 카카오맵: **저장·캐시 모두 안 함**(카카오 공식 답변 '실시간 호출만·저장 불가', 11/20 한태경) — 경로 캐시는 TMAP 결과에 한해 서버 메모리에서 60초만 유지. 외부 원본 JSON 근거 파일도 같은 규칙 → 제출용 근거는 합성 예시·메타데이터 |
-| **TMAP 운영·지도 표시** | Free 하루 10건(오류 포함), 소진 시 카카오 2차 하루 1,000건, 부하 시험은 모의 응답. TMAP 경로를 카카오 지도 위에 그림(①). 카카오 공식 답변(11/20)은 타사 지도 위 표시 허용, SK는 회신 없음. 경로 아래 **경로 정보: TMAP** 표기. SK가 금지 회신하면 TMAP 경로를 소요 시간·환승·정류장 목록으로 표시합니다. |
-| **개인정보 최소화** | (기준: 7-0 보존표) 사용자 장소는 DB에 HMAC 해시만(30일), 표시 이름은 Redis 24시간만(004). GPS·이동 이력 수집 안 함. `route_requests`는 30일 뒤 삭제(11/24 팀 결정) — 사건에 연결된 행은 통계 컬럼만 남기고 익명화 |
+| **공급원 약관에 따른 보관 ** | (기준: 7-0 보존표) TMAP 경로 내용은 **23시간 기준으로 시간당 정리해 최대 24시간 보관**합니다(정상 실행 기준). A05 조회 정리와 시간당 작업은 본문을 지울 때 `route_results.purged_at`과 `route_requests.result_purged_at`에 같은 시각을 기록. 카카오맵: **저장·캐시 모두 안 함**(카카오 공식 답변 '실시간 호출만·저장 불가') — 경로 캐시는 TMAP 결과에 한해 서버 메모리에서 60초만 유지. 외부 원본 JSON 근거 파일도 같은 규칙 → 제출용 근거는 합성 예시·메타데이터 |
+| **TMAP 운영·지도 표시** | Free 하루 10건(오류 포함), 소진 시 카카오 2차 하루 1,000건, 부하 시험은 모의 응답. TMAP 경로를 카카오 지도 위에 그림(①). 카카오 공식 답변은 타사 지도 위 표시 허용, SK는 회신 없음. 경로 아래 **경로 정보: TMAP** 표기. SK가 금지 회신하면 TMAP 경로를 소요 시간·환승·정류장 목록으로 표시합니다. |
+| **개인정보 최소화** | (기준: 7-0 보존표) 사용자 장소는 DB에 HMAC 해시만(30일), 표시 이름은 Redis 24시간만(004). GPS·이동 이력 수집 안 함. `route_requests`는 30일 뒤 삭제 — 사건에 연결된 행은 통계 컬럼만 남기고 익명화 |
 | **모의/실제 분리** | `is_mock`, `injected_test`, `sample_kind`가 모든 경로·사건·외부 데이터 행에 있음. 집계 쿼리는 이 값으로 반드시 나눕니다 |
-| **지역 지원 범위** | `data_sources.enabled_region_codes`에 없는 지역은 `unsupported`로 응답. 다른 지역 값으로 채우지 않음. 지역 확대는 이 칸에 지역을 추가하는 것으로 함 (D-020) |
+| **지역 지원 범위** | `data_sources.enabled_region_codes`에 없는 지역은 `unsupported`로 응답. 다른 지역 값으로 채우지 않음. 지역 확대는 이 칸에 지역을 추가하는 것으로 함 |
 | **성공 집계** | 경로 제공 성공 = `route_results.validation_status IN ('verified_basic','constraint_unverified','control_unverified')` 이고 제한 시간 안에 완료된 건. `accepted_count`는 성공에 넣지 않음 |
-| **장애 감지·복구 초기 SLO** | 귀가 조회 p95가 3초를 초과한 상태가 30초 이어지면 장애, 3초 이하가 5분 유지되면 복구. W96 계측 뒤 숫자만 조정하며, 조정 시 설정 버전(`LIMITS_VERSION`)을 올림(API 설계서 7-0·8-2절, 11/24 팀 결정) |
+| **장애 감지·복구 초기 SLO** | 귀가 조회 p95가 3초를 초과한 상태가 30초 이어지면 장애, 3초 이하가 5분 유지되면 복구. 숫자 확정은 API 설계서 8-2절 규칙을 따름(API 설계서 7-0·8-2절) |
 | **사건 결과 1건** | `incident_outcomes.incident_id` PK → 사건당 최종 결과 하나. 시도별 결과는 `recovery_attempts`에만 |
 | **감사 기록 보존** | `incident_events`·`agent_runs`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`는 UPDATE/DELETE를 막고(RLS·트리거 6개, [기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절 T6) 추가만 허용. `incident_logs`는 `status`·`closed_at`만 바꿀 수 있고, 바꿀 때마다 `incident_events`에 이력을 남김 |
 | **캐시 무효화** | 023은 승인·재검토·수동 종료 시 해당 축제의 DB 캐시를 즉시 만료시키고, 새 DB 캐시의 유효 시간을 다음 효력 전이로 제한합니다. A04/A25는 같은 축제의 최신 통제 버전으로 v2 키를 만들어 이전 메모리 캐시와 진행 중인 조회의 재사용을 차단합니다. 공통 공지는 모든 축제에 반영합니다. |
 | **시간대** | 모든 시각은 TIMESTAMPTZ(UTC 저장), API에서 `+09:00`으로 변환. 시간대 없는 TIMESTAMP는 쓰지 않음 |
 | **ID 형식** | 03 문서 0절과 같은 접두사를 CHECK로 강제(`fst_`·`rr_`·`inc_`·`diag_`·`rp_`·`ra_`·`sim_`·`ar_`·`run_`·`rv_`·`rt_`). 잘못된 형식은 DB가 거부([기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절 T7) |
 | **캐시·대체 경로 유효성** | `route_results.source_type`이 `cache`·`alternate`면 `validity_check`가 없으면 저장 거부(CHECK, [기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절 T8) |
-| **확장 규칙 (D-034)** | 새 서비스 기능은 기존 테이블의 컬럼 의미를 바꾸지 않고 **새 테이블을 추가**합니다(필요하면 `festivals`·`profiles`를 FK로 참조). 추가할 때 ERD·관계 표·RLS 표·DDL을 함께 고치고 문서 버전을 올립니다. 위치 공유처럼 개인정보가 생기면 보존 기간·동의를 먼저 정합니다 |
+| **확장 규칙 ** | 새 서비스 기능은 기존 테이블의 컬럼 의미를 바꾸지 않고 **새 테이블을 추가**합니다(필요하면 `festivals`·`profiles`를 FK로 참조). 추가할 때 ERD·관계 표·RLS 표·DDL을 함께 고치고 문서 버전을 올립니다. 위치 공유처럼 개인정보가 생기면 보존 기간·동의를 먼저 정합니다 |
 
 | 항목 | 설계 |
 |---|---|
@@ -1250,37 +1250,37 @@ A79는 007 RLS 세션에서 `author_id = app_current_user()`로 작성 글, `app
 | **권한** | 3절 — FastAPI 1차 검사 + DB 접속 역할·GRANT·RLS 2차 |
 | **Redis** | 4절 표 (`route:inflight`, `policy:route:active`, `quota:{provider}`, `ext:*` 등) |
 | **인증** | JWT 서명·만료 검증 후 `profiles.role`로 권한 검사 |
-| **마이그레이션** | SQL 마이그레이션 파일(`Docs/Step 2/db/NNN_*.sql`, 001은 `db/001_schema_v0.3.1.sql`)을 번호 순으로 적용하고 002부터는 같은 번호의 `_down.sql`로 되돌림(Alembic은 쓰지 않음, 공통 실행기 `backend/shared/db/migrate.py`) — 적용·되돌리기 로그를 WBS W17 증빙으로 |
+| **마이그레이션** | SQL 마이그레이션 파일(`Docs/Step 2/db/NNN_*.sql`, 001은 `db/001_schema_v0.3.1.sql`)을 번호 순으로 적용하고 002부터는 같은 번호의 `_down.sql`로 되돌림(Alembic은 쓰지 않음, 공통 실행기 `backend/shared/db/migrate.py`) |
 | **신규 기능 테이블** | 아래 7-1 표. 13개 + 신고·관리자 열람 기록 2개(005·007) |
-| **AWS Docker 운영 (D-037)** | `pgvector/pgvector:pg17` 컨테이너 + 데이터는 볼륨(EBS)에 저장, 5432 포트는 **같은 서버의 API 컨테이너에만**(외부 공개 안 함), 접속 역할 비밀번호는 환경변수. 매일 백업은 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)로 생성(7일, SK 회신 없이 적용하는 확정 기준, 7-0 ④). DB 볼륨 EBS 스냅샷은 TMAP 24시간 규칙 때문에 쓰지 않음. 서버 사양·배포 방식은 인프라 담당(신유빈)과 확정 |
+| **AWS Docker 운영 ** | `pgvector/pgvector:pg17` 컨테이너 + 데이터는 볼륨(EBS)에 저장, 5432 포트는 **같은 서버의 API 컨테이너에만**(외부 공개 안 함), 접속 역할 비밀번호는 환경변수. 매일 백업은 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)로 생성(7일, SK 회신 없이 적용하는 확정 기준, 7-0 ④). DB 볼륨 EBS 스냅샷은 TMAP 24시간 규칙 때문에 쓰지 않음. 서버 사양·배포 방식은 인프라 담당과 확정 |
 
 ---
 
-### 7-0. 보존 기간·만료 통합표 (단일 기준 — 강사 11/19 DB 피드백 4)
+### 7-0. 보존 기간·만료 통합표 (단일 기준)
 
 **보존 기간의 기준은 이 표**이며, 표에서 위임한 Redis 단기 키의 TTL은 API 설계서 8-2절을 따릅니다. 03 문서의 설명, 이 문서 4·6·7절, 정리 코드가 이 표와 다르면 이 표가 맞습니다.
 
-- **상태** — **확정(11/24 팀 결정)**은 팀이 정한 보존 기준, **외부 고정**은 공급원 약관·답변 기준, **설계 고정**은 데이터의 성격상 정해진 기준입니다. 담당 칸의 시험 일정은 적용 검증에 사용합니다.
+- **상태** — **확정**은 팀이 정한 보존 기준, **외부 고정**은 공급원 약관·답변 기준, **설계 고정**은 데이터의 성격상 정해진 기준입니다. 담당 칸의 시험 일정은 적용 검증에 사용합니다.
 - **동작 규칙** — 028까지 적용한 뒤 저장소 루트에서 `PYTHONPATH=backend python -m api.jobs.scheduler`로 실행합니다. 동행 종료·정리와 TMAP 결과 정리는 매시, 축제 수집과 일일 보존 정리(경로 요청·알림·체크포인트·거절·취소 신청·채팅 및 아래 review-fix 항목)는 06:00 KST 회차입니다. 작업별 advisory lock과 서비스 전용 `scheduled_job_runs`가 마지막 성공 회차를 관리합니다. [예약 실행 예시](../../backend/Doc/jobs/IMP-PLAN.md)
 - **동작 규칙** — Refresh는 만료 및 폐기 시각을 기준으로 추가 7일을 보존합니다. 실시간 스냅샷은 수신 후 7일, 경로 캐시 메타는 생성 후 30일, 축제 추세는 수집 후 30일, 운영 지표는 집계 창 이후 30일에 삭제합니다. 사건에 저장된 지표와 부하 시험 구간은 보존합니다. 챗봇 본문은 워커 실행 여부와 관계없이 접수 30일에 비우고 `purged_at`을 남깁니다. 028은 캐시 메타 삭제 시 경로 결과의 외래키만 NULL로 정리합니다.
 - 동행 종료·취소 시 방은 읽기 전용으로 전환됩니다. 020·021을 적용하면 참가자는 정기 작업이 본문을 지우기 전에도 종료·취소 72시간이 지난 만남 장소와 메시지를 열람할 수 없습니다. 021을 되돌려도 020의 동행방 72시간 채팅 정책이 적용됩니다.
-- **TMAP 정리 작업.** 권오현이 명령을 제공하고, 신유빈이 W64·W65에서 시간당 실행 및 실패 감시를 설정합니다. API와 같은 DB 환경에서 013까지 적용 후 `backend/`는 `python -m api.jobs.purge_route_results`, 저장소 루트는 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행합니다. `--dry-run`을 붙이면 대상 건수만 출력합니다. `queried_at` 기준 기본 23시간 이상 된 본문을 정리하며, `ROUTE_PURGE_AFTER_HOURS`에는 1~23 사이의 정수만 설정할 수 있습니다.
+- **TMAP 정리 작업.** 정리 명령을 시간당 실행하고 실패를 감시합니다. API와 같은 DB 환경에서 013까지 적용 후 `backend/`는 `python -m api.jobs.purge_route_results`, 저장소 루트는 `PYTHONPATH=backend python -m api.jobs.purge_route_results`를 실행합니다. `--dry-run`을 붙이면 대상 건수만 출력합니다. `queried_at` 기준 기본 23시간 이상 된 본문을 정리하며, `ROUTE_PURGE_AFTER_HOURS`에는 1~23 사이의 정수만 설정할 수 있습니다.
 - **감시 기준.** 완료는 종료 코드 `0`이며, 로그 한 줄에 `processed`와 `duration_ms`를 남깁니다. 처리 0건도 정상입니다. `1` 실행 실패, `2` 인자 또는 정리 기준 설정 오류, `3` 중복 실행은 각각 경보를 보냅니다. 직전 정리 성공이 65분을 넘으면 누락을 경보로 잡습니다. 시간당 정상 실행과 23시간 정리 기준을 적용하면 본문은 최대 24시간 보관됩니다. 유효 토큰으로 정리된 결과를 A05에서 조회하면 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다.
-- 프로젝트 종료 = 12/31 최종 제출(WBS W79). 그 뒤 데이터는 팀 합의로 일괄 삭제합니다.
+- 프로젝트 종료 = 최종 제출일. 그 뒤 데이터는 일괄 삭제합니다.
 
 **① 공급원에서 받은 데이터**
 
-| 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것(이력) | 근거 | 상태 | 담당·검증 |
-|---|---|---|---|---|---|---|---|
-| TMAP 경로 내용 및 파생 값 | `route_results` | 조회 후 기본 23시간부터 시간당 정리(정상 실행 시 최대 24시간). 유효 토큰 A05의 정리 기준은 24시간 | 총 소요 시간·요금·환승 수·요약 등 `candidates`, `provider_ref`·`score_version`·`cache_key` → NULL, `evidence` → `{}`, `route_hash` → 빈 문자열, `validity_check` → 캐시·대체는 `{}`, 그 외는 NULL. 이전에 정리한 행도 잔여 값을 비움 | 요청·조회·처리 시작·완료 시각, 자체 측정 처리 시간, 처리 상태·오류 코드·공급원 및 최초 `route_results.purged_at`과 `route_requests.result_purged_at` | TMAP 약관 24시간 제한(11/19 한태경), API 설계서 7-11 | **SK 회신 없이 적용하는 확정 기준** | 권오현(명령) · 신유빈(W64·W65) |
-| 카카오맵 경로 내용 | **어디에도 저장 안 함** — DB·Redis·큐·로그·대화 상태·챗봇 답변 모두 | 0 | — | STEP4는 `route_requests`의 상태와 오류 코드만 기록 | 카카오 공식 답변(데브톡 6/29, 11/20 한태경) "실시간 호출만·저장 불가" | 외부 고정 | 권오현 |
-| 경로 캐시 | 서버 메모리(TMAP만) | 60초 | 만료 시 삭제 | `route_cache_entries`(메타·`valid_until`) | TMAP 24시간 안, 카카오는 캐시 안 함 | 확정(11/24 팀 결정) | 신유빈 · W96 12/04 |
-| 선택 경로의 서울 버스 차내 혼잡 | 서버 메모리 | 60초 | 만료된 관측은 응답에서 제외 | 없음 | 요청 시 읽는 `mode_evidence.bus_crowding` | 구현(bus) | A05 선택 및 캐시 만료 시험 |
-| 경로 캐시 메타 | `route_cache_entries` | 30일 | 행 삭제 | 없음(지표는 `route_query_metrics`) | `route_requests`와 같게 | 확정(11/24 팀 결정) | 권오현 · W16 11/20 |
-| 외부 실시간 값(도착·돌발·날씨·혼잡·자전거) | `realtime_snapshots` / Redis `ext:*` | DB 7일 / Redis 30초~10분 | 행 삭제 / 키 자동 삭제 | 없음 | 화면은 최신값만 씀. 혼잡 예측 근거는 7일이면 충분 | 확정(11/24 팀 결정) | 권오현 · W16 11/20 |
-| 축제 검토 결정 | `festival_review_queue`·`festival_change_history` | 서비스 기간 | 축제 숨김 시 관련 행과 감사 이력 보존 | 결정·사유·처리자 ID·변경 전후 값 | FR-D12·D14, A24·A55·A56 | 설계 고정 | 권오현 |
-| 축제·공지·시설 | `festivals`·`official_notices`·`facilities` 등 | 서비스 기간(삭제 대신 숨김) | 원본에서 사라지면 `published_at`으로 숨김 | `festival_change_history` | FR-D10 관심·후기 연결 보존 | 설계 고정 | 권오현 |
-| 외부 원본 JSON(근거 파일) | 팀 문서함·GitHub `evidence/` | TMAP·카카오: **24시간 안 삭제 → 합성 예시**로 대체 / 공공데이터: 프로젝트 종료까지 | 원본 파일 | 호출 시각·조건·HTTP 상태·결과 코드 표([API 구현·검증 기록 10](API_구현_검증기록.md#10-실제-호출-근거-현재-확보분)절) | 약관 + 강사 피드백 3 | 외부 고정 | 한태경 |
+| 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것(이력) | 근거 | 상태 |
+| --- | --- | --- | --- | --- | --- | --- |
+| TMAP 경로 내용 및 파생 값 | `route_results` | 조회 후 기본 23시간부터 시간당 정리(정상 실행 시 최대 24시간). 유효 토큰 A05의 정리 기준은 24시간 | 총 소요 시간·요금·환승 수·요약 등 `candidates`, `provider_ref`·`score_version`·`cache_key` → NULL, `evidence` → `{}`, `route_hash` → 빈 문자열, `validity_check` → 캐시·대체는 `{}`, 그 외는 NULL. 이전에 정리한 행도 잔여 값을 비움 | 요청·조회·처리 시작·완료 시각, 자체 측정 처리 시간, 처리 상태·오류 코드·공급원 및 최초 `route_results.purged_at`과 `route_requests.result_purged_at` | TMAP 약관 24시간 제한, API 설계서 7-11 | **SK 회신 없이 적용하는 확정 기준** |
+| 카카오맵 경로 내용 | **어디에도 저장 안 함** — DB·Redis·큐·로그·대화 상태·챗봇 답변 모두 | 0 | — | STEP4는 `route_requests`의 상태와 오류 코드만 기록 | 카카오 공식 답변(데브톡 6/29) "실시간 호출만·저장 불가" | 외부 고정 |
+| 경로 캐시 | 서버 메모리(TMAP만) | 60초 | 만료 시 삭제 | `route_cache_entries`(메타·`valid_until`) | TMAP 24시간 안, 카카오는 캐시 안 함 | 확정 |
+| 선택 경로의 서울 버스 차내 혼잡 | 서버 메모리 | 60초 | 만료된 관측은 응답에서 제외 | 없음 | 요청 시 읽는 `mode_evidence.bus_crowding` | 구현 |
+| 경로 캐시 메타 | `route_cache_entries` | 30일 | 행 삭제 | 없음(지표는 `route_query_metrics`) | `route_requests`와 같게 | 확정 |
+| 외부 실시간 값(도착·돌발·날씨·혼잡·자전거) | `realtime_snapshots` / Redis `ext:*` | DB 7일 / Redis 30초~10분 | 행 삭제 / 키 자동 삭제 | 없음 | 화면은 최신값만 씀. 혼잡 예측 근거는 7일이면 충분 | 확정 |
+| 축제 검토 결정 | `festival_review_queue`·`festival_change_history` | 서비스 기간 | 축제 숨김 시 관련 행과 감사 이력 보존 | 결정·사유·처리자 ID·변경 전후 값 | FR-D12·D14, A24·A55·A56 | 설계 고정 |
+| 축제·공지·시설 | `festivals`·`official_notices`·`facilities` 등 | 서비스 기간(삭제 대신 숨김) | 원본에서 사라지면 `published_at`으로 숨김 | `festival_change_history` | FR-D10 관심·후기 연결 보존 | 설계 고정 |
+| 외부 원본 JSON(근거 파일) | 팀 문서함·GitHub `evidence/` | TMAP·카카오: **24시간 안 삭제 → 합성 예시**로 대체 / 공공데이터: 프로젝트 종료까지 | 원본 파일 | 호출 시각·조건·HTTP 상태·결과 코드 표([API 구현·검증 기록 10](API_구현_검증기록.md#10-실제-호출-근거-현재-확보분)절) | 약관 | 외부 고정 |
 
 **② 사용자 입력·개인정보**
 
@@ -1288,63 +1288,63 @@ A11~A13은 `favorites`의 본인 행 정책과 복합 PK를 사용합니다. 목
 
 A80은 비밀번호 재확인 뒤 `noldaga_service` 단일 트랜잭션으로 처리합니다. 본인 동행 글을 취소하면 연결된 방을 읽기 전용으로 전환하고 보존 기산 시각을 기록합니다. 다른 사람의 글에서 승인된 본인 신청을 취소하면 해당 정원을 돌려줍니다. 탈퇴 계정이 소유한 방은 가장 일찍 입장한 활성 멤버에게 승계합니다. `assistant_runs` 행은 실행 이력으로 보존하며 `message`·`answer`·`result`를 NULL로 만들고 `purged_at`을 기록합니다. 같은 DB에 `langgraph` 테이블이 있으면 다른 로그인 계정이 소유하지 않은 본인 대화의 체크포인트를 함께 삭제합니다. 체크포인트를 배포할 때 해당 스키마의 `USAGE`와 체크포인트 3개 데이터 테이블의 `SELECT`·`DELETE`를 서비스 역할에 부여합니다.
 
-| 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것 | 근거 | 상태 | 담당·검증 |
-|---|---|---|---|---|---|---|---|
-| 목적지·출발지 원문 | **Redis** `route:label:{id}`만(DB 칸 없음, 004) | 24시간 | 키 자동 삭제 | `origin_place_hash`·`destination_place_hash`(HMAC) | 기획서 FR-R15 "원문 장소 장기 보존 금지". DB에 두면 백업(7일)에 남음 | 확정(11/24 팀 결정) | 한태경 · W16 11/20 |
-| 경로 요청 기록·장소 해시 | `route_requests`(`origin_place_hash`·`destination_place_hash` HMAC, 009) | 30일 | 비사건 요청의 행과 연결 결과 삭제, 공유·챗봇의 선택 참조는 NULL(026·002). **사건에 연결된 행**은 장소 해시 두 칸을 NULL로 바꾸고 통계 칸 유지(T28b) | 사건·지표 | 멱등 키 보관(03 8-2 ⑥)보다 김. 해시도 영구 보관 안 함(11/20 한태경) | 확정(11/24 팀 결정) | 권오현 · W16 11/20 |
-| 챗봇 질문·답변·방문 코스 결과 | `assistant_runs`(002·006) `message`·`answer`·`result` | 30일 — **탈퇴하면 즉시 삭제** | 세 칸 → NULL, `purged_at` | `run_id`·상태·시각·`error_code` | **저장 전에 연락처·주소 마스킹**(11/20 한태경) | 확정(11/24 팀 결정) | 권오현 |
-| 대화 상태(체크포인트) | LangGraph `langgraph.checkpoints` 등 | 7일 | 그 `thread_id`(`cv_…`) 전체 삭제 | 없음 | 2-1절 | 확정(11/24 팀 결정) | 한다영 · W16 11/20 |
-| 에이전트 입출력 원문 | `agent_runs.input_ref`·`output_ref`가 가리키는 파일 | 30일 | **파일만** 삭제(`agent_runs` 행은 감사 기록이라 수정 금지 — 열면 '만료') | `agent_runs` 행(도구·결과 코드·토큰·비용) | 감사 + 개인정보. **경로 내용 금지**: Route 도구 결과는 `route_request_id`·`provider`·`route_status`만 쓰고 `route_candidates`(TMAP·카카오)는 넣지 않음(체크포인트와 같은 규칙) | 확정(11/24 팀 결정) | 한다영 · W16 11/20 |
-| 도구 호출 인자 | `agent_runs.tool_calls` | 감사 기록과 같음 | — | — | **기록할 때 이미 마스킹**: 출발지·목적지(사용자가 고른 곳) → 해시, 질문 원문·토큰 → 제외 | 설계 고정 | 한다영 |
-| 계정·프로필 | `users`·`profiles` | 탈퇴할 때까지 | 탈퇴 시 `users` 행은 남기고(감사 FK) **이메일 → `deleted+<user_id>@invalid`, 비밀번호 해시 → `'!'`, `status='deleted'`**(NOT NULL 칸이라 덮어씀, T42l), `profiles` 닉네임·출생연도·성별 NULL, `favorites`·`refresh_tokens`·취향·알림·친구 행 삭제, 챗봇 Q&A·방문 코스 결과 NULL, 체크포인트 `thread_id` 삭제(03 문서 A80과 같은 목록). 백업에서 복원하면 탈퇴 기록으로 다시 지움(⑥) | 감사 기록의 행위자 ID(익명) | FR-REC16·FR-COM24 탈퇴 처리 | 확정(11/24 팀 결정) | 한태경·권오현 · W16 11/20 · 탈퇴 API W113 11/27–30 |
-| Refresh 토큰 | `refresh_tokens`(해시만) | 만료 14일 + 7일 | 행 삭제 | 없음 | 재사용 탐지에 폐기 후 7일 필요 | 확정(11/24 팀 결정) | 권오현 · W16 11/20 |
-| 관심 축제 | `favorites` | 해제·탈퇴할 때까지 | 행 삭제 | 없음 | FR-A08 | 설계 고정 | 권오현 |
-| 축제 취향 | `user_festival_preferences`(005) | 탈퇴할 때까지 | 탈퇴 시 행 삭제 | 없음 | FR-REC16 본인만 | 설계 고정 | 신유빈 |
-| 친구 신청 | `friend_requests`(005) | 대기 중은 응답할 때까지, **거절·취소된 신청은 30일** | 행 삭제 | 없음 | 재신청 판단에 잠시 필요 | 확정(11/24 팀 결정) | 권오현 · W16 |
-| 친구 관계·차단 | `friendships`·`user_blocks`(005) | 삭제·차단 해제·탈퇴할 때까지 | 행 삭제(차단 해제해도 친구 관계 자동 복원 안 함) | 없음 | 권한 정책(7-1). 1:1 방은 차단 해제 뒤에도 닫힌 채 유지 | 확정(11/24 팀 결정) | 권오현 |
-| 축제 태그 | `festival_tags`(005) | 축제가 있는 동안. 원문이 바뀌면 이전 태그 `revoked`로 남김 | — | 근거 문장·모델·프롬프트 버전 | 추천 이유 근거 추적 | 설계 고정 | 신유빈 |
-| 동행 모집 글·신청·만남 장소 | `companion_posts`·`companion_applications`·`meeting_places`(007) | 동행 종료·취소 뒤 3일(채팅과 같이) — 글의 공개 정보(축제·인원·상태)만 남김 | 만남 장소 행·신청 메시지·글 메모(`memo`) 삭제 | 글 ID·상태·인원(통계) | 동행 단기 보관(11/20 팀장) | 확정(11/24 팀 결정) | 권오현 |
-| 동행방 메시지 | `chat_messages`(`companion` 방) | **동행 종료 뒤 3일**(11/20 팀장) | 본문 NULL·`deleted_at`(순서 번호는 남김, T41a) | 방·순서 | 기획서 '동행 채팅 단기 보관' | 확정(11/24 팀 결정) | 권오현 |
-| 친구 채팅 메시지 | `chat_messages`(`direct`·`friend_group`) | **최근 30일**(11/20 팀장·정예진) | 30일 지난 메시지 본문 NULL·`deleted_at` | 방·순서 | 기획서 '친구 채팅 기간 제한' | 확정(11/24 팀 결정) | 권오현 |
-| 채팅 최근 메시지 캐시 | Redis `chat:recent:{room_id}` | 방당 최근 100개·24시간 | 자동 삭제 | DB가 원본 | 빠른 조회(5.20) | 확정(11/24 팀 결정) | 권오현 |
-| 알림 | `notifications`(007) | 90일 | `PYTHONPATH=backend python -m api.jobs.purge_chat`로 행 삭제. API는 만료 즉시 조회에서 제외 | 없음 | 앱 안 알림 | 확정(11/24 팀 결정) | 권오현 · W16 |
-| 신고·관리자 열람 기록 | `reports`·`chat_admin_access`(007)·`report_moderation`(022) | 프로젝트 종료까지 | 열람 기록은 수정·삭제 금지(T40c) | 전부 | FR-COM23 운영 기록 | 설계 고정 | 신유빈 |
-| 축제 일간 지표 | `festival_engagement_daily`(005) | 프로젝트 종료까지(숫자만, 개인정보 없음) | — | 전부 | 인기 A39 | 설계 고정 | 신유빈 |
+| 데이터 | 저장 위치 | 보존 | 만료 때 지우는 것 | 남기는 것 | 근거 | 상태 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 목적지·출발지 원문 | **Redis** `route:label:{id}`만(DB 칸 없음, 004) | 24시간 | 키 자동 삭제 | `origin_place_hash`·`destination_place_hash`(HMAC) | 기획서 FR-R15 "원문 장소 장기 보존 금지". DB에 두면 백업(7일)에 남음 | 확정 |
+| 경로 요청 기록·장소 해시 | `route_requests`(`origin_place_hash`·`destination_place_hash` HMAC, 009) | 30일 | 비사건 요청의 행과 연결 결과 삭제, 공유·챗봇의 선택 참조는 NULL(026·002). **사건에 연결된 행**은 장소 해시 두 칸을 NULL로 바꾸고 통계 칸 유지(T28b) | 사건·지표 | 멱등 키 보관(03 8-2 ⑥)보다 김. 해시도 영구 보관 안 함 | 확정 |
+| 챗봇 질문·답변·방문 코스 결과 | `assistant_runs`(002·006) `message`·`answer`·`result` | 30일 — **탈퇴하면 즉시 삭제** | 세 칸 → NULL, `purged_at` | `run_id`·상태·시각·`error_code` | **저장 전에 연락처·주소 마스킹** | 확정 |
+| 대화 상태(체크포인트) | LangGraph `langgraph.checkpoints` 등 | 7일 | 그 `thread_id`(`cv_…`) 전체 삭제 | 없음 | 2-1절 | 확정 |
+| 에이전트 입출력 원문 | `agent_runs.input_ref`·`output_ref`가 가리키는 파일 | 30일 | **파일만** 삭제(`agent_runs` 행은 감사 기록이라 수정 금지 — 열면 '만료') | `agent_runs` 행(도구·결과 코드·토큰·비용) | 감사 + 개인정보. **경로 내용 금지**: Route 도구 결과는 `route_request_id`·`provider`·`route_status`만 쓰고 `route_candidates`(TMAP·카카오)는 넣지 않음(체크포인트와 같은 규칙) | 확정 |
+| 도구 호출 인자 | `agent_runs.tool_calls` | 감사 기록과 같음 | — | — | **기록할 때 이미 마스킹**: 출발지·목적지(사용자가 고른 곳) → 해시, 질문 원문·토큰 → 제외 | 설계 고정 |
+| 계정·프로필 | `users`·`profiles` | 탈퇴할 때까지 | 탈퇴 시 `users` 행은 남기고(감사 FK) **이메일 → `deleted+<user_id>@invalid`, 비밀번호 해시 → `'!'`, `status='deleted'`**(NOT NULL 칸이라 덮어씀, T42l), `profiles` 닉네임·출생연도·성별 NULL, `favorites`·`refresh_tokens`·취향·알림·친구 행 삭제, 챗봇 Q&A·방문 코스 결과 NULL, 체크포인트 `thread_id` 삭제(03 문서 A80과 같은 목록). 백업에서 복원하면 탈퇴 기록으로 다시 지움(⑥) | 감사 기록의 행위자 ID(익명) | FR-REC16·FR-COM24 탈퇴 처리 | 확정 |
+| Refresh 토큰 | `refresh_tokens`(해시만) | 만료 14일 + 7일 | 행 삭제 | 없음 | 재사용 탐지에 폐기 후 7일 필요 | 확정 |
+| 관심 축제 | `favorites` | 해제·탈퇴할 때까지 | 행 삭제 | 없음 | FR-A08 | 설계 고정 |
+| 축제 취향 | `user_festival_preferences`(005) | 탈퇴할 때까지 | 탈퇴 시 행 삭제 | 없음 | FR-REC16 본인만 | 설계 고정 |
+| 친구 신청 | `friend_requests`(005) | 대기 중은 응답할 때까지, **거절·취소된 신청은 30일** | 행 삭제 | 없음 | 재신청 판단에 잠시 필요 | 확정 |
+| 친구 관계·차단 | `friendships`·`user_blocks`(005) | 삭제·차단 해제·탈퇴할 때까지 | 행 삭제(차단 해제해도 친구 관계 자동 복원 안 함) | 없음 | 권한 정책(7-1). 1:1 방은 차단 해제 뒤에도 닫힌 채 유지 | 확정 |
+| 축제 태그 | `festival_tags`(005) | 축제가 있는 동안. 원문이 바뀌면 이전 태그 `revoked`로 남김 | — | 근거 문장·모델·프롬프트 버전 | 추천 이유 근거 추적 | 설계 고정 |
+| 동행 모집 글·신청·만남 장소 | `companion_posts`·`companion_applications`·`meeting_places`(007) | 동행 종료·취소 뒤 3일(채팅과 같이) — 글의 공개 정보(축제·인원·상태)만 남김 | 만남 장소 행·신청 메시지·글 메모(`memo`) 삭제 | 글 ID·상태·인원(통계) | 동행 단기 보관 | 확정 |
+| 동행방 메시지 | `chat_messages`(`companion` 방) | **동행 종료 뒤 3일** | 본문 NULL·`deleted_at`(순서 번호는 남김, T41a) | 방·순서 | 기획서 '동행 채팅 단기 보관' | 확정 |
+| 친구 채팅 메시지 | `chat_messages`(`direct`·`friend_group`) | **최근 30일** | 30일 지난 메시지 본문 NULL·`deleted_at` | 방·순서 | 기획서 '친구 채팅 기간 제한' | 확정 |
+| 채팅 최근 메시지 캐시 | Redis `chat:recent:{room_id}` | 방당 최근 100개·24시간 | 자동 삭제 | DB가 원본 | 빠른 조회(5.20) | 확정 |
+| 알림 | `notifications`(007) | 90일 | `PYTHONPATH=backend python -m api.jobs.purge_chat`로 행 삭제. API는 만료 즉시 조회에서 제외 | 없음 | 앱 안 알림 | 확정 |
+| 신고·관리자 열람 기록 | `reports`·`chat_admin_access`(007)·`report_moderation`(022) | 프로젝트 종료까지 | 열람 기록은 수정·삭제 금지(T40c) | 전부 | FR-COM23 운영 기록 | 설계 고정 |
+| 축제 일간 지표 | `festival_engagement_daily`(005) | 프로젝트 종료까지(숫자만, 개인정보 없음) | — | 전부 | 인기 A39 | 설계 고정 |
 
 **③ 운영·감사·시험 기록**
 
-| 데이터 | 저장 위치 | 보존 | 만료 때 | 남기는 것 | 근거 | 상태 | 담당·검증 |
-|---|---|---|---|---|---|---|---|
-| 공지 관리 이력 | `notice_events`(006) | 프로젝트 종료까지 | 수정·삭제 금지(트리거, T35c) | 전부 | FR-O06 이력 | 설계 고정 | 신유빈 |
-| 공지 통제 버전 | `notice_control_changes`(023) | 프로젝트 종료까지 | 승인 공지 일정 변경 시 이전 미래 전이만 삭제 | 효력이 도달한 버전 변경 기록 | 경로 키·캐시 무효화 | 구현 | 권오현 |
-| 사건·진단·복구 기록 | `incident_logs`·`incident_events`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`·`agent_runs` | 프로젝트 종료까지 | 수정·삭제 금지(트리거 6개, T6) | 전부 | Auto-Healing 결과서 근거. **개인정보 칸 없음**(11/20 확인: 사용자 ID·장소·질문 원문 칸이 없고, 행위자는 `detector`·`recovery_agent` 같은 역할 이름. `agent_runs` 입출력 원문은 30일 지나면 파일만 삭제) | 설계 고정 | 신유빈 |
-| 지금 핫한 축제 수집 결과 | `festival_trends`(004·017) | 30일 | 행 삭제 | 없음 | 데이터랩 축제명·증가율·신호, 대한민국 구석구석 축제명·순위 | 확정(11/24 신유빈 B안·권오현 확정) | 신유빈 |
-| 요즘 올라온 글(A81) | Redis `posts:{festival_id}` | 10분 | 키 자동 삭제 | 없음 | 제목·링크·게시일·출처 종류만 캐시 | 확정(11/24) | 신유빈 |
-| 부하 시험 | `load_simulations`, 시험 구간 `route_query_metrics` | 프로젝트 종료까지 | — | 전부(결과 JSON에 `LIMITS_VERSION`) | 같은 조건 재시험(강사 2차 의견 5) | 설계 고정 | 신유빈 |
-| 운영 중 지표 | `route_query_metrics`(`phase='live'`) | 30일 | 행 삭제 | 사건에 연결된 구간은 사건 기록으로 남음 | 그래프는 최근 24시간만 씀. 건수·성공 여부·서비스 응답 시간 등 자체 측정값만 사용하며 TMAP 경로 소요 시간·요금·환승 수·요약은 기록 금지 | 확정(11/24 팀 결정) | 신유빈 · W96 12/04 |
-| Redis 단기 키(토큰·잠금·상태·한도·켜진 조치) | `revoked:*`·`route:token`·`route:req`·`rl:*`·`quota:*`·`policy:route:active` 등 | 03 문서 8-2 ⑥ | 키 자동 삭제 | DB가 원본(상태는 `route_requests`, 조치는 `recovery_attempts`) | 03 문서 8-2 | 03 문서 8-2 따름 | 03 문서 8-2 담당 |
+| 데이터 | 저장 위치 | 보존 | 만료 때 | 남기는 것 | 근거 | 상태 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 공지 관리 이력 | `notice_events`(006) | 프로젝트 종료까지 | 수정·삭제 금지(트리거, T35c) | 전부 | FR-O06 이력 | 설계 고정 |
+| 공지 통제 버전 | `notice_control_changes`(023) | 프로젝트 종료까지 | 승인 공지 일정 변경 시 이전 미래 전이만 삭제 | 효력이 도달한 버전 변경 기록 | 경로 키·캐시 무효화 | 구현 |
+| 사건·진단·복구 기록 | `incident_logs`·`incident_events`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`·`incident_outcomes`·`agent_runs` | 프로젝트 종료까지 | 수정·삭제 금지(트리거 6개, T6) | 전부 | Auto-Healing 결과서 근거. **개인정보 칸 없음**(사용자 ID·장소·질문 원문 칸이 없고, 행위자는 `detector`·`recovery_agent` 같은 역할 이름. `agent_runs` 입출력 원문은 30일 지나면 파일만 삭제) | 설계 고정 |
+| 지금 핫한 축제 수집 결과 | `festival_trends`(004·017) | 30일 | 행 삭제 | 없음 | 데이터랩 축제명·증가율·신호, 대한민국 구석구석 축제명·순위 | 확정 |
+| 요즘 올라온 글(A81) | Redis `posts:{festival_id}` | 10분 | 키 자동 삭제 | 없음 | 제목·링크·게시일·출처 종류만 캐시 | 확정 |
+| 부하 시험 | `load_simulations`, 시험 구간 `route_query_metrics` | 프로젝트 종료까지 | — | 전부(결과 JSON에 `LIMITS_VERSION`) | 같은 조건 재시험 | 설계 고정 |
+| 운영 중 지표 | `route_query_metrics`(`phase='live'`) | 30일 | 행 삭제 | 사건에 연결된 구간은 사건 기록으로 남음 | 그래프는 최근 24시간만 씀. 건수·성공 여부·서비스 응답 시간 등 자체 측정값만 사용하며 TMAP 경로 소요 시간·요금·환승 수·요약은 기록 금지 | 확정 |
+| Redis 단기 키(토큰·잠금·상태·한도·켜진 조치) | `revoked:*`·`route:token`·`route:req`·`rl:*`·`quota:*`·`policy:route:active` 등 | 03 문서 8-2 ⑥ | 키 자동 삭제 | DB가 원본(상태는 `route_requests`, 조치는 `recovery_attempts`) | 03 문서 8-2 | 03 문서 8-2 따름 |
 
 **④ 로그·백업 — 지운 데이터가 여기서 다시 살아나지 않게**
 
-| 데이터 | 보존 | 규칙 | 상태 | 담당·검증 |
-|---|---|---|---|---|
-| 서버·워커 로그 | 14일 | **쓰면 안 되는 것**: 목적지 원문, 경로 내용(TMAP·카카오), 챗봇 질문 원문, 토큰·비밀번호·API 키, **전체 IP**(뒷자리 가림 — 11/20 한태경). 대신 `X-Request-ID`·`route_request_id`·`run_id`·해시만. 외부 오류는 HTTP 상태·결과 코드만 | 확정(11/24 팀 결정) | 신유빈 · W54 12/16(마스킹 검증) |
-| DB 논리 백업(매일) | 7일 | 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)의 `pg_dump --exclude-table-data=public.route_results`를 사용. 테이블 정의와 `route_requests` 데이터(삭제 시각 포함)는 보존. 공급원 원본·후보 상세·경로 근거를 담을 수 있는 `route_results` 행 전체는 제외. DB 볼륨 EBS 스냅샷은 이 보존에 사용하지 않음 | SK 회신 없이 적용하는 확정 기준 | 신유빈 · AWS 준비 때(W65) |
+| 데이터 | 보존 | 규칙 | 상태 |
+| --- | --- | --- | --- |
+| 서버·워커 로그 | 14일 | **쓰면 안 되는 것**: 목적지 원문, 경로 내용(TMAP·카카오), 챗봇 질문 원문, 토큰·비밀번호·API 키, **전체 IP**(뒷자리 가림). 대신 `X-Request-ID`·`route_request_id`·`run_id`·해시만. 외부 오류는 HTTP 상태·결과 코드만 | 확정 |
+| DB 논리 백업(매일) | 7일 | 013까지 적용 후 [백업 실행기](db/backup_long_term.sh)의 `pg_dump --exclude-table-data=public.route_results`를 사용. 테이블 정의와 `route_requests` 데이터(삭제 시각 포함)는 보존. 공급원 원본·후보 상세·경로 근거를 담을 수 있는 `route_results` 행 전체는 제외. DB 볼륨 EBS 스냅샷은 이 보존에 사용하지 않음 | SK 회신 없이 적용하는 확정 기준 |
 
 DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `bash 'Docs/Step 2/db/backup_long_term.sh' --dbname=noldaga --file=/path/to/noldaga.dump`로 생성하고, 빈 DB에 `pg_restore --single-transaction`으로 복원합니다. 복원 뒤 정기 실행기를 호출해 현재 회차를 확인하고 다음 일일 회차에서 만료 대상 정리를 확인합니다.
 
 012는 기존 결과의 `provider`·`queried_at`을 각각 `route_requests.result_provider`·`result_queried_at`에 이관합니다. 신규 결과를 저장하거나 공급원·조회 시각을 수정할 때 같은 트랜잭션에서 갱신합니다. 013은 기존 `route_results.purged_at`을 `route_requests.result_purged_at`에 이관하고, 이후 A05 또는 정리 명령이 본문을 지울 때 트리거가 같은 트랜잭션에서 같은 시각을 기록합니다. 백업에는 이 증빙과 `submitted_at`·`status`·`error_code`가 남습니다. 백업 당시 미정리 결과의 삭제 시각은 NULL이며, 애초에 결과가 저장되지 않은 요청은 요청 시각·상태·오류 코드만 남습니다. 복원 후 `route_requests.status=ready`이고 `route_results` 행이 없으면 유효 토큰으로 조회한 A05는 `ROUTE_RESULT_EXPIRED`(`retryable=false`)를 반환합니다. 메시지는 “경로 보관 시간이 지났어요. 새 경로를 다시 요청해 주세요.”입니다.
 
-**⑤ 추가 기능(동행·채팅 — 11/20 결정 반영)**
+**⑤ 추가 기능(동행·채팅)**
 
-| 데이터 | 기획서 방향 | 숫자 | 담당·검증 |
-|---|---|---|---|
-| 동행 채팅 | 단기 보관(종료 뒤 읽기 전용) | ✅ **동행 종료 뒤 3일**(11/20 팀장 결정) | 권오현·신유빈 · DDL 007 완료(11/20) |
-| 친구 채팅(1:1·단체) | 기간 제한 보관 | ✅ **최근 30일**(11/20 팀장·정예진 같음) | 같음 |
-| 만남 장소·취향 | 만남 장소: 모집 작성자·승인 동행자만 / 취향: 본인만 (7-1 권한 기준안) | ✅ 만남 장소는 **동행 종료와 함께 3일**(7-0 ②, 11/20 팀장 결정과 같음) / 취향은 탈퇴할 때까지 | 같음 |
-| 탈퇴 | 토큰·접근 권한 즉시 폐기, 프로필·친구·동행 참여 정리, 메시지·신고 기록은 보존 정책에 따라 삭제·익명화, 다른 참여자 방은 유지하되 탈퇴자 정보 비공개(11/20 정예진 안) | — | 같음 |
+| 데이터 | 기획서 방향 | 숫자 |
+| --- | --- | --- |
+| 동행 채팅 | 단기 보관(종료 뒤 읽기 전용) | ✅ **동행 종료 뒤 3일** |
+| 친구 채팅(1:1·단체) | 기간 제한 보관 | ✅ **최근 30일** |
+| 만남 장소·취향 | 만남 장소: 모집 작성자·승인 동행자만 / 취향: 본인만 (7-1 권한 기준안) | ✅ 만남 장소는 **동행 종료와 함께 3일**(7-0 ②) / 취향은 탈퇴할 때까지 |
+| 탈퇴 | 토큰·접근 권한 즉시 폐기, 프로필·친구·동행 참여 정리, 메시지·신고 기록은 보존 정책에 따라 삭제·익명화, 다른 참여자 방은 유지하되 탈퇴자 정보 비공개 | — |
 
-**⑥ 백업 복원 뒤 탈퇴 계정 다시 정리 (11/25)**
+**⑥ 백업 복원 뒤 탈퇴 계정 다시 정리 **
 
 탈퇴 전에 만든 백업으로 DB를 되돌리면 그 사이 탈퇴한 계정의 개인정보가 되살아납니다. 이를 막으려고 **탈퇴 기록을 DB 밖에 따로** 둡니다.
 
@@ -1357,7 +1357,7 @@ DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `ba
 | 보존 | `WITHDRAWAL_LOG_KEEP_DAYS`(기본 8일 = DB 백업 보존 7일 + 1일). 매일 06:00 정기 작업 `prune_withdrawal_log`가 지난 줄을 지움 |
 | 권한 | 서버 계정만 읽고 씀. 앱 사용자·에이전트에는 넘기지 않음 |
 
-**v0.3.2에서 찾아 고친 충돌 3가지 (TMAP 24시간 규칙)**
+**TMAP 24시간 규칙과 맞춘 세 곳**
 
 | 어디서 | 문제 | 고친 규칙 |
 |---|---|---|
@@ -1365,29 +1365,29 @@ DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `ba
 | 챗봇 답변(30일 보존) | 답변에 구간·정류장을 쓰면 TMAP 내용이 30일 남음 | 답변에는 **어떤 공급원이든 경로 구간·정류장 내용을 쓰지 않고** 요약("경로를 찾았어요")과 `route_request_id`만. 경로는 화면이 A05로 받음(03 문서 7-6 수정) |
 | DB 백업(7일 보존) | 매일 백업에 `route_results`가 들어가면 TMAP 내용이 7일 남음 | 위 ④ — 백업에서 `route_results` 데이터 제외, EBS 스냅샷 안 씀 |
 
-체크포인트·챗봇 답변과 로그 마스킹은 API·워커 시험에서 다룹니다(W54 보안 검증 12/14–16, 한태경). [11/24 SQL 로그](db/results_2026-11-24.log)
+체크포인트·챗봇 답변과 로그 마스킹은 API·워커 시험에서 다룹니다.
 
 ### 7-1. 신규 테이블 (기획서 최신본 5.19 13개 + 신고·관리자 열람 기록 2개)
 
 > 기획서 13개와 신고·관리자 열람 기록 2개의 시험 범위와 결과는 [DB 구현·검증 기록 21절](DB_구현_검증기록.md#21-시험확인-상태-메모-설계서에서-옮김-1125)에 있습니다.
 
-**권한 정책(11/20 팀 합의, 11/24 차단 해제 규칙 추가)** — 11/20 권한 정책의 RLS·GRANT(005·007)와 11/24 1:1 새 방 개설 규칙(016·021)을 따릅니다.
+**권한 정책** — 권한 정책의 RLS·GRANT(005·007)와 1:1 새 방 개설 규칙(016·021)을 따릅니다.
 
 | 대상 | 누가 볼 수 있나 | 누가 바꿀 수 있나 |
 |---|---|---|
 | 동행 모집 글 | 공개 정보는 전체 | 작성자 |
 | 동행 신청 내역 | 모집 작성자·해당 신청자 | 신청자(취소)·작성자(승인·거절) |
 | 정확한 만남 장소 | 모집 작성자·승인된 동행자 | 모집 작성자만 |
-| 친구 검색 | ✅ **닉네임 정확히 일치**(2자 이상, 대소문자 무시, 닉네임은 겹치지 않음 — 친구 코드 없음, 11/20 결정, 009) | T43d·e |
+| 친구 검색 | ✅ **닉네임 정확히 일치**(2자 이상, 대소문자 무시, 닉네임은 겹치지 않음 — 친구 코드 없음, 009) | T43d·e |
 | 친구 관계·신청 | 당사자만. 동행 승인이 자동 친구 추가로 이어지지 않음(친구 추가 기능으로만) | 당사자 |
-| 채팅 메시지 | **방 참여자와 관리자**(11/20 팀장 결정). 동행방 = 모집 작성자·승인 참여자, 친구방 = 허가된 멤버. 동행 종료 뒤 읽기 전용 | 참여자(본인 메시지) |
+| 채팅 메시지 | **방 참여자와 관리자**. 동행방 = 모집 작성자·승인 참여자, 친구방 = 허가된 멤버. 동행 종료 뒤 읽기 전용 | 참여자(본인 메시지) |
 | 차단 | 차단 뒤 새 친구 신청·직접 메시지·초대 차단, 기존 친구 관계 해제(해제해도 자동 복원 안 함). 기존 1:1 방은 닫고 차단 해제 뒤에도 유지. 다시 대화하려면 새 방을 시작. 공동 단체방·동행방 참여는 따로 처리 | 본인 |
 | 저장소 | 채팅방·참여자·권한은 PostgreSQL, 실시간 전달·임시 상태는 Redis | — |
 | 검사 | FastAPI가 사용자·소유권·멤버·차단 상태를 먼저 확인, PostgreSQL GRANT·RLS가 한 번 더(실시간 WebSocket 입장·송수신도 같은 검사) | — |
 
 | 구분 | 테이블 | 역할 | 저장소·보관(7-0) |
 |---|---|---|---|
-| 추천 ✅005 | `user_festival_preferences` | 사용자별 취향(5가지 `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` 복수 선택(반려견은 `pet` 값 하나 — 별도 칸 없음, 아기 동반은 11/20 기획서 수정으로 뺌), 온보딩 `pending`·`completed`·`skipped`), 본인만(RLS) | PostgreSQL |
+| 추천 ✅005 | `user_festival_preferences` | 사용자별 취향(5가지 `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` 복수 선택(반려견은 `pet` 값 하나 — 별도 칸 없음, 아기 동반은 범위 밖), 온보딩 `pending`·`completed`·`skipped`), 본인만(RLS) | PostgreSQL |
 | 추천 ✅005 | `festival_tags` | 축제별 태그 6종(`family_program`·`relaxed`·`activity`·`photo_spot`·`pet_allowed`·`solo_friendly`), 규칙 후보 → LLM 검증, **검증되면 근거 문장·필드·모델·프롬프트 버전 필수**, 반려견 동반은 원문 근거만(CHECK), 공개는 `verified`만 (03 문서 7-16-1) | PostgreSQL |
 | 추천 ✅005 | `festival_engagement_daily` | 축제별 일자·상세 조회·관심 추가 수(사람 1명 하루 1회, 숫자만 — 인기 A39) | PostgreSQL |
 | 동행 ✅007 | `companion_posts` | 축제·작성자·모집 조건·정원·만남 시각·상태 | PostgreSQL |
@@ -1395,14 +1395,14 @@ DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `ba
 | 동행 ✅007 | `meeting_places` | 만남 장소·좌표(승인 멤버만 조회) | PostgreSQL |
 | 친구 ✅005 | `friend_requests` · `friendships` · `user_blocks` (+ 닉네임 중복 금지 `uq_profiles_nickname`, 009) | 친구 신청(대기 중은 두 사람 사이 1개만)·관계(한 쌍 1행)·차단(차단당한 사람은 못 봄), 쓰기는 서버 코드만 (03 문서 7-16-3) | PostgreSQL. 친구 검색은 **닉네임 정확히 일치**(`app_find_user_by_nickname`, 009) |
 | 채팅 ✅007 | `chat_rooms` · `chat_members` | 방 종류(`companion`·`direct`·`friend_group`)·멤버·권한. 차단으로 닫힌 1:1 방은 닫힌 채 보존(6-8) | PostgreSQL |
-| 채팅 ✅007 | `chat_messages` | 메시지(방별 순서 `seq`, `client_message_id` 중복 방지, 시스템 메시지) | **Redis = 최근 100개·24시간·실시간 전달**, **PostgreSQL = 원본**. 동행 채팅 **종료 뒤 3일**, 친구 채팅 **최근 30일**(11/20 확정, 7-0) |
+| 채팅 ✅007 | `chat_messages` | 메시지(방별 순서 `seq`, `client_message_id` 중복 방지, 시스템 메시지) | **Redis = 최근 100개·24시간·실시간 전달**, **PostgreSQL = 원본**. 동행 채팅 **종료 뒤 3일**, 친구 채팅 **최근 30일**(7-0) |
 | 알림 ✅007 | `notifications` | 신청·승인·친구 수락·초대·장소 변경, 읽음 | PostgreSQL(종류에 따라 Redis) |
 
 - 추가할 때 이 문서의 ERD·관계 표·RLS·DDL·시험을 함께 늘리고 버전을 올립니다(7절 확장 규칙). 사용자 대화는 AI·RAG 입력으로 자동 수집하지 않습니다.
 
 ---
 
-### 7-2. 열람 범위 요약 — 누가 무엇을 볼 수 있나 (강사 11/20 DB 피드백 2, 11/23)
+### 7-2. 열람 범위 요약 — 누가 무엇을 볼 수 있나
 
 | 데이터 | 사용자 본인 | 다른 사용자 | 관리자 | 에이전트(LLM 포함) | 삭제·탈퇴·차단 뒤 | DB 행 접근 제한(RLS) ↔ 서버 검사 |
 |---|---|---|---|---|---|---|
@@ -1421,79 +1421,37 @@ DB 접속 설정은 기존 환경을 사용합니다. 저장소 루트에서 `ba
 
 ## 부록. 마이그레이션 파일 목록 (SQL 원문의 기준)
 
-SQL 원문은 아래 파일이 기준입니다. v0.6까지 이 자리에 복사해 두던 001~010 원문은 파일과 내용이 같아(주석 차이만) v0.7에서 링크로 바꿨습니다. 적용 순서는 번호 순이고, 002부터는 같은 번호의 `_down.sql`로 되돌립니다(001은 되돌리기 파일 없음 — 빈 DB에서 다시 만듦).
+SQL 원문은 아래 파일이 기준입니다. 적용 순서는 번호 순이고, 002부터는 같은 번호의 `_down.sql`로 되돌립니다(001은 되돌리기 파일 없음 — 빈 DB에서 다시 만듦).
 
-| 번호 | 파일 | 내용(파일 첫 줄) |
+| 번호 | 파일 | 내용 |
 |---|---|---|
-| 001 | [`db/001_schema_v0.3.1.sql`](db/001_schema_v0.3.1.sql) | 놀다가 DB 스키마 v0.3.1 DDL (DB_스키마_설계서.md 부록과 같은 내용, v0.3.2에서 DDL 변경 없음) |
-| 002 | [`db/002_assistant_runs.sql`](db/002_assistant_runs.sql) | 놀다가 DB 마이그레이션 002: 챗봇 작업 테이블 assistant_runs (API 설계서 v0.3.2 7-6, A06 비동기 작업) |
-| 003 | [`db/003_festival_images.sql`](db/003_festival_images.sql) | 놀다가 DB 마이그레이션 003: 축제 대표 이미지(썸네일·저작권 유형) 칸 추가 (API 설계서 v0.3.2 10절, 2026-11-20 TourAPI 원본 확인) |
-| 004 | [`db/004_trends_and_privacy.sql`](db/004_trends_and_privacy.sql) | 놀다가 DB 마이그레이션 004 (2026-11-20, API·DB v0.3.3) |
-| 005 | [`db/005_recommend_and_friends.sql`](db/005_recommend_and_friends.sql) | 놀다가 DB 마이그레이션 005 (2026-11-20, API·DB v0.3.3): 맞춤 추천(취향·축제 태그·일간 지표) + 친구(신청·관계·차단) |
-| 006 | [`db/006_visit_course_and_notices.sql`](db/006_visit_course_and_notices.sql) | 놀다가 DB 마이그레이션 006 (2026-11-20, API·DB v0.3.3): AI 방문 코스(FR-P01·P03) + 공식 공지 관리자 등록·승인 이력(FR-O06·D05) |
-| 007 | [`db/007_companion_chat_notifications.sql`](db/007_companion_chat_notifications.sql) | 놀다가 DB 마이그레이션 007 (2026-11-20, API·DB v0.3.3): 동행·채팅·알림·신고 (FR-COM01~11·15~24) |
-| 008 | [`db/008_review_fixes.sql`](db/008_review_fixes.sql) | 놀다가 DB 마이그레이션 008 (2026-11-20, API·DB v0.3.3 제출 전 교차 검토 반영) |
-| 009 | [`db/009_precheck.sql`](db/009_precheck.sql) | 009 적용 전 검사 (2026-11-23, 강사 11/20 DB 피드백 1). 0행이 아니면 009를 적용하지 말고 먼저 데이터를 고친다. |
-| 009 | [`db/009_scenario_v1.sql`](db/009_scenario_v1.sql) | 놀다가 DB 마이그레이션 009 (2026-11-20, 기능 상세 시나리오 초안 16:43 반영 — 사용자 결정) |
-| 010 | [`db/010_festival_sources_public.sql`](db/010_festival_sources_public.sql) | 놀다가 DB 마이그레이션 010 (2026-11-23, 축제 실제 조회 A03 `source_ref`) |
-| 011 | [`db/011_route_access_token.sql`](db/011_route_access_token.sql) | 011: 귀가 조회 토큰·DB 저장. psql -X -v ON_ERROR_STOP=1 -1 -f 로 한 파일씩 적용. |
-| 012 | [`db/012_route_backup_evidence.sql`](db/012_route_backup_evidence.sql) | 7일 백업에서 route_results 행을 제외해도 요청별 공급원·조회 시각을 보존한다. |
-| 013 | [`db/013_route_purge_evidence.sql`](db/013_route_purge_evidence.sql) | 012 뒤에 파일 단위 트랜잭션으로 적용한다. |
-| 014 | [`db/014_tourapi_festival_class.sql`](db/014_tourapi_festival_class.sql) | TourAPI 목록 분류 보관 및 A02·A03과 DB 공개 범위 통일. 파일 단위 트랜잭션으로 적용한다. |
-| 015 | [`db/015_friendships_request_unique.sql`](db/015_friendships_request_unique.sql) | A46: 수락한 신청 1건에서 친구 관계는 최대 1건. psql -1로 적용한다. |
-| 016 | [`db/016_direct_room_key_partial_unique.sql`](db/016_direct_room_key_partial_unique.sql) | A49·A50·A67: 닫힌 1:1 방은 보존하고 같은 사용자 쌍의 새 방을 허용한다. psql -1로 적용한다. |
-| 017 | [`db/017_festival_trends_signal.sql`](db/017_festival_trends_signal.sql) | 11/24 A42 최종안. 016 다음에 psql -1 -v ON_ERROR_STOP=1로 적용한다. |
-| 018 | [`db/018_festival_publication.sql`](db/018_festival_publication.sql) | 017 적용 후 파일 단위 트랜잭션에서 실행한다. |
-| 019 | [`db/019_admin-review.sql`](db/019_admin-review.sql) | 018 뒤 파일 단위 트랜잭션으로 적용한다. |
-| 020 | [`db/020_companions.sql`](db/020_companions.sql) | 수동 모집 마감은 정원 충족과 같은 공개 상태(full)를 사용한다. |
-| 021 | [`db/021_chat.sql`](db/021_chat.sql) | 007·016에 이어 차단 이력과 메시지 열람/보존 정책을 적용한다. |
-| 022 | [`db/022_notify.sql`](db/022_notify.sql) | 처리 메모는 운영자용이며 기존 reports 행과 앱 역할의 조회 권한을 유지한다. |
-| 023 | [`db/023_notice.sql`](db/023_notice.sql) | 021 다음에 파일 단위 트랜잭션으로 적용한다. |
-| 024 | [`db/024_admin-festivals.sql`](db/024_admin-festivals.sql) | A55·A56 감사 이력과 등록 중복 확인. 021 다음 파일 단위 트랜잭션에서 실행한다. |
-| 025 | [`db/025_assistant.sql`](db/025_assistant.sql) | 002·006의 작업 행을 DB 큐로 사용한다. 질문은 기존 message에만 저장한다. |
-| 026 | [`db/026_jobs.sql`](db/026_jobs.sql) | 마지막 성공 회차(작업별 1행)와 경로 요청 30일 보존에 필요한 외래 키. |
-| 027 | [`db/027_src2.sql`](db/027_src2.sql) | 026 뒤 파일 단위 트랜잭션으로 적용한다. 010의 앱 역할 컬럼 권한을 유지한다. |
-| 028 | [`db/028_review-fix.sql`](db/028_review-fix.sql) | Cache metadata expires independently of the referencing route result. |
-- 004의 `festival_trends`는 11/20 원본입니다. 현재 A42 수집 범위와 컬럼은 6-4절과 017을 따릅니다. 010의 적용 이유(A03 `source_ref`를 앱 역할로 읽기 위해 공개 축제의 원본 번호 칸만 열고, 3절 ⑥ 역할 분리를 지킴)는 파일 머리 주석에 있습니다.
-
-## 변경 이력
-
-| 버전 | 날짜 | 바뀐 점 |
-|---|---|---|
-| v0.7 | 2026-11-25 | **7-0 ⑥ 백업 복원 뒤 탈퇴 계정 다시 정리** 추가: DB 밖 탈퇴 기록(`WITHDRAWAL_LOG_PATH`, user_id·시각만, 8일 보존), 복원 절차(복원 → `reapply_withdrawals` → 재개). |
-| v0.7 | 2026-11-25 | **교차 검토(Codex·Gemini) 반영**: 마이그레이션 번호 오기(023·024·025·026) 15곳, `assistant_runs` 025 칸 7개·`chat_rooms.closed_by_block`·`scheduled_job_runs`(6-9, RLS) 추가, `refresh_tokens.revoked_at`에 A82, 역할 분리 규칙(한 트랜잭션 단위), 마이페이지 범위, 마이그레이션 경로, 쿼리 측정 결과·시험 기록을 기록 문서(20·21절)로 이동. |
-| v0.7 | 2026-11-25 | **학원 산출물 양식(04. 데이터베이스 스키마 설계서)의 1~7절 목차로 정리.** 검토 기록·0-A·8·9·10·10-A·19절은 [DB 구현·검증 기록](DB_구현_검증기록.md)으로 이동(절 번호 유지). 부록의 SQL 원문(001~010, `db/` 파일과 주석만 다름)은 `db/` 파일 링크 목록(001~028)으로 바꿈. 테이블·컬럼·권한·보존 규칙은 바뀌지 않음. |
-| v0.6 | 2026-11-25 | 2-b: 앱 계정 조회(축제 목록·상세 등)는 공통 `user_db_session`, 수집·방문 예측 스냅샷은 공통 `service_db_session`/서비스 엔진으로 통일 — 반납 시 `RESET ALL`은 공통 코드가 처리, 기능 코드가 따로 엔진을 만들지 않음. DB 시험 60개(001~028). |
-| v0.5 | 2026-11-25 | review-fix로 A77 권한, A60·A62 차단, 021 되돌리기 RLS, 028 경로 캐시 외래키와 7-0 일일 보존 구현을 반영했습니다. |
-| v0.5 | 2026-11-25 | 027_src2 서울시 이미지 검토 근거와 축제 보강·격리·권한 시험을 추가했습니다. |
-| v0.5 | 2026-11-24 | A28 메모리 캐시와 A29 승인 연결 파일을 기존 공개 축제 RLS·외부 값 저장 구조에 연결했습니다(6-4절). |
-| v0.5 | 2026-11-24 | 022_notify에 운영 조치·메모와 신고 중복 조회 인덱스, A74~A77 권한·기록·90일 보존 구현 상태와 시험을 추가했습니다(6-8·7-0·7-2). |
-| v0.5 | 2026-11-24 | 023 공지 수동 종료·효력 전이·축제별 경로 통제 버전과 SQL 시험을 추가했습니다. |
-| v0.5 | 2026-11-24 | 024_admin-festivals의 관리자 출처, 중복 확인, 컬럼별 감사 이력과 되돌리기 시험을 A55·A56에 연결했습니다. |
-| v0.5 | 2026-11-24 | 025_assistant에 A06 DB 큐 선점·재시도·종료 알림과 보존 정리 연동, 적용·되돌리기 SQL 시험을 추가했습니다(6-5절). |
-| v0.5 | 2026-11-24 | 026 작업별 성공 회차·경로 요청 보존과 7-0의 정기 실행기, 적용·되돌리기·권한 시험을 추가했습니다. |
-| v0.5 | 2026-11-24 | A43~A50에 기존 친구 DDL·RLS를 연결하고, 1:1 방 닫기와 30일 경과 신청 정리 작업을 추가했습니다(6-6·7-0). |
-| v0.5 | 2026-11-24 | A24 서비스 계정 권한·결정 이력·보존과 019_admin-review 사유 제약, 이관 및 SQL 시험을 반영했습니다. |
-| v0.5 | 2026-11-24 | 동행 서비스 트랜잭션, 019 임시 마감·만료 RLS와 자동 종료·72시간 정리 명령을 연결했습니다(6-8·7-0절). |
-| v0.5 | 2026-11-24 | 021_chat에 차단 종료 상태·메시지 열람 RLS와 정리 명령을 연결하고 적용·되돌리기 SQL 시험을 추가했습니다. |
-| v0.5 | 2026-11-24 | 한태경 님 W64 Docker 검토를 반영해 A01의 앱 계정 DB 점검, 1초 제한 및 Redis 미설정 상태를 기록했습니다([기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절). |
-| v0.5 | 2026-11-24 | 018로 EV01 공개 RLS, 미분류 게시 행의 검토 대기와 복원, 좌표 출처 저장을 추가했습니다. |
-| v0.5 | 2026-11-24 | A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정. A42 수집값은 기존 004·017을 사용하고 점수는 API에서 계산합니다. A81 글은 Redis에 10분간 캐시합니다. |
-| v0.5 | 2026-11-24 | 체크리스트 대조 반영. 001~014 기준 컬럼·RLS·Redis 설계 보완, 014 적용 순서 추가, 015 친구 신청 UNIQUE·사전 검사 및 010·015 전용 시험 연결. 11/24 신유빈 확인 팀 결정 14건을 [기록 19](DB_구현_검증기록.md#19-결정-반영-기록)절과 본문에 반영. 11/24 SQL 시험 001~028(`719484d` 이후) 실행기 출력 PASS 표기 265줄(개별 시험 PASS 260건 + 요약 5줄), FAIL 0. |
-| v0.4 | 2026-11-24 | 014에 TourAPI 분류 코드 저장을 추가하고, `lclsSystm2=EV01` 축제만 공개하도록 A02·A03과 RLS 조건을 통일했습니다. 비축제로 바뀐 공개 행의 검토 대기 전환과 수집 작업 이력을 반영했습니다. |
-| v0.1 | 2026-11-17 | 첫 초안 (ERD, RLS, Redis, 1차 테이블 DDL 일부) |
-| v0.2 | 2026-11-18 | **기획서 v2.8**: Supabase PostgreSQL 확정 반영, Supabase Auth 제안. **정합성 항목**: 시뮬레이션 1회 : 사건 N건으로 ERD 수정, 사건 상태 이력 `incident_events` 추가(현재 상태와 불변 이력 분리), 감사 테이블 추가 전용 트리거, 남은 DDL 4개(`agent_runs`·`incident_diagnostics`·`recovery_plans`·`recovery_attempts`) 작성. **11/18 회의**: `route_requests.direction`(가는 길), `festivals.summary`·`admission_fee_text`, `facilities` 12종, `route_results.evidence`, `data_sources`·`realtime_snapshots`(지하철·버스·주차·돌발·날씨·방문 예측) 일반화, Redis `quota:odsay`·`ext:*`. **BFCL 맞춤**: `failure_domain` 값 `route_upstream`·`crowd_upstream`. **범위 D-020·D-022**: `data_sources.enabled_region_codes`(전국 데이터는 전국, 지역별 데이터는 서울부터 켜고 지역을 늘림). **강사 2차 의견**: `load_simulations`에 요청 수·반복 묶음·실행 번호·결과/보고서 위치, 복구 성공률·소요 시간 계산식 |
-| v0.3 | 2026-11-19 | **TMAP 24시간 사용 제한 반영**: `route_results.purged_at`, 24시간 안 경로 내용 삭제 규칙, 시험 T20. **팀 검토 반영(11/19 신유빈·정예진)**: `route_preference` 값을 기획서 FR-R01~R05로(`less_crowded`·`min_walk`), 택시 승강장 범위(전국 공급원 없으면 서울), `trace_id` 미도입 명시, 최신 기획서 대조, 신규 13개 테이블 후보(7-1, v0.4). **D-038: 길찾기 1차 TMAP·2차 카카오맵** — `provider` 값 `tmap`·`kakao`·`mock_adapter`, 카카오맵 응답은 내용 저장·캐시·공유 금지(CHECK), Redis 한도에 비용 상한. **D-037: Supabase → AWS 위 Docker PostgreSQL 17 + pgvector, 자체 JWT 인증** — `users`·`refresh_tokens` 추가, 접속 역할 `noldaga_app`(RLS)·`noldaga_service`(우회), `app_current_user()`, 30개 테이블 모두 RLS + 공개·본인·운영자 정책, 컬럼 권한(프로필 이름·후기 본문만 수정). **AI 교차 검토 20건 반영**: 복구 시도 결과는 `pending`일 때 1회만 채움(트리거), 사건은 `status`·`closed_at`만 수정·삭제 금지(트리거), 캐시 테이블에 `festival_id`, 시험 멱등 키, `NULLS NOT DISTINCT`, 공지 제목·내용, RAG 문서 제목·4칸 표, 인덱스 보강(장소 이름·사건별), 자전거 실시간 보류, 대화 세션 ID 분리, API↔DB 이름 차이 전체, 기획서 5.4 대조. **수업 가이드 체크리스트·강사 피드백·D-033~D-036 반영**, 운영과 같은 이미지로 DDL 실행·시험 20개 통과, `EXPLAIN ANALYZE`(모의 2만 건), ERD 선 43 = 관계 표 43, 모든 테이블 `created_at`. 03 v0.3 맞춤: `route_preference`, `provider`·`provider_tier`, 근거 분리, `validity_check`, `phase`, `fault`, `idempotency_key`, `fallback_provider_switch`, `stop_reason`, `responder_type` |
-| v0.3.1 | 2026-11-19 | **v0.3(팀 문서함 1차 업로드본) 이후 수정분**: `route_preference` 값 = 기획서 FR-R01~R05, 택시 승강장 범위, `trace_id` 미도입, 최신 기획서 대조, 신규 13개 테이블 후보(7-1), TMAP 24시간 제한(`route_results.purged_at`, 시험 T20 — 총 20개 통과) |
-| v0.3.2 | 2026-11-20 | **강사 11/19 피드백 1차 반영**: 정본 파일명 `Docs/Step 2/DB_스키마_설계서.md`·짝 문서 `API_설계문서.md` v0.3.2, 옛 'Supabase 확정' 문장 정리(기획서·WBS와 일치 확인). **11/19 한태경 실호출 반영**: 길찾기 `candidates` 연결 상태, 버스 혼잡 공급원 확인, 택시·자전거 전국(택시는 좌표 변환 후 `facilities`). **DDL 변경 없음**(v0.3.1 그대로, 시험 20개). API v0.3.2의 A06 비동기 변경에 따라 `assistant_runs` 테이블을 **v0.4 추가 예정**으로 [기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)절에 기록. Redis TTL 기준을 03 문서 8-2로 일원화, `route:inflight` 5초 → 12초, `policy:route:active` 안전 TTL. **DB 피드백 4번**: 7-0 보존 기간·만료 통합표(공급원·개인정보·감사·로그·백업, 만료 때 지울 것/남길 것, 정리 작업 `retention_sweeper`), **TMAP 24시간 규칙 충돌 3곳 수정**(대화 체크포인트·챗봇 답변·백업). 시험 T21·T22는 v0.4. **DB 피드백 1·2·3·5·6 반영(11/20)**: 시험 SQL·실행기를 `db/` 파일로 분리(`run_tests.sh`·`tests_v0.3.2.sql`·`explain_v0.3.2.sql`), 같은 이미지로 재실행 — 확인 51개 통과(T1~T25), **DB 연결 재사용 시험 T21~T23**(같은 연결에서 앞 사용자 남지 않음·사용자 없음 0행·타인 데이터 0행)과 3절 '사용자 정보 설정 시점·트랜잭션 종료 규칙', **마이그레이션 002 `assistant_runs`**(31개 테이블·외래키 45, 되돌리기 확인, `db/002_assistant_runs.sql`, ERD·관계 표 갱신), 백업 시험 T25, AWS 예정일 W65 12/07–10, 추가 13개 테이블 검증 범위·일정, RAG 사용 범위·임베딩 결정일 11/25. (앞 문장의 'T21·T22 v0.4'는 체크포인트·답변 시험을 뜻하며 API 구현 때 함) **축제 대표 이미지(D-031 확인)**: 마이그레이션 003(`thumbnail_url`·`image_copyright_type`, 이미지가 있으면 저작권 유형 필수), 시험 T26, `db/003_festival_images.sql` — TourAPI 원본 16건 모두 이미지·`Type3` 확인. **남은 것**: 피드백 1~6번(시험 SQL 분리, 연결 재사용 권한 시험, AWS 예정일, 보존·만료 통합표, 추가 13개 테이블 범위, RAG·임베딩 결정일) |
-| v0.4 | 2026-11-23 | **강사 11/20 피드백 반영 재제출**: [기록 0-A](DB_구현_검증기록.md#0-a-강사-1120-피드백-반영표-v05-2026-11-24) 반영표, 데이터가 있는 DB 시험 T44~T48·`009_precheck.sql`·009 되돌리기 보완(좌표 채우기 또는 멈춤)·`psql -1` 적용 규칙, 마이그레이션 010(공개 축제 원본 번호)·시험 T010a~e, `route_key` HMAC, 7-2 열람 범위, [기록 10-A](DB_구현_검증기록.md#10-a-112324-추가-실행-확인-강사-1120-db-피드백-134) 시험 환경 구분(로컬/학원 노트북/AWS 예정), 마이그레이션 011([기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)절, 11/23 신유빈 동의), TourAPI 실제 870건 적재 기록, 개인 PC 경로 제거<br>**교차 검토 반영(11/23, Codex·Gemini)**: 010 권한·RLS와 서버 공개 차이, 011 토큰 해시, Redis 장애 503 범위, 귀가 키·메모리 현재 동작, A77 열람 범위, 시험 기록·재실행 범위, 검토·제출 상태 정리 |
-| v0.3.3 | 2026-11-20 | **팀 답변 반영(11/20 오후)**: 마이그레이션 004 — `festival_trends`(API A42 지금 핫한 축제, 크롤링 이름·순위만, 연결된 것만 공개) + 외래키 3(총 32개 테이블·48개), 목적지 라벨 칸 삭제(Redis 24시간)·장소 해시 HMAC·NULL 허용(한태경 검토), 시험 T27·T28(확인 62개 통과), 7-0 보존표 확정·수정(동행 3일·친구 30일, 챗봇 Q&A 마스킹·탈퇴 즉시 삭제, 로그 전체 IP 금지, 감사 테이블 개인정보 칸 없음 확인, 탈퇴 처리), 7-1 권한 기준안(정예진 정책안 + 채팅 열람 참여자·관리자), ERD·관계 표 48, `db/004_trends_and_privacy.sql`  **마이그레이션 005 — 맞춤 추천·친구**: `user_festival_preferences`·`festival_tags`(규칙 후보 → LLM 검증, 근거 필수)·`festival_engagement_daily`·`friend_requests`·`friendships`·`user_blocks`·`profiles` 친구 코드, 외래키 10(총 38개 테이블·58개), 시험 T29~T33(확인 86개 통과), 7-1 13개 중 6개 완료·7개 W114, ERD·관계 표 58, `db/005_recommend_and_friends.sql`  **마이그레이션 006 — 기획서 필수 기능 대조로 찾은 빈칸**: `assistant_runs.run_kind`·`result`(AI 방문 코스 FR-P01·P03), `notice_events`(공지 등록·수정·승인 이력 FR-O06·D05, 추가만), 외래키 2(총 39개 테이블·60개), 시험 T34·T35(확인 95개 통과), `db/006_visit_course_and_notices.sql`  **마이그레이션 007 — 동행·채팅·알림·신고**: 9개 테이블(`chat_rooms`·`companion_posts`·`companion_applications`·`meeting_places`·`chat_members`·`chat_messages`·`notifications`·`reports`·`chat_admin_access`), 정원 CHECK·재신청 부분 UNIQUE·방별 순서·`client_message_id` 중복 방지·입장 뒤 메시지만 보이는 RLS·멤버 확인 함수, 외래키 19(총 48개 테이블·79개), 시험 T36~T41(확인 122개 통과), 7-0 보존(동행 3일·친구 30일·알림·신고), 7-1 13개 전부 완료, ERD·관계 표 79, `db/007_companion_chat_notifications.sql`  **제출 전 교차 검토 반영(Claude·Codex·agy)**: 마이그레이션 008 — 프로필 `nickname_searchable` 권한, 숨긴 축제 공개 제외, SECURITY DEFINER 검색 경로 고정, 동행 글 숨김 `hidden_at`·`hidden_by`(외래키 1, 총 80), 복구 시도 `improved` 뒤 조치 해제 1회 기록, `load_simulations.limits_version`·`stop_requested_at`·`error`, `app_public_display_name`. 시험 T42(확인 134개 통과), `db/008_review_fixes.sql`. 문서: 진행 단계·RLS 48개·Redis 비용 상한 0원·EXPLAIN 최신 로그 값·TMAP 정리(`evidence='{}'`)·카카오 캐시 금지(공식 답변)·에이전트 입출력 경로 금지·탈퇴 덮어쓰기·만남 장소 3일·RAG `effective_from`. **추천**: 취향 `pet_or_baby` → `pet`, `with_baby`·`with_pet`·`baby_friendly` 삭제 — 반려견은 취향 값 하나(005, 기획서 11/20 15:32 main과 같음)  **기능 상세 시나리오 반영(17:30, 마이그레이션 009)**: 귀갓길·가는 길 출발·도착 선택(`origin_type`·`destination_type`·장소 해시 2칸), 회원가입 닉네임·출생연도·성별(필수, 나이·성별은 동행 작성자에게만), 닉네임 2~12자·중복 금지·정확히 일치 검색(친구 코드 삭제), 신고 대상 `chat_room`, RAG `app_guide`(LLM 초안 → 승인). 시험 T43(확인 149개 통과 — 17:31 교차 검토 반영: 차단 관계 검색 제외·작성자/신청 상태 확인·축제 좌표 조건·down 보완), `db/009_scenario_v1.sql` |
-| v0.4 | 2026-11-23 | **STEP4 귀가 DB 저장(강사 DB 4)**. 011·사전 검사·되돌리기·T011a~d 및 API 통합 시험 작성([기록 0-A](DB_구현_검증기록.md#0-a-강사-1120-피드백-반영표-v05-2026-11-24)·8·10절). |
-| v0.4 | 2026-11-24 | 강사 11/23 일지 피드백 4 반영. SK 회신 전 7일 백업에서 경로 결과 데이터를 제외하고 012로 요청 증빙을 보존합니다. |
-| v0.4 | 2026-11-24 | 011·012 및 T25a·b 초기 로컬 SQL·복원 시험과 P18을 확인하고 [기록 0-A](DB_구현_검증기록.md#0-a-강사-1120-피드백-반영표-v05-2026-11-24) 및 보존·시험 표를 갱신. 11/24 기준 결과는 [기록 10-A](DB_구현_검증기록.md#10-a-112324-추가-실행-확인-강사-1120-db-피드백-134)절 참고. |
-| v0.4 | 2026-11-24 | 012 복원 후 `ready` 요청의 결과 행이 없으면 A05가 `ROUTE_RESULT_EXPIRED`(`retryable=false`)와 새 경로 요청 안내를 반환하는 동작을 명시하고 P18 회귀 시험 추가(7-0 ④·[기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절 012 항목). |
-| v0.4 | 2026-11-24 | 한태경 님 검토 반영. 013으로 TMAP 본문 삭제 시각을 요청에 이관·동기화하고 T25c 백업 복원 검사 추가(7-0 ④·[기록 8](DB_구현_검증기록.md#8-실제-데이터-근거미확인-항목)·10절). 11/24 로컬 SQL 결과는 [기록 10-A](DB_구현_검증기록.md#10-a-112324-추가-실행-확인-강사-1120-db-피드백-134)절에 기록. |
-| v0.4 | 2026-11-24 | STEP7 경로 키 v2와 기존 행 호환, DB-14 풀 대기 초과 응답, SK 회신 없이 적용하는 TMAP 파생 값 정리·보존표를 반영했습니다(4·7-0·[기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)절). |
-| v0.4 | 2026-11-24 | `ohyun-me` 본인 취향·프로필·동행 조회의 RLS와 A80 탈퇴 시 익명화·삭제·동행/채팅 상태 변경을 반영했습니다(6-6·6-8·7-0절). |
-| v0.5 | 2026-11-25 | 001~028 기반 화면 통합 시험의 RLS·감사·정기 작업 보존 항목을 7-0·7-2절에 연결했습니다. |
-| v0.4 | 2026-11-25 | A05 선택 후보의 서울 버스 차내 혼잡 60초 메모리 보존과 011 조회 권한 사용을 기록했습니다(6-4·7-0절). |
+| 001 | [`db/001_schema_v0.3.1.sql`](db/001_schema_v0.3.1.sql) | 기본 스키마(테이블 30개, 권한·RLS·트리거) |
+| 002 | [`db/002_assistant_runs.sql`](db/002_assistant_runs.sql) | 챗봇 작업 테이블 `assistant_runs`(A06 비동기 작업) |
+| 003 | [`db/003_festival_images.sql`](db/003_festival_images.sql) | 축제 대표 이미지 칸(썸네일·저작권 유형) |
+| 004 | [`db/004_trends_and_privacy.sql`](db/004_trends_and_privacy.sql) | 지금 핫한 축제(`festival_trends`)·개인정보 보존 칸 |
+| 005 | [`db/005_recommend_and_friends.sql`](db/005_recommend_and_friends.sql) | 맞춤 추천(취향·축제 태그·일간 지표)·친구(신청·관계·차단) |
+| 006 | [`db/006_visit_course_and_notices.sql`](db/006_visit_course_and_notices.sql) | AI 방문 코스·공식 공지 등록·승인 이력 |
+| 007 | [`db/007_companion_chat_notifications.sql`](db/007_companion_chat_notifications.sql) | 동행·채팅·알림·신고 |
+| 008 | [`db/008_review_fixes.sql`](db/008_review_fixes.sql) | 권한·숨김 축제·검색 경로·동행 글 숨김·부하 시험 칸 보완 |
+| 009 | [`db/009_precheck.sql`](db/009_precheck.sql) | 009 적용 전 검사(0행이 아니면 데이터를 먼저 고침) |
+| 009 | [`db/009_scenario_v1.sql`](db/009_scenario_v1.sql) | 닉네임 중복 금지·출생연도·성별·출발/도착 선택 등 기능 시나리오 반영 |
+| 010 | [`db/010_festival_sources_public.sql`](db/010_festival_sources_public.sql) | 공개 축제의 원본 번호를 앱 역할이 읽도록 허용(A03 `source_ref`) |
+| 011 | [`db/011_route_access_token.sql`](db/011_route_access_token.sql) | 귀가 조회 토큰 해시·경로 결과 DB 저장 |
+| 012 | [`db/012_route_backup_evidence.sql`](db/012_route_backup_evidence.sql) | 7일 백업에서 `route_results`를 빼도 공급원·조회 시각 보존 |
+| 013 | [`db/013_route_purge_evidence.sql`](db/013_route_purge_evidence.sql) | 경로 결과 정리 시각 보존 |
+| 014 | [`db/014_tourapi_festival_class.sql`](db/014_tourapi_festival_class.sql) | TourAPI 분류 보관, 축제(EV01)만 공개 |
+| 015 | [`db/015_friendships_request_unique.sql`](db/015_friendships_request_unique.sql) | 수락한 신청 1건당 친구 관계 1건 |
+| 016 | [`db/016_direct_room_key_partial_unique.sql`](db/016_direct_room_key_partial_unique.sql) | 닫힌 1:1 방 보존, 같은 사용자 쌍의 새 방 허용 |
+| 017 | [`db/017_festival_trends_signal.sql`](db/017_festival_trends_signal.sql) | 지금 핫한 축제 증가율·신호 칸 |
+| 018 | [`db/018_festival_publication.sql`](db/018_festival_publication.sql) | 축제 공개 조건(분류 확인)·좌표 보정 표시 |
+| 019 | [`db/019_admin-review.sql`](db/019_admin-review.sql) | 관리자 축제 검토 대기열(A24) |
+| 020 | [`db/020_companions.sql`](db/020_companions.sql) | 동행 수동 마감·72시간 열람 정책 |
+| 021 | [`db/021_chat.sql`](db/021_chat.sql) | 차단으로 닫힌 방 표시·메시지 열람/보존 정책 |
+| 022 | [`db/022_notify.sql`](db/022_notify.sql) | 신고 처리 메모(`report_moderation`) |
+| 023 | [`db/023_notice.sql`](db/023_notice.sql) | 공지 수동 종료·통제 버전(`notice_control_changes`) |
+| 024 | [`db/024_admin-festivals.sql`](db/024_admin-festivals.sql) | 관리자 축제 등록·수정 감사 이력(A55·A56) |
+| 025 | [`db/025_assistant.sql`](db/025_assistant.sql) | 챗봇 작업 큐 칸(본문 해시·재시도 시각·도구·근거) |
+| 026 | [`db/026_jobs.sql`](db/026_jobs.sql) | 정기 작업 성공 회차(`scheduled_job_runs`)·경로 요청 30일 보존 외래 키 |
+| 027 | [`db/027_src2.sql`](db/027_src2.sql) | 서울시 문화행사 2차 공급원 근거 칸 |
+| 028 | [`db/028_review-fix.sql`](db/028_review-fix.sql) | 경로 캐시 메타가 결과와 따로 만료되도록 외래 키 조정 |
+- 004의 `festival_trends` 수집 범위와 컬럼은 6-4절과 017을 따릅니다. 010의 적용 이유(A03 `source_ref`를 앱 역할로 읽기 위해 공개 축제의 원본 번호 칸만 열고, 3절 ⑥ 역할 분리를 지킴)는 파일 머리 주석에 있습니다.
