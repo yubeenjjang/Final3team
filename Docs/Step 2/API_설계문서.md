@@ -55,7 +55,7 @@
 **공통 규칙**
 - 기본 경로: **`/api/v1`** (수업 가이드 S10. 규격이 깨지게 바뀌면 `/api/v2`를 새로 열고 `v1`은 유지). 경로는 소문자·하이픈, 자원은 복수형 명사. 형식: JSON, UTF-8, 시각은 ISO 8601 + `+09:00`. ID는 접두사+ULID가 기본이고, 예외는 `user_id`(UUID)와 `message_id`·`notification_id`·A24 `queue_id`(64비트 정수)입니다.
 - **검증 오류의 경계**: 입력 **형식**(타입·허용값·길이·패턴)은 Pydantic이 검사하고 **422 `VALIDATION_ERROR`**. 형식은 맞지만 서버가 판단해야 하는 것은 따로: 권한·소유권은 **403**, 대상 없음은 **404**, 중복·충돌은 **409**, 해석 불가(목적지를 찾을 수 없음 등)는 **400**. 두 검사를 섞지 않습니다(수업 가이드 S19·S31). FastAPI 기본 422 응답도 공통 오류 형식으로 바꾸는 예외 핸들러를 둡니다.
-- **ID 형식(두 문서 공통)**: 기본은 `소문자 접두사_` + ULID(예외는 바로 위 문장) — `fst_`(축제) · `rr_`(경로 요청) · `inc_`(사건) · `diag_`(진단) · `rp_`(복구 계획) · `ra_`(복구 시도) · `sim_`(부하 시험) · `run_`(에이전트 실행 묶음) · `ar_`(에이전트 1회 실행) · `cv_`(대화 세션, LangGraph `thread_id`) · `rv_`(후기) · `rt_`(Refresh Token). `request_id`(경로·챗봇 요청 본문의 **멱등 키**)는 클라이언트가 만드는 8~64자 문자열(UUID 권장, 코드 `RouteRequest`·`AssistantRequest`). 서버가 만드는 자원 ID는 모두 `접두사_` + ULID 26자이고, 형식 검사는 `접두사_[0-9A-Za-z]{6,26}`을 허용합니다. 조회 토큰(`rrt_`·`rat_`)은 ID가 아니라 무작위 비밀값이라 ULID를 쓰지 않습니다. **추적 ID**(`X-Request-ID` 헤더·로그·오류 응답의 `request_id`)는 `req_` + ULID로, 둘은 다른 값입니다. BFCL의 `F01`·`RR02`·`INC-003`은 평가용 가짜 ID입니다([기록 4-7](API_구현_검증기록.md#4-7-bfcl-30문항과의-대조-강사-일일-피드백-5)절). **별도 `trace_id`는 도입하지 않습니다** — 추적은 `X-Request-ID`(`req_`) → `run_id` → `agent_run_id` → `route_request_id`·`incident_id`를 이어서 합니다(기획서 최신본과 같음).
+- **ID 형식(두 문서 공통)**: 기본은 `소문자 접두사_` + ULID(예외는 바로 위 문장) — `fst_`(축제) · `rr_`(경로 요청) · `inc_`(사건) · `diag_`(진단) · `rp_`(복구 계획) · `ra_`(복구 시도) · `sim_`(부하 시험) · `run_`(에이전트 실행 묶음) · `ar_`(에이전트 1회 실행) · `cv_`(대화 세션, LangGraph `thread_id`) · `rv_`(후기) · `rt_`(Refresh Token). `request_id`(경로·챗봇 요청 본문의 **멱등 키**)는 클라이언트가 만드는 8–64자 문자열(UUID 권장, 코드 `RouteRequest`·`AssistantRequest`). 서버가 만드는 자원 ID는 모두 `접두사_` + ULID 26자이고, 형식 검사는 `접두사_[0-9A-Za-z]{6,26}`을 허용합니다. 조회 토큰(`rrt_`·`rat_`)은 ID가 아니라 무작위 비밀값이라 ULID를 쓰지 않습니다. **추적 ID**(`X-Request-ID` 헤더·로그·오류 응답의 `request_id`)는 `req_` + ULID로, 둘은 다른 값입니다. BFCL의 `F01`·`RR02`·`INC-003`은 평가용 가짜 ID입니다([기록 4-7](API_구현_검증기록.md#4-7-bfcl-30문항과의-대조-강사-일일-피드백-5)절). **별도 `trace_id`는 도입하지 않습니다** — 추적은 `X-Request-ID`(`req_`) → `run_id` → `agent_run_id` → `route_request_id`·`incident_id`를 이어서 합니다(기획서 최신본과 같음).
 - 모든 요청에 `X-Request-ID`(없으면 서버가 생성)를 붙이고, 응답 헤더·로그·에이전트 `run_id`와 연결합니다.
 - 목록 API는 `page`(1부터)·`page_size`(기본 20, 최대 100) 사용, 응답에 `total`·`page`·`page_size`.
 - 오류 응답 형식(공통):
@@ -95,7 +95,7 @@
 |---|---|---|
 | **전국 공통 데이터** (정적·실시간 모두) | **전국** | 축제 검색·상세(A02·A03, TourAPI·전국문화축제표준데이터), 지도·장소 검색(카카오), 지도 시설 위치(A08), 날씨(A09, 기상청), 버스 도착(A26 버스: **서울 밖은 TAGO, 서울은 서울시 버스도착정보**), 교통 돌발(A28 경찰청), 길찾기 귀가·가는 길(A04·A05·A25: **1차 TMAP, 2차 카카오맵**), 방문 집중 예측·지역 수요(A29), 주변 상권(카카오 로컬), **자전거 존·택시 승강장** |
 | **지역별로만 있는 데이터** | **서울만** | 혼잡 구역(A10, OA-21778 — **지도 표시 + 귀가 근거**), 지하철 실시간 도착(A26 지하철), TOPIS 통제(A07·A28 보강), 서울 문화행사(A02·A03 보강), **버스 차내 혼잡(교통수단 선택 근거)** |
-| 부하·장애 시뮬레이션 | 서울 축제 기준 | A20~A22 |
+| 부하·장애 시뮬레이션 | 서울 축제 기준 | A20–A22 |
 | 서울 밖 시·도 자체 데이터 (대구 돌발·주차, 대전 축제, 비짓제주 등) | 1차 사용 안 함 | 지역마다 형태가 달라 서울 먼저. 나중에 기능별로 확대 |
 
 - 서울만 켜는 데이터는 `data_sources.enabled_region_codes`(04 문서)에 `SEOUL`만 넣어 둡니다. 서울 밖 축제에서 부르면 오류가 아니라 `status:"unsupported"`(`REGION_UNSUPPORTED`)로 답하고, 화면은 '이 지역은 아직 지원하지 않아요'로 표시합니다. 지역을 넓힐 때는 **이 값에 지역을 추가하는 것만으로** 됩니다.
@@ -130,22 +130,22 @@
 | **역할 저장 위치** | 역할은 DB `profiles.role`과 서버가 발급한 JWT로만 판단합니다. **요청 본문·대화 내용의 "관리자예요"는 권한으로 인정하지 않습니다** (BFCL NLD-27) |
 | **DB 쪽 2차 안전장치** | API 서버는 요청마다 DB에 사용자 ID를 넘기고(`SET LOCAL app.user_id`), DB는 접속 역할·컬럼 권한·RLS로 본인 것만 보이게 막습니다(04 문서 3절) |
 | **로그인 없이 쓰는 API** | 축제 목록·상세·공지·시설·지도 표시·날씨·교통·혼잡 조회, 귀가·가는 길 경로 조회·상태 조회, 챗봇 질문 |
-| **로그인 필요** (`user`) | 관심 축제 저장·해제·목록, 후기(Should), 취향(A36·A37), 친구(A43~A50), 동행 글 작성·신청(A58~A65), 채팅(A66~A73), 알림(A74·A75), 신고(A76), 비밀번호 변경(A82)·탈퇴(A80) — 3절 '권한' 칸이 `user`인 API 전부 |
-| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A55~A56은 `admin`만**(3절 '권한' 칸). A77 신고 조회·처리는 두 역할 모두 허용. 역할 검사는 라우터 의존성 하나(`require_role`)로 |
+| **로그인 필요** (`user`) | 관심 축제 저장·해제·목록, 후기(Should), 취향(A36·A37), 친구(A43–A50), 동행 글 작성·신청(A58–A65), 채팅(A66–A73), 알림(A74·A75), 신고(A76), 비밀번호 변경(A82)·탈퇴(A80) — 3절 '권한' 칸이 `user`인 API 전부 |
+| **운영자 이상** (`operator`·`admin`) | `/api/v1/admin/**` — 단 **A23·A55–A56은 `admin`만**(3절 '권한' 칸). A77 신고 조회·처리는 두 역할 모두 허용. 역할 검사는 라우터 의존성 하나(`require_role`)로 |
 | **비로그인 경로 요청 보호** | 상태 조회는 로그인 여부와 관계없이 `route_request_id` + 요청 시 발급한 `route_access_token`(로그인 JWT와 별개)으로 본인만 조회. 짧은 수명(접수 후 10분)은 DB 저장 모드에서 적용(4-4절). IP·세션 단위 요청 수 제한 |
 
 
-**동작 규칙** — 기본 `AUTH_PROVIDER=mock`은 모의 토큰을 발급합니다. `AUTH_PROVIDER=db`에서 A32~A35가 001~009를 적용한 PostgreSQL과 자체 JWT를 사용합니다. 가입·로그인·갱신 및 소유한 Refresh의 폐기에는 `service_db_session`을 사용합니다.
+**동작 규칙** — 기본 `AUTH_PROVIDER=mock`은 모의 토큰을 발급합니다. `AUTH_PROVIDER=db`에서 A32–A35가 001–009를 적용한 PostgreSQL과 자체 JWT를 사용합니다. 가입·로그인·갱신 및 소유한 Refresh의 폐기에는 `service_db_session`을 사용합니다.
 
 **DB-19 연결** — 보호 API A35의 `get_current_user`와 요청용 `get_user_db` 의존성은 검증된 JWT의 `sub`를 `backend/shared/db/session.py`의 `user_db_session(user_id=sub)`에 넘겨 RLS를 적용합니다.
 
-### 2-5. 인증 API 상세 (A32~A35, FR-A01~A04)
+### 2-5. 인증 API 상세 (A32–A35, FR-A01–A04)
 
 공통: 경로 `/api/v1/auth/*`, 본문 JSON, 비밀번호·토큰 원문은 **로그에 남기지 않음**(04 문서 7-0 ④). 로그인 요청 수 제한은 IP당 분당 10회(`AUTH_RATE_LIMIT_PER_MIN`, 8-4 ⑤). 오류 형식은 2절 공통 오류 형식과 같음(오류 코드는 3-3절 공통 오류 코드 표).
 
 | API | 요청 | 정상 응답 | 검증·처리 규칙 | 오류 | 저장·처리 |
 |---|---|---|---|---|---|
-| **A32** `POST /auth/signup` | `{email, password, display_name, birth_year, gender}` **모두 필수**(시나리오 S03) — 이메일 형식·254자 이하, 비밀번호 8~64자(영문·숫자 포함), **닉네임(`display_name`) 2~12자·대소문자 무시 중복 불가**, 출생연도 1900~올해, 성별 `male`·`female`, 닉네임은 제어문자를 거부하고 앞뒤 공백 제거 후 길이를 검사 | **201** `{user_id, display_name}` (로그인은 따로 A33) | 이메일은 소문자로 바꿔 비교. 비밀번호는 argon2id로 해시만 저장. **한 트랜잭션**에서 `users`(status `active`) + `profiles`(role `user`, 닉네임·출생연도·성별) 생성. 나이·성별은 **동행 신청 때 그 모집 글 작성자에게만** 보임(A61, DB `app_applicant_profile`) | 422 형식 / 409 `EMAIL_ALREADY_EXISTS`·`NICKNAME_TAKEN` / 429 | DB에 계정·프로필을 한 트랜잭션으로 저장 |
+| **A32** `POST /auth/signup` | `{email, password, display_name, birth_year, gender}` **모두 필수**(시나리오 S03) — 이메일 형식·254자 이하, 비밀번호 8–64자(영문·숫자 포함), **닉네임(`display_name`) 2–12자·대소문자 무시 중복 불가**, 출생연도 1900–올해, 성별 `male`·`female`, 닉네임은 제어문자를 거부하고 앞뒤 공백 제거 후 길이를 검사 | **201** `{user_id, display_name}` (로그인은 따로 A33) | 이메일은 소문자로 바꿔 비교. 비밀번호는 argon2id로 해시만 저장. **한 트랜잭션**에서 `users`(status `active`) + `profiles`(role `user`, 닉네임·출생연도·성별) 생성. 나이·성별은 **동행 신청 때 그 모집 글 작성자에게만** 보임(A61, DB `app_applicant_profile`) | 422 형식 / 409 `EMAIL_ALREADY_EXISTS`·`NICKNAME_TAKEN` / 429 | DB에 계정·프로필을 한 트랜잭션으로 저장 |
 | **A33** `POST /auth/login` | `{email, password}` | **200** `{access_token, token_type:"bearer", expires_in:1800, refresh_token, refresh_expires_at, user:{user_id, display_name, role}}` | 계정 `status='active'`만. 실패 이유를 구분하지 않음(이메일 존재 여부 노출 금지). 성공 시 `users.last_login_at`, `refresh_tokens`에 **해시만** 저장(14일) | 401 `INVALID_CREDENTIALS` / 403 `ACCOUNT_DISABLED` / 429 `RATE_LIMITED` / 503 `AUTH_CHECK_UNAVAILABLE` | DB에 로그인 시각·Refresh 해시 저장, IP별 로그인 제한 |
 | **A34** `POST /auth/refresh` | `{refresh_token}` | **200** A33과 같은 토큰 묶음(새 Access + **새 Refresh**) | **교체 방식**: `refresh:lock:{token_id}`(5초)로 동시 교체 방지 → 기존 행 `revoked_at` 기록 → 새 행 추가(한 트랜잭션). **이미 폐기된 Refresh가 다시 오면 재사용으로 보고 그 사용자의 Refresh 전부 폐기** | 401 `REFRESH_INVALID`(없음·만료) / 401 `REFRESH_REUSED`(재사용 — 다시 로그인) / 409 `REFRESH_IN_PROGRESS`(잠금 중) / 503 `AUTH_CHECK_UNAVAILABLE` | DB 트랜잭션으로 교체·재사용 폐기 |
 | **A35** `POST /auth/logout` | 헤더 Access JWT + 본문 `{refresh_token}` | **204** | 그 Refresh 행 `revoked_at` + Access의 `jti`를 `revoked:{jti}`(남은 수명만큼)에 넣음 → 이 기기만 로그아웃. 그 계정의 Refresh를 모두 폐기하는 경우는 탈퇴(A80, 남은 Access도 계정 상태 검사로 거부)·비밀번호 변경(A82)·Refresh 재사용 감지뿐 | 401 / 503 `AUTH_CHECK_UNAVAILABLE` | 본인 Refresh 폐기, Access jti 만료까지 차단 |
@@ -155,8 +155,8 @@
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `email` | body | string | 예 | 254자 이하, 이메일 형식, 로컬 부분 64자 이하, 점으로 구분된 도메인 레이블 2개 이상, 소문자로 정규화 |
-| `password` | body | string (SecretStr) | 예 | 8~64자, 영문과 숫자를 각각 1개 이상 포함 |
-| `display_name` | body | string | 예 | 제어문자 없이 앞뒤 공백 제거 후 2~12자, 대소문자 무시 중복 불가 |
+| `password` | body | string (SecretStr) | 예 | 8–64자, 영문과 숫자를 각각 1개 이상 포함 |
+| `display_name` | body | string | 예 | 제어문자 없이 앞뒤 공백 제거 후 2–12자, 대소문자 무시 중복 불가 |
 | `birth_year` | body | int | 예 | 1900 이상 올해 이하 |
 | `gender` | body | string | 예 | `male`·`female` |
 | `user_id` | 응답 | string (UUID) | 예 | 생성된 사용자 ID |
@@ -199,9 +199,9 @@
 | A01 | GET | `/api/v1/health` | 없음 | 서버·DB·Redis 상태 | — | 필수 |
 | A02 | GET | `/api/v1/festivals` | 없음 | 축제 검색(`region` 코드·기간·키워드·상태·지도 범위 `bbox`) | FR-F01/F10/F15 | **필수** |
 | A03 | GET | `/api/v1/festivals/{festival_id}` | 없음 | 축제 상세(장소·좌표·기간·**간단한 소개·입장료**·출처·`last_synced_at`) | FR-F01, D11 | **필수** |
-| A04 | POST | `/api/v1/routes/return` | 없음 | **AI 안심 귀가 경로 요청** (4-3절) | FR-R13~R17 | **필수(대표)** |
+| A04 | POST | `/api/v1/routes/return` | 없음 | **AI 안심 귀가 경로 요청** (4-3절) | FR-R13–R17 | **필수(대표)** |
 | A05 | GET | `/api/v1/routes/return/{route_request_id}` | 요청 토큰 | 귀가 요청 처리 상태·결과 | FR-R14 | **필수** |
-| A06 · A06-1 · A06-2 | POST / GET / GET | `/api/v1/assistant/query` · A06-1 `/api/v1/assistant/runs/{run_id}` · A06-2 `…/{run_id}/events`(SSE) | 없음(선택 로그인). A06-1·A06-2는 로그인해서 만든 작업이면 작업 주인의 Access JWT, 비로그인 작업이면 로그인하지 않은 상태로 `X-Run-Access-Token` | 챗봇 질문을 **작업으로 등록 → 202 + `run_id`**, 워커가 에이전트 실행. 결과(`answer`·사용한 도구·근거)는 상태 조회로 (6-9) | FR-C01~C09 | 귀가 안내 한정 |
+| A06 · A06-1 · A06-2 | POST / GET / GET | `/api/v1/assistant/query` · A06-1 `/api/v1/assistant/runs/{run_id}` · A06-2 `…/{run_id}/events`(SSE) | 없음(선택 로그인). A06-1·A06-2는 로그인해서 만든 작업이면 작업 주인의 Access JWT, 비로그인 작업이면 로그인하지 않은 상태로 `X-Run-Access-Token` | 챗봇 질문을 **작업으로 등록 → 202 + `run_id`**, 워커가 에이전트 실행. 결과(`answer`·사용한 도구·근거)는 상태 조회로 (6-9) | FR-C01–C09 | 귀가 안내 한정 |
 | A07 | GET | `/api/v1/festivals/{festival_id}/notices` | 없음 | 공식 운영 공지·교통통제(무정차·우회 등). `type` 필터 | FR-F05/F13 | 최종 |
 | A08 | GET | `/api/v1/festivals/{festival_id}/facilities` | 없음 | **지도 표시용 주변 시설**(`categories` 여러 개, `radius_m`). **1차 10종**: 화장실·주차장 위치·병원·응급실·지하철역·버스 정류장·자전거 존·택시 승강장(**둘 다** 전국 통합 공급원·좌표가 확인되면 전국, 없으면 검증된 서울 공급원으로, **위치 안내만** — 실시간 대여 가능 수·택시 호출 제외)·맛집·주변 관광지 (**보류**: 물품보관함¹·약국²). 공급원 미확인 항목은 `status:"unverified"`(2-3절) | FR-F04/F11 | 최종 |
 | A09 | GET | `/api/v1/festivals/{festival_id}/weather` | 없음 | 축제 위치 날씨·예보(발표 시각 포함, 기상청 전국) | FR-F09 | 최종 |
@@ -226,13 +226,13 @@
 | **A37** | PUT | `/api/v1/me/festival-preferences` | user | 취향 선택·변경·건너뛰기 저장 (7-2-2) | 〃 | 최종 |
 | **A38** | GET | `/api/v1/festivals/recommended` | 선택(취향 계정 기준) | 맞춤 추천(필터·페이지·`recommendation_reason`, **규칙 기반**, 실제 축제 DB에 있는 것만) | 〃 | 최종 |
 | **A39** | GET | `/api/v1/festivals/popular` | 없음 | 실제 참여 지표(상세 조회·관심 추가) 기반 인기 | 〃 | 최종 |
-| **A43~A50** | — | `/api/v1/users/search`, `/api/v1/friend-requests`(+`/{id}/{action}`), `/api/v1/me/friend-requests`, `/api/v1/me/friends`(+`/{user_id}`), `/api/v1/me/blocks/{user_id}` | user | **친구 검색(닉네임 정확히 일치, 친구 코드 없음)·신청·수락·거절·취소·목록·삭제·차단·차단 해제** (7-2-3) | FR-COM12~14 | 최종 |
+| **A43–A50** | — | `/api/v1/users/search`, `/api/v1/friend-requests`(+`/{id}/{action}`), `/api/v1/me/friend-requests`, `/api/v1/me/friends`(+`/{user_id}`), `/api/v1/me/blocks/{user_id}` | user | **친구 검색(닉네임 정확히 일치, 친구 코드 없음)·신청·수락·거절·취소·목록·삭제·차단·차단 해제** (7-2-3) | FR-COM12–14 | 최종 |
 | **A51** | POST | `/api/v1/assistant/visit-course` (결과는 A06-1) | 없음(선택 로그인) | **AI 방문 코스**: 동행 유형·시간에 맞춘 축제 안 코스, 코드가 실존·운영 시각·동선 검증 (7-3) | FR-P01·P03 | 최종 |
-| **A52~A54** | POST/PATCH/POST | `/api/v1/admin/notices`, `/{notice_id}`, `/{notice_id}/review`·`/{notice_id}/end` | operator·admin | 공식 공지 등록·수정·승인·반려·종료, 이력 추가만 (7-3) | FR-O06·D05 | 최종 |
-| **A55~A56** | POST/PATCH | `/api/v1/admin/festivals`, `/{festival_id}` | admin | 축제 직접 등록·수정·게시, 변경 이력 (7-3) | FR-D12·O10 | 최종 |
-| **A57~A65** | — | `/api/v1/festivals/{id}/companion-posts`, `/api/v1/companion-posts`(+`/{id}`, `/applications`, `/meeting-place`, `/{action}`), `/api/v1/companion-applications/{id}/{action}` | 공개·user | **동행**: 모집 목록·작성·신청·승인(정원 잠금)·만남 장소·종료/취소 (7-2-4) | FR-COM01~11·18·19 | 최종 |
-| **A66~A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`, A70 `PATCH /{room_id}`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user. WS는 A73이 발급한 1회용 `ticket` | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (7-2-5) | FR-COM09·15~17·20 | 최종 |
-| **A74~A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user / A77은 operator·admin | **알림·신고·탈퇴**(7-2-6). 마이페이지는 7-2-6절 | FR-COM21~24 | 최종 |
+| **A52–A54** | POST/PATCH/POST | `/api/v1/admin/notices`, `/{notice_id}`, `/{notice_id}/review`·`/{notice_id}/end` | operator·admin | 공식 공지 등록·수정·승인·반려·종료, 이력 추가만 (7-3) | FR-O06·D05 | 최종 |
+| **A55–A56** | POST/PATCH | `/api/v1/admin/festivals`, `/{festival_id}` | admin | 축제 직접 등록·수정·게시, 변경 이력 (7-3) | FR-D12·O10 | 최종 |
+| **A57–A65** | — | `/api/v1/festivals/{id}/companion-posts`, `/api/v1/companion-posts`(+`/{id}`, `/applications`, `/meeting-place`, `/{action}`), `/api/v1/companion-applications/{id}/{action}` | 공개·user | **동행**: 모집 목록·작성·신청·승인(정원 잠금)·만남 장소·종료/취소 (7-2-4) | FR-COM01–11·18·19 | 최종 |
+| **A66–A73·WS** | — | `/api/v1/me/chat-rooms`, `/api/v1/chat-rooms`(+`/invitations`, `/{action}`, `/messages`, `/read`, A70 `PATCH /{room_id}`), `/api/v1/ws-tickets`, `WS /api/v1/ws/chat` | user. WS는 A73이 발급한 1회용 `ticket` | **채팅**: 방 목록·1:1·단체방·초대·수락·퇴장·방장 승계·메시지 이력·읽음, WebSocket 전송(DB 저장 뒤 ACK) (7-2-5) | FR-COM09·15–17·20 | 최종 |
+| **A74–A77·A80** | — | `/api/v1/me/notifications`(+`/read`), `/api/v1/reports`, `/api/v1/admin/reports`, `DELETE /api/v1/me` | user / A77은 operator·admin | **알림·신고·탈퇴**(7-2-6). 마이페이지는 7-2-6절 | FR-COM21–24 | 최종 |
 | **A78·A79** | GET·PATCH / GET | `/api/v1/me/profile`, `/api/v1/me/companion-activity` | user | **본인 프로필·내 동행 내역**(7-2-6) | FR-COM22 | 최종 |
 | **A82** | POST | `/api/v1/me/password` | user | **비밀번호 변경**: 현재 비밀번호 확인 → 새 비밀번호 저장. 이 기기는 즉시 로그아웃(폐기 저장소 장애 때의 예외는 7-2-6), 모든 기기의 Refresh 폐기(다른 기기의 남은 Access는 만료까지) | FR-COM22 | 최종 |
 | **A42** | GET | `/api/v1/festivals/trending` | 없음 | **지금 핫한 축제**. 네이버 데이터랩과 대한민국 구석구석 점수를 60:40으로 합산해 정렬(7-1) | FR-REC17 | 최종 |
@@ -246,11 +246,11 @@
 | **A26** | GET | `/api/v1/festivals/{festival_id}/transit` | 없음 | 주변 지하철역·버스 정류장 **실시간 도착**. 지하철 실시간은 서울만, 버스는 서울 = 서울시 버스도착정보·서울 밖 = TAGO | — | 최종 |
 | **A27** | — | — | — | 실시간 주차 빈자리 제외. 주차장 위치는 A08 `parking` | — | **채택 안 함** |
 | **A28** | GET | `/api/v1/festivals/{festival_id}/traffic-incidents` | 없음 | 주변 **교통 돌발**(사고·공사·행사 통제). 경찰청(전국) + 서울 TOPIS | — | 최종 |
-| **A29** | GET | `/api/v1/festivals/{festival_id}/visit-forecast` | 없음 | **방문 집중 예측**(향후 30일, 상대값 0~100) + 지역 관광 수요. '실시간 혼잡'과 다른 이름·색으로 표시 | — | 최종 |
+| **A29** | GET | `/api/v1/festivals/{festival_id}/visit-forecast` | 없음 | **방문 집중 예측**(향후 30일, 상대값 0–100) + 지역 관광 수요. '실시간 혼잡'과 다른 이름·색으로 표시 | — | 최종 |
 | **A30** | GET | `/api/v1/data-sources` | 없음 | 데이터 공급원별 **지원 지역·실시간 여부·마지막 수집 시각** (화면의 '미지원' 안내·관리자 확인용) | 데이터 조사 | 최종 |
 
-- **A36~A42 경로 규칙:** FastAPI에서 `/festivals/recommended`·`/popular`·`/discover`·`/recent`·`/trending` 같은 **고정 경로를 `/festivals/{festival_id}`보다 먼저 등록**하고, `festival_id`는 `^fst_` 형식을 검사합니다(라우터 작성 규칙·테스트 항목).
-- **동행·채팅:** A57~A73으로 상세 작성(7-2-4·7-2-5, 채팅은 WebSocket), 권한은 권한 기준안(04 문서 7-1). **채팅 경로 규칙:** `/chat-rooms/{room_id}/invitations`·`/read`·`/messages`를 `/{action}`(A69)보다 **먼저 등록**하고, `action`은 `accept`·`decline`·`leave`만 받음(그 밖은 404 `NOT_FOUND`). **친구는 A43~A50으로 상세 작성(7-2-3).** 친구 검색은 **닉네임 정확히 일치**(닉네임은 겹치지 않음, 친구 코드 없음, 이메일·전화번호 검색 안 함, 009).
+- **A36–A42 경로 규칙:** FastAPI에서 `/festivals/recommended`·`/popular`·`/discover`·`/recent`·`/trending` 같은 **고정 경로를 `/festivals/{festival_id}`보다 먼저 등록**하고, `festival_id`는 `^fst_` 형식을 검사합니다(라우터 작성 규칙·테스트 항목).
+- **동행·채팅:** A57–A73으로 상세 작성(7-2-4·7-2-5, 채팅은 WebSocket), 권한은 권한 기준안(04 문서 7-1). **채팅 경로 규칙:** `/chat-rooms/{room_id}/invitations`·`/read`·`/messages`를 `/{action}`(A69)보다 **먼저 등록**하고, `action`은 `accept`·`decline`·`leave`만 받음(그 밖은 404 `NOT_FOUND`). **친구는 A43–A50으로 상세 작성(7-2-3).** 친구 검색은 **닉네임 정확히 일치**(닉네임은 겹치지 않음, 친구 코드 없음, 이메일·전화번호 검색 안 함, 009).
 
 
 ¹·² 물품보관함·약국: **보류**(서비스 범위의 지도 목록에 없음). 다만 BFCL `get_facilities`의 `category` 값(`locker`·`pharmacy`)에는 이미 들어 있어서, 평가 기준을 바꾸지 않도록 값은 남기고 호출되면 `status:"unsupported"`로 응답합니다.
@@ -273,15 +273,12 @@
 
 ### 3-1. 범위에서 뺀 것
 
-| 항목 | 결정 | 이유 |
-|---|---|---|
-| 티켓·예약·결제 | ❌ API 없음 | 범위 밖(예매 보류) |
-| 공연·전시 정보 | ❌ API 없음 | 축제만 다룸 |
-| 실시간 주차 빈자리(A27) | **채택 안 함** | A08 시설에서 주차장 위치만 제공 |
-| 웹 크롤링 | **A42 '지금 핫한 축제'의 점수 출처**인 대한민국 구석구석에만 사용 | 네이버 데이터랩 검색어 트렌드와 함께 점수에 반영합니다. 구석구석은 약관·`robots.txt` 허용 범위에서 축제명·순위만 수집하며 원문은 저장하지 않음(7-1 A42). 축제 기본 정보·경로·실시간 정보는 계속 공식 API·공공데이터만 |
-| SNS 후기 현장 요약 | ⏸ 2차(나중에) | 메인 기능 아님 |
-| 정류장 눌러 버스 혼잡 보기, 자전거 추가 기능(따릉이 실시간 등) | ⏸ 나중에 | 서비스 범위 밖 |
-| 물품보관함·약국 지도 표시 | ⏸ 보류 | 지도 목록 밖 |
+| 구분 | 항목 | 현재 결정 | 제공 범위·이유 |
+|---|---|---|---|
+| 제외 | 티켓·예약·결제, 공연·전시 정보 | API 없음 | 축제 탐색과 귀가 기능에 집중 |
+| 제외 | 실시간 주차 빈자리(A27) | 채택 안 함 | A08에서는 주차장 **위치만** 제공 |
+| 보류 | SNS 후기 현장 요약, 정류장별 버스 혼잡 조회, 자전거 실시간 정보, 물품보관함·약국 지도 표시 | 이번 범위에서 제공하지 않음 | 이후 필요성과 데이터 확보 여부를 검토 |
+| 제한적 사용 | 대한민국 구석구석 수집 | A42 점수 산정에만 사용 | 허용 범위에서 축제명·순위만 수집하고 원문은 저장하지 않음. 축제 기본 정보·경로·실시간 정보의 공급원으로 사용하지 않음 |
 
 ### 3-2. API 필드 ↔ DB 컬럼 대응 (1차 필수 API)
 
@@ -356,7 +353,7 @@ Content-Type: application/json
 | `NOT_IMPLEMENTED` | 501 | 아직 구현하지 않은 후속 기능 (A17) |
 | `QUEUE_ITEM_NOT_FOUND` / `ALREADY_REVIEWED` | 404 / 409 | 없는 검토 항목 / 이미 처리한 검토 항목 (A24·A54) |
 | `ALREADY_FRIENDS` / `REQUEST_PENDING` / `BLOCKED` / `REQUEST_NOT_PENDING` | 409 | 친구 API(A44·A46): 이미 친구 / 대기 중 신청 있음 / 차단 관계 / 이미 처리된 신청 |
-| `ROUTE_NO_RESULT` | 200 (A04·A05의 `error`, `route_status=unavailable`) | 공급원이 "경로 없음"으로 답함(TMAP `result.status` 11~14, 카카오 `NO_RESULTS` 등 — [기록 10-3](API_구현_검증기록.md#10-3-길찾기-오류-응답--내부-처리-1120-한태경-evidence오류응답_정리md))이거나 TMAP 후보가 모두 운행 종료로 제외됨(6-7절). `retryable=false` |
+| `ROUTE_NO_RESULT` | 200 (A04·A05의 `error`, `route_status=unavailable`) | 공급원이 "경로 없음"으로 답함(TMAP `result.status` 11–14, 카카오 `NO_RESULTS` 등 — [기록 10-3](API_구현_검증기록.md#10-3-길찾기-오류-응답--내부-처리-1120-한태경-evidence오류응답_정리md))이거나 TMAP 후보가 모두 운행 종료로 제외됨(6-7절). `retryable=false` |
 | `INCIDENT_NOT_FOUND` / `INCIDENT_CLOSED` | 404 / 409 | 없는 사건 / 이미 닫힌 사건에 결정 기록 (A19) |
 | `DUPLICATE_PLAN` | 409 | 같은 사건에 실행 중인 조치가 있음 (A19) |
 | `SIMULATION_RUNNING` | 409 | 이미 실행 중인 부하 시험 (A20) |
@@ -404,11 +401,11 @@ Content-Type: application/json
 |---|---|---|---|---|---|---|
 | `region` | query | string | 아니요 | `ALL` | 2-1절 지역 코드 | 시·도 |
 | `date_from` / `date_to` | query | string(date) | 아니요 | null | `YYYY-MM-DD`, `date_from ≤ date_to`, 최대 366일 | 기간(겹치는 축제) |
-| `q` | query | string | 아니요 | null | 1~50자 | 이름·장소 키워드 |
+| `q` | query | string | 아니요 | null | 1–50자 | 이름·장소 키워드 |
 | `status` | query | string | 아니요 | null | `upcoming`·`ongoing`·`ended`·`cancelled` 중 하나 이상, **쉼표로 여러 값**(예: `ongoing,upcoming`). 모르는 값이 하나라도 있으면 422 | 진행 상태 |
 | `bbox` | query | string | 아니요 | null | `minLng,minLat,maxLng,maxLat` | 지도 화면 범위 |
 | `sort` | query | string | 아니요 | `start_date` | `start_date`·`-start_date`·`name`·`distance`(`bbox` 있을 때만). `-`는 내림차순 | 정렬 |
-| `page` / `page_size` | query | int | 아니요 | 1 / 20 | page ≥ 1, page_size 1~100 | 페이지 |
+| `page` / `page_size` | query | int | 아니요 | 1 / 20 | page ≥ 1, page_size 1–100 | 페이지 |
 
 응답(200): `{ "items": [ { "festival_id", "name", "region_code", "venue_name", "lat", "lng", "start_date", "end_date", "event_status", "thumbnail_url", "image_credit", "source", "last_synced_at" } ], "total": 37, "page": 1, "page_size": 20 }` — `thumbnail_url`은 TourAPI `firstimage2`(작은 크기), 없으면 null(화면 기본 이미지), `image_credit`은 출처 문구(아래 4-2 이미지 규칙) — 요청마다 외부 API를 부르지 않고 수집된 DB에서 답합니다. 오류: 422 `VALIDATION_ERROR`.
 
@@ -486,7 +483,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 | 5 | **검증·권한** | 형식은 8-1절 `ReturnRouteRequest`(422). 같은 `request_id`·본문이면 기존 요청으로 응답하고 본문이 다르면 409. 새 요청은 축제 존재(404) → 출발이 축제 장소면 축제 좌표 있음(400 `FESTIVAL_LOCATION_UNKNOWN`) → 목적지 해석(400 `ROUTE_INVALID`)을 검사. 인증 없음(anonymous 허용), 요청 수 제한(429) |
 | 6 | **정상 응답** | `200` 제한 시간 안에 끝남(`ready` 또는 `unavailable`. TMAP `ready`일 때만 경로 후보와 `X-Route-Access-Token` 응답 헤더 제공) / `202` 아직 처리 중(`queued`·`processing`, 상태 조회 URL·본문의 `route_access_token`·`retry_after_s` 제공, 토큰 수명 10분은 DB 저장 모드) |
 | 7 | **오류 응답** | 아래 '오류 응답 표' |
-| 8 | **실행 규칙** | **동기 대기 3초**(넘으면 그때까지의 상태로 202 반환, 처리는 계속) · **전체 처리 제한 10초**(넘으면 `route_status=timed_out` — 202 뒤에는 A05로 확인, 3초 안에 판정되면 504) (모두 초기값) · 길찾기 어댑터 1회 호출 상한 TMAP 5초·카카오 3초(8-4절) · 1차 공급원 실패 때 **2차 공급원으로 1회** — **어떤 응답을 실패로 보고 넘길지는 [기록 10-3](API_구현_검증기록.md#10-3-길찾기-오류-응답--내부-처리-1120-한태경-evidence오류응답_정리md) 표가 유일한 기준**(시간 초과·429·5xx·403 키 오류·TMAP `result.status` 12~14 등). 단 카카오(2차)는 **동기 3초 안에 끝날 때만** 결과를 줄 수 있으므로, 1차가 3초 안에 실패하지 않으면(예: 5초 시간 초과) 202 뒤 `ROUTE_SECONDARY_SYNC_ONLY`로 끝냄(6-7절) · 우리 요청 잘못(400/404/409/422)은 재시도 없음 · 같은 `request_id`는 처음 만든 `route_request_id`를 돌려줌(멱등) · 8-3절 |
+| 8 | **실행 규칙** | **동기 대기 3초**(넘으면 그때까지의 상태로 202 반환, 처리는 계속) · **전체 처리 제한 10초**(넘으면 `route_status=timed_out` — 202 뒤에는 A05로 확인, 3초 안에 판정되면 504) (모두 초기값) · 길찾기 어댑터 1회 호출 상한 TMAP 5초·카카오 3초(8-4절) · 1차 공급원 실패 때 **2차 공급원으로 1회** — **어떤 응답을 실패로 보고 넘길지는 [기록 10-3](API_구현_검증기록.md#10-3-길찾기-오류-응답--내부-처리-1120-한태경-evidence오류응답_정리md) 표가 유일한 기준**(시간 초과·429·5xx·403 키 오류·TMAP `result.status` 12–14 등). 단 카카오(2차)는 **동기 3초 안에 끝날 때만** 결과를 줄 수 있으므로, 1차가 3초 안에 실패하지 않으면(예: 5초 시간 초과) 202 뒤 `ROUTE_SECONDARY_SYNC_ONLY`로 끝냄(6-7절) · 우리 요청 잘못(400/404/409/422)은 재시도 없음 · 같은 `request_id`는 처음 만든 `route_request_id`를 돌려줌(멱등) · 8-3절 |
 
 **동작 규칙** — A04/A25의 v2 키는 축제와 공통 공지의 통제 버전을 사용합니다. 버전이 달라진 기존 경로는 같은 요청 ID로 `unavailable`·`ROUTE_CONTROL_CHANGED`를 반환합니다. 활성 통제 공지 제목과 A07 경로를 `notices[]`에 표시하고 `control_unverified` 상태를 유지합니다.
 
@@ -504,7 +501,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 
 **동작 규칙** — A04의 동기 `ready` 응답은 `X-Route-Access-Token` 헤더로 후보 선택용 토큰을 전달합니다(카카오맵 제외). 202 응답은 기존 `route_access_token` 본문 필드를 사용합니다. 선택 후 화면은 A05에 `candidate_id`와 조회 토큰을 보내며, 해당 후보의 `mode_evidence.bus_crowding`을 읽습니다.
 
-**추천 기준과 점수 (기획서 FR-R01~R05 '고급 5유형'과 같은 이름, 비율 미정, Should)**
+**추천 기준과 점수 (기획서 FR-R01–R05 '고급 5유형'과 같은 이름, 비율 미정, Should)**
 
 | `route_preference` 값 | 뜻 | 점수에 크게 반영하는 것 |
 |---|---|---|
@@ -522,15 +519,15 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 
 | 필드 | 위치 | 타입 | 필수 | 빈값 | 제약 | 설명 |
 |---|---|---|---|---|---|---|
-| `request_id` | body | string | 예 | 불가 | 8~64자, UUID 권장 | 멱등 키 |
+| `request_id` | body | string | 예 | 불가 | 8–64자, UUID 권장 | 멱등 키 |
 | `festival_id` | body | string | 예 | 불가 | `^fst_[0-9A-Za-z]{6,26}$` | 출발 축제 |
 | `origin` | body | object | 아니요 | `{"type":"festival"}` | `{type:"festival"}`(축제 장소) 또는 `{type:"place", query 또는 lat+lng}` — **출발 위치를 사용자가 바꿀 수 있음**(S06, 09 마이그레이션 `origin_type`) | 출발지 |
 | `destination` | body | object | 예 | 불가 | `query` 또는 `lat`+`lng` 중 **하나만** (`{type:"festival"}`은 출발이 사용자 장소일 때만) | 목적지 |
-| `destination.query` | body | string | 조건 | 불가 | 1~100자 | 장소명·주소 |
-| `destination.lat` / `lng` | body | number | 조건 | 불가 | 위도 33~39, 경도 124~132 | 좌표 |
+| `destination.query` | body | string | 조건 | 불가 | 1–100자 | 장소명·주소 |
+| `destination.lat` / `lng` | body | number | 조건 | 불가 | 위도 33–39, 경도 124–132 | 좌표 |
 | `travel_mode` | body | string | 아니요 | — | `transit`·`walk`·`car`·`taxi`, 기본 `transit` | 이동 수단(공급원 지원 범위 확인 후 축소 가능) |
 | `route_preference` | body | string | 아니요 | — | 위 5개 값, 기본 `fastest` | 추천 기준 |
-| `user_constraints` | body | object | 아니요 | `{}` | `with_child`·`wheelchair`: bool, `max_walk_m`: 0~5000 또는 null | 이동 조건 |
+| `user_constraints` | body | object | 아니요 | `{}` | `with_child`·`wheelchair`: bool, `max_walk_m`: 0–5000 또는 null | 이동 조건 |
 | `departure` | body | string | 아니요 | — | `now`만(예약 출발은 후속) | 출발 시각 |
 
 **정상 응답 필드 명세 (200)** — 202는 아래 '처리 중 응답' 필드만 돌려줍니다
@@ -763,7 +760,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 
 | 쿼리 | 타입 | 기본값 | 설명 |
 |---|---|---|---|
-| `incident_id` | string | 없음 | 주면 그 사건의 `detected_at` 앞 5분 ~ `closed_at`(없으면 지금) 구간 |
+| `incident_id` | string | 없음 | 주면 그 사건의 `detected_at` 앞 5분 – `closed_at`(없으면 지금) 구간 |
 | `simulation_id` | string | 없음 | 주면 그 시험 전체 구간 |
 | `phase` | string | 없음 | `live`·`baseline`·`fault`·`after_action` |
 | `window` | string | `5m` | `10s`·`1m`·`5m`·`15m` |
@@ -773,7 +770,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 |---|---|---|
 | `window_at`(series만)·`phase` | string | `window_at`·`phase` |
 | `offered_requests`·`accepted_count`·`valid_completed_count` | int | 같은 이름 |
-| `valid_route_rate` | number(0~1) | 계산 `valid_completed_count ÷ offered_requests` (**접수·HTTP 200은 성공에 넣지 않음**) |
+| `valid_route_rate` | number(0–1) | 계산 `valid_completed_count ÷ offered_requests` (**접수·HTTP 200은 성공에 넣지 않음**) |
 | `rejections`·`timeouts`·`errors`, `error_rate` | int, number | 같은 이름, 계산 `(rejections+timeouts+errors) ÷ offered_requests` |
 | `unique_route_keys`·`duplicate_ratio`·`backend_execution_count`·`shared_request_count`·`cache_hits` | int·number | 같은 이름 (중복·병합 판단 근거) |
 | `queue_depth_max`·`inflight_max` | int | 같은 이름 |
@@ -826,7 +823,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 | `simulation_id` | string | 없음 | `^sim_…` |
 | `test_mode` | boolean | 없음 | 장애 주입 시험만/운영만 |
 | `sort` | string | `-detected_at` | `detected_at`·`-detected_at` |
-| `page`·`page_size` | int | 1·20 | page ≥ 1, page_size 1~100 |
+| `page`·`page_size` | int | 1·20 | page ≥ 1, page_size 1–100 |
 
 | 응답 `items[]` 필드 | 타입 | 빈값 | DB |
 |---|---|---|---|
@@ -1041,13 +1038,13 @@ HTTP 202
 |---|---|---|---|---|
 | `scenario` | string | 예 | `duplicate_keys`·`unique_keys`·`mixed` | 요청 분포 |
 | `comparison_arm` | string | 예 | `B0`·`B1`·`A1` | 대응 방식(5-9) |
-| `concurrency` | int | 예 | 1~200(초기값) | 동시 요청 |
-| `offered_rps` | number | 아니요 | 0 초과 ~100 | 초당 요청 |
-| `duration_s` | int | 예 | 5~300(초기값) | 구간별 지속 시간 |
-| `unique_route_keys` | int | 예 | 1~1000 | 서로 다른 경로 키 수 |
-| `fault` | object | 아니요 | `{ "type": "internal_delay", "delay_ms": 1~5000 }` | 장애 주입(없으면 평소 구간만) |
+| `concurrency` | int | 예 | 1–200(초기값) | 동시 요청 |
+| `offered_rps` | number | 아니요 | 0 초과 –100 | 초당 요청 |
+| `duration_s` | int | 예 | 5–300(초기값) | 구간별 지속 시간 |
+| `unique_route_keys` | int | 예 | 1–1000 | 서로 다른 경로 키 수 |
+| `fault` | object | 아니요 | `{ "type": "internal_delay", "delay_ms": 1–5000 }` | 장애 주입(없으면 평소 구간만) |
 | `cache_state` | string | 아니요 | `cold`·`warm` | 캐시 준비 상태 |
-| `repeat_group` / `run_index` | string / int | 아니요 | ≤40자 / 1~20 | 반복 묶음·몇 번째 |
+| `repeat_group` / `run_index` | string / int | 아니요 | ≤40자 / 1–20 | 반복 묶음·몇 번째 |
 | `upstream` | string | 아니요 | `mock_adapter`만 | **외부 공급원 부하 금지** |
 | `seed` | int | 아니요 | — | 재현 |
 
@@ -1148,7 +1145,7 @@ HTTP 202
 |---|---|---|
 | 1 | 목적 | 서울 혼잡 API(A10) 장애를 **모의 어댑터로** 재현해, 혼잡이 없어도 축제·귀가 기능이 유지되는지 시험(FR-H20) |
 | 2 | 헤더 | `Authorization: Bearer <operator 이상>` · `Idempotency-Key`(필수) |
-| 4 | 본문 | `{mode: "http_500"·"stale"·"body_error", duration_s: 5~300}` |
+| 4 | 본문 | `{mode: "http_500"·"stale"·"body_error", duration_s: 5–300}` |
 | 5 | 검증·권한 | 401 / 403 / 운영 환경 403 `SIMULATION_DISABLED` / 이미 켜져 있으면 409 `SIMULATION_RUNNING` / 422 |
 | 6 | 정상 | 202 `{fault_id, mode, ends_at}` — 별도 상태 조회 API는 두지 않음. 모의 장애는 `ends_at`까지 켜져 있다가 Redis TTL로 자동 해제되고, 켜져 있는 동안 다시 요청하면 409 `SIMULATION_RUNNING`. 결과는 A10 응답이 모의 장애 응답으로 바뀌는지와, 감지되면 생기는 `failure_domain=crowd_upstream` 사건(A15 사건 상세)으로 확인. `Idempotency-Key`는 `duration_s` 동안 보관하고, 같은 키·같은 본문은 같은 202를, 같은 키·다른 본문은 409를 돌려줌(A04와 같은 규칙) |
 | 8 | 실행 규칙 | 실제 서울시 API에는 아무것도 안 함 — A10 어댑터가 Redis `fault:crowd`(TTL = `duration_s`)를 보고 모의 응답을 냄. 감지되면 `failure_domain=crowd_upstream` 사건으로 기록. **귀가 부하 시험(A20)과 별개**이고 대표 시연 아님 |
@@ -1159,7 +1156,7 @@ HTTP 202
 |---|---|---|---|---|
 | `Idempotency-Key` | header | string | 예 | 시험 모의 요청의 중복 방지 키 |
 | `mode` | body | string | 예 | `http_500`·`stale`·`body_error` |
-| `duration_s` | body | int | 예 | 5~300초 |
+| `duration_s` | body | int | 예 | 5–300초 |
 | `fault_id` | 응답 | string | 예 | 등록한 혼잡 공급원 장애 모의 ID |
 | `mode` | 응답 | string | 예 | 요청에서 선택한 장애 모의 유형 |
 | `ends_at` | 응답 | string(date-time) | 예 | 장애 모의 종료 시각 |
@@ -1168,7 +1165,7 @@ HTTP 202
 
 ## 6. AI Tool (에이전트가 부르는 함수)
 
-이 절에는 에이전트가 부르는 도구의 정의(6-1~6-6), 도구 호출 흐름(6-7), 도구별 입력 스키마와 실행 조건(6-8), 그리고 이 도구들을 실행하는 챗봇 질문 API A06(6-9)을 모았습니다.
+이 절에는 에이전트가 부르는 도구의 정의(6-1–6-6), 도구 호출 흐름(6-7), 도구별 입력 스키마와 실행 조건(6-8), 그리고 이 도구들을 실행하는 챗봇 질문 API A06(6-9)을 모았습니다.
 
 에이전트 도구는 모두 **내부 API를 감싼 얇은 함수**입니다. 아래 13개 도구의 계약은 BFCL 30문항 채점에 사용합니다([기록 4-7](API_구현_검증기록.md#4-7-bfcl-30문항과의-대조-강사-일일-피드백-5)절). 평가가 시작되면 이름·인자를 바꾸지 않습니다.
 
@@ -1257,7 +1254,7 @@ HTTP 202
 | `SIMULATION_NOT_FOUND` | false | 재시도 없이 `simulation_id`를 확인해 달라고 안내(사건 ID만 있으면 그 ID로 다시 조회) |
 | `DB_POOL_TIMEOUT` | true | `Retry-After`(1초) 뒤 1회. 그래도 실패면 '잠시 후 다시'로 종료 (DB 연결 대기 초과) |
 
-**Festival Agent 기준.** 단일 Festival Agent 상태 전이 그래프 설계서 8~8-1절과 도구 래퍼·그래프를 기준으로 합니다. HTTP/본문 값은 API 응답이고, `outcome`은 Agent 종료 상태입니다.
+**Festival Agent 기준.** 단일 Festival Agent 상태 전이 그래프 설계서 8–8-1절과 도구 래퍼·그래프를 기준으로 합니다. HTTP/본문 값은 API 응답이고, `outcome`은 Agent 종료 상태입니다.
 
 | 사례 | API 응답·차이 | Festival Agent 처리 |
 |---|---|---|
@@ -1506,7 +1503,7 @@ HTTP 202
 { "ok": false, "request_id": "req_01JDA5…", "error": { "code": "INCIDENT_NOT_FOUND", "message": "사건을 찾을 수 없어요.", "retryable": false } }
 ```
 
-- `upstream_p95_ms`(외부)와 `internal_p95_ms`(내부)를 나눠 주므로 Diagnosis는 "내부 지연인지 외부 지연인지"를 숫자로 구분합니다(BFCL NLD-23~25).
+- `upstream_p95_ms`(외부)와 `internal_p95_ms`(내부)를 나눠 주므로 Diagnosis는 "내부 지연인지 외부 지연인지"를 숫자로 구분합니다(BFCL NLD-23–25).
 - `evidence_refs`의 `rqm_…`는 지표 행 ID(`route_query_metrics.metric_id`)라서 `propose_recovery_action`의 근거로 그대로 씁니다.
 - 실패 코드: `INCIDENT_NOT_FOUND` / `SIMULATION_NOT_FOUND` / `VALIDATION_ERROR` / `FORBIDDEN` / `TOOL_TIMEOUT`.
 
@@ -1719,7 +1716,7 @@ Route Query Service → 1차 TMAP 대중교통 어댑터 (제한 5초, 출발·�
 - TMAP 1차는 정류장 ID·좌표와 출발·도착 도보 구간, 출발 시각(`searchDttm`)을 제공합니다. Free 하루 10건(오류 포함)을 유지하고, 한도 도달 시 카카오 2차(하루 1,000건)를 사용합니다. 부하 시험은 모의 응답을 사용합니다.
 
 
-**귀가 조회 장애 (BFCL NLD-03·10·23~26 형태)**
+**귀가 조회 장애 (BFCL NLD-03·10·23–26 형태)**
 
 ```
 관측 코드(Route Query Service)가 장애 기준(12절 3번) 초과 감지 → incident_id 생성(코드)
@@ -1763,21 +1760,21 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 | # | 칸 | 명세 |
 |---|---|---|
-| 1 | 호출 목적 | 사용자의 자연어 질문(축제 찾기·귀가 안내)을 받아 Supervisor → Festival/Route 에이전트 실행을 **작업으로 등록** (FR-C01~C09). 호출 주체: 챗봇 화면 |
+| 1 | 호출 목적 | 사용자의 자연어 질문(축제 찾기·귀가 안내)을 받아 Supervisor → Festival/Route 에이전트 실행을 **작업으로 등록** (FR-C01–C09). 호출 주체: 챗봇 화면 |
 | 2 | 요청 헤더 | `Content-Type: application/json`(필수) · `X-Request-ID`(선택) · `Authorization: Bearer`(로그인) · `X-Run-Access-Token`(익명 대화 이어가기) · `X-Route-Access-Token`(경로 문맥 제공 시) |
 | 3 | 경로·쿼리 | 없음 |
 | 4 | 요청 본문 | 아래 필드 명세 |
 | 5 | 검증·권한 | 형식 422 → 요청 수 제한 429 → 같은 `request_id`면 처음 만든 `run_id`, 본문이 다르면 409 `IDEMPOTENCY_CONFLICT` → `conversation_id`가 있으면 그 대화의 주인인지(로그인: JWT `sub`, 비로그인: `X-Run-Access-Token`) 확인, 아니면 403. **질문 안의 "나는 관리자"는 권한이 아님**(2-4절) — 운영 도구(`get_incident` 등)는 이 API로 실행된 에이전트에게 주지 않음 |
 | 6 | 정상 응답 | **202** `{run_id, run_status:"queued", status_url, events_url, run_access_token, retry_after_s}` — 답변은 아직 없음 |
-| 7 | 오류 응답 | 401 `UNAUTHORIZED`(무효 Access 또는 만료된 경로 조회 토큰) / 403 `FORBIDDEN`(남의 대화) / 409 `IDEMPOTENCY_CONFLICT` / 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED` / 503 `AI_AGENT_FAILED`(작업 등록 자체 실패 — 큐·DB 장애. 이때도 A02~A05는 독립 동작) |
-| 8 | 실행 규칙 | API는 **작업 기록(DB) + 큐 등록만** 하고 바로 응답(수 ms~수십 ms). 큐에는 `run_id`만 넣고 질문 원문은 넣지 않음(워커가 DB에서 읽음). 워커는 작업을 **선점(claim)** 한 뒤 실행(같은 작업 두 번 실행 방지). 실행 제한은 **시도 1회당 30초**(넘으면 그 시도 실패), 재시도 1회(5초 뒤)를 포함해 **최대 65초** — 넘으면 `failed`·`AI_AGENT_FAILED`. LLM 429·5xx·시간 초과만 **같은 `run_id`로 1회** 재시도(`retrying`, 5초 뒤), 나머지는 재시도 없음. 워커가 실행 중에 죽어 `running`이 70초를 넘으면 정리 작업이 `failed`로 바꿈. 숫자는 모두 8-4절 기준표 |
+| 7 | 오류 응답 | 401 `UNAUTHORIZED`(무효 Access 또는 만료된 경로 조회 토큰) / 403 `FORBIDDEN`(남의 대화) / 409 `IDEMPOTENCY_CONFLICT` / 422 `VALIDATION_ERROR` / 429 `RATE_LIMITED` / 503 `AI_AGENT_FAILED`(작업 등록 자체 실패 — 큐·DB 장애. 이때도 A02–A05는 독립 동작) |
+| 8 | 실행 규칙 | API는 **작업 기록(DB) + 큐 등록만** 하고 바로 응답(수 ms–수십 ms). 큐에는 `run_id`만 넣고 질문 원문은 넣지 않음(워커가 DB에서 읽음). 워커는 작업을 **선점(claim)** 한 뒤 실행(같은 작업 두 번 실행 방지). 실행 제한은 **시도 1회당 30초**(넘으면 그 시도 실패), 재시도 1회(5초 뒤)를 포함해 **최대 65초** — 넘으면 `failed`·`AI_AGENT_FAILED`. LLM 429·5xx·시간 초과만 **같은 `run_id`로 1회** 재시도(`retrying`, 5초 뒤), 나머지는 재시도 없음. 워커가 실행 중에 죽어 `running`이 70초를 넘으면 정리 작업이 `failed`로 바꿈. 숫자는 모두 8-4절 기준표 |
 
 **요청 필드 명세**
 
 | 필드 | 타입 | 필수 | 빈값 | 제약 | 설명 |
 |---|---|---|---|---|---|
-| `request_id` | string | 예 | 불가 | 8~64자, UUID 권장 | 멱등 키(같은 질문 두 번 전송 방지) |
-| `message` | string | 예 | 불가 | 1~500자 | 사용자 질문 |
+| `request_id` | string | 예 | 불가 | 8–64자, UUID 권장 | 멱등 키(같은 질문 두 번 전송 방지) |
+| `message` | string | 예 | 불가 | 1–500자 | 사용자 질문 |
 | `conversation_id` | string | 아니요 | null | `^cv_[0-9A-Za-z]{6,26}$` | 이어지는 대화면 이전 `conversation_id`. 없으면 서버가 새로 만듦 |
 | `context.festival_id` | string | 아니요 | null | `^fst_…` | 화면에서 이미 고른 축제 |
 | `context.route_request_id` | string | 아니요 | null | `^rr_…` | 화면에서 이미 요청한 경로(본인 것만, 토큰 확인) |
@@ -1875,14 +1872,14 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 ## 7. 추가 기능 API
 
-> A01 상태 확인은 3-0절, 인증 A32~A35는 2-5절, 핵심 흐름(A02·A03·A04·A05·A25)은 4절, 장애 대응(A14~A22·A31)은 5절, 챗봇 A06은 6-9절에 있고 나머지는 모두 이 절에 있습니다. 7-1은 외부 정보·관리 API, 7-2는 추천·친구·동행·채팅·알림·마이페이지, 7-3은 방문 코스·공지·축제 관리입니다.
+> A01 상태 확인은 3-0절, 인증 A32–A35는 2-5절, 핵심 흐름(A02·A03·A04·A05·A25)은 4절, 장애 대응(A14–A22·A31)은 5절, 챗봇 A06은 6-9절에 있고 나머지는 모두 이 절에 있습니다. 7-1은 외부 정보·관리 API, 7-2는 추천·친구·동행·채팅·알림·마이페이지, 7-3은 방문 코스·공지·축제 관리입니다.
 
 
 ### 7-1. 외부 정보·관리 API 상세 명세
 
 1차 필수가 아닌 API도 **구현하기로 정한 범위 전체**를 여기서 정합니다(수업 가이드 "구현하기로 확정한 API 전체의 명세"). 원본 필드 이름은 `Docs/Step 2/evidence/`(README·원본) 기준입니다.
 
-#### 7-1-0. 외부 데이터 조회 API 공통 규칙 (A07~A10, A26·A28~A30)
+#### 7-1-0. 외부 데이터 조회 API 공통 규칙 (A07–A10, A26·A28–A30)
 
 같은 모양을 반복하지 않도록 공통 8칸을 한 번만 적습니다. API별 표에는 **다른 점만** 적습니다.
 
@@ -1925,7 +1922,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 | 항목 | 명세 |
 |---|---|
-| 쿼리 | `categories`: 선택, 쉼표 구분, 기본 1차 10종 전부(`toilet,parking,hospital,emergency,subway_station,bus_stop,bike_zone,taxi_stand,food,attraction`). `locker`·`pharmacy`는 허용값이지만 항상 `unsupported` / `radius_m`: 100~3000, 기본 1000 / `limit_per_category`: 1~50, 기본 20 |
+| 쿼리 | `categories`: 선택, 쉼표 구분, 기본 1차 10종 전부(`toilet,parking,hospital,emergency,subway_station,bus_stop,bike_zone,taxi_stand,food,attraction`). `locker`·`pharmacy`는 허용값이지만 항상 `unsupported` / `radius_m`: 100–3000, 기본 1000 / `limit_per_category`: 1–50, 기본 20 |
 | 규칙 | 축제 좌표 필요. 거리순 정렬. **카테고리마다 상태를 따로** `categories_status`로 줌(한 공급원이 실패해도 나머지는 보여 줌). 카카오 로컬(`food`·`attraction`)은 **저장 조건 미확인이라 DB에 넣지 않고 요청 때 중계**만 함([기록 11](API_구현_검증기록.md#11-미확인-항목확인-계획)절) |
 
 **A08 쿼리 필드**
@@ -1933,8 +1930,8 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `categories` | query | string | 아니요 | 쉼표 구분, 기본 `toilet,parking,hospital,emergency,subway_station,bus_stop,bike_zone,taxi_stand,food,attraction`. `locker`·`pharmacy`는 `unsupported` |
-| `radius_m` | query | int | 아니요 | 100~3000m, 기본 1000 |
-| `limit_per_category` | query | int | 아니요 | 분류당 1~50건, 기본 20 |
+| `radius_m` | query | int | 아니요 | 100–3000m, 기본 1000 |
+| `limit_per_category` | query | int | 아니요 | 분류당 1–50건, 기본 20 |
 
 | 카테고리 | 공급원 | 위치 필드 | 추가로 보여 주는 값 | 상태 |
 |---|---|---|---|---|
@@ -1965,7 +1962,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | `observed_at` | string | `baseDate`+`baseTime` | 발표 시각 |
 | `temperature_c` | number | `T1H` | 기온 |
 | `precipitation_mm` | number | `RN1` | 1시간 강수량 |
-| `precipitation_type` | string | `PTY` 0~7 | `none`·`rain`·`rain_snow`·`snow`·`drizzle`·`drizzle_snow`·`snow_flurry`(코드 0·1·2·3·5·6·7) |
+| `precipitation_type` | string | `PTY` 0–7 | `none`·`rain`·`rain_snow`·`snow`·`drizzle`·`drizzle_snow`·`snow_flurry`(코드 0·1·2·3·5·6·7) |
 | `grid` | object | `nx`·`ny` | 변환 결과 |
 | `forecast` | object | `baseDate`·`baseTime`, `fcstDate`·`fcstTime`, `TMP`·`PCP`·`PTY` | 모의 `{status:"unverified"}`. 실제 성공은 `status`(`ok`·`stale`), 발표 시각 `issued_at`, `items[]`(`forecast_at`, `temperature_c`, `precipitation_mm`, `precipitation_type`). 예보 조회 실패는 `{status:"unavailable",error}`. |
 
@@ -2003,7 +2000,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 `notices`는 관측값을 **주변 지역 혼잡(서울시 실시간 도시데이터)**으로 안내하고 구역 이름·축제에서의 거리·기준 시각·출처와 **“행사장 안 혼잡과 다를 수 있어요”**를 제공합니다. 공급원의 4주 대체 평균은 응답과 캐시에서 제외합니다. 성별·연령 비율도 응답과 저장에서 제외합니다. 실연동 승인 절차는 [서울 혼잡 매핑 명세](../../backend/Doc/seoul-crowd/SPEC.md)에 있습니다.
 
-#### A11~A13. 관심 축제 (로그인 필요)
+#### A11–A13. 관심 축제 (로그인 필요)
 
 `AUTH_PROVIDER=db`에서 로그인 계정의 RLS 세션으로 저장·조회·해제합니다. 승인·게시된 축제만 저장하고 목록·전체 건수에 포함합니다. `start_date` 정렬에서 날짜가 없는 축제는 뒤에 표시합니다. 기본은 모의 모드입니다.
 
@@ -2011,7 +2008,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 |---|---|---|---|---|
 | 1 | 목적 | 내 관심 축제 목록 | 관심 저장 | 관심 해제 |
 | 2 | 헤더 | `Authorization: Bearer`(필수) | 같음 | 같음 |
-| 3 | 경로·쿼리 | `page`·`page_size`(1~100, 기본 20), `sort`: `-saved_at`(기본)·`start_date` | `festival_id` 필수 | `festival_id` 필수 |
+| 3 | 경로·쿼리 | `page`·`page_size`(1–100, 기본 20), `sort`: `-saved_at`(기본)·`start_date` | `festival_id` 필수 | `festival_id` 필수 |
 | 4 | 본문 | 없음 | 없음 | 없음 |
 | 5 | 검증·권한 | 토큰 없음·만료 401. **사용자 ID는 토큰 `sub`에서만** 가져오고 경로·본문으로 받지 않음(타인 목록 조회 불가). DB는 RLS로 본인 행만 | 401 / 형식 422 / 축제 없음·비공개 404 | 401 / 422 |
 | 6 | 정상 | 200 `{items[], total, page, page_size}` | **201** 새로 저장 / **200** 이미 있음(같은 응답) `{festival_id, saved_at}` | **204** (없던 것을 지워도 204 — 멱등) |
@@ -2030,7 +2027,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `page` | query | int | 아니요 | 1 이상, 기본 1 |
-| `page_size` | query | int | 아니요 | 1~100, 기본 20 |
+| `page_size` | query | int | 아니요 | 1–100, 기본 20 |
 | `sort` | query | string | 아니요 | `-saved_at`(기본)·`start_date` |
 
 **A12 저장·A13 해제 경로, A12 응답 (FavoriteSave, 201·200)**
@@ -2113,18 +2110,18 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | `queue_id` | body | int (64비트) | 예 | 처리할 대기열 ID |
 | `decision` | body | string | 예 | `approve`·`reject`·`hide` |
 | `value` | body | object | 아니요 | 승인 시 적용할 축제 필드. 생략하면 `proposed_value`를 사용합니다. |
-| `note` | body | string | 예 | 공백을 제거한 뒤 1~200자의 결정 사유. `reason`도 같은 필드명으로 받습니다. |
+| `note` | body | string | 예 | 공백을 제거한 뒤 1–200자의 결정 사유. `reason`도 같은 필드명으로 받습니다. |
 | `queue_id` | 응답 | int (64비트) | 예 | 처리한 대기열 ID |
 | `approval_status` | 응답 | string | 예 | 승인 `approved`, 거절·숨김 `rejected` |
 | `applied` | 응답 | boolean | 예 | 축제 행에 변경 사항을 실제 반영했는지 표시 |
 
-승인에 필요한 좌표는 위도 33~39, 경도 124~132입니다. 주소와 위경도 모두 없는 축제는 4-1절의 공개 조건을 따릅니다. 담당자는 분류·좌표 등 확인한 축제 필드를 `value`로 보완할 수 있습니다. 서버는 ID·검토 상태·게시 시각을 직접 관리합니다.
+승인에 필요한 좌표는 위도 33–39, 경도 124–132입니다. 주소와 위경도 모두 없는 축제는 4-1절의 공개 조건을 따릅니다. 담당자는 분류·좌표 등 확인한 축제 필드를 `value`로 보완할 수 있습니다. 서버는 ID·검토 상태·게시 시각을 직접 관리합니다.
 
 #### A26. 주변 대중교통 실시간 도착 `GET /api/v1/festivals/{festival_id}/transit`
 
 | 항목 | 명세 |
 |---|---|
-| 쿼리 | `mode`: `all`(기본)·`subway`·`bus` / `radius_m`: 100~1000, 기본 500 / `limit`: 정류장·역 최대 10 |
+| 쿼리 | `mode`: `all`(기본)·`subway`·`bus` / `radius_m`: 100–1000, 기본 500 / `limit`: 정류장·역 최대 10 |
 | 공급원 | 지하철: 서울 지하철 실시간(서울만) / 버스: **서울 = 서울시 버스도착정보 15000314, 서울 밖 = TAGO** |
 | 동작 규칙 | 기본 모의. `TRANSIT_PROVIDER=real`은 적재한 역·정류장을 기준으로 조회합니다. |
 | 규칙 | 주변 역·정류장 목록은 A08 위치 데이터에서 찾고, 도착 정보만 실시간으로 부름. 지하철 `barvlDt`가 0이어도 도착 전일 수 있어 **`arvlMsg2` 문구를 함께** 줌. 서울 버스 `itemCount`는 0으로 와서 **건수로 쓰지 않음**. TAGO `resultCode` 99는 일시 오류로 재시도. 캐시 30초 |
@@ -2134,7 +2131,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `mode` | query | string | 아니요 | `all`(기본)·`subway`·`bus` |
-| `radius_m` | query | int | 아니요 | 100~1000m, 기본 500 |
+| `radius_m` | query | int | 아니요 | 100–1000m, 기본 500 |
 | `limit` | query | int | 아니요 | 정류장·역 최대 10곳 |
 
 | 응답 `stations[]` | 타입 | 원본 | 설명 |
@@ -2160,7 +2157,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 | 항목 | 명세 |
 |---|---|
-| 쿼리 | `radius_m`: 500~10000, 기본 2000 / `type`: 선택 `accident`·`construction`·`event`·`control` |
+| 쿼리 | `radius_m`: 500–10000, 기본 2000 / `type`: 선택 `accident`·`construction`·`event`·`control` |
 | 공급원 | 경찰청 교통돌발(UTIC, 전국, XML) + 서울 TOPIS(서울 보강, XML) |
 | 동작 규칙 | 기본 모의. `TRAFFIC_INCIDENT_PROVIDER=real`은 서울 TOPIS(일반 키)와 전국 경찰청을 조회합니다. **전국은 UTIC**(허용 IP: 학원망)를 씁니다. UTIC 응답이 공급원 호출 1회 제한(3초)보다 느려 요청 중에 부르지 않고, `UTIC_ENABLED=true`이면 API 시작 시 백그라운드 작업이 60초마다(`UTIC_REFRESH_S`, 호출 제한 `UTIC_TIMEOUT_S` 20초) 미리 받아 두며, A28은 120초 안의 마지막 성공본만 씁니다. 보관본이 없거나 오래되면 TOPIS만 보여 주고 "전국 교통 돌발을 확인할 수 없어…" 안내를 붙입니다. 워커 프로세스마다 따로 받습니다(공통 Redis 도입 뒤 한 곳으로). 공공데이터포털 경찰청 오퍼레이션(`POLICE_INCIDENT_API_URL`)은 승인된 주소가 없어 쓰지 않습니다. [info2](../../backend/Doc/info2/SPEC.md) · [utic](../../backend/Doc/utic/SPEC.md) |
 | 규칙 | 경찰청은 지역 필터 없이 **전국 전체가 와서 서버가 반경으로 거름**. 날짜가 "2026년 11월 19일 16시 22분" 문자열이라 어댑터가 ISO 시각으로 바꿈. TOPIS 좌표 `grs80tm_x/y`는 GRS80 TM → 위경도 변환. 두 공급원에 같은 사건이 있으면 거리 100m 이내이고 발생 시간이 겹치면 하나로 합침(8-4 ⑧). 캐시 1분. 경로 근거(`area_evidence.traffic_incidents`)도 이 데이터를 씀 |
@@ -2169,7 +2166,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `radius_m` | query | int | 아니요 | 500~10000m, 기본 2000 |
+| `radius_m` | query | int | 아니요 | 500–10000m, 기본 2000 |
 | `type` | query | string | 아니요 | `accident`·`construction`·`event`·`control` |
 
 | 응답 `items[]` | 타입 | 원본 | 설명 |
@@ -2184,21 +2181,21 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 | 항목 | 명세 |
 |---|---|
-| 쿼리 | `days`: 1~30, 기본 7 |
+| 쿼리 | `days`: 1–30, 기본 7 |
 | 공급원 | 한국관광공사 관광지 집중률 예측 15128555 + 지역별 관광 수요 강도 15151868 |
-| 동작 규칙 | 기본 모의. `VISIT_FORECAST_PROVIDER=real`은 `approved:true`인 축제↔관광지 연결에서만 조회하고, **축제 장소 이름 안에 관광지 이름이 들어 있어야** 씁니다(장소가 바뀌면 자동으로 끊김). 기본 매핑 파일, 메모리 일일 캐시, 선택적 `VISIT_FORECAST_STORE=db` 적재를 지원합니다. **승인 연결**: 서울빛초롱축제·청계천의 빛 → 관광공사 관광지 집중률 `청계광장`(areaCd 11, signguCd 11140 중구). 근거: 실호출 목록에 청계광장 존재, 축제 장소 "청계천(청계광장 ~ 삼일교)"·주소 중구 태평로1가. [info2 명세](../../backend/Doc/info2/SPEC.md) |
-| 규칙 | **실시간 혼잡이 아니라 상대값(0~100) 예측**이므로 다른 이름·색으로 표시. 축제 장소와 이름이 맞는 관광지(`tAtsNm`)가 있을 때만 `forecast`를 주고, 없으면 `forecast.status:"unsupported"`("이 축제 장소의 예측 자료가 없어요"). 관광 수요 강도는 **시군구 코드와 지표 코드를 함께 넣어야** 값이 옴(문서엔 선택값). 하루 1회 수집해 `realtime_snapshots`(`visit_forecast`·`region_demand`)에 저장 |
+| 동작 규칙 | 기본 모의. `VISIT_FORECAST_PROVIDER=real`은 `approved:true`인 축제↔관광지 연결에서만 조회하고, **축제 장소 이름 안에 관광지 이름이 들어 있어야** 씁니다(장소가 바뀌면 자동으로 끊김). 기본 매핑 파일, 메모리 일일 캐시, 선택적 `VISIT_FORECAST_STORE=db` 적재를 지원합니다. **승인 연결**: 서울빛초롱축제·청계천의 빛 → 관광공사 관광지 집중률 `청계광장`(areaCd 11, signguCd 11140 중구). 근거: 실호출 목록에 청계광장 존재, 축제 장소 "청계천(청계광장 – 삼일교)"·주소 중구 태평로1가. [info2 명세](../../backend/Doc/info2/SPEC.md) |
+| 규칙 | **실시간 혼잡이 아니라 상대값(0–100) 예측**이므로 다른 이름·색으로 표시. 축제 장소와 이름이 맞는 관광지(`tAtsNm`)가 있을 때만 `forecast`를 주고, 없으면 `forecast.status:"unsupported"`("이 축제 장소의 예측 자료가 없어요"). 관광 수요 강도는 **시군구 코드와 지표 코드를 함께 넣어야** 값이 옴(문서엔 선택값). 하루 1회 수집해 `realtime_snapshots`(`visit_forecast`·`region_demand`)에 저장 |
 
 **A29 쿼리 필드**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `days` | query | int | 아니요 | 1~30일, 기본 7 |
+| `days` | query | int | 아니요 | 1–30일, 기본 7 |
 
 | 응답 필드 | 타입 | 원본 | 설명 |
 |---|---|---|---|
 | `forecast.attraction` | string | `tAtsNm` | 연결된 관광지 이름 |
-| `forecast.days[]` | array | `baseYmd`·`cnctrRate` | `{date, rate}` rate는 0~100 상대값 |
+| `forecast.days[]` | array | `baseYmd`·`cnctrRate` | `{date, rate}` rate는 0–100 상대값 |
 | `region_demand` | object | `tarSjrnDsIxCd`·`tarSjrnDsIxNm`·`tarSjrnDsIxVal`·`baseYm`·`signguNm` | `{indicator, value, base_month, area_name}` 월 1회 갱신(지난달까지) |
 
 #### A42. 지금 핫한 축제 `GET /api/v1/festivals/trending`
@@ -2207,7 +2204,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 |---|---|---|
 | 1 | 호출 목적 | 축제 탭에 네이버 검색 관심 증가율과 구석구석 인기순으로 계산한 점수 상위 축제를 보여 줌. A39 인기는 서비스 내부 조회·관심 수를 사용 |
 | 2 | 요청 헤더 | `X-Request-ID`(선택). 인증 없음 |
-| 3 | 경로·쿼리 | `region` 선택(2-1절 코드, 기본 `ALL`) / `limit` 1~20(기본 10) |
+| 3 | 경로·쿼리 | `region` 선택(2-1절 코드, 기본 `ALL`) / `limit` 1–20(기본 10) |
 | 4 | 요청 본문 | 없음 |
 | 5 | 검증·권한 | 공개. 쿼리 형식 위반 시 422 |
 | 6 | 정상 응답 | 200 `{items[], crawled_at, source, status, partial_sources}`. 한 출처의 점수만 반영되면 `partial_sources: true`와 '일부 출처만 반영' 안내 |
@@ -2219,7 +2216,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `region` | query | string | 아니요 | 시·도 코드(2-1절), 기본 `ALL` |
-| `limit` | query | int | 아니요 | 1~20, 기본 10 |
+| `limit` | query | int | 아니요 | 1–20, 기본 10 |
 
 **수집·점수·정렬**
 
@@ -2228,7 +2225,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | 대상 | 게시된 축제 중 진행 중이거나 오늘부터 30일 이내에 시작하는 축제(KST) |
 | 네이버 `trend_naver_datalab` ↔ `naver_datalab` | NAVER API HUB 검색어 트렌드 `POST /search-trend/v1/search`(8-4). 한도 월 50,000건 |
 | 검색어 묶음 | 정식 축제 이름 사용. 일반어 단독 사용은 제외하고 비슷한 이름에는 지역명 추가. 요청당 최대 5개 묶음(축제 최대 4개와 공통 기준점 '축제' 1개). 모든 요청에 같은 기준점 묶음을 포함해 상대값 척도를 맞춤 |
-| 네이버 점수 | 수집일 전날까지의 최근 7일 일별 상대값 평균 ÷ 직전 7일 평균(KST)을 `trend_ratio`로 저장. 같은 회차의 유효한 증가율 최댓값으로 나눠 0~1로 정규화. 최댓값이 0이거나 유효한 증가율이 없으면 네이버 점수는 결측 처리. 회차 최댓값은 지역·건수 필터 적용 전에 산정 |
+| 네이버 점수 | 수집일 전날까지의 최근 7일 일별 상대값 평균 ÷ 직전 7일 평균(KST)을 `trend_ratio`로 저장. 같은 회차의 유효한 증가율 최댓값으로 나눠 0–1로 정규화. 최댓값이 0이거나 유효한 증가율이 없으면 네이버 점수는 결측 처리. 회차 최댓값은 지역·건수 필터 적용 전에 산정 |
 | 신호 없음 | 최근 7일 평균이 같은 요청의 기준점 최근 7일 평균 × `TREND_MIN_RELATIVE`(0.01)보다 작거나 직전 7일 평균·기준점 평균이 0이면 `signal: no_signal`, `trend_ratio: null`로 기록하고 네이버 점수를 결측 처리 |
 | 구석구석 `trend_visitkorea` ↔ `visitkorea` | 한국관광공사 대한민국 구석구석 축제 목록 인기순. 약관과 `robots.txt` 허용 확인 뒤 축제명·순위(`source_rank`)만 크롤링. 요청 간격 1초 이상, 목록 소수 페이지만, 서비스명을 넣은 User-Agent, 일시 실패 시 재시도 1회(8-4 ②) |
 | 구석구석 점수 | 1 − (`source_rank` − 1) / (같은 회차 구석구석 순위 개수). 순위 개수는 매칭·지역·건수 필터 적용 전 수집 목록 기준 |
@@ -2247,7 +2244,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | `items[].festival_id`·`name`·`region_code`·`start_date`·`end_date`·`thumbnail_url`·`image_credit` | — | 썸네일 null 가능 | `festivals` 표시 필드 |
 | `items[].source_rank` | int | 가능 | 점수에 반영한 구석구석 순위. 구석구석 점수를 반영하지 않으면 `null` |
 | `items[].crawled_at` | string(date-time) | 불가 | 해당 항목에 반영된 `festival_trends.crawled_at` 중 가장 최근 시각 |
-| `items[].score` | number | 불가 | 0~1 최종 점수. 두 출처의 가중합 또는 사용 가능한 한쪽 점수 |
+| `items[].score` | number | 불가 | 0–1 최종 점수. 두 출처의 가중합 또는 사용 가능한 한쪽 점수 |
 | `items[].signal` | string | 불가 | 네이버 점수가 반영되면 `ok`, 사용할 수 없으면 `no_signal`. `no_signal`이어도 구석구석 점수는 반영 가능 |
 | `items[].sources` | array<string> | 불가 | 점수에 반영된 출처만 포함. `trend_naver_datalab` ↔ `naver_datalab`, `trend_visitkorea` ↔ `visitkorea` |
 | `items[].partial_sources` | boolean | 불가 | 항목에 출처 하나만 반영되면 `true` |
@@ -2260,7 +2257,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 |---|---|
 | 요청 | 인증 없음. `X-Request-ID` 선택. 경로 변수만 받음 |
 | 공급원 | `GET /search/v1/blog`의 `postdate`(yyyyMMdd), `GET /search/v1/news`의 `pubDate`(KST로 변환), `GET /search/v1/cafearticle`(날짜 없음). `title`·`description`의 검색 강조 `<b>` 태그 제거(8-4) |
-| 결과 선별 | 태그를 제거한 제목에 정식 축제 이름(`festivals.title`)이 정확히 포함된 글을 선별. 블로그·뉴스는 KST 게시일이 축제 시작일 30일 전 이후(경계일 포함)인 글을 최신순으로 정렬하며, 시작일이 없으면 해당 두 출처의 글은 제외. 카페는 제목 정확 일치 조건만 적용하고 날짜가 있는 글 다음에 공급원 반환 순서로 표시. 세 출처를 합쳐 최대 `POSTS_LIMIT`건(설정 범위 3~5, 기본 5) |
+| 결과 선별 | 태그를 제거한 제목에 정식 축제 이름(`festivals.title`)이 정확히 포함된 글을 선별. 블로그·뉴스는 KST 게시일이 축제 시작일 30일 전 이후(경계일 포함)인 글을 최신순으로 정렬하며, 시작일이 없으면 해당 두 출처의 글은 제외. 카페는 제목 정확 일치 조건만 적용하고 날짜가 있는 글 다음에 공급원 반환 순서로 표시. 세 출처를 합쳐 최대 `POSTS_LIMIT`건(설정 범위 3–5, 기본 5) |
 | 캐시 | 정상 결과의 제목·링크·게시일·출처 종류만 Redis `posts:{festival_id}`에 `POSTS_CACHE_TTL_S`(600초) 동안 저장. 글 목록의 영구 저장과 본문 저장은 하지 않음 |
 | 정상·실패 | HTTP 200. 정상 조회는 `status: ok`(결과가 없으면 `items: []`), 공급원 오류·한도 초과 시 `items: []`, `status: unavailable`, `retryable: true`. 실패 응답은 캐시하지 않음 |
 | 오류 | 404 `FESTIVAL_NOT_FOUND`(존재하지 않거나 공개되지 않은 축제), 422 `VALIDATION_ERROR`(경로 변수 형식 오류). 공통 오류 형식(2절) |
@@ -2302,7 +2299,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 ### 7-2. 맞춤 추천·친구·동행·채팅·알림·마이페이지 — 상세 명세
 
-기획서 FR-REC01~16·FR-COM12~14와 취향 5개·권한 기준안을 기준으로 합니다. DB는 04 문서 마이그레이션 005(시험 T29~T33).
+기획서 FR-REC01–16·FR-COM12–14와 취향 5개·권한 기준안을 기준으로 합니다. DB는 04 문서 마이그레이션 005(시험 T29–T33).
 
 #### 7-2-1. 축제를 5가지 취향으로 분류하는 방법 (규칙 후보 → LLM 검증)
 
@@ -2337,7 +2334,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 `점수 = 0.5 × 태그 일치 + 0.2 × 날짜 적합 + 0.2 × 정보 완성도 + 0.1 × 관심 저장 보정`
 
-| 항목 | 계산 (0~1) |
+| 항목 | 계산 (0–1) |
 |---|---|
 | 태그 일치 | 고른 취향마다 필요한 태그를 모두 가진 비율(여러 취향을 고르면 가장 높은 값). 취향 `pet`(반려견과 함께하는 축제)을 고르면 그 취향 점수는 `pet_allowed`가 검증된 축제만 1, 없으면 0 — 반려견은 **별도 칸 없이 취향 값 하나**(기획서 FR-REC03) |
 | 날짜 적합 | 진행 중 1.0, 14일 안 시작 0.7, 30일 안 0.4, 그 뒤 0.1. 종료·취소·비공개는 **후보에서 제외** |
@@ -2346,12 +2343,12 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 동점이면 시작일 → `festival_id` 순으로 고정합니다(같은 요청이면 같은 순서).
 
-#### 7-2-2. 추천 API (A36~A41)
+#### 7-2-2. 추천 API (A36–A41)
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A36** `GET /api/v1/me/festival-preferences` | — | `{scenarios[], onboarding_status, updated_at}` (행이 없으면 `onboarding_status:"pending"`) | user, 본인만(RLS, T29e) | 401 |
-| **A37** `PUT /api/v1/me/festival-preferences` | `{scenarios: [5개 중 0~5개], skip: bool}` — 반려견은 `scenarios`에 `pet`으로 | 200 A36과 같은 모양 | user. `skip=true` 또는 빈 배열 → `skipped`(FR-REC04), 1개 이상 → `completed`. 바꾸면 다음 A38부터 다시 계산(FR-REC05) | 401 / 422(모르는 값 — DB도 거부, T29a) |
+| **A37** `PUT /api/v1/me/festival-preferences` | `{scenarios: [5개 중 0–5개], skip: bool}` — 반려견은 `scenarios`에 `pet`으로 | 200 A36과 같은 모양 | user. `skip=true` 또는 빈 배열 → `skipped`(FR-REC04), 1개 이상 → `completed`. 바꾸면 다음 A38부터 다시 계산(FR-REC05) | 401 / 422(모르는 값 — DB도 거부, T29a) |
 | **A38** `GET /api/v1/festivals/recommended` | 쿼리 `scenarios`(비로그인일 때 쉼표 구분, 로그인이면 저장된 취향이 기본) · `region` · `date_from`·`date_to` · `page`·`page_size`(≤50) | `{items[] {festival_id, name, region_code, start_date, end_date, event_status, thumbnail_url, image_credit, score, applied_tags[], recommendation_reason[]}, score_version, total, page, page_size, fallback}` | 선택 로그인. `recommendation_reason`은 **검증된 태그의 근거 문장으로 만든 고정 문구**(요청 때 LLM 안 씀). 예: "공식 안내에 '야간 포토존 운영'이 있어요". 일치 축제가 없으면 `items:[]`, `fallback:"all_festivals"`(FR-REC15). 추천됐다고 관심 저장하지 않음(FR-REC14) | 422 |
 | **A39** `GET /api/v1/festivals/popular` | `region` · `page` | `{items[] {…카드 필드, views_7d, favorites_7d}, window:"7d", fallback}` | 공개. 최근 7일 `festival_engagement_daily` 합. **사람 1명 하루 1회**만 셈(Redis `eng:{festival_id}:{day}`에 세션 HMAC 집합 → 하루 끝에 숫자만 DB로, 테스트·봇 User-Agent 제외). 지표가 20건 미만이면 `fallback:"recent"`로 A41 목록 | 422 |
 | **A40** `GET /api/v1/festivals/discover` | `region` · `page` · `seed`(선택) | `{items[], seed, page}` | 공개. 섞는 순서 = `hash(seed, festival_id)`. `seed` 없으면 서버가 `날짜+세션`으로 만들어 돌려줌 → 같은 seed면 페이지를 넘겨도 순서 고정(FR-REC11) | 422 |
@@ -2359,13 +2356,13 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 - A36·A37은 `AUTH_PROVIDER=db`에서 본인의 `user_festival_preferences` 행을 읽고 저장하며, 기본은 모의 모드입니다. 미저장 상태는 빈 배열과 `updated_at:null`로 응답합니다. 건너뛰면 빈 배열을 저장하고, 중복 취향은 첫 선택 순서를 유지해 하나로 저장합니다.
 
-- A38~A41의 축제 목록은 승인·게시된 예정/진행 축제만(종료·취소·비공개 제외), 없는 축제를 만들지 않음. A36~A41 고정 경로는 `/festivals/{festival_id}`보다 먼저 등록(3절 라우터 규칙).
+- A38–A41의 축제 목록은 승인·게시된 예정/진행 축제만(종료·취소·비공개 제외), 없는 축제를 만들지 않음. A36–A41 고정 경로는 `/festivals/{festival_id}`보다 먼저 등록(3절 라우터 규칙).
 
 **A36 조회·A37 저장 필드**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `scenarios` | body | array<string> | A37 예 | 0~5개, `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` |
+| `scenarios` | body | array<string> | A37 예 | 0–5개, `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` |
 | `skip` | body | boolean | A37 예 | `true` 또는 빈 `scenarios`이면 건너뛰기 |
 | `scenarios` | 응답 | array<string> | A36·A37 예 | 저장한 취향, 위 5개 값 |
 | `onboarding_status` | 응답 | string | A36·A37 예 | `pending`(저장 행 없음)·`completed`·`skipped` |
@@ -2410,13 +2407,13 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | `seed` | 응답 | string | A40 예 | 실제 정렬에 사용한 시드 |
 | `items[].published_at` | 응답 | string(date-time) | A41 최신 항목 | 최초 공개 시각, 최신순 정렬 기준 |
 
-#### 7-2-3. 친구 API (A43~A50)
+#### 7-2-3. 친구 API (A43–A50)
 
-**동작 규칙** — A43~A50은 `AUTH_PROVIDER=db`면 PostgreSQL, 기본은 mock 모드입니다. A43은 사용자별 최근 60초에 20회까지 허용하며 Redis 연동 전에는 API 프로세스 메모리에 횟수를 보관합니다. A47은 1페이지부터 20건씩 반환합니다. A49에서 기존 1:1 방을 닫고, A50은 실제 차단 삭제가 끝나면 채팅 연동 함수 `notify_chat_unblocked`를 호출합니다. 새 1:1 방 개설은 A67에서 처리합니다.
+**동작 규칙** — A43–A50은 `AUTH_PROVIDER=db`면 PostgreSQL, 기본은 mock 모드입니다. A43은 사용자별 최근 60초에 20회까지 허용하며 Redis 연동 전에는 API 프로세스 메모리에 횟수를 보관합니다. A47은 1페이지부터 20건씩 반환합니다. A49에서 기존 1:1 방을 닫고, A50은 실제 차단 삭제가 끝나면 채팅 연동 함수 `notify_chat_unblocked`를 호출합니다. 새 1:1 방 개설은 A67에서 처리합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
-| **A43** `GET /api/v1/users/search` | 쿼리 `nickname`(2~12자) — **정확히 일치만**(대소문자 무시, 일부만 치면 0건) | `{items[] {user_id, display_name, friendship_status: none·pending_sent·pending_received·friends}}` 최대 1건(닉네임은 겹치지 않음) | user. **친구 코드 없음, 닉네임으로 검색**(DB `app_find_user_by_nickname`). 나이·성별은 돌려주지 않음. 이메일·전화번호로는 검색 안 됨. 나를 차단한 사람·내가 차단한 사람은 안 나옴 | 401 / 422 / 429(분당 20회) |
+| **A43** `GET /api/v1/users/search` | 쿼리 `nickname`(2–12자) — **정확히 일치만**(대소문자 무시, 일부만 치면 0건) | `{items[] {user_id, display_name, friendship_status: none·pending_sent·pending_received·friends}}` 최대 1건(닉네임은 겹치지 않음) | user. **친구 코드 없음, 닉네임으로 검색**(DB `app_find_user_by_nickname`). 나이·성별은 돌려주지 않음. 이메일·전화번호로는 검색 안 됨. 나를 차단한 사람·내가 차단한 사람은 안 나옴 | 401 / 422 / 429(분당 20회) |
 | **A44** `POST /api/v1/friend-requests` | `{to_user_id}` | 201 `{request_id: "frq_…", status:"pending"}` | user. 나 자신(DB 거부, T32c)·이미 친구·차단 관계면 거부. 반대 방향으로 대기 중 신청이 있으면 **그 신청을 바로 수락으로 처리**(중복 신청 대신) | 401 / 404 / 409 `ALREADY_FRIENDS`·`REQUEST_PENDING`·`BLOCKED` |
 | **A45** `GET /api/v1/me/friend-requests` | 쿼리 `box`: `received`(기본)·`sent` | `{items[] {request_id, user_id, display_name, status, created_at}}` | user, 당사자만(RLS, T33c) | 401 |
 | **A46** `POST /api/v1/friend-requests/{request_id}/{action}` | `action`: `accept`·`reject`(받은 사람) / `cancel`(보낸 사람) | 200 `{request_id, status}` | 정해진 사람만. `accept`는 **한 트랜잭션**으로 신청 상태 변경 + `friendships` 1행(작은 ID가 `user_a`) | 401 / 403 / 404 / 409 `REQUEST_NOT_PENDING` |
@@ -2429,7 +2426,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `nickname` | query | string | 예 | 2~12자, 대소문자 무시 정확히 일치 |
+| `nickname` | query | string | 예 | 2–12자, 대소문자 무시 정확히 일치 |
 | `items` | 응답 | array<object> | 예 | 검색 결과 최대 1건 |
 | `items[].user_id` | 응답 | string (UUID) | 예 | 찾은 사용자 ID |
 | `items[].display_name` | 응답 | string | 예 | 그 사용자의 닉네임 |
@@ -2469,16 +2466,16 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 - 동행 승인은 친구 추가로 이어지지 않습니다(친구 추가 API로만).
 - **친구 추천**(같이 동행한 사람, 취향이 비슷한 사람 등)은 기획서에 없어 **이번 범위에서 뺍니다.** 후보로만 남깁니다. 넣으면 개인정보 노출(누가 누구와 동행했는지) 검토가 먼저 필요합니다.
 
-#### 7-2-4. 동행 API (A57~A65)
+#### 7-2-4. 동행 API (A57–A65)
 
-**동작 규칙** — A57~A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. A60 신청과 A62 승인은 양방향 차단 관계를 검사하고 `409 BLOCKED`로 거부합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
+**동작 규칙** — A57–A65와 글 수정·수동 마감을 연결했습니다. 기본은 메모리 mock이며 `AUTH_PROVIDER=db`에서 RLS 조회와 서비스 트랜잭션을 사용합니다. 채팅방 생성·입장은 `ChatRooms` 기본 DB 구현을 호출합니다. A60 신청과 A62 승인은 양방향 차단 관계를 검사하고 `409 BLOCKED`로 거부합니다. [동행 구현·검증](../../backend/Doc/companions/IMP-PLAN.md)
 
 시간당 정기 작업이 기본 `meet_at + 12시간`에 도달한 글을 자동 종료하고 방을 읽기 전용으로 전환합니다. 종료·취소 시각부터 72시간이 지나면 동행 내용을 정리합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A57** `GET /api/v1/festivals/{festival_id}/companion-posts` | `status`(기본 `open`)·`page`(기본 1, 20개씩) | `{items[] {post_id, author_display_name, meet_at, capacity, approved_count, age_pref, gender_pref, memo, status}}` | 공개. **정확한 만남 장소는 안 줌**(FR-COM01·08) | 404 / 422 |
-| **A58** `POST /api/v1/companion-posts` | `{festival_id, meet_at, capacity(1~10, 작성자 제외), age_pref?, gender_pref?, memo?(≤500)}` | 201 `{post_id, room_id}` | user. `meet_at`은 **축제 기간 안의 미래 시각만**(400 `MEET_AT_INVALID`, FR-COM03). 한 트랜잭션: 동행방(`companion`) 만들기 + 작성자 방장 입장 + 글 저장, 만남 장소는 처음 '미정'(FR-COM04) | 401 / 400 / 404 / 422 |
+| **A58** `POST /api/v1/companion-posts` | `{festival_id, meet_at, capacity(1–10, 작성자 제외), age_pref?, gender_pref?, memo?(≤500)}` | 201 `{post_id, room_id}` | user. `meet_at`은 **축제 기간 안의 미래 시각만**(400 `MEET_AT_INVALID`, FR-COM03). 한 트랜잭션: 동행방(`companion`) 만들기 + 작성자 방장 입장 + 글 저장, 만남 장소는 처음 '미정'(FR-COM04) | 401 / 400 / 404 / 422 |
 | **A59** `GET /api/v1/companion-posts/{post_id}` | — | A57 한 건 + `my_application_status` | 공개 | 404 |
 | **A58 보완** `PATCH /api/v1/companion-posts/{post_id}` | `meet_at`·`capacity`·`age_pref`·`gender_pref`·`memo` 중 1개 이상 | 200 `{post_id, status}` | 작성자만. 일정 검증은 A58과 같으며 정원은 승인 인원 이상이어야 함. `age_pref`·`memo`의 null은 기존 값 제거. 수동 마감은 정원 변경 뒤에도 유지 | 401 / 400 `MEET_AT_INVALID` / 403 / 404 / 409 `CAPACITY_FULL`·`POST_CLOSED` / 422 |
 | **A60** `POST /api/v1/companion-posts/{post_id}/applications` | `{message?(≤200)}` | 201 `{application_id, status:"pending"}` | user. 본인 글·마감·종료 글 거부, **대기·승인·거절 기록이 있으면 재신청 불가, 취소했으면 재신청 가능**(DB 부분 UNIQUE, T36a). 차단 관계면 신청 거부. 작성자에게 알림 | 401 / 403 `OWN_POST` / 404 / 409 `APPLICATION_EXISTS`·`POST_CLOSED`·`BLOCKED` |
@@ -2497,7 +2494,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | `page` | query | int | A57 선택 | 조회할 페이지 번호 |
 | `festival_id` | body | string | A58 예 | `fst_…`, 모집할 축제 ID |
 | `meet_at` | body | string(date-time) | A58 예 | 축제 기간 안의 미래 시각 |
-| `capacity` | body | int | A58 예 | 1~10명, 작성자 제외 |
+| `capacity` | body | int | A58 예 | 1–10명, 작성자 제외 |
 | `age_pref` | body | string | A58 선택 | `any`·`20s`·`30s`·`40s`·`50s_plus` |
 | `gender_pref` | body | string | A58 선택 | `any`(DB 기본값)·`female`·`male` |
 | `memo` | body | string | A58 선택 | 모집 안내, 500자 이하 |
@@ -2511,7 +2508,7 @@ BFCL 30문항의 채점에는 API 설계서 최신판을 적용합니다([기록
 | `post_id` | 응답 | string | 예 | 모집 글 ID, A57에서는 `items[].post_id` |
 | `author_display_name` | 응답 | string 또는 null | A57·A59 예 | 작성자 닉네임(`app_public_display_name`), A57에서는 항목 필드 |
 | `meet_at` | 응답 | string(date-time) | A57·A59 예 | 만남 시각 |
-| `capacity` | 응답 | int | A57·A59 예 | 모집 정원(작성자 제외 1~10명) |
+| `capacity` | 응답 | int | A57·A59 예 | 모집 정원(작성자 제외 1–10명) |
 | `approved_count` | 응답 | int | A57·A59 예 | 승인 인원, 0 이상 정원 이하 |
 | `age_pref` | 응답 | string 또는 null | A57·A59 예 | 위 A58의 연령대 조건 |
 | `gender_pref` | 응답 | string | A57·A59 예 | 위 A58의 성별 조건 |
@@ -2549,10 +2546,10 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 |---|---|---|---|---|
 | `post_id` | path | string | A63·A64·A65 예 | `^cpo_[0-9A-Za-z]{6,26}$`, 모집 글 ID |
 | `action` | path | string | A65 예 | `close`·`end`·`cancel` |
-| `name` | body | string | A63 예 | 장소 이름 1~60자 |
+| `name` | body | string | A63 예 | 장소 이름 1–60자 |
 | `address` | body | string | A63 선택 | 주소 |
-| `lat` | body | number | A63 쌍으로 선택 | 위도 33~39, 경도와 함께 제공하거나 둘 다 생략 |
-| `lng` | body | number | A63 쌍으로 선택 | 경도 124~132, 위도와 함께 제공하거나 둘 다 생략 |
+| `lat` | body | number | A63 쌍으로 선택 | 위도 33–39, 경도와 함께 제공하거나 둘 다 생략 |
+| `lng` | body | number | A63 쌍으로 선택 | 경도 124–132, 위도와 함께 제공하거나 둘 다 생략 |
 | `guide` | body | string | A63 선택 | 만남 안내, 300자 이하 |
 | `post_id` | 응답 | string | A63·A65 예 | 수정하거나 종료·취소한 모집 글 ID |
 | `updated_at` | 응답 | string(date-time) | A63 및 A64 장소가 있으면 예 | 장소 최종 변경 시각 |
@@ -2563,16 +2560,16 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | `guide` | 응답 | string 또는 null | A64 장소가 있으면 예 | 만남 안내 |
 | `status` | 응답 | string | A64 장소가 없으면 예·A65 예 | A64 미정이면 `undecided`, A65 완료면 `full`·`ended`·`cancelled` |
 
-#### 7-2-5. 채팅 API (A66~A73 + WebSocket)
+#### 7-2-5. 채팅 API (A66–A73 + WebSocket)
 
-**동작 규칙** — A66~A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. A69는 정의되지 않은 동작에 `404 NOT_FOUND`를 반환합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
+**동작 규칙** — A66–A73 및 WebSocket을 구현했습니다. `AUTH_PROVIDER=db`는 007·016·021_chat과 RLS를 사용하며 기본값은 모의입니다. 연결 표와 브로드캐스트는 단일 서버 메모리를 사용합니다. A69는 정의되지 않은 동작에 `404 NOT_FOUND`를 반환합니다. 실제 WebSocket 서버 실행과 연동 함수는 [채팅 구현 명세](../../backend/Doc/chat/SPEC.md)를 따릅니다.
 
 정기 작업이 30일 지난 친구 채팅과 종료 72시간이 지난 동행방의 메시지 본문을 비우고 삭제 시각을 기록합니다. DB는 메시지 순서를 보존합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A66** `GET /api/v1/me/chat-rooms` | `filter`: `all`·`companion`·`friend`·`past` | `{items[] {room_id, room_type, name, status, last_message_at, unread_count, my_status}}` — 없으면 `items:[]` + `empty_hint`("동행을 찾거나 친구를 추가해 보세요", FR-COM20) | user, 내가 `invited`·`joined`인 방만(RLS) | 401 |
-| **A67** `POST /api/v1/chat-rooms` | 1:1 `{type:"direct", friend_id}` / 단체 `{type:"friend_group", name(1~40), invitee_ids[2~19]}` | 201 `{room_id}` (열린 1:1 방이 이미 있으면 **200 + 기존 `room_id`**) | user. **실제 친구만**(`friendships`), 차단 관계 제외(FR-COM14·15). 차단 해제 뒤 닫힌 방은 재사용하지 않으며 새 대화에는 새 방 생성(DB 6-8). 단체방은 만든 사람이 방장, 나머지는 `invited` | 401 / 403 `NOT_FRIENDS`·`BLOCKED` / 422 |
+| **A67** `POST /api/v1/chat-rooms` | 1:1 `{type:"direct", friend_id}` / 단체 `{type:"friend_group", name(1–40), invitee_ids[2–19]}` | 201 `{room_id}` (열린 1:1 방이 이미 있으면 **200 + 기존 `room_id`**) | user. **실제 친구만**(`friendships`), 차단 관계 제외(FR-COM14·15). 차단 해제 뒤 닫힌 방은 재사용하지 않으며 새 대화에는 새 방 생성(DB 6-8). 단체방은 만든 사람이 방장, 나머지는 `invited` | 401 / 403 `NOT_FRIENDS`·`BLOCKED` / 422 |
 | **A68** `POST /api/v1/chat-rooms/{room_id}/invitations` | `{invitee_ids[]}` | 200 | 단체방 **방장만**, 친구만, 동행방에는 초대 불가(FR-COM08). 초대 알림 | 401 / 403 / 409 |
 | **A69** `POST /api/v1/chat-rooms/{room_id}/{action}` | `accept`·`decline`(초대받은 사람) / `leave`(멤버) | 200 `{room_id, my_status}` | `accept` 하면 그때부터(`joined_at`) 메시지가 보임 — **이전 메시지는 안 보임**(FR-COM16, T38f). 방장이 나가면 **가장 먼저 들어온 멤버가 방장**(FR-COM17). 동행방은 `leave` 대신 신청 취소·종료 흐름 | 401 / 403 / 404 `NOT_FOUND`(지원하지 않는 동작) / 409 |
 | **A70** `PATCH /api/v1/chat-rooms/{room_id}` | `{name}` | 200 | 단체방 방장만(FR-COM17) | 401 / 403 / 422 |
@@ -2589,7 +2586,7 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 | `items` | 응답 | array<object> | 예 | 내가 초대됐거나 입장한 채팅방 목록 |
 | `items[].room_id` | 응답 | string | 예 | 채팅방 ID |
 | `items[].room_type` | 응답 | string | 예 | `companion`·`direct`·`friend_group` |
-| `items[].name` | 응답 | string 또는 null | 예 | 채팅방 이름, 단체방은 1~40자 |
+| `items[].name` | 응답 | string 또는 null | 예 | 채팅방 이름, 단체방은 1–40자 |
 | `items[].status` | 응답 | string | 예 | `active`·`read_only`·`closed` |
 | `items[].last_message_at` | 응답 | string(date-time) 또는 null | 예 | 마지막 메시지 시각 |
 | `items[].unread_count` | 응답 | int | 예 | 내가 아직 읽지 않은 메시지 수 |
@@ -2602,8 +2599,8 @@ A57의 글 필드는 `items[]` 안에 있으며, A59는 글 한 건과 본인 �
 |---|---|---|---|---|
 | `type` | body | string | A67 예 | `direct`·`friend_group` |
 | `friend_id` | body | string (UUID) | A67 1:1방 예 | 실제 친구의 사용자 ID |
-| `name` | body | string | A67 단체방·A70 예 | 단체방 이름 1~40자 |
-| `invitee_ids` | body | array<string (UUID)> | A67 단체방·A68 예 | 초대할 친구 ID, A67 단체방 생성 시 2~19명 |
+| `name` | body | string | A67 단체방·A70 예 | 단체방 이름 1–40자 |
+| `invitee_ids` | body | array<string (UUID)> | A67 단체방·A68 예 | 초대할 친구 ID, A67 단체방 생성 시 2–19명 |
 | `room_id` | path | string | A68·A69·A70 예 | `^crm_[0-9A-Za-z]{6,26}$`, 대상 채팅방 ID |
 | `action` | path | string | A69 예 | `accept`·`decline`은 초대받은 사람, `leave`는 멤버 |
 | `room_id` | 응답 | string | A67·A69 예 | 생성하거나 상태가 바뀐 방 ID, 기존 1:1 방은 기존 ID |
@@ -2615,7 +2612,7 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 |---|---|---|---|---|
 | `room_id` | 응답 | string | A68·A70 예 | 대상 방 ID |
 | `invited` | 응답 | array<object> | A68 예 | 이번에 초대한 멤버. 항목마다 `user_id`(UUID)·`status`(`invited`)·`invited_at`(ISO 8601). 이미 멤버이거나 초대 중인 사람은 넣지 않음 |
-| `name` | 응답 | string | A70 예 | 바뀐 방 이름 1~40자 |
+| `name` | 응답 | string | A70 예 | 바뀐 방 이름 1–40자 |
 
 **A71 메시지 이력·A72 읽음·A73 연결 표 발급**
 
@@ -2632,7 +2629,7 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | `items[].sender_id` | 응답 | string (UUID) 또는 null | A71 예 | 발신자 ID, 시스템 메시지는 null |
 | `items[].sender_display_name` | 응답 | string 또는 null | A71 예 | 발신자 닉네임(`app_public_display_name`) |
 | `items[].msg_type` | 응답 | string | A71 예 | `text`·`system` |
-| `items[].body` | 응답 | string | A71 예 | 숨김 처리되지 않은 메시지 본문, 1~1000자 |
+| `items[].body` | 응답 | string | A71 예 | 숨김 처리되지 않은 메시지 본문, 1–1000자 |
 | `items[].created_at` | 응답 | string(date-time) | A71 예 | 저장 시각 |
 | `has_more` | 응답 | boolean | A71 예 | 조회한 방향에 메시지가 더 있는지 표시 |
 | `ticket` | 응답 | string | A73 예 | WebSocket 연결에 쓰는 1회용 표, 요청 본문은 빈 객체 |
@@ -2643,7 +2640,7 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | 방향 | `type` | 내용 |
 |---|---|---|
 | 앱 → 서버 | `subscribe` | `{room_id, after_seq}` — 그 뒤 메시지를 먼저 보내 주고 실시간으로 이어 감 |
-| 앱 → 서버 | `send` | `{room_id, client_message_id(8~64, 앱이 만든 UUID), body(1~1000)}` |
+| 앱 → 서버 | `send` | `{room_id, client_message_id(8–64, 앱이 만든 UUID), body(1–1000)}` |
 | 서버 → 앱 | `ack` | `{client_message_id, message_id, seq}` — **DB 저장(commit) 뒤에만** 보냄. 저장 실패면 `error`(완료 아님) |
 | 서버 → 앱 | `message` | `{room_id, message_id, seq, sender_id, msg_type, body, created_at}` |
 | 서버 → 앱 | `error` | `{code: FORBIDDEN·ROOM_READ_ONLY·RATE_LIMITED·VALIDATION_ERROR·STORE_FAILED, client_message_id?}` |
@@ -2659,8 +2656,8 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | `type` | body | string | 예 | 앱 → 서버 이벤트 종류 `subscribe`·`send` |
 | `room_id` | body | string | 예 | 구독하거나 전송할 채팅방 ID, `crm_…` |
 | `after_seq` | body | int (64비트) | `subscribe` 예 | 재수신 기준이 되는 마지막 방별 순번 |
-| `client_message_id` | body | string | `send` 예 | 앱에서 만든 UUID, 8~64자, 재전송 시 같은 값 사용 |
-| `body` | body | string | `send` 예 | 텍스트 본문 1~1000자 |
+| `client_message_id` | body | string | `send` 예 | 앱에서 만든 UUID, 8–64자, 재전송 시 같은 값 사용 |
+| `body` | body | string | `send` 예 | 텍스트 본문 1–1000자 |
 | `type` | 응답 | string | 예 | 서버 → 앱 이벤트 종류 `ack`·`message`·`error`·`room_status`·`notification`·`unsubscribed` |
 | `room_id` | 응답 | string | `message`·`room_status`·`unsubscribed` 예 | 메시지·상태 변경·구독 해제 대상 채팅방 ID |
 | `client_message_id` | 응답 | string | `ack` 예, `error` 선택 | 대응하는 앱 전송 ID |
@@ -2668,7 +2665,7 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 | `seq` | 응답 | int (64비트) | `ack`·`message` 예 | 저장 시 발급된 방별 순번 |
 | `sender_id` | 응답 | string (UUID) 또는 null | `message` 예 | 발신자 ID, 시스템 메시지는 null |
 | `msg_type` | 응답 | string | `message` 예 | `text`·`system` |
-| `body` | 응답 | string | `message` 예 | 메시지 본문 1~1000자 |
+| `body` | 응답 | string | `message` 예 | 메시지 본문 1–1000자 |
 | `created_at` | 응답 | string(date-time) | `message`·`notification` 예 | 메시지 또는 알림 생성 시각 |
 | `code` | 응답 | string | `error` 예 | `FORBIDDEN`·`ROOM_READ_ONLY`·`RATE_LIMITED`·`VALIDATION_ERROR`·`STORE_FAILED` |
 | `status` | 응답 | string | `room_status` 예 | `read_only`·`closed` |
@@ -2683,24 +2680,24 @@ A68 초대와 A70 이름 변경의 성공 응답(200) 본문은 아래와 같습
 - **전송 처리 순서:** ① 멤버·차단·방 상태 확인 → ② 한 트랜잭션에서 `chat_rooms.last_seq + 1`로 순서 발급 + `chat_messages` 저장 → ③ commit 성공 뒤 `ack` → ④ Redis 최근 메시지 갱신·Pub/Sub 발행. 같은 `client_message_id` 재전송은 DB UNIQUE(T38b)로 **처음 저장된 메시지의 `ack`를 다시** 보냄(중복 저장 없음). Redis 실패는 전송 성공에 영향 없음(읽을 때 DB로).
 - 전송 제한: 사람당 초당 5개·방당 초당 20개(초기값, 8-4). 사용자 대화는 AI·RAG에 넣지 않음(5.20).
 
-#### 7-2-6. 알림·신고·마이페이지·탈퇴·비밀번호 변경 (A74~A80·A82)
+#### 7-2-6. 알림·신고·마이페이지·탈퇴·비밀번호 변경 (A74–A80·A82)
 
 **동작 규칙** — A74·A75를 구현했습니다. 본인의 알림을 조회하고 읽음 처리합니다. WebSocket은 `{"type":"notification","notification":{...}}`으로 새 알림을 전달합니다.
 
 **동작 규칙** — A74·A75에 동행 신청·승인, 친구 신청·수락, 채팅 초대 알림을 연결했습니다. A76은 접수 시 대상 권한과 KST 날짜 기준 중복을 확인합니다. A77은 `operator`·`admin`이 서비스 계정으로 조회·처리합니다. 첫 상세 조회에서 `reviewing`으로 전환하며, 바로 처리하면 같은 트랜잭션에서 `reviewing`을 거칩니다. 채팅 신고 상세는 신고 사유를 열람 이유로 기록한 뒤 응답합니다. `block_user`는 일반 사용자 계정만 `disabled`로 전환합니다. A78은 A32와 같은 닉네임 검증을 사용합니다.
 
-**마이페이지 API** — 관심 축제(A11~A13), 축제 취향(A36·A37), 본인 프로필(A78), 내 동행 내역(A79), 탈퇴(A80), 비밀번호 변경(A82)을 제공합니다. 필수 범위는 비밀번호 변경·탈퇴·관심 축제이고, A36·A37·A78·A79는 함께 제공하되 화면에 넣을지는 화면 담당이 정합니다. `AUTH_PROVIDER=db`에서 실제 DB, 기본은 모의 모드이며 모의 동행 내역은 빈 배열입니다. 운영 공지·이용약관은 고정 문서 링크를 사용합니다.
+**마이페이지 API** — 관심 축제(A11–A13), 축제 취향(A36·A37), 본인 프로필(A78), 내 동행 내역(A79), 탈퇴(A80), 비밀번호 변경(A82)을 제공합니다. 필수 범위는 비밀번호 변경·탈퇴·관심 축제이고, A36·A37·A78·A79는 함께 제공하되 화면에 넣을지는 화면 담당이 정합니다. `AUTH_PROVIDER=db`에서 실제 DB, 기본은 모의 모드이며 모의 동행 내역은 빈 배열입니다. 운영 공지·이용약관은 고정 문서 링크를 사용합니다.
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
 | **A74** `GET /api/v1/me/notifications` | `unread_only`·`page` | `{items[] {notification_id, type, ref_type, ref_id, created_at, read_at}, unread_count}` | user, 본인 것만(RLS, T39c). **앱 안 알림만**(외부 푸시는 범위 밖, FR-COM21). 화면은 WebSocket 연결 중이면 `notification` 이벤트로도 받음 | 401 |
 | **A75** `POST /api/v1/me/notifications/read` | `{ids[]}` 또는 `{all: true}` | 204 | 읽음 칸만 바꿈(T39a·b) | 401 |
 | **A76** `POST /api/v1/reports` | `{target_type: companion_post·chat_message·chat_room·user, target_id, reason(6종), detail?}` | 201 `{report_id}` | user. 같은 대상은 신고자당 KST 날짜 기준 하루 1회(8-4 ⑧). 방 신고는 현재 입장한 멤버, 메시지 신고는 해당 메시지 열람 권한이 있는 멤버만 접수. 신고자는 자기 신고만 봄(T40d) | 400 `VALIDATION_ERROR`(본인 계정 신고) / 401 / 404 / 409 |
-| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | operator·admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 시험은 8-2-2절에 연결. 메시지 숨김은 `chat_messages.deleted_at`으로 처리하고 다음 이력 조회에서 제외, 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d~f — 작성자 외에는 안 보임). `block_user`는 대상의 `profiles.role='user'`일 때만 가능 | 401 / 403 `FORBIDDEN`(운영자·관리자 계정 정지 거부) / 404 |
+| **A77** `GET`·`POST /api/v1/admin/reports` | GET 목록 `status`·`page`, 상세 `report_id` / POST `{report_id, action: dismiss·hide_message·hide_post·close_room·block_user, note}` (`close_room` = 신고된 채팅방을 `read_only`로) | 200 | operator·admin. 관리자 열람 범위는 **신고된 메시지만**입니다: 메시지 신고(`chat_message`)는 그 메시지 1건만 보여 주고, 방 신고(`chat_room`)는 메시지 원문을 열지 않고 방 정보·신고 사유만 보고 처리(`close_room` 등)합니다. 채팅 신고 상세를 열람할 때마다 **`chat_admin_access`에 이유와 함께 기록한 뒤** 보여 줌(기록은 수정·삭제 불가 T40c). 서버의 열람 범위 검사와 시험은 8-2-2절에 연결. 메시지 숨김은 `chat_messages.deleted_at`으로 처리하고 다음 이력 조회에서 제외, 글 숨김은 `companion_posts.hidden_at`·`hidden_by`(마이그레이션 008, T42d–f — 작성자 외에는 안 보임). `block_user`는 대상의 `profiles.role='user'`일 때만 가능 | 401 / 403 `FORBIDDEN`(운영자·관리자 계정 정지 거부) / 404 |
 | **A78** `GET`·`PATCH /api/v1/me/profile` | PATCH `{display_name?}` (A32와 같은 닉네임 규칙으로 변경) | `{user_id, display_name, birth_year, gender, onboarding_status}` (출생연도·성별은 본인 화면용. 다른 사람에게는 **동행 신청 때 그 글 작성자에게만 나이·성별**이 보임 — A61) | user, 본인만. 이메일·전화번호·나이·성별은 다른 사람에게 보이지 않음(FR-COM22) | 401 / 409 `NICKNAME_TAKEN` / 422 |
 | **A79** `GET /api/v1/me/companion-activity` | `type`: `posts`·`applications` | 200 `{items[]}`, 조회 유형별 항목 필드는 아래 A79 표 | user, 본인 내역(작성 글 또는 보낸 신청), 생성 최신순 | 401 / 422 |
 | **A80** `DELETE /api/v1/me` (탈퇴) | `{password}` 재확인 | 204 | user. **DB 한 트랜잭션**(DB 설계서 7-0 ②): Refresh 토큰·관심·취향·알림·친구 신청·관계·차단 행 삭제, 진행 중 동행 글·신청 취소, 채팅방 퇴장과 방장 승계, 챗봇 질문·답변·방문 코스 결과 삭제, 프로필 개인정보 NULL, 계정 이메일·비밀번호 해시 덮어쓰기와 `status='deleted'`. 같은 DB에 LangGraph 체크포인트 테이블이 있으면 본인 대화 상태도 함께 삭제. 커밋 뒤 현재 Access의 `jti`를 폐기하며 모든 기기의 Access는 계정 상태 검사에서 거부(커밋 뒤 폐기 저장소가 응답하지 않아도 탈퇴는 유지하고 204 — 계정 상태 검사가 막음). 열린 WebSocket은 세션 재확인(1초 주기) 때 구독 해지(`unsubscribed`, `reason:"deleted"`) 뒤 4403으로 닫힘. 메시지는 화면에서 작성자 ‘알 수 없음’으로 표시하고 본문은 방 보존 정책을 따름. 커밋 뒤 DB 밖 탈퇴 기록(`WITHDRAWAL_LOG_PATH`, user_id·시각만)에 한 줄 추가 — 백업에서 복원하면 이 기록으로 다시 정리(DB 설계서 7-0 ⑥) | 401 / 403 `PASSWORD_MISMATCH` / 422 / 503 `AUTH_CHECK_UNAVAILABLE`(요청 시작 때 인증 확인 불가) |
-| **A82** `POST /api/v1/me/password` (비밀번호 변경) | `{current_password, new_password}` | 204 | user. 새 비밀번호는 A32와 같은 규칙(영문·숫자 포함 8~64자), 현재 비밀번호와 같으면 거부. **DB 한 트랜잭션**: `users` 행 잠금 → 현재 비밀번호 확인 → `password_hash`를 Argon2id 새 해시로 교체 → 그 계정의 모든 `refresh_tokens.revoked_at` 기록. 커밋 뒤 현재 Access의 `jti` 폐기(이 기기 즉시 로그아웃, 열린 WebSocket도 다음 재확인 때 4403). **다른 기기의 Access는 남은 수명(기본 30분, `ACCESS_JWT_TTL_MIN`, 8-4) 동안 쓸 수 있고** 갱신은 거부됨 → 새 비밀번호로 다시 로그인. 세션이 끝나는 범위는 모의 모드도 같음(폐기된 Refresh를 다시 보내면 DB 모드는 401 `REFRESH_REUSED`, 모의 모드는 401 `REFRESH_INVALID`). 커밋 뒤 폐기 저장소가 응답하지 않으면 변경은 유지하고 204(현재 Access도 만료까지 유효, 서버 경고 기록) | 401 / 403 `PASSWORD_MISMATCH` / 422 `VALIDATION_ERROR` / 503 `AUTH_CHECK_UNAVAILABLE`(요청 시작 때 인증 확인 불가) |
+| **A82** `POST /api/v1/me/password` (비밀번호 변경) | `{current_password, new_password}` | 204 | user. 새 비밀번호는 A32와 같은 규칙(영문·숫자 포함 8–64자), 현재 비밀번호와 같으면 거부. **DB 한 트랜잭션**: `users` 행 잠금 → 현재 비밀번호 확인 → `password_hash`를 Argon2id 새 해시로 교체 → 그 계정의 모든 `refresh_tokens.revoked_at` 기록. 커밋 뒤 현재 Access의 `jti` 폐기(이 기기 즉시 로그아웃, 열린 WebSocket도 다음 재확인 때 4403). **다른 기기의 Access는 남은 수명(기본 30분, `ACCESS_JWT_TTL_MIN`, 8-4) 동안 쓸 수 있고** 갱신은 거부됨 → 새 비밀번호로 다시 로그인. 세션이 끝나는 범위는 모의 모드도 같음(폐기된 Refresh를 다시 보내면 DB 모드는 401 `REFRESH_REUSED`, 모의 모드는 401 `REFRESH_INVALID`). 커밋 뒤 폐기 저장소가 응답하지 않으면 변경은 유지하고 204(현재 Access도 만료까지 유효, 서버 경고 기록) | 401 / 403 `PASSWORD_MISMATCH` / 422 `VALIDATION_ERROR` / 503 `AUTH_CHECK_UNAVAILABLE`(요청 시작 때 인증 확인 불가) |
 
 **A74 알림 목록·A75 읽음 처리**
 
@@ -2763,10 +2760,10 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `display_name` | body | string | PATCH 선택 | 제어문자 없이 앞뒤 공백 제거 후 2~12자. 정규화한 닉네임으로 대소문자 무시 중복 검사(009) |
+| `display_name` | body | string | PATCH 선택 | 제어문자 없이 앞뒤 공백 제거 후 2–12자. 정규화한 닉네임으로 대소문자 무시 중복 검사(009) |
 | `user_id` | 응답 | string (UUID) | 예 | 본인 사용자 ID |
 | `display_name` | 응답 | string 또는 null | 예 | 본인 닉네임 |
-| `birth_year` | 응답 | int 또는 null | 예 | 본인 출생연도, 009 저장 범위 1900~2100(A32 가입은 1900~올해) |
+| `birth_year` | 응답 | int 또는 null | 예 | 본인 출생연도, 009 저장 범위 1900–2100(A32 가입은 1900–올해) |
 | `gender` | 응답 | string 또는 null | 예 | 본인 성별, `male`·`female` |
 | `onboarding_status` | 응답 | string | 예 | A36의 `pending`·`completed`·`skipped` |
 
@@ -2784,14 +2781,14 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | `items[].post_id` | 응답 | string | 예 | 내 모집 글 ID |
 | `items[].festival_id` | 응답 | string | 예 | 모집 대상 축제 ID |
 | `items[].meet_at` | 응답 | string(date-time) | 예 | 만남 시각 |
-| `items[].capacity` | 응답 | int | 예 | 모집 정원(작성자 제외 1~10명) |
+| `items[].capacity` | 응답 | int | 예 | 모집 정원(작성자 제외 1–10명) |
 | `items[].approved_count` | 응답 | int | 예 | 승인 인원, 0 이상 정원 이하 |
 | `items[].age_pref` | 응답 | string 또는 null | 예 | A58의 연령대 조건 |
 | `items[].gender_pref` | 응답 | string | 예 | A58의 성별 조건 |
 | `items[].memo` | 응답 | string 또는 null | 예 | 모집 안내, 500자 이하 |
 | `items[].status` | 응답 | string | 예 | `open`·`full`·`ended`·`cancelled` |
 
-**A79 type=applications 항목 (A60~A62와 companion_applications)**
+**A79 type=applications 항목 (A60–A62와 companion_applications)**
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
@@ -2812,7 +2809,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
 | `current_password` | body | string (SecretStr) | 예 | 지금 쓰는 비밀번호. 틀리면 403 `PASSWORD_MISMATCH`(A80과 같은 코드) |
-| `new_password` | body | string (SecretStr) | 예 | 영문·숫자를 포함한 8~64자(A32 규칙). `current_password`와 같으면 422. 다른 필드가 있으면 422 |
+| `new_password` | body | string (SecretStr) | 예 | 영문·숫자를 포함한 8–64자(A32 규칙). `current_password`와 같으면 422. 다른 필드가 있으면 422 |
 | `Authorization` | header | string | 예 | `Bearer` Access 토큰. 성공 뒤 이 토큰은 바로 쓸 수 없음 |
 
 ### 7-3. AI 방문 코스·공지 관리·축제 관리
@@ -2824,7 +2821,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | 1 | 호출 목적 | 고른 축제에서 **무엇을 어떤 순서로 할지** 동행 유형·시간에 맞춰 코스를 만듦(맞춤 추천 A38은 '어느 축제를 갈지', A51은 '그 축제에서 무엇을 할지'). 화면 `assistant/` 방문 코스, API `assistant/chatbot.py`, 에이전트 Festival |
 | 2 | 요청 헤더 | A06과 같음 (`Authorization` 선택) |
 | 3 | 경로·쿼리 | 없음 |
-| 4 | 요청 본문 | `{request_id(8~64), festival_id, companion: family_relaxed·friends_activity·couple_photo·pet·solo, start_at(축제 기간 안 ISO 시각), duration_min: 60~480, constraints: {wheelchair}}` |
+| 4 | 요청 본문 | `{request_id(8–64), festival_id, companion: family_relaxed·friends_activity·couple_photo·pet·solo, start_at(축제 기간 안 ISO 시각), duration_min: 60–480, constraints: {wheelchair}}` |
 | 5 | 검증·권한 | 형식 422 → 축제 없음 404 → `start_at`이 축제 기간 밖이면 400 `COURSE_OUT_OF_PERIOD` → 요청 수 제한 429(A06과 같은 한도) → 같은 `request_id`는 처음 `run_id`(멱등) |
 | 6 | 정상 응답 | **202** `{run_id, run_kind:"visit_course", run_status:"queued", status_url, events_url, run_access_token}` — A06과 같은 작업 방식, 결과는 **A06-1**(`result`)·진행은 **A06-2**로 |
 | 7 | 오류 응답 | 400 `COURSE_OUT_OF_PERIOD` / 404 `FESTIVAL_NOT_FOUND` / 409 `IDEMPOTENCY_CONFLICT` / 422 / 429 / 503 `AI_AGENT_FAILED` |
@@ -2834,11 +2831,11 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 
 | 필드 | 위치 | 타입 | 필수 | 제약·설명 |
 |---|---|---|---|---|
-| `request_id` | body | string | 예 | 8~64자, 같은 요청 재전송 시 기존 작업 사용 |
+| `request_id` | body | string | 예 | 8–64자, 같은 요청 재전송 시 기존 작업 사용 |
 | `festival_id` | body | string | 예 | 방문할 축제 ID |
 | `companion` | body | string | 예 | `family_relaxed`·`friends_activity`·`couple_photo`·`pet`·`solo` |
 | `start_at` | body | string(date-time) | 예 | 축제 기간 안의 시작 시각 |
-| `duration_min` | body | int | 예 | 60~480분 |
+| `duration_min` | body | int | 예 | 60–480분 |
 | `constraints` | body | object | 예 | 이동 제약 |
 | `constraints.wheelchair` | body | boolean | 예 | 휠체어 이용 조건 |
 | `run_id` | 응답 | string | 예 | 등록된 코스 작업 ID |
@@ -2893,11 +2890,11 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 
 - 코스 수정·재추천(FR-P02)은 Should라 이번 범위 밖입니다(같은 요청을 조건만 바꿔 새로 보내면 됨).
 
-#### A52~A54. 공식 공지 관리 (FR-O06 등록·수정, FR-D05 승인 — 둘 다 "적용 시" Must)
+#### A52–A54. 공식 공지 관리 (FR-O06 등록·수정, FR-D05 승인 — 둘 다 "적용 시" Must)
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
-| **A52** `POST /api/v1/admin/notices` | `{festival_id?, type(5종, A07), title(1~200), content, effective_from, effective_to, source_url}` | 201 `{notice_id, approval_status:"pending"}` | operator·admin. 등록만으로는 **공개·경로 차단에 쓰지 않음**(승인 전 `pending`, RLS로 공개 조회 안 됨 — T35e). `notice_events`에 `create` 1줄 | 401 / 403 / 404(축제) / 422 |
+| **A52** `POST /api/v1/admin/notices` | `{festival_id?, type(5종, A07), title(1–200), content, effective_from, effective_to, source_url}` | 201 `{notice_id, approval_status:"pending"}` | operator·admin. 등록만으로는 **공개·경로 차단에 쓰지 않음**(승인 전 `pending`, RLS로 공개 조회 안 됨 — T35e). `notice_events`에 `create` 1줄 | 401 / 403 / 404(축제) / 422 |
 | **A53** `PATCH /api/v1/admin/notices/{notice_id}` | 바꿀 칸만 | 200 `{notice_id, approval_status}` | operator·admin. 승인·반려 공지를 고치면 **다시 `pending`**(재승인 필요). 바뀌기 전·후 값을 `notice_events`(`update`)에 | 401 / 403 / 404 / 422 |
 | **A54** `POST /api/v1/admin/notices/{notice_id}/review` | `{decision: "approve"·"reject", reason}` (반려는 이유 필수 — DB도 거부, T35b) | 200 `{notice_id, approval_status, control_version}` | operator·admin. **등록한 사람과 다른 검토자 권장**(2인 확인, 팀 인원상 필수는 아님). 승인되면 `control_version`이 바뀌어 그 축제의 경로 캐시를 무효화(04 문서 7절) → 귀가 경로가 통제를 반영(FR-R06·R09) | 401 / 403 / 404 / 409 `ALREADY_REVIEWED` / 422 |
 | **수동 종료** `POST /api/v1/admin/notices/{notice_id}/end` | 본문 생략 또는 `{reason?}` | 200 `{notice_id, approval_status, control_version}` | operator·admin. 승인된 공지의 효력을 즉시 종료하고 `end` 이력을 남깁니다. 승인 상태를 유지하며 A07은 `active_only=false`에서 종료 공지를 반환합니다. | 401 / 403 / 404 / 409 `NOTICE_NOT_APPROVED`·`ALREADY_ENDED` / 422 |
@@ -2909,7 +2906,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | `notice_id` | path | string | A53·A54·수동 종료 예 | 수정·검토·종료할 공지 ID |
 | `festival_id` | body | string | A52·A53 선택 | 관련 축제 ID, 공통 공지는 생략 가능 |
 | `type` | body | string | A52 예·A53 선택 | `operation`·`traffic_control`·`no_stop`·`bus_detour`·`road_closure` |
-| `title` | body | string | A52 예·A53 선택 | 제목 1~200자 |
+| `title` | body | string | A52 예·A53 선택 | 제목 1–200자 |
 | `content` | body | string | A52 예·A53 선택 | 공지 내용 |
 | `effective_from` | body | string(date-time) | A52 예·A53 선택 | 시간대가 포함된 효력 시작 시각 |
 | `effective_to` | body | string(date-time) | A52 예·A53 선택 | 시간대가 포함된 효력 종료 시각, 시작보다 뒤 |
@@ -2929,7 +2926,7 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 
 **동작 규칙** — `admin/notices.py`의 운영자·관리자 API가 006·023을 사용합니다. 승인, 승인 공지 재검토, 수동 종료, 효력 시작·종료에 맞춰 축제별 버전을 변경합니다. 공통 공지는 모든 축제에서 조회하고 버전에 반영합니다. [공식 공지 구현 문서](../../backend/Doc/notice/SPEC.md)
 
-#### A55~A56. 축제 직접 등록·수정 (FR-D12·O10 관리자 보완·승인)
+#### A55–A56. 축제 직접 등록·수정 (FR-D12·O10 관리자 보완·승인)
 
 | API | 요청 | 응답 | 권한·규칙 | 오류 |
 |---|---|---|---|---|
@@ -2946,8 +2943,8 @@ A77 목록과 상세는 같은 GET 경로를 사용합니다. `status`·`page`�
 | `start_date` | body | string(date) | A55 예·A56 선택 | 축제 시작일 |
 | `end_date` | body | string(date) | A55 예·A56 선택 | 축제 종료일 |
 | `venue_name` | body | string | A55 예·A56 선택 | 축제 장소 |
-| `lat` | body | number | A55 예·A56 선택 | 위도 33~39(`festivals.latitude`) |
-| `lng` | body | number | A55 예·A56 선택 | 경도 124~132(`festivals.longitude`) |
+| `lat` | body | number | A55 예·A56 선택 | 위도 33–39(`festivals.latitude`) |
+| `lng` | body | number | A55 예·A56 선택 | 경도 124–132(`festivals.longitude`) |
 | `address` | body | string | 선택 | 축제 주소 |
 | `overview` | body | string | 선택 | 축제 소개 |
 | `fee_text` | body | string | 선택 | 입장료 안내(`admission_fee_text`) |
@@ -2984,7 +2981,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 TravelMode = Literal["transit", "walk", "car", "taxi"]          # 공급원 지원 범위 확인 후 축소 가능
-RoutePreference = Literal["fastest", "less_crowded", "accessible", "min_walk", "fewest_transfers"]   # 기획서 FR-R01~R05
+RoutePreference = Literal["fastest", "less_crowded", "accessible", "min_walk", "fewest_transfers"]   # 기획서 FR-R01–R05
 RouteStatus = Literal["queued", "processing", "ready", "unavailable", "rejected", "timed_out"]   # DB의 created는 내부 전용(응답에 안 나옴)
 FinalMode = Literal["normal_recovered", "valid_cache", "alternate_source", "degraded", "unresolved"]
 RegionCode = Literal["ALL", "SEOUL", "BUSAN", "DAEGU", "INCHEON", "GWANGJU", "DAEJEON", "ULSAN", "SEJONG",
@@ -3068,7 +3065,7 @@ class RouteLoadSimulationRequest(BaseModel):                    # 운영자 전�
     cache_state: Literal["cold", "warm"] = "cold"
     repeat_group: str | None = Field(default=None, max_length=40)   # 같은 조건 반복 묶음
     run_index: int = Field(default=1, ge=1, le=20)                  # 반복 몇 번째인지
-    fault: dict | None = None                                    # {"type": "internal_delay", "delay_ms": 1~5000}
+    fault: dict | None = None                                    # {"type": "internal_delay", "delay_ms": 1–5000}
     upstream: Literal["mock_adapter"] = "mock_adapter"         # 외부 공급원 부하 금지: 실제 공급원 선택지 없음
     seed: int | None = None
 
@@ -3119,7 +3116,7 @@ class AssistantQueryRequest(BaseModel):                         # A06 (6-9)
 | 요청 수 제한 | 귀가·가는 길 요청 IP·세션당 분당 10회, 챗봇 분당 10회(초기값, 8-4 ⑤) | 외부 쿼터·비용 보호 |
 | **길찾기 일일 한도** | TMAP Free 10건(오류 포함) 도달 시 카카오 2차(하루 1,000건). 하루 비용 상한 0원. **80%: 운영 경고 + 그 공급원으로 보내는 우회 조치(`fallback_provider_switch`) 원복. 100%: 그 공급원 호출 중지**(양쪽 소진 시 `ROUTE_QUOTA_EXCEEDED`). 카운터의 현재 저장 위치와 설정 기준은 8-4 ⑤ 참조 | 확정 |
 | 외부 데이터 캐시 | 날씨·도착 정보·돌발은 공급원 갱신 주기만큼 캐시(초안: 도착 30초, 돌발 1분, 날씨 10분) | 같은 화면을 여러 사람이 볼 때 외부 호출 줄이기 |
-| LLM 실패 | `/api/v1/assistant/query` 실패해도 A02~A05는 독립 동작 | FR-C09, FR-H13 |
+| LLM 실패 | `/api/v1/assistant/query` 실패해도 A02–A05는 독립 동작 | FR-C09, FR-H13 |
 | 외부 429 | `ROUTE_UPSTREAM_ERROR` + 원본 코드 로그, 재시도는 `Retry-After` 이후 1회 | BFCL NLD-12·25 |
 | 재시도하지 않는 오류 | 400·401·403·404·409·422 | 입력·권한 문제는 다시 보내도 같음(수업 가이드 S22) |
 | 중복 실행 방지 | 경로 요청은 `request_id`, 복구 결정은 `Idempotency-Key`로 처음 결과를 돌려줌. 같은 사건에 실행 중인 조치가 있으면 409 | 수업 가이드 S22 |
@@ -3156,7 +3153,7 @@ class AssistantQueryRequest(BaseModel):                         # A06 (6-9)
 | `TREND_SCORE_WEIGHTS` | `naver_datalab: 0.6`, `visitkorea: 0.4` | A42 최종 점수 | 두 점수가 있을 때 가중합. 한쪽만 있으면 해당 점수 그대로 사용 | 확정 |
 | `TREND_MIN_RELATIVE` | 0.01 | A42 최근 7일 검색 신호 하한 | 같은 요청의 기준점('축제') 최근 7일 평균 대비 1% 미만은 `no_signal` | 확정 |
 | `NAVER_API_HUB_KEY_ID` / `NAVER_API_HUB_KEY` | 서버 환경변수 | NAVER API HUB 데이터랩(A42)·검색(A81) 공용 | 인증 헤더 `X-NCP-APIGW-API-KEY-ID`·`X-NCP-APIGW-API-KEY`. 상세 명세는 [기록 13](API_구현_검증기록.md#13-외부-데이터-공급원과-지역-범위-1118-회의-반영)절 | 확정 |
-| `POSTS_LIMIT` | 5건(설정 범위 3~5) | A81 최신 글 표시 | 세 출처의 필터 통과 결과를 합쳐 최대 5건 | 확정 |
+| `POSTS_LIMIT` | 5건(설정 범위 3–5) | A81 최신 글 표시 | 세 출처의 필터 통과 결과를 합쳐 최대 5건 | 확정 |
 | `SIM_STOP_GRACE_S` | 2초 | A21 중단 후 새 요청 멈춤 | 시연 정지 버튼 | 초기값 |
 | `RECOVERY_DEFAULT_MAX_MIN` | 5분 | A19 `stop_condition` 기본값 | 5-8 재측정 한 번에 충분 | 초기값 |
 
@@ -3194,8 +3191,8 @@ class AssistantQueryRequest(BaseModel):                         # A06 (6-9)
 | `ROUTE_RATE_LIMIT_PER_MIN` | 10회/분 (IP·세션당) | A04·A25 (`rl:route`) — **부하 생성기는 내부 시험 경로라 적용 안 함** | 초기값 |
 | `ASSISTANT_RATE_LIMIT_PER_MIN` | 10회/분 (IP·세션당) | A06 | 초기값 |
 | `ROUTE_WORKER_CONCURRENCY` | 20 | 귀가 조회 동시 처리 상한(작업 풀 분리) | 초기값 |
-| `ROUTE_QUEUE_MAX` | 50 (조정 범위 20~100) | 내부 대기열 상한 — `bounded_queue_adjust`는 이 범위 안에서만 | 초기값 |
-| `SIM_*` 상한 | 동시 1~200, 지속 5~300초, 초당 ≤100, 지연 주입 ≤5,000ms, 반복 ≤20 | A20 (8-1절 스키마) | 초기값 |
+| `ROUTE_QUEUE_MAX` | 50 (조정 범위 20–100) | 내부 대기열 상한 — `bounded_queue_adjust`는 이 범위 안에서만 | 초기값 |
+| `SIM_*` 상한 | 동시 1–200, 지속 5–300초, 초당 ≤100, 지연 주입 ≤5,000ms, 반복 ≤20 | A20 (8-1절 스키마) | 초기값 |
 | `RECOVERY_MAX_ACTIVE` / `RECOVERY_MAX_ATTEMPTS` | 1 / 3 | A18·A19 (5-8 순서) | 초기값 |
 | `QUOTA_TMAP_FREE` / `QUOTA_KAKAO_FREE` (지금 코드: `ROUTE_TMAP_DAILY_LIMIT` / `ROUTE_KAKAO_DAILY_LIMIT`) | 10건/일 / 1,000건/일 (카카오 도보도 1,000건/일 따로) | `quota:{provider}` — **오류 응답(403 등)도 1건으로 셈**(SK 회신 없이 적용하는 확정 기준: 오류 포함 모든 요청을 1건으로 세고 매일 0시 KST 초기화로 운영) | **외부 고정**(공급원 공식 한도, `evidence/usage/API_공식한도_20261120.md`) |
 | `QUOTA_DAILY_COST_KRW` | **0원/일**(무료 한도 안에서 호출) | 공급원별 비용 상한, 80% 경고·100% 중지 | 확정 |
