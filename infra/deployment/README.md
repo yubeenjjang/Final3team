@@ -48,6 +48,7 @@ curl http://127.0.0.1:8000/api/v1/health
 6. **7일 백업**: `Docs/Step 2/db/backup_long_term.sh`(경로 본문 제외)를 언제·어디서 돌릴지 W65에서 결정.
 
 ## 참고
-- `/api/v1/health`는 지금 DB·Redis 연결을 실제로 확인하지 않는다(응답의 `db`·`redis`가 `mock`). DB 상태 확인은 W12의 남은 일이다.
-- `backend/api/requirements.txt`에 시험 도구(`pytest`)가 들어 있어 실행 이미지에도 설치된다. 실행용과 시험용 의존성을 나눌지 정하면 이미지가 더 작아진다.
+- **11/25 최신 `yubeen` 재검증:** 별도 Compose 프로젝트에서 001~028 적용·재기동 시 전부 건너뜀, API healthy, `/health` 200(`db=ok`), 빈 시험 DB의 축제 목록 200(`is_mock=false`, 0건), 시험 비밀값의 이미지·히스토리·로그 노출 0건. [검증 기록](../../backend/Doc/w64/VERIFY-2026-11-25.md).
+- `/api/v1/health`는 `FESTIVAL_DATA=db` 등 DB 사용 모드에서 앱 DB에 `SELECT 1`을 실행한다. Redis는 아직 `not_configured`다.
+- 시험 도구 `pytest`는 `backend/requirements-dev.txt`에 있으며 실행 이미지에는 기본 설치되지 않는다.
 - Python 3.14에서 `langsmith`가 "Python 3.16에서 없어질 함수" 경고를 낸다. 지금 동작에는 영향이 없다.
