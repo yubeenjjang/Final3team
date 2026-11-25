@@ -22,6 +22,7 @@
 | A27 실시간 주차 빈자리 | — | **채택 안 함(11/24)** | — | — | 11/24 팀 결정 | — |
 | A32~A35 가입·로그인 | `/auth/*` | 모의(메모리) | 11/26 목표, **시연 흐름 뒤로 밀릴 수 있음** | DB `users` | W18 | — |
 | A11~A13 관심 축제 | `/me/favorites` | 모의 | 12/02 | DB `favorites` | W41 | ❌ 로그인 |
+| A82 비밀번호 변경 | `POST /me/password` | **구현 ✅ 11/25** (모의·`AUTH_PROVIDER=db` 둘 다) | — | DB `users.password_hash`, 성공 시 모든 기기 Refresh 폐기 | FR-COM22 | ❌ 로그인 |
 | A06 AI 질문 | `POST /assistant/query` → `GET /assistant/runs/{id}` | 모의(키워드로 흉내) | 12월(에이전트 연결) | LangGraph | W24·W45 | ✅ |
 
 - 날짜는 **목표일**입니다. 늦어지면 이 표를 먼저 고치고 디스코드에 알립니다(실제 전환 = 이 표의 '지금' 칸이 '실제'로 바뀜).

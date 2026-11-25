@@ -1,4 +1,5 @@
 import secrets
+from dataclasses import replace
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -91,3 +92,19 @@ def delete_account(authorization: str | None, password: str) -> None:
         for token, user_id in tuple(retired_refresh_tokens.items()):
             if user_id == user.user_id:
                 del retired_refresh_tokens[token]
+
+
+def change_password(authorization: str | None, current_password: str, new_password: str) -> None:
+    with auth_lock:
+        email, user = _account(authorization)
+        if not secrets.compare_digest(_password_hash(current_password, user.salt), user.password_hash):
+            raise password_mismatch()
+        salt = secrets.token_bytes(16)
+        users_by_email[email] = replace(user, salt=salt, password_hash=_password_hash(new_password, salt))
+        # DB 모드와 같게 모든 기기의 Refresh와 이 계정의 Access를 끝냅니다.
+        for token, access in tuple(access_sessions.items()):
+            if access.user_id == user.user_id:
+                del access_sessions[token]
+        for token, refresh in tuple(refresh_sessions.items()):
+            if refresh.user.user_id == user.user_id:
+                del refresh_sessions[token]

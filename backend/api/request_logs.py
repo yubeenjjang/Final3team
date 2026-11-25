@@ -4,7 +4,7 @@ import re
 _ROUTE_PATH = re.compile(r"(/api/v1/routes/(?:return|visit))(?:/([^/]+))?/?")
 _ASSISTANT_PATH = re.compile(r"/api/v1/assistant/(query|runs/[^/]+(?:/events)?)/?")
 _AUTH_PATH = re.compile(r"(/api/v1/auth/(?:signup|login|refresh|logout))/?")
-_ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites)?)/?")
+_ME_PATH = re.compile(r"(/api/v1/me(?:/profile|/festival-preferences|/companion-activity|/favorites|/password)?)/?")
 _CHAT_PATH = re.compile(
     r"/api/v1/(?:ws/chat|chat-rooms(?:/[^/]+(?:/(?:invitations|accept|decline|leave|read|messages))?)?"
     r"|me/(?:chat-rooms|notifications(?:/read)?)|ws-tickets)/?"

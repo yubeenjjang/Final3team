@@ -29,6 +29,7 @@ def login(client, credentials):
     ("PATCH", "/profile", {"display_name": "닉네임"}),
     ("GET", "/companion-activity?type=posts", None),
     ("DELETE", "", {"password": PASSWORD}),
+    ("POST", "/password", {"current_password": PASSWORD, "new_password": "ChangedPass123"}),
 ])
 @pytest.mark.parametrize("real", [False, True])
 def test_me_requires_member(client, monkeypatch, method, path, body, real):
@@ -136,3 +137,31 @@ def test_profile_trims_before_length_and_duplicate_check(client, monkeypatch):
     updated = client.patch(ME + "/profile", headers=headers, json={"display_name": f"  {name}  "})
     assert updated.status_code == 200
     assert updated.json()["display_name"] == name
+
+
+def test_mock_password_change_validates_and_ends_sessions(client, monkeypatch):
+    monkeypatch.setenv("AUTH_PROVIDER", "mock")
+    mine, _, refresh = register_and_login(client, "Changer")
+    credentials = {"email": "Changer@example.test", "password": PASSWORD}
+    second_device, _, second_refresh = login(client, credentials)
+    path = f"{ME}/password"
+    new = "ChangedPass123"
+    for body in ({"current_password": PASSWORD, "new_password": "short1"},
+                 {"current_password": PASSWORD, "new_password": "onlyletters"},
+                 {"current_password": PASSWORD, "new_password": PASSWORD},
+                 {"current_password": PASSWORD, "new_password": new, "extra": 1}):
+        rejected = client.post(path, headers=mine, json=body)
+        assert rejected.status_code == 422 and rejected.json()["error"]["code"] == "VALIDATION_ERROR"
+    wrong = client.post(path, headers=mine, json={"current_password": "incorrect1", "new_password": new})
+    assert wrong.status_code == 403 and wrong.json()["error"]["code"] == "PASSWORD_MISMATCH"
+    assert client.get(f"{ME}/profile", headers=mine).status_code == 200
+
+    changed = client.post(path, headers=mine, json={"current_password": PASSWORD, "new_password": new})
+    assert changed.status_code == 204 and changed.content == b""
+    for headers in (mine, second_device):
+        assert client.get(f"{ME}/profile", headers=headers).status_code == 401
+    for token in (refresh, second_refresh):
+        assert client.post(f"{AUTH}/refresh", json={"refresh_token": token}).status_code == 401
+    assert client.post(f"{AUTH}/login", json=credentials).status_code == 401
+    fresh, _, _ = login(client, {**credentials, "password": new})
+    assert client.get(f"{ME}/profile", headers=fresh).status_code == 200

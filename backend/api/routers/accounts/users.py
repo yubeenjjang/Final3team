@@ -11,11 +11,12 @@ from api.schemas.users import (
     ActivityType,
     CompanionActivity,
     FestivalPreferences,
+    PasswordChange,
     PreferencesUpdate,
     Profile,
     ProfileUpdate,
 )
-from api.services import account_deletion, mock_users
+from api.services import account_deletion, mock_users, password_change
 
 router = APIRouter(prefix="/me")
 
@@ -66,4 +67,15 @@ async def delete_account(request: AccountDeletion, auth: MeSession, authorizatio
         await run_in_threadpool(mock_users.delete_account, authorization, password)
     else:
         await run_in_threadpool(account_deletion.delete_account, auth[0].claims, password)
+    return Response(status_code=204)
+
+
+@router.post("/password", status_code=204)
+async def change_password(request: PasswordChange, auth: MeSession, authorization: Authorization = None) -> Response:
+    current = request.current_password.get_secret_value()
+    new = request.new_password.get_secret_value()
+    if auth is None:
+        await run_in_threadpool(mock_users.change_password, authorization, current, new)
+    else:
+        await run_in_threadpool(password_change.change_password, auth[0].claims, current, new)
     return Response(status_code=204)
