@@ -3,7 +3,9 @@ import logging
 import os
 from dataclasses import replace
 from datetime import datetime, timedelta
+from inspect import isawaitable
 from pathlib import Path
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import httpx2
@@ -36,7 +38,7 @@ def upstream(monkeypatch, tmp_path):
         monkeypatch.setenv(key, "fixture%2Btraffic%2Ftest%3D")
     monkeypatch.setenv("FESTIVAL_INFO_QUOTA_FILE", str(tmp_path / "quota.json"))
     monkeypatch.setattr(festival_source, "_RETRY_DELAY_S", 0)
-    for env in ("FESTIVAL_DATA", "UTIC_ENABLED", "VISIT_FORECAST_MAPPING_FILE"):
+    for env in ("FESTIVAL_DATA", "UTIC_ENABLED", "UTIC_REFRESH_S", "UTIC_TIMEOUT_S", "VISIT_FORECAST_MAPPING_FILE"):
         monkeypatch.delenv(env, raising=False)
 
     calls = []
@@ -59,7 +61,8 @@ def upstream(monkeypatch, tmp_path):
                     assert request.url.params["numOfRows"] == "1000"
             reply = replies[provider]
             if callable(reply):
-                return reply(request)
+                result = reply(request)
+                return await result if isawaitable(result) else result
             return httpx2.Response(200, content=(_FILES / reply).read_bytes())
 
         service = real_festival_info.FestivalInfoService(FestivalSource(
@@ -138,31 +141,132 @@ def test_traffic_merge_requires_distance_time_and_shared_event_evidence():
     assert count(replace(peer, start_at=None)) == 2
 
 
-def test_traffic_topis_only_or_utic_when_enabled(upstream, monkeypatch):
+def test_traffic_topis_only_when_utic_is_disabled(upstream, monkeypatch):
     monkeypatch.delenv("POLICE_INCIDENT_API_URL")
-    calls, _ = upstream(topis="seoul_topis_traffic_synthetic.xml", utic="utic_traffic.xml")
+    worker = AsyncMock()
+    monkeypatch.setattr(traffic_incidents, "refresh_utic", worker)
+    calls, _ = upstream(topis="seoul_topis_traffic_synthetic.xml")
     with TestClient(app) as client:
         seoul = client.get(_url()).json()
         assert seoul["coverage"]["scope"] == "seoul_only"
         assert seoul["source"] == "seoul_topis" and seoul["notices"]
         busan = client.get(_url("fst_000003")).json()
         assert busan["status"] == "unavailable" and busan["error"]["retryable"] is False
-        assert calls == ["topis"]
+    worker.assert_not_called()
+    assert calls == ["topis"]
 
-        monkeypatch.setenv("UTIC_ENABLED", "true")
-        body = client.get(_url(), params={"radius_m": 10000}).json()
-        assert body["coverage"]["scope"] == "national"
-        assert body["source"] == "police_incident"
-        (police,) = [item for item in body["items"] if item["source"] == "police_incident"]
-        assert police["start_at"] == "2026-11-19T16:56:00+09:00"
-    assert calls == ["topis", "utic"]
+
+def test_traffic_reads_only_fresh_utic_snapshots_from_lifespan(upstream, monkeypatch):
+    monkeypatch.delenv("POLICE_INCIDENT_API_URL")
+    monkeypatch.setenv("UTIC_ENABLED", "true")
+
+    async def check():
+        started, release, saved = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        tasks = []
+
+        class ObservedStore(traffic_incidents.MemoryUticSnapshotStore):
+            async def save(self, reading):
+                await super().save(reading)
+                saved.set()
+
+        async def utic_reply(request):
+            tasks.append(asyncio.current_task())
+            assert request.extensions["timeout"]["read"] == 20
+            started.set()
+            await release.wait()
+            return httpx2.Response(200, content=(_FILES / "utic_traffic.xml").read_bytes())
+
+        monkeypatch.setattr(traffic_incidents, "MemoryUticSnapshotStore", ObservedStore)
+        calls, clocks = upstream(topis="seoul_topis_traffic_synthetic.xml", utic=utic_reply)
+        async with app.router.lifespan_context(app) as state:
+            async def api_with_state(scope, receive, send):
+                await app({**scope, "state": state.copy()}, receive, send)
+
+            await asyncio.wait_for(started.wait(), 2)
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(api_with_state), base_url="http://test",
+            ) as client:
+                async def read():
+                    response = await asyncio.wait_for(client.get(_url(), params={"radius_m": 10000}), 2)
+                    assert response.status_code == 200
+                    return response.json()
+
+                fallback = await read()
+                assert fallback["source"] == "seoul_topis"
+                assert fallback["coverage"]["scope"] == "seoul_only"
+                assert fallback["notices"] == ["전국 교통 돌발을 확인할 수 없어 서울 TOPIS 정보만 표시해요."]
+
+                release.set()
+                await asyncio.wait_for(saved.wait(), 2)
+                clocks["wall"] += timedelta(seconds=2 * traffic_incidents.INCIDENT_TTL_S)
+                fresh = await read()
+                assert (fresh["status"], fresh["coverage"]["scope"], fresh["source"]) == (
+                    "ok", "national", "police_incident",
+                )
+                (police,) = [item for item in fresh["items"] if item["source"] == "police_incident"]
+                assert police["start_at"] == "2026-11-19T16:56:00+09:00"
+
+                clocks["wall"] += timedelta(seconds=1)
+                clocks["monotonic"] += traffic_incidents.INCIDENT_TTL_S
+                expired = await read()
+                assert expired["status"] == "ok" and expired["source"] == fallback["source"]
+                assert expired["items"] == fallback["items"] and expired["notices"] == fallback["notices"]
+                assert calls == ["utic", "topis", "topis"]
+        (worker,) = tasks
+        assert worker.get_name() == "utic-refresh" and worker.cancelled()
+
+    asyncio.run(check())
+
+
+def test_utic_failed_refresh_keeps_last_success_and_logs_once(upstream, monkeypatch, caplog):
+    monkeypatch.setenv("UTIC_ENABLED", "true")
+    monkeypatch.setenv("UTIC_REFRESH_S", "0.01")
+    monkeypatch.setenv("UTIC_TIMEOUT_S", "0.1")
+    caplog.set_level(logging.DEBUG)
+    raw_message = "합성 UTIC 원문"
+
+    async def check():
+        pending, cancelled = asyncio.Event(), asyncio.Event()
+        timeouts = []
+
+        async def utic_reply(request):
+            timeouts.append(request.extensions["timeout"]["read"])
+            logging.getLogger("httpx2").debug("request url %s", request.url)
+            if len(timeouts) == 1:
+                return httpx2.Response(200, content=(_FILES / "utic_traffic.xml").read_bytes())
+            if len(timeouts) == 2:
+                clocks["wall"] += timedelta(seconds=1)
+                return httpx2.Response(200, text=(
+                    f"<result><record><resultCode>02</resultCode><resultMsg>{raw_message} {_SYNTHETIC_KEY}"
+                    "</resultMsg></record></result>"
+                ))
+            if len(timeouts) == 3:
+                raise httpx2.ReadTimeout(str(request.url), request=request)
+            pending.set()
+            try:
+                await asyncio.Future()
+            finally:
+                cancelled.set()
+
+        calls, clocks = upstream(utic=utic_reply)
+        async with app.router.lifespan_context(app) as state:
+            await asyncio.wait_for(pending.wait(), 2)
+            reading = await state["utic_store"].read()
+            assert reading.items and reading.observed_at == _NOW
+            assert calls == ["utic"] * 4 and timeouts == [0.1] * 4
+        assert cancelled.is_set()
+
+    asyncio.run(check())
+    warnings = [record for record in caplog.records if record.name == traffic_incidents.__name__]
+    assert len(warnings) == 1 and warnings[0].exc_info is None
+    for secret in (raw_message, _SYNTHETIC_KEY, "fixture%2Btraffic%2Ftest%3D"):
+        assert secret not in caplog.text
 
 
 @pytest.mark.parametrize("scenario,expected", [
     ("timeout", (2, "SOURCE_HTTP_ERROR", True)),
     ("quota_xml", (1, "SOURCE_RESULT_ERROR", False)),
     ("dtd", (1, "SOURCE_RESULT_ERROR", False)),
-    ("utic_wrong_key", (1, "SOURCE_RESULT_ERROR", False)),
     ("empty", (1, None, None)),
 ])
 def test_traffic_provider_errors_and_log_redaction(upstream, monkeypatch, caplog, scenario, expected):
@@ -177,16 +281,11 @@ def test_traffic_provider_errors_and_log_redaction(upstream, monkeypatch, caplog
             "quota_xml": "<OpenAPI_ServiceResponse><cmmMsgHeader><returnReasonCode>22</returnReasonCode>"
             "</cmmMsgHeader></OpenAPI_ServiceResponse>",
             "dtd": '<!DOCTYPE result [<!ENTITY unexpected "malformed">]><result>&unexpected;</result>',
-            "utic_wrong_key": f"<result><record><resultCode>02</resultCode><resultMsg>{_SYNTHETIC_KEY}"
-            "</resultMsg></record></result>",
             "empty": "<response><header><resultCode>03</resultCode></header></response>",
         }[scenario]
         return httpx2.Response(200, text=payload)
 
-    if scenario == "utic_wrong_key":
-        monkeypatch.delenv("POLICE_INCIDENT_API_URL")
-        monkeypatch.setenv("UTIC_ENABLED", "1")
-    calls, _ = upstream(police=reply, utic=reply)
+    calls, _ = upstream(police=reply)
     with TestClient(app) as client:
         response = client.get(_url())
     assert response.status_code == 200

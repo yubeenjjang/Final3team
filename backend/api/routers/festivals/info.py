@@ -64,7 +64,9 @@ async def get_traffic_incidents(
     scenario: Scenario = None,
 ) -> TrafficIncidentResponse:
     if real_festival_info.uses_real_info("traffic-incidents"):
-        result = await real_festival_info.get_service().traffic(festival_id, radius_m, kind)
+        result = await real_festival_info.get_service().traffic(
+            festival_id, radius_m, kind, utic_store=getattr(request.state, "utic_store", None),
+        )
     else:
         result = await mock_festival_info.get_traffic_incidents(festival_id, radius_m, kind, scenario)
     request.state.result_status = result.status
