@@ -75,17 +75,14 @@ export function LoginForm({ email, next }: { email?: string; next?: string }) {
 
   return (
     <>
-      <h1 className="mb-5 text-center text-[clamp(17px,5.4vw,25px)] font-black leading-tight tracking-tight">
-        로그인하고<br />나만의 <span className="text-brand">축제</span>를 시작하세요!
-      </h1>
-      <form method="post" onSubmit={submit} className="space-y-2.5">
+      <form method="post" onSubmit={submit} className="space-y-4">
         <AuthInput
           icon={Mail}
           name="email"
           type="email"
           autoComplete="email"
           defaultValue={email}
-          placeholder="이메일 아이디를 입력하세요"
+          placeholder="이메일을 입력해주세요"
           aria-label="이메일"
           required
         />
@@ -96,20 +93,22 @@ export function LoginForm({ email, next }: { email?: string; next?: string }) {
           aria-label="비밀번호"
           required
         />
+        <div className="flex items-center justify-between text-sm text-ink">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" className="h-5 w-5 rounded-control border-line-strong accent-brand" />
+            로그인 상태 유지
+          </label>
+          <span className="font-semibold">비밀번호 찾기 ›</span>
+        </div>
         {error && <p role="alert" className="text-sm font-semibold text-brand">{error}</p>}
-        <button type="submit" disabled={!formReady || busy} className={`${primaryButton} !mt-4 !rounded-chip`}>
+        <button type="submit" disabled={!formReady || busy} className={`${primaryButton} !mt-6`}>
           {busy ? "로그인 중…" : "로그인"}
         </button>
       </form>
-      <div className="my-3.5 flex items-center gap-2 text-xs font-medium text-muted before:h-px before:flex-1 before:bg-line-light after:h-px after:flex-1 after:bg-line-light">
-        계정이 없으신가요?
-      </div>
-      <Link
-        href={authLink("/auth/signup", { next })}
-        className="flex min-h-10 items-center justify-center rounded-chip border border-brand text-sm font-extrabold text-brand"
-      >
-        회원가입
-      </Link>
+      <p className="mt-7 text-center text-base font-medium text-ink">
+        아직 회원이 아니신가요?{" "}
+        <Link href={authLink("/auth/signup", { next })} className="font-extrabold text-brand underline underline-offset-4">회원가입</Link>
+      </p>
     </>
   );
 }

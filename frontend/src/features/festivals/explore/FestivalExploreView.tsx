@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { RotateCcw, Search, X } from "lucide-react";
+import { PageHero } from "@/components/PageHero";
 import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
 import { FestivalCard } from "./FestivalCard";
+import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
 import {
   REGION_OPTIONS,
   STATUS_OPTIONS,
@@ -14,7 +17,7 @@ import {
 
 const PAGE_SIZE = 20;
 
-export function FestivalExploreView() {
+export function FestivalExploreView({ showSearch = true }: { showSearch?: boolean } = {}) {
   const [searchInput, setSearchInput] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [region, setRegion] = useState<RegionFilter>("ALL");
@@ -143,15 +146,23 @@ export function FestivalExploreView() {
   }, [page, region, appliedQuery, status]);
 
   const hasMore = items.length < total;
+  const sectionTitles = ["인기있는 축제", "나만을 위한 축제", "새로 올라온 축제", "전체 축제"];
+  const festivalSections = sectionTitles
+    .map((title, index) => ({
+      title,
+      items: items.slice(index * 4, index * 4 + 4),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
-    <div className="space-y-4 px-4 py-4">
-      <section className="space-y-3">
+    <div className="space-y-5 px-4 pb-4 pt-1">
+      <PageHero title="축제" subtitle="지금 열리는 축제부터, 나에게 딱 맞는 축제까지!" />
+
+      <AssistantPrompt />
+
+      {showSearch ? <section className="space-y-3 rounded-card-lg bg-surface-muted/60 p-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
-            <h1 className="text-lg font-extrabold text-ink">전국 축제</h1>
-          </div>
+          <span className="text-sm font-extrabold text-ink">축제 검색</span>
           {!loading && !errorMessage ? (
             <span className="text-xs font-semibold text-muted">
               총 {total}개
@@ -246,7 +257,7 @@ export function FestivalExploreView() {
             })}
           </div>
         </div>
-      </section>
+      </section> : null}
 
       {loading ? (
         <div
@@ -279,16 +290,22 @@ export function FestivalExploreView() {
           </p>
         </div>
       ) : (
-        <section className="space-y-3">
-          <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
-            {items.map((item) => (
-              <FestivalCard
-                key={item.festival_id}
-                item={item}
-                className="festival-carousel-card snap-start"
-              />
-            ))}
-          </div>
+        <div className="space-y-8">
+          {festivalSections.map((section, index) => (
+            <section key={section.title} className="space-y-3">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 text-xl font-black text-ink"><span className="h-5 w-1.5 rounded-chip bg-brand" aria-hidden="true" />{section.title}</h2>
+                  {index < 3 ? <p className="ml-3.5 mt-1 text-xs text-muted">{index === 0 ? "지금 가장 많은 관심을 받는 축제예요!" : index === 1 ? "나의 취향과 선택에 맞춘 축제를 추천드려요!" : "최근 등록된 따끈한 축제 소식이에요!"}</p> : null}
+                </div>
+                <Link href="/festivals/all" className="shrink-0 text-xs font-bold text-muted hover:text-brand">전체보기 ›</Link>
+              </div>
+              <div className="no-scrollbar -mx-4 flex touch-pan-x snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
+                {section.items.map((item) => <FestivalCard key={`${section.title}-${item.festival_id}`} item={item} className="festival-carousel-card snap-start" />)}
+              </div>
+              <div className="flex justify-center gap-2"><span className="h-2 w-2 rounded-chip bg-brand" /><span className="h-2 w-2 rounded-chip bg-brand/25" /><span className="h-2 w-2 rounded-chip bg-brand/25" /></div>
+            </section>
+          ))}
 
           {errorMessage ? (
             <p className="text-center text-xs font-medium text-brand">
@@ -308,7 +325,7 @@ export function FestivalExploreView() {
               </button>
             </div>
           ) : null}
-        </section>
+        </div>
       )}
 
     </div>

@@ -11,7 +11,6 @@ import {
   ShieldBan,
   Sparkles,
   Trash2,
-  Users,
 } from "lucide-react";
 import { handleAuthError, RequireAuth } from "@/components/RequireAuth";
 import { BlockManagerSection } from "@/features/community/friends/BlockManagerSection";
@@ -19,6 +18,7 @@ import { clearAuthSession, updateAuthUser } from "@/lib/api/auth";
 import { ApiError, logoutAuthSession } from "@/lib/api/client";
 import { deleteAccount, getProfile, updateProfile, type Profile } from "./api";
 import { PreferencesSection } from "./PreferencesView";
+import { FavoriteListSection } from "@/features/favorites/FavoriteListSection";
 
 type MeSectionTab = "preferences" | "blocks";
 
@@ -141,20 +141,21 @@ function MeContent() {
   }
 
   return (
-    <div className="space-y-5 px-4 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
-          <h1 className="text-lg font-black text-ink">마이페이지</h1>
+    <div className="space-y-7 px-5 py-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-[32px] font-black text-ink">마이페이지</h1>
+          <p className="mt-2 text-base text-muted">나의 축제 활동을 한눈에 확인해요!</p>
         </div>
         <button
           type="button"
           disabled={logoutBusy}
           onClick={() => void handleLogout()}
-          className="inline-flex items-center gap-1 rounded-chip border border-line-light bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:border-brand/40 hover:text-brand disabled:opacity-60"
+          aria-label="로그아웃"
+          className="grid h-11 w-11 place-items-center rounded-chip border border-line-light bg-surface text-ink hover:border-brand/40 hover:text-brand disabled:opacity-60"
         >
           <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{logoutBusy ? "로그아웃 중…" : "로그아웃"}</span>
+          <span className="sr-only">{logoutBusy ? "로그아웃 중…" : "로그아웃"}</span>
         </button>
       </div>
 
@@ -176,10 +177,10 @@ function MeContent() {
           </button>
         </div>
       ) : (
-        <section className="space-y-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
+        <section className="space-y-3 rounded-panel border border-brand/15 bg-surface-soft p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-chip bg-brand text-lg font-black text-surface shadow-sm">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-chip border-2 border-brand/30 bg-surface text-xl font-black text-brand shadow-sm">
                 {(profile.display_name ?? "나").slice(0, 1)}
               </div>
               <div>
@@ -258,26 +259,19 @@ function MeContent() {
       )}
 
       {/* 커뮤니티 빠른 이동 */}
-      <div className="grid grid-cols-3 gap-2">
-        <Link
-          href="/friends"
-          className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface py-3 text-xs font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
-        >
-          <Users className="h-4 w-4 text-brand" aria-hidden="true" />
-          <span>친구 관리</span>
-        </Link>
+      <div className="grid grid-cols-2 gap-3">
         <Link
           href="/chats"
-          className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface py-3 text-xs font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
+          className="flex min-h-24 items-center justify-center gap-3 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
         >
-          <MessageCircle className="h-4 w-4 text-brand" aria-hidden="true" />
-          <span>채팅방</span>
+          <MessageCircle className="h-7 w-7 text-brand" aria-hidden="true" />
+          <span>동행 채팅방</span>
         </Link>
         <Link
           href="/companions?tab=mine"
-          className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface py-3 text-xs font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
+          className="flex min-h-24 items-center justify-center gap-3 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
         >
-          <Sparkles className="h-4 w-4 text-brand" aria-hidden="true" />
+          <Sparkles className="h-7 w-7 text-brand" aria-hidden="true" />
           <span>내 동행</span>
         </Link>
       </div>
@@ -327,6 +321,8 @@ function MeContent() {
       ) : (
         <BlockManagerSection />
       )}
+
+      <FavoriteListSection />
 
       {/* 회원 탈퇴 */}
       <section className="space-y-3 rounded-card border border-line-light bg-surface-muted/40 p-4">

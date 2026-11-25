@@ -9,7 +9,7 @@ import { AuthInput, fieldClass, PasswordInput, primaryButton, useFormReady } fro
 import { MIN_BIRTH_YEAR, validateSignup } from "./validators";
 
 function FieldTitle({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
-  const className = "mb-1.5 inline-flex items-center gap-1.5 text-sm font-extrabold before:h-3.5 before:w-1 before:rounded-chip before:bg-brand";
+  const className = "mb-2 inline-flex items-center gap-1.5 text-sm font-extrabold after:text-brand after:content-['*']";
   return htmlFor
     ? <label htmlFor={htmlFor} className={className}>{children}</label>
     : <legend className={className}>{children}</legend>;
@@ -64,7 +64,7 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
   }
 
   return (
-    <form method="post" onSubmit={submit} noValidate className="space-y-3.5">
+    <form method="post" onSubmit={submit} noValidate className="space-y-4">
       <div>
         <FieldTitle htmlFor="signup-email">이메일</FieldTitle>
         <AuthInput icon={Mail} id="signup-email" name="email" type="email" autoComplete="email" placeholder="이메일 주소를 입력해 주세요" required />
@@ -72,7 +72,7 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
       <div>
         <FieldTitle htmlFor="signup-password">비밀번호</FieldTitle>
         <PasswordInput id="signup-password" name="password" autoComplete="new-password" placeholder="비밀번호를 입력해 주세요" aria-describedby="password-hint" required />
-        <p id="password-hint" className="ml-2 mt-1 text-[11px] text-muted">영문과 숫자를 포함해 8~64자</p>
+        <p id="password-hint" className="mt-1 text-[11px] text-muted">영문·숫자·특수문자를 조합해 8자 이상 입력해 주세요.</p>
       </div>
       <div>
         <FieldTitle htmlFor="signup-confirmation">비밀번호 확인</FieldTitle>
@@ -84,12 +84,12 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
       </div>
       <fieldset>
         <FieldTitle>성별</FieldTitle>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {([{ value: "female", label: "여성" }, { value: "male", label: "남성" }] as const).map(({ value, label }) => (
             <label key={value} className="cursor-pointer">
               <input name="gender" type="radio" value={value} required className="peer sr-only" />
-              <span className="flex min-h-10 items-center justify-center gap-1.5 rounded-chip border border-line-light bg-surface-muted/60 text-sm font-bold text-muted peer-checked:border-brand peer-checked:bg-surface-soft peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand">
-                <UserRound size={17} aria-hidden="true" /> {label}
+              <span className="flex min-h-12 items-center justify-center rounded-card-lg border border-line-strong bg-surface text-sm font-bold text-muted peer-checked:border-brand peer-checked:bg-surface-soft peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand">
+                {label}
               </span>
             </label>
           ))}
@@ -110,10 +110,22 @@ export function SignupForm({ next, maxBirthYear }: { next?: string; maxBirthYear
           </div>
         </div>
       </div>
+      <div className="space-y-3 rounded-card-lg border border-line-light p-4 text-sm text-ink">
+        <label className="flex items-center gap-3 border-b border-line-light pb-3 font-extrabold">
+          <input type="checkbox" className="h-5 w-5 accent-brand" /> 약관 전체 동의
+        </label>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" className="h-5 w-5 accent-brand" /> <span><b className="text-brand">[필수]</b> 이용약관 동의</span>
+        </label>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" className="h-5 w-5 accent-brand" /> <span><b className="text-brand">[필수]</b> 개인정보 수집 및 이용 동의</span>
+        </label>
+      </div>
       {error && <p role="alert" className="text-sm font-semibold text-brand">{error}</p>}
-      <button type="submit" className={`${primaryButton} !mt-5`} disabled={!formReady || busy}>
-        {busy ? "가입 중…" : "회원가입"}
+      <button type="submit" aria-label="회원가입" className={`${primaryButton} !mt-5`} disabled={!formReady || busy}>
+        {busy ? "가입 중…" : "회원가입하기"}
       </button>
+      <p className="text-center text-xs text-muted">가입 완료 후 좋아하는 축제 분야를 선택할 수 있어요.</p>
     </form>
   );
 }

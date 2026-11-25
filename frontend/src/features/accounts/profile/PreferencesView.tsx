@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Heart, RotateCcw } from "lucide-react";
+import { Camera, Check, Heart, PawPrint, RotateCcw, Sparkles, UsersRound, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 import { handleAuthError, RequireAuth } from "@/components/RequireAuth";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -97,8 +99,87 @@ export function PreferencesSection({
     }
   }
 
+  if (!embedded) {
+    const scenarioIcons = {
+      family_relaxed: UsersRound,
+      friends_activity: Sparkles,
+      couple_photo: Camera,
+      pet: PawPrint,
+      solo: UserRound,
+    } as const;
+
+    return (
+      <section className="min-h-dvh bg-screen-dark px-0 pb-10 pt-8 text-surface">
+        <div className="px-6">
+          <BrandLogo priority className="h-9 w-auto brightness-0 invert" />
+          <h1 className="mt-14 text-[32px] font-black leading-tight tracking-tight">
+            어떤 <span className="text-brand">축제</span>를 좋아하시나요?
+          </h1>
+          <p className="mt-4 text-base text-surface/80">마음에 드는 축제 스타일을 5개 선택해 주세요.</p>
+          <p className="mt-5 rounded-chip border-2 border-brand px-5 py-3 text-center text-sm font-semibold text-surface/90">
+            ♡ 하트를 눌러 선택하면, 나만의 축제를 추천해드려요!
+          </p>
+        </div>
+
+        {notice ? <p role="status" className="mx-6 mt-4 rounded-card bg-brand/15 px-4 py-3 text-sm">{notice}</p> : null}
+        {error ? <p role="alert" className="mx-6 mt-4 text-sm font-semibold text-brand">{error}</p> : null}
+
+        {loading ? (
+          <div role="status" className="mx-6 mt-8 h-[430px] animate-pulse rounded-panel bg-surface/10" />
+        ) : (
+          <ul className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[42px] pb-4">
+            {SCENARIO_OPTIONS.map((option, index) => {
+              const active = selected.includes(option.value);
+              const Icon = scenarioIcons[option.value];
+              const gradients = [
+                "from-sky-300 via-emerald-200 to-brand/60",
+                "from-amber-300 via-orange-300 to-brand/70",
+                "from-indigo-500 via-purple-500 to-brand",
+                "from-emerald-300 via-lime-200 to-amber-200",
+                "from-slate-400 via-indigo-400 to-screen-dark",
+              ];
+              return (
+                <li key={option.value} className="w-[300px] shrink-0 snap-center">
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleScenario(option.value)}
+                    className={`relative flex h-[430px] w-full flex-col overflow-hidden rounded-[28px] border-[3px] bg-gradient-to-br ${gradients[index]} p-5 text-left shadow-xl transition-transform ${active ? "border-brand scale-[1.01]" : "border-surface"}`}
+                  >
+                    <span className="inline-flex w-fit items-center gap-2 rounded-chip bg-brand px-4 py-2 text-sm font-extrabold text-surface">
+                      <Icon className="h-5 w-5" aria-hidden="true" /> {option.tag}
+                    </span>
+                    <Icon className="mx-auto mt-14 h-32 w-32 text-surface/85" strokeWidth={1.1} aria-hidden="true" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-screen-dark via-screen-dark/85 to-transparent px-5 pb-6 pt-24">
+                      <p className="max-w-[220px] text-[27px] font-black leading-tight text-surface">{option.title}</p>
+                    </div>
+                    <span className={`absolute bottom-5 right-5 grid h-16 w-16 place-items-center rounded-chip border-[3px] border-surface ${active ? "bg-brand" : "bg-screen-dark/35"}`}>
+                      {active ? <Check className="h-8 w-8" aria-hidden="true" /> : <Heart className="h-8 w-8" aria-hidden="true" />}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <div className="mt-2 flex items-center justify-between px-7">
+          <div className="flex gap-2" aria-label={`${selected.length}개 선택됨`}>
+            {SCENARIO_OPTIONS.map((item) => <span key={item.value} className={`h-2.5 w-2.5 rounded-chip ${selected.includes(item.value) ? "bg-brand" : "bg-surface/30"}`} />)}
+          </div>
+          <button type="button" disabled={saving} onClick={() => void submitPreferences(true)} className="min-h-11 px-3 text-base font-bold">건너뛰기 ›</button>
+        </div>
+        <div className="px-6 pt-5">
+          <button type="button" disabled={saving || selected.length === 0} onClick={() => void submitPreferences(false)} className="min-h-14 w-full rounded-card-lg bg-brand text-base font-extrabold disabled:opacity-40">
+            {saving ? "저장 중…" : `${selected.length}개 취향 선택 완료`}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className={embedded ? "space-y-3" : "space-y-4 px-4 py-4"}>
+    <section className="space-y-3">
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -221,9 +302,10 @@ export function PreferencesSection({
 }
 
 export function PreferencesView() {
+  const router = useRouter();
   return (
     <RequireAuth nextPath="/onboarding">
-      <PreferencesSection />
+      <PreferencesSection onSaved={() => router.push("/onboarding/complete")} />
     </RequireAuth>
   );
 }

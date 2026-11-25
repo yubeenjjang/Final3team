@@ -6,14 +6,22 @@ import { useEffect, useState } from "react";
 import { FestivalCard } from "./FestivalCard";
 import { listFestivals, type FestivalListItem } from "./api";
 
-export function FeaturedFestivals() {
+export function FeaturedFestivals({
+  title = "지금, 여기서 열리는 축제",
+  status = "ongoing",
+  moreLabel = "전체보기",
+}: {
+  title?: string;
+  status?: "ongoing" | "upcoming";
+  moreLabel?: string;
+} = {}) {
   const [items, setItems] = useState<FestivalListItem[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    listFestivals({ status: "ongoing", page: 1, page_size: 4 }, controller.signal)
+    listFestivals({ status, page: 1, page_size: 4 }, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) setItems(result.items.slice(0, 4));
       })
@@ -21,17 +29,17 @@ export function FeaturedFestivals() {
         if (!controller.signal.aborted) setFailed(true);
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, status]);
 
   return (
     <section aria-labelledby="featured-title">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id="featured-title" className="flex items-center gap-2 text-base font-extrabold tracking-tight text-ink">
           <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
-          지금, 여기서 열리는 축제
+          {title}
         </h2>
-        <Link href="/festivals" className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted hover:text-brand">
-          전체보기 <ChevronRight size={14} aria-hidden="true" />
+        <Link href="/festivals/all" className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted hover:text-brand">
+          {moreLabel} <ChevronRight size={14} aria-hidden="true" />
         </Link>
       </div>
 
@@ -58,7 +66,7 @@ export function FeaturedFestivals() {
           진행 중인 축제가 없어요.
         </div>
       ) : (
-        <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
+        <div className="no-scrollbar -mx-4 flex touch-pan-x snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
           {items.map((item) => (
             <FestivalCard key={item.festival_id} item={item} className="festival-carousel-card snap-start" />
           ))}

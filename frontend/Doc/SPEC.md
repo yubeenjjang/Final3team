@@ -1,7 +1,7 @@
 # SPEC — 웹 화면 1차
 
 - 최신 기준: `FRONTEND-PLAN.md`, `UI-DESIGN-SYSTEM.md`, `API-INTEGRATION.md`. 이 문서는 11/22 구현 이력을 함께 보존한다.
-- 모의 API: `backend/api/MOCK_API.md`, `openapi.json`. 백엔드 스키마에 관심 API가 남아 있어도 프론트에서는 호출하지 않는다.
+- 모의 API: `backend/api/MOCK_API.md`, `openapi.json`. 축제 찜 API는 로그인 사용자 화면에서 호출한다.
 - 실행 환경: Node 26, npm. 명령은 `frontend/`에서.
   - 개발 서버: `npm run dev` → `http://localhost:3000` (모의 API는 `cd backend && uv run --with-requirements api/requirements.txt uvicorn api.main:app --port 8000`)
   - 확인: `npm run typecheck` · `npm run lint` · `npm test`(vitest) · `npm run build` · `npm run e2e`(Playwright, 5단계)
@@ -23,9 +23,9 @@
 - **확인:** `src/` 아래 `.tsx` 파일에 `#[0-9A-Fa-f]{6}` 문자열이 없음(시험 `F2 no raw colors`).
 
 ### F3. 공통 틀
-- 본문 최대 폭 480px 가운데 정렬, 아래 탭 고정: **홈 `/`·축제 `/festivals`·동행 `/companions`·귀가 `/routes/return`·지도 `/map`**. 현재 탭 강조(분홍 배경).
+- 본문은 모바일 390px 기준으로 가운데 정렬하고, 아래 탭을 고정한다: **홈 `/`·축제 `/festivals`·동행 `/companions`·귀가 `/routes/return`·지도 `/map`**. 현재 탭 강조(분홍 배경).
 - `/companions`, `/map`은 "준비 중이에요" 화면(2차).
-- 홈(`/`)만 다크 테마, 나머지 라이트.
+- 홈·축제·상세·마이페이지는 확정 시안의 라이트 테마를 적용하고, 취향 선택·추천 화면은 시안의 다크 테마를 적용한다.
 - **예외(11/22 사용자 결정): 로그인·회원가입(`/auth/*`)은 시안대로 공통 헤더·아래 탭을 숨긴다.**
 - 상단 헤더: 로고(NOLDAGA, 분홍 N) + 로그인 상태면 닉네임 첫 글자, 아니면 로그인 아이콘 → `/auth/login`.
 - **확인:** 흐름 시험에서 탭 5개 이동 · 홈 배경이 다크 토큰.
@@ -55,7 +55,8 @@
 - **확인(단위):** `dday("2026-12-05","2026-12-07","2026-11-22")=="D-13"` · 기간 안이면 "진행 중" · 끝나면 "종료" · 날짜 없으면 빈 값. **(흐름)** 서울 선택 → 카드 2개.
 
 ### F7. 축제 상세 `/festivals/[festivalId]` (A03·A07·A09·A10)
-- 위: `1:1.414` 축제 포스터(`object-contain`), 이름, 한 줄 소개(`overview`), AI 질문창(홈과 같은 동작, 3단계 F9 재사용). 하트·찜 버튼은 두지 않는다.
+- 위: `1:1.414` 축제 포스터(`object-contain`), 이름, 한 줄 소개(`overview`), AI 질문창(홈과 같은 동작, 3단계 F9 재사용), 축제 찜 하트 버튼을 둔다.
+- 찜 버튼은 로그인 사용자의 `GET /me/favorites`, `PUT /me/favorites/{festival_id}`, `DELETE /me/favorites/{festival_id}`와 연결하며, 비로그인 사용자는 로그인 화면으로 안내한다.
 - 정보 칩: 기간, 장소(`venue_name`), 입장료(`fee_text`), 지역.
 - **현장 정보** 3칸 — 각자 따로 불러오고 하나가 실패해도 나머지는 보임:
   - 혼잡(A10): `ok` → 구역 이름 + 색 칩(`congest_color` 토큰) + 인구 범위 / `unsupported` → "이 지역은 아직 지원하지 않아요" / `unavailable` → 오류 문구 / `stale` → 값 + "정보가 오래됐어요"

@@ -4,8 +4,8 @@ import { Eye, EyeOff, LockKeyhole, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type InputHTMLAttributes } from "react";
 
 export const fieldClass =
-  "flex min-h-11 items-center gap-3 rounded-xl border border-line-light bg-surface-muted/70 px-3 text-ink transition-colors focus-within:border-brand focus-within:bg-surface focus-within:ring-1 focus-within:ring-brand";
-const inputClass = "min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted";
+  "flex min-h-14 items-center gap-3 rounded-card-lg border border-line-strong bg-surface px-4 text-ink transition-colors focus-within:border-brand focus-within:ring-1 focus-within:ring-brand";
+const inputClass = "min-w-0 flex-1 bg-transparent py-3 text-[15px] outline-none placeholder:text-muted/65";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   icon: LucideIcon;
@@ -14,7 +14,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export function AuthInput({ icon: Icon, ...props }: InputProps) {
   return (
     <div className={fieldClass}>
-      <Icon size={18} className="shrink-0 text-brand" aria-hidden="true" />
+      <Icon size={21} className="shrink-0 text-muted" aria-hidden="true" />
       <input {...props} className={inputClass} />
     </div>
   );
@@ -24,7 +24,7 @@ export function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
   const [visible, setVisible] = useState(false);
   return (
     <div className={fieldClass}>
-      <LockKeyhole size={18} className="shrink-0 text-brand" aria-hidden="true" />
+      <LockKeyhole size={21} className="shrink-0 text-muted" aria-hidden="true" />
       <input {...props} type={visible ? "text" : "password"} className={inputClass} />
       <button
         type="button"
@@ -40,7 +40,7 @@ export function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
 }
 
 export const primaryButton =
-  "flex min-h-12 w-full items-center justify-center rounded-chip bg-brand px-4 py-2.5 text-base font-extrabold text-surface shadow-md transition-opacity hover:opacity-90 disabled:opacity-60";
+  "flex min-h-14 w-full items-center justify-center rounded-card-lg bg-brand px-4 py-3 text-lg font-extrabold text-surface shadow-card transition-opacity hover:opacity-90 disabled:opacity-60";
 
 const subscribeHydration = () => () => {};
 

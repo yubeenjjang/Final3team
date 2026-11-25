@@ -36,7 +36,7 @@ describe("F3 AppShell & F5 MockBadge", () => {
 
     const shell = screen.getByTestId("app-shell");
     expect(shell).toHaveAttribute("data-theme", "light");
-    expect(shell.className).toContain("bg-bg");
+    expect(shell.className).toContain("bg-canvas");
     expect(screen.getByAltText("NOLDAGA")).toBeInTheDocument();
 
     const tabs = [
@@ -67,7 +67,7 @@ describe("F3 AppShell & F5 MockBadge", () => {
       "data-theme",
       "light",
     );
-    expect(screen.getByTestId("app-shell").className).toContain("bg-bg");
+    expect(screen.getByTestId("app-shell").className).toContain("bg-canvas");
     expect(screen.getByRole("link", { name: "동행" })).toHaveAttribute(
       "aria-current",
       "page",

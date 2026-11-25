@@ -7,19 +7,7 @@
   padding-bottom: 0;
 }
 
-.login {
-  background:
-    radial-gradient(ellipse at 91% 21%, color-mix(in srgb, var(--color-brand) 22%, transparent), transparent 42%),
-    radial-gradient(ellipse at 2% 49%, color-mix(in srgb, var(--color-brand) 14%, transparent), transparent 53%),
-    var(--color-bg);
-}
-
-.loginCard {
-  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-soft));
-}
-
+.login,
 .signup {
-  background:
-    radial-gradient(ellipse at 90% 17%, var(--color-surface-soft), transparent 28%),
-    var(--color-bg);
+  background: var(--color-surface);
 }

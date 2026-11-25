@@ -144,7 +144,7 @@ describe("F7 festival detail", () => {
       "/routes/return?festivalId=fst_000001",
     );
 
-    expect(screen.queryByRole("button", { name: /찜/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "찜하기" })).toBeInTheDocument();
   });
 
   it("F7 shows not found message and link to list on 404", async () => {

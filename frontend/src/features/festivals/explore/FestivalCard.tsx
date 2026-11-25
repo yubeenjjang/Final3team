@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
+import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import type { FestivalListItem } from "./api";
 import { dday, formatFestivalPeriod } from "./dday";
 import { getRegionLabel } from "./regions";
@@ -37,7 +38,7 @@ export function FestivalCard({
       <Link
         href={`/festivals/${item.festival_id}`}
         data-testid={`festival-card-${item.festival_id}`}
-        className="group block overflow-hidden rounded-card border border-line-light bg-surface shadow-sm transition-shadow hover:shadow-md"
+        className="group block overflow-hidden rounded-card-lg bg-surface shadow-card transition-shadow hover:shadow-md"
       >
         <div className="relative aspect-[1/1.414] w-full overflow-hidden bg-surface-soft/45">
           {showImage && item.thumbnail_url ? (
@@ -49,9 +50,9 @@ export function FestivalCard({
                 sizes="(max-width: 359px) 40vw, (max-width: 767px) 29vw, 180px"
                 unoptimized
                 onError={() => setFailedSrc(item.thumbnail_url ?? null)}
-                className="object-contain p-1 transition-transform duration-200 group-hover:scale-[1.02]"
+                className="bg-ink/5 object-contain transition-transform duration-200 group-hover:scale-[1.02]"
               />
-              <span className="absolute bottom-1.5 right-1.5 rounded-chip bg-ink/70 px-1.5 py-0.5 text-[8px] font-medium text-surface backdrop-blur-sm">
+              <span className="absolute bottom-1 right-1 rounded-chip bg-ink/55 px-1.5 py-0.5 text-[7px] font-medium text-surface/80 backdrop-blur-sm">
                 출처: 한국관광공사
               </span>
             </>
@@ -60,27 +61,22 @@ export function FestivalCard({
           )}
 
           {badge ? (
-            <span className="absolute left-1.5 top-1.5 rounded-chip bg-brand px-1.5 py-0.5 text-[10px] font-extrabold text-surface shadow-sm">
+            <span className="absolute left-2 top-2 rounded-chip bg-brand px-2.5 py-1 text-[11px] font-extrabold text-surface shadow-sm">
               {badge}
             </span>
           ) : null}
-        </div>
-
-        <div className="space-y-1 p-2">
-          <h2 className="line-clamp-2 text-xs font-extrabold leading-tight text-ink">
-            {item.name}
-          </h2>
-          <div className="flex items-center gap-1 text-[10px] text-muted">
-            <CalendarDays className="h-3 w-3 shrink-0 text-brand" aria-hidden="true" />
-            <span className="truncate">{period}</span>
-          </div>
-          <div className="flex items-center gap-1 text-[10px] text-muted">
-            <MapPin className="h-3 w-3 shrink-0 text-brand" aria-hidden="true" />
-            <span className="truncate">{locationText}</span>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/85 to-transparent px-2.5 pb-3 pt-12 text-surface">
+            <h2 className="line-clamp-2 text-[13px] font-black leading-tight">{item.name}</h2>
+            <div className="mt-2 flex items-center gap-1 text-[9px] font-semibold text-surface/90">
+              <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="truncate">{period}</span>
+            </div>
+            <div className="mt-0.5 flex items-center gap-1 text-[9px] font-semibold text-surface/90">
+              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="truncate">{locationText}</span>
+            </div>
           </div>
         </div>
       </Link>
-
+      <FavoriteButton festivalId={item.festival_id} className="absolute right-1.5 top-1.5 z-10" />
     </div>
   );
 }

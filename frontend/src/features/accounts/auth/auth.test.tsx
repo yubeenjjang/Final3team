@@ -66,7 +66,7 @@ describe("F10 auth flow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("signs up, logs in with the prefilled email, and renders festivals without favorite controls", async () => {
+  it("signs up, logs in with the prefilled email, and renders festivals with favorite controls", async () => {
     fetchApi.mockImplementation(async (input, init) => {
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/auth/signup")) {
@@ -79,6 +79,9 @@ describe("F10 auth flow", () => {
       }
       if (path.endsWith("/festivals")) {
         return Response.json({ items: [festival] });
+      }
+      if (path.endsWith("/me/favorites")) {
+        return Response.json({ is_mock: true, items: [], total: 0, page: 1, page_size: 100 });
       }
       throw new Error(`테스트에 등록되지 않은 경로 ${path}`);
     });
@@ -102,8 +105,8 @@ describe("F10 auth flow", () => {
 
     cleanup();
     render(<HomePage />);
-    expect(await screen.findByText("테스트 축제")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /찜/ })).not.toBeInTheDocument();
+    expect((await screen.findAllByText("테스트 축제")).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "찜하기" }).length).toBeGreaterThan(0);
   });
 
   it.each([

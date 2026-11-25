@@ -41,6 +41,7 @@ describe("F9 assistant flow", () => {
 
   it("opens a route card from the home answer using both access tokens", async () => {
     reply({ items: [] });
+    reply({ items: [] });
     render(<HomePage />);
     await advance(0);
     const festivalQuery = new URL(String(fetchApi.mock.calls[0][0]));
@@ -53,10 +54,11 @@ describe("F9 assistant flow", () => {
     submit("서울역으로 귀가하는 길 알려줘");
     await advance(1000);
     expect(screen.getByRole("status")).toHaveTextContent("생각 중…");
-    const [submitUrl, request] = fetchApi.mock.calls[1];
+    const [submitUrl, request] = fetchApi.mock.calls.find(([url]) => String(url).endsWith("/assistant/query"))!;
     expect(String(submitUrl)).toMatch(/\/assistant\/query$/);
     expect(JSON.parse(String(request?.body))).toMatchObject({ message: "서울역으로 귀가하는 길 알려줘" });
-    expect(new Headers(fetchApi.mock.calls[2][1]?.headers).get("X-Run-Access-Token")).toBe(run.run_access_token);
+    const statusCall = fetchApi.mock.calls.find(([url]) => String(url).endsWith(`/assistant/runs/${run.run_id}`))!;
+    expect(new Headers(statusCall[1]?.headers).get("X-Run-Access-Token")).toBe(run.run_access_token);
 
     await advance(1000);
     expect(screen.getByText("경로를 찾았어요.")).toBeInTheDocument();
@@ -79,7 +81,9 @@ describe("F9 assistant flow", () => {
     });
     render(await ReturnRoutePage({ searchParams: Promise.resolve(Object.fromEntries(url.searchParams)) }));
     await advance(0);
-    const [routeUrl, routeRequest] = fetchApi.mock.calls[4];
+    const [routeUrl, routeRequest] = fetchApi.mock.calls.find(([calledUrl]) =>
+      String(calledUrl).endsWith(`/routes/return/${route.route_request_id}`),
+    )!;
     expect(String(routeUrl)).toMatch(/\/routes\/return\/rr_test01$/);
     expect(new Headers(routeRequest?.headers).get("X-Route-Access-Token")).toBe(route.route_access_token);
     expect(screen.getByRole("button", { name: /12분/ })).toBeInTheDocument();
