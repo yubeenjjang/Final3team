@@ -57,18 +57,20 @@ def nearby_areas(
 
     matches = []
     for area in areas:
-        distance = min(
-            _polygon_distance(polygon, lat, lng, lat_scale, lng_scale)
-            for polygon in area.polygons
-        )
+        measured = [_polygon_distance(polygon, lat, lng, lat_scale, lng_scale) for polygon in area.polygons]
+        distance = min(d for d, _ in measured)
+        depth = max(depth for _, depth in measured)
         if distance <= _RADIUS_M + _DISTANCE_TOLERANCE_M:
-            matches.append((area, min(distance, _RADIUS_M)))
-    return sorted(matches, key=lambda match: (match[1], match[0].code))[:3]
+            matches.append((area, min(distance, _RADIUS_M), depth))
+    # 거리가 같으면(좌표가 여러 구역 안에 있으면) 경계에서 더 깊이 들어간 구역을 먼저 둔다.
+    ordered = sorted(matches, key=lambda match: (match[1], -match[2], match[0].code))[:3]
+    return [(area, distance) for area, distance, _ in ordered]
 
 
 def _polygon_distance(
     polygon: Polygon, lat: float, lng: float, lat_scale: float, lng_scale: float
-) -> float:
+) -> tuple[float, float]:
+    """(경계까지 거리, 안쪽 깊이)를 미터로 돌려준다. 바깥이면 깊이 0, 안쪽이면 거리 0."""
     def ring_distance(ring: Ring) -> tuple[bool, float]:
         points = (
             ((point_lng - lng) * lng_scale, (point_lat - lat) * lat_scale)
@@ -92,7 +94,8 @@ def _polygon_distance(
             if inside_hole:
                 nearest_sq = hole_distance_sq
                 break
+            nearest_sq = min(nearest_sq, hole_distance_sq)
         else:
-            return 0.0
+            return 0.0, sqrt(nearest_sq)
     distance = sqrt(nearest_sq)
-    return 0.0 if distance <= _DISTANCE_TOLERANCE_M else distance
+    return (0.0, 0.0) if distance <= _DISTANCE_TOLERANCE_M else (distance, 0.0)

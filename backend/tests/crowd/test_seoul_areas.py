@@ -25,8 +25,19 @@ def test_P1_polygon_interior_edge_and_inclusive_radius() -> None:
     boundary = _box("boundary", radius_lat, 0.02)
     outside = _box("outside", radius_lat * 1.0001, 0.02)
     matches = nearby_areas(0, 0, (outside, inside, boundary, edge))
-    assert [area.code for area, _ in matches] == ["edge", "inside", "boundary"]
+    # 둘 다 거리 0이면 안쪽 깊이가 깊은 inside가 경계 위의 edge보다 먼저
+    assert [area.code for area, _ in matches] == ["inside", "edge", "boundary"]
     assert [distance for _, distance in matches] == pytest.approx([0, 0, 1000])
+
+
+def test_P1_ties_inside_several_areas_order_by_depth_not_code() -> None:
+    # 서울빛초롱축제처럼 좌표가 세 구역 안에 모두 있으면 경계에서 가장 깊은 구역이 대표가 된다.
+    shallow = _box("A_shallow", -0.0001, 0.02)
+    middle = _box("B_middle", -0.002, 0.02)
+    deep = _box("C_deep", -0.01, 0.02)
+    matches = nearby_areas(0, 0, (shallow, middle, deep))
+    assert [area.code for area, _ in matches] == ["C_deep", "B_middle", "A_shallow"]
+    assert [distance for _, distance in matches] == [0, 0, 0]
 
 
 def test_P1_sorts_by_boundary_and_selects_only_three() -> None:
