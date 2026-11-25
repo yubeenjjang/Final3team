@@ -120,11 +120,5 @@ select {
 }
 
 .festival-carousel-card {
-  flex: 0 0 calc((100% - 24px) / 3.5);
-}
-
-@media (max-width: 359px) {
-  .festival-carousel-card {
-    flex-basis: calc((100% - 16px) / 2.5);
-  }
+  flex: 0 0 calc((100% - 16px) / 2.5);
 }

@@ -77,3 +77,5 @@
  GET / 200 in 22ms (next.js: 2ms, application-code: 20ms)
  GET /festivals 200 in 22ms (next.js: 2ms, application-code: 20ms)
  GET / 200 in 21ms (next.js: 3ms, application-code: 19ms)
+✓ Compiled in 527ms
+✓ Compiled in 83ms

@@ -86,7 +86,7 @@ describe("F6 festival explore", () => {
     expect(getRegionLabel("JEJU")).toBe("제주");
   });
 
-  it("F6 renders cards with object-contain and credit, filters by region/status/search, and paginates", async () => {
+  it("F6 renders portrait cards with object-cover and credit, filters by region/status/search, and paginates", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       const region = url.searchParams.get("region");
@@ -216,7 +216,7 @@ describe("F6 festival explore", () => {
     });
 
     const image = screen.getByAltText("첫 번째 축제");
-    expect(image.className).toContain("object-contain");
+    expect(image.className).toContain("object-cover");
     expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "더 보기" }));

@@ -47,10 +47,10 @@ export function FestivalCard({
                 src={item.thumbnail_url}
                 alt={item.name}
                 fill
-                sizes="(max-width: 359px) 40vw, (max-width: 767px) 29vw, 180px"
+                sizes="(max-width: 767px) 40vw, 180px"
                 unoptimized
                 onError={() => setFailedSrc(item.thumbnail_url ?? null)}
-                className="bg-ink/5 object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                className="bg-ink/5 object-cover object-center transition-transform duration-200 group-hover:scale-[1.02]"
               />
               <span className="absolute bottom-1 right-1 rounded-chip bg-ink/55 px-1.5 py-0.5 text-[7px] font-medium text-surface/80 backdrop-blur-sm">
                 출처: 한국관광공사
