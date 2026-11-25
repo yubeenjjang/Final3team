@@ -4,7 +4,7 @@ from api.schemas.festivals import FestivalDetail
 from api.services import festival_store
 
 
-def find_festival(festival_id: str) -> FestivalDetail | None:
+async def find_festival(festival_id: str) -> FestivalDetail | None:
     if uses_festival_db():
-        return festival_store.get_festival(festival_id)
+        return await festival_store.get_festival(festival_id)
     return get_public_mock_festival(festival_id)

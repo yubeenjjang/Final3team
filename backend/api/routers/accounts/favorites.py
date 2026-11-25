@@ -19,7 +19,7 @@ async def list_favorites(
     query: Annotated[FavoritesQuery, Query()], auth: MeSession, authorization: Authorization = None,
 ) -> FavoritesPage:
     if auth is None:
-        return await run_in_threadpool(mock_favorites.list_favorites, authorization, query)
+        return await mock_favorites.list_favorites(authorization, query)
     return await repository.list_favorites(auth[1], query)
 
 
@@ -30,7 +30,7 @@ async def save_favorite(
     festival_id: FestivalId, response: Response, auth: MeSession, authorization: Authorization = None,
 ) -> FavoriteSave:
     if auth is None:
-        favorite, created = await run_in_threadpool(mock_favorites.save_favorite, authorization, festival_id)
+        favorite, created = await mock_favorites.save_favorite(authorization, festival_id)
     else:
         favorite, created = await repository.save_favorite(auth[1], festival_id)
     if not created:

@@ -50,7 +50,7 @@ class SeoulCrowdService:
         return QuotaGuard(now=self._now, crowd=True)
 
     async def get_crowd(self, festival_id: str) -> RealCrowdResponse:
-        festival = await asyncio.to_thread(find_festival, festival_id)
+        festival = await find_festival(festival_id)
         if festival is None:
             raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
 

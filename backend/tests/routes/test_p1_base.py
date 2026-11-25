@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, timedelta
 
@@ -32,7 +33,7 @@ def test_P1_candidate_keys_match_mock(
     with httpx2.Client(transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=body))) as http:
         result = client_type(http).query(QUERY)
 
-    festival = find_festival("fst_000001")
+    festival = asyncio.run(find_festival("fst_000001"))
     assert festival is not None
     request = ReturnRouteRequest(
         request_id="provider-test-01",

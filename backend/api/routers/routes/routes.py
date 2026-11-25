@@ -39,13 +39,13 @@ async def submit_return_route(
         status, body = await service.create_route("return", route, submitted_body)
         selection_token = service.return_selection_token
     else:
-        status, body = await run_in_threadpool(create_route, "return", route, submitted_body, scenario)
+        status, body = await create_route("return", route, submitted_body, scenario)
         selection_token = mock_routes.return_selection_token
     request.state.result_status = body["route_status"]
     request.state.route_request_id = body["route_request_id"]
     headers = {}
     if body["route_status"] == "ready" and body["provider"] != "kakao":
-        headers["X-Route-Access-Token"] = selection_token(body["route_request_id"])
+        headers["X-Route-Access-Token"] = await run_in_threadpool(selection_token, body["route_request_id"])
         headers["Cache-Control"] = "private, no-store"
     return JSONResponse(body, status_code=status, headers=headers)
 
@@ -83,7 +83,7 @@ async def submit_visit_route(
     if real_routes.uses_real_routes():
         status, body = await real_routes.get_service().create_route("visit", route, submitted_body)
     else:
-        status, body = await run_in_threadpool(create_route, "visit", route, submitted_body, scenario)
+        status, body = await create_route("visit", route, submitted_body, scenario)
     request.state.result_status = body["route_status"]
     request.state.route_request_id = body["route_request_id"]
     return JSONResponse(body, status_code=status)

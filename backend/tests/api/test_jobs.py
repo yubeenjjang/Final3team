@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import Mock
@@ -113,17 +114,28 @@ def test_festival_cli_uses_same_advisory_lock_before_opening_output(monkeypatch,
     engine = Mock()
     lock = Mock()
     lock.scalar.return_value = False
-    engine.begin.return_value = nullcontext(lock)
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: engine)
+    lock.get_bind.return_value = engine
+    monkeypatch.setattr(collect, "service_db_session", lambda: nullcontext(lock))
     client = Mock()
     monkeypatch.setattr(collect, "TourApiClient", client)
     out = tmp_path / "collect"
     assert collect.main(["--since", "2027-01-01", "--out", str(out), "--db"]) == 3
     lock.scalar.assert_called_once_with(locks.FESTIVALS)
-    engine.dispose.assert_called_once()
+    engine.dispose.assert_not_called()
     client.assert_not_called()
     assert not out.exists()
     assert len(capsys.readouterr().err.splitlines()) == 1
+
+
+def test_festival_cli_reports_shared_configuration_failure(monkeypatch, tmp_path, capsys):
+    session = Mock(side_effect=ValueError("fixture DB configuration"))
+    monkeypatch.setattr(collect, "service_db_session", session)
+    out = tmp_path / "collect"
+    assert collect.main(["--since", "2027-01-01", "--out", str(out), "--db"]) == 1
+    report = json.loads((out / "report.json").read_text())
+    assert report["db"] is None
+    assert report["errors"] == [{"content_id": None, "stage": "db_start", "code": "DB_ERROR"}]
+    assert "fixture DB configuration" not in capsys.readouterr().err
 
 
 def test_festival_partial_status_fails_scheduled_slot(monkeypatch):

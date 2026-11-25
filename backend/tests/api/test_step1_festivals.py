@@ -212,7 +212,9 @@ def test_I20_mock_catalog_filters_categories(client: TestClient, monkeypatch: py
     assert _list(client, "?q=분류+시험")["items"] == []
 
 
-def test_I20_catalog_filters_without_relying_on_rls(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_I20_catalog_filters_without_relying_on_rls(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, use_sqlite_user_session,
+) -> None:
     engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
     try:
         with engine.begin() as connection:
@@ -235,8 +237,9 @@ def test_I20_catalog_filters_without_relying_on_rls(client: TestClient, monkeypa
                        ('fst_T20004', '무안 YD 페스티벌', 'JEONNAM', 'festival', NULL, 'approved', '2026-11-24')
             """)
         monkeypatch.setenv("FESTIVAL_DATA", "db")
-        monkeypatch.setattr(festival_store, "get_festival_engine", lambda: engine)
+        checkout = use_sqlite_user_session(festival_store, engine)
         listing = client.get(_FESTIVALS).json()
+        checkout.assert_awaited_once_with(execution_options={"isolation_level": "REPEATABLE READ"})
         assert listing["total"] == 1
         assert _ids(listing) == ["fst_T20001"]
         assert (listing["items"][0]["lat"], listing["items"][0]["lng"]) == (None, None)

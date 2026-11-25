@@ -3,7 +3,6 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
-from starlette.concurrency import run_in_threadpool
 
 from api.errors import ApiError
 from api.mocks.store import get_public_mock_festival, public_mock_festivals
@@ -57,7 +56,7 @@ def _start_date_key(festival: FestivalDetail, descending: bool) -> tuple[bool, i
 async def list_festivals(query: Annotated[FestivalQuery, Query()]) -> FestivalPage:
     _validate_period(query.date_from, query.date_to)
     if uses_festival_db():
-        return await run_in_threadpool(festival_store.list_festivals, query)
+        return await festival_store.list_festivals(query)
 
     term = query.q.casefold() if query.q is not None else ""
     statuses = query.statuses
@@ -89,7 +88,7 @@ async def get_festival(
     festival_id: Annotated[str, Path(pattern=FESTIVAL_ID_PATTERN)],
 ) -> FestivalDetail:
     if uses_festival_db():
-        festival = await run_in_threadpool(festival_store.get_festival, festival_id)
+        festival = await festival_store.get_festival(festival_id)
     else:
         festival = get_public_mock_festival(festival_id)
     if festival is None:

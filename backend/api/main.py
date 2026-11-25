@@ -1,5 +1,7 @@
+import asyncio
 import re
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -19,6 +21,7 @@ from api.errors import (
 )
 from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
+from api.providers import traffic_incidents
 from api.request_logs import (
     ADMIN_REVIEW_PATH, REPORT_PATHS, admin_festival_endpoint, admin_notice_endpoint, assistant_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
     me_endpoint, private_endpoint, request_logger,
@@ -33,12 +36,30 @@ from api.routers.festivals import catalog, info
 from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
 from api.services.assistant import uses_assistant_db
-from api.services.real_festival_info import uses_real_info
+from api.services import real_festival_info
 from api.services.real_routes import uses_real_routes
 from api.services.seoul_crowd import uses_real_crowd
 from ulid import ULID
 
-app = FastAPI(title="놀다가 API (mock)", version="0.1.0-mock")
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[dict[str, traffic_incidents.UticSnapshotStore] | None]:
+    if not traffic_incidents.utic_enabled():
+        yield
+        return
+
+    store = traffic_incidents.MemoryUticSnapshotStore()
+    worker = asyncio.create_task(
+        traffic_incidents.refresh_utic(real_festival_info.get_service().source, store), name="utic-refresh",
+    )
+    try:
+        yield {"utic_store": store}
+    finally:
+        worker.cancel()
+        with suppress(asyncio.CancelledError):
+            await worker
+
+
+app = FastAPI(title="놀다가 API (mock)", version="0.1.0-mock", lifespan=lifespan)
 app.add_exception_handler(ApiError, handle_api_error)
 app.add_exception_handler(DBPoolTimeout, handle_db_pool_timeout)
 app.add_exception_handler(RequestValidationError, handle_validation_error)
@@ -157,7 +178,7 @@ def _serves_real_data(request: Request) -> bool:
         or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
         or (uses_auth_db() and _auth_data_endpoint(path) is not None)
-        or (info_path is not None and uses_real_info(info_path[1]))
+        or (info_path is not None and real_festival_info.uses_real_info(info_path[1]))
     )
 
 

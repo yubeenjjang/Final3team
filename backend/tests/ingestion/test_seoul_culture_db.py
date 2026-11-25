@@ -11,7 +11,6 @@ from sqlalchemy import text
 from api.ingestion.festivals.normalize import normalize_festival
 from api.ingestion.festivals.store import FestivalStore
 from api.ingestion.seoul_culture import collect
-from api.services import festival_store
 
 from .test_i12_catalog_db import app_engine
 from .test_seoul_culture import KEY, NOW, festival_row, source_body, source_rows
@@ -176,7 +175,7 @@ def test_src2_concurrent_collectors_create_one_quarantine(db_engine, monkeypatch
 
 
 def test_src2_public_endpoints_keep_tourapi_source_and_hide_quarantine(
-    app_engine, db_engine, monkeypatch, source_rows,
+    app_engine, db_engine, monkeypatch, source_rows, use_user_db,
 ):
     from api.main import app
 
@@ -188,7 +187,7 @@ def test_src2_public_endpoints_keep_tourapi_source_and_hide_quarantine(
         private_id = db.scalar(text("SELECT festival_id FROM festival_review_queue"))
 
     monkeypatch.setenv("FESTIVAL_DATA", "db")
-    monkeypatch.setattr(festival_store, "get_festival_engine", lambda: app_engine)
+    use_user_db(app_engine.url)
     with TestClient(app) as client:
         listing = client.get("/api/v1/festivals").json()
         assert [(item["festival_id"], item["source"]) for item in listing["items"]] == [(festival_id, "tourapi")]

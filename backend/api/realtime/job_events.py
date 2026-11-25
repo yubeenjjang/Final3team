@@ -46,7 +46,7 @@ async def _mock_events(run_id: str, access: Access, initial: dict) -> AsyncGener
         return
     yield _event("step", node="supervisor")
     try:
-        result = await run_in_threadpool(mock_assistant.get_run, run_id, access)
+        result = await mock_assistant.get_run(run_id, access)
     except ApiError:
         return
     yield _event("step", node="festival")
@@ -147,7 +147,7 @@ async def stream_run(
             expires_at = datetime.fromisoformat(initial["queued_at"]) + assistant.TOKEN_TTL
         events = _postgres_events(run_id, access, initial, expires_at)
     else:
-        initial = await run_in_threadpool(mock_assistant.get_run, run_id, access)
+        initial = await mock_assistant.get_run(run_id, access)
         events = _mock_events(run_id, access, initial)
     return StreamingResponse(
         _authorized_events(events, identity, expires_at), media_type="text/event-stream",

@@ -19,7 +19,7 @@ from api.auth import state
 from api.ingestion.festivals.normalize import KST
 from api.main import app
 from api.realtime import chat_socket
-from api.services import assistant, festival_store
+from api.services import assistant
 from shared.db import session as sessions
 
 
@@ -86,12 +86,9 @@ class Browser:
 def browser(database_urls, service_db, monkeypatch) -> Iterator[Browser]:
     owner_url, _ = database_urls
     user_db = create_async_engine(owner_url, hide_parameters=True)
-    catalog_db = create_engine(owner_url, hide_parameters=True, isolation_level="REPEATABLE READ")
     role_engine(user_db.sync_engine, "noldaga_app")
-    role_engine(catalog_db, "noldaga_app")
     monkeypatch.setattr(sessions, "_service_engine", lambda: service_db)
     monkeypatch.setattr(sessions, "_user_engine", lambda: user_db)
-    monkeypatch.setattr(festival_store, "get_festival_engine", lambda: catalog_db)
     for provider in ("AUTH_PROVIDER", "FESTIVAL_DATA", "ASSISTANT_PROVIDER"):
         monkeypatch.setenv(provider, "db")
     monkeypatch.setenv("JWT_SECRET", "offline-itest-signing-value-not-for-production")
@@ -110,19 +107,16 @@ def browser(database_urls, service_db, monkeypatch) -> Iterator[Browser]:
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", unexpected_http)
     monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", unexpected_http)
-    try:
-        with TestClient(app) as sockets:
-            http = httpx.AsyncClient(
-                transport=httpx.ASGITransport(app=app), base_url="http://testserver", trust_env=False,
-            )
-            browser = Browser(http, sockets)
-            try:
-                yield browser
-            finally:
-                browser.run(http.aclose)
-                browser.run(user_db.dispose)
-    finally:
-        catalog_db.dispose()
+    with TestClient(app) as sockets:
+        http = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://testserver", trust_env=False,
+        )
+        browser = Browser(http, sockets)
+        try:
+            yield browser
+        finally:
+            browser.run(http.aclose)
+            browser.run(user_db.dispose)
 
 
 def checked(response: httpx.Response, status: int, code: str | None = None):

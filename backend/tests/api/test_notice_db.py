@@ -12,9 +12,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from api.auth.tokens import issue_access_token
 from api.ingestion.db import create_ingestion_engine
 from api.providers.route_base import KST
-from api.repositories import festival_info
 from api.repositories.notices import postgres_store
-from api.services import festival_store
 from shared.db import session as sessions
 
 pytestmark = pytest.mark.db
@@ -41,8 +39,6 @@ def test_postgres_notice_roles_rls_concurrent_review_and_schedule(client, monkey
 
     monkeypatch.setattr(sessions, "_service_engine", lambda: service_engine)
     monkeypatch.setattr(sessions, "_user_engine", lambda: user_engine)
-    monkeypatch.setattr(festival_store, "get_festival_engine", lambda: app_engine)
-    monkeypatch.setattr(festival_info, "get_festival_engine", lambda: app_engine)
     monkeypatch.setenv("AUTH_PROVIDER", "db")
     monkeypatch.setenv("FESTIVAL_DATA", "db")
     monkeypatch.setenv("JWT_SECRET", "notice-db-fixture-signing-value-for-tests")

@@ -1,9 +1,11 @@
+import asyncio
+import logging
 import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from math import cos, degrees, radians, sin, sqrt, tan
-from typing import Any
+from math import cos, degrees, isfinite, radians, sin, sqrt, tan
+from typing import Any, Protocol
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
@@ -22,6 +24,7 @@ _TOPIS = "http://openapi.seoul.go.kr:8088/{key}/xml/AccInfo"
 _UTIC = "http://www.utic.go.kr/guide/imsOpenData.do"
 _PAGE_SIZE = 1000
 _MAX_PAGES = 40
+_logger = logging.getLogger(__name__)
 
 _POLICE_TYPES: dict[str, TrafficIncidentType] = {
     "1": "accident", "2": "construction", "3": "event", "5": "control",
@@ -52,8 +55,56 @@ class IncidentReading:
     items: list[Incident]
 
 
+class UticSnapshotStore(Protocol):
+    async def read(self) -> IncidentReading | None: ...
+
+    async def save(self, reading: IncidentReading) -> None: ...
+
+
+class MemoryUticSnapshotStore:
+    def __init__(self) -> None:
+        self._reading: IncidentReading | None = None
+
+    async def read(self) -> IncidentReading | None:
+        return self._reading
+
+    async def save(self, reading: IncidentReading) -> None:
+        self._reading = reading
+
+
 def utic_enabled() -> bool:
     return os.environ.get("UTIC_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _utic_seconds(name: str, default: float) -> float:
+    try:
+        value = float(os.environ.get(name, ""))
+    except ValueError:
+        return default
+    return value if isfinite(value) and value > 0 else default
+
+
+async def refresh_utic(client: FestivalSource, store: UticSnapshotStore) -> None:
+    refresh_s = _utic_seconds("UTIC_REFRESH_S", 60)
+    timeout_s = _utic_seconds("UTIC_TIMEOUT_S", 20)
+    loop = asyncio.get_running_loop()
+    failing = False
+    while True:
+        started = loop.time()
+        try:
+            rows = await client.request(
+                "police_utic", _UTIC, key_env="UTIC_API_KEY", key_param="key", parse_xml=_utic_records,
+                timeout_s=timeout_s, retry=False,
+            )
+            items = [item for row in rows if (item := _police_incident(row)) is not None]
+            await store.save(IncidentReading("police_incident", as_kst(client.now()), items))
+        except Exception:
+            if not failing:
+                _logger.warning("UTIC 갱신에 실패했습니다. 다음 주기에 다시 시도합니다.")
+            failing = True
+        else:
+            failing = False
+        await asyncio.sleep(max(0, refresh_s - (loop.time() - started)))
 
 
 def _public_endpoint() -> str:
@@ -234,17 +285,6 @@ async def public_incidents(client: FestivalSource) -> IncidentReading:
         raise FestivalSourceError("전국 교통 돌발 페이지를 모두 확인할 수 없어요.", retryable=False)
 
     return await client.cached("police_incident", f"national:{endpoint}", INCIDENT_TTL_S, load)
-
-
-async def utic_incidents(client: FestivalSource) -> IncidentReading:
-    async def load() -> IncidentReading:
-        rows = await client.request(
-            "police_utic", _UTIC, key_env="UTIC_API_KEY", key_param="key", parse_xml=_utic_records,
-        )
-        items = [item for row in rows if (item := _police_incident(row)) is not None]
-        return IncidentReading("police_incident", as_kst(client.now()), items)
-
-    return await client.cached("police_utic", "national", INCIDENT_TTL_S, load)
 
 
 async def topis_incidents(client: FestivalSource) -> IncidentReading:

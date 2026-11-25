@@ -1,16 +1,16 @@
 import os
 
 from anyio import fail_after
-from dotenv import dotenv_values, find_dotenv
 from fastapi import APIRouter, Request, Response
-from psycopg import AsyncConnection, Error as PostgresError
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.auth.tokens import uses_auth_db
 from api.routers.festivals.catalog import uses_festival_db
 from api.schemas.common import HealthResponse
-from api.services.festival_store import get_app_db_url
 from api.services.real_festival_info import uses_real_info
 from api.services.real_routes import uses_real_routes
+from shared.db.session import user_db_session
 
 router = APIRouter()
 _DB_TIMEOUT_SECONDS = 1
@@ -28,24 +28,9 @@ def uses_health_db() -> bool:
 
 
 async def _check_db() -> None:
-    dotenv = {
-        name: value for name, value in dotenv_values(find_dotenv(usecwd=True)).items()
-        if value is not None
-    }
-    url = get_app_db_url(dotenv | os.environ)
-    connection = await AsyncConnection.connect(
-        host=url.host,
-        port=url.port,
-        dbname=url.database,
-        user=url.username,
-        password=url.password,
-        autocommit=True,
-        options=f"-c statement_timeout={_DB_TIMEOUT_SECONDS * 1000}",
-    )
-    try:
-        await connection.execute("SELECT 1")
-    finally:
-        await connection.close()
+    async with user_db_session(user_id=None) as db:
+        await db.execute(text(f"SET LOCAL statement_timeout = {_DB_TIMEOUT_SECONDS * 1000}"))
+        await db.execute(text("SELECT 1"))
 
 
 @router.get("/health", responses={503: {"model": HealthResponse}})
@@ -58,7 +43,7 @@ async def get_health(request: Request, response: Response) -> HealthResponse:
         # Repeated cancellation also interrupts psycopg's query cancellation wait.
         with fail_after(_DB_TIMEOUT_SECONDS):
             await _check_db()
-    except (PostgresError, OSError, RuntimeError):
+    except (SQLAlchemyError, OSError, RuntimeError, ValueError):
         response.status_code = 503
         return HealthResponse(
             status="degraded", db="unavailable", redis="not_configured",

@@ -4,7 +4,6 @@ import httpx2
 import pytest
 from sqlalchemy import Engine, text
 
-from api.ingestion.festivals import collect
 
 from .test_i8_collect import TEST_KEY, listing, output_files, run_collector
 
@@ -78,7 +77,6 @@ def test_collect_applies_coordinate_policy(
 def test_geocode_retry_updates_an_unchanged_listing(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, provider_keys: None,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
     geocodes = iter([httpx2.Response(503), _address_response("전남 무안군 무안읍 무안로 123")])
 
     def respond(request: httpx2.Request) -> httpx2.Response:
@@ -102,7 +100,6 @@ def test_geocode_retry_updates_an_unchanged_listing(
 def test_legacy_row_without_coordinates_or_address_becomes_public(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, provider_keys: None,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
 
     def respond(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path.endswith("/searchFestival2")

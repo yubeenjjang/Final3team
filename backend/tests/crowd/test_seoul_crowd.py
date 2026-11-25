@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx2
 import pytest
@@ -183,7 +184,7 @@ def test_P2_replacement_values_are_neither_returned_nor_cached(monkeypatch) -> N
 )
 def test_P1_unsupported_without_provider_call(monkeypatch, changes, reason) -> None:
     festival = festivals[_FESTIVAL].model_copy(update=changes)
-    monkeypatch.setattr(seoul_crowd, "find_festival", lambda _: festival)
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=festival))
     service = _service(_unexpected)
     response = asyncio.run(service.get_crowd(_FESTIVAL))
     assert response.status == "unsupported" and response.unsupported_reason == reason
@@ -211,7 +212,7 @@ def test_P1_saved_candidate_cannot_call_without_approval(monkeypatch) -> None:
     location_fields = {"festival_id", "region_code", "lat", "lng", "venue_name", "address"}
     festival = festivals[_FESTIVAL].model_copy(update={key: candidate[key] for key in location_fields})
     assert festival.festival_id in seoul_crowd_mapping._load_mappings()
-    monkeypatch.setattr(seoul_crowd, "find_festival", lambda _: festival)
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=festival))
     service = _service(_unexpected)
     response = asyncio.run(service.get_crowd(festival.festival_id))
     assert response.status == "unsupported" and response.unsupported_reason == "no_approved_mapping"
@@ -397,7 +398,7 @@ def test_P4_concurrent_same_area_merges_across_festivals(monkeypatch, write_mapp
     first_festival = festivals[_FESTIVAL]
     second_festival = first_festival.model_copy(update={"festival_id": "fst_000002"})
     by_id = {festival.festival_id: festival for festival in (first_festival, second_festival)}
-    monkeypatch.setattr(seoul_crowd, "find_festival", by_id.get)
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(side_effect=by_id.get))
     write_mappings(*(_mapping(festival, {"POI009": True}) for festival in by_id.values()))
 
     async def check() -> None:

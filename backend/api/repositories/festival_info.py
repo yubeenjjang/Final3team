@@ -1,18 +1,15 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from functools import lru_cache
 from hashlib import sha256
 from math import cos, radians
 from typing import Literal
 
-from sqlalchemy import Engine, text
+from sqlalchemy import text
 
-from api.ingestion.db import create_ingestion_engine
 from api.providers.visit_forecast import TourReading
-
 from api.schemas.festival_info import Notice, NoticeType, TransitMode
-from api.services.festival_store import get_festival_engine
+from shared.db.session import service_db_session, user_db_session
 
 
 @dataclass(frozen=True)
@@ -28,7 +25,7 @@ class FacilityStation:
     ref_code: str | None
 
 
-def approved_notices(
+async def approved_notices(
     festival_id: str, notice_type: NoticeType | None, active_only: bool, now: datetime,
 ) -> list[Notice]:
     query = text("""
@@ -44,15 +41,15 @@ def approved_notices(
                           AND (ended_at IS NULL OR ended_at > :now)))
          ORDER BY effective_from DESC NULLS LAST, notice_id
     """)
-    with get_festival_engine().connect() as connection:
-        rows = connection.execute(query, {
+    async with user_db_session(user_id=None) as db:
+        result = await db.execute(query, {
             "festival_id": festival_id, "all_types": notice_type is None,
             "notice_type": notice_type, "all_dates": not active_only, "now": now,
-        }).mappings()
-        return [Notice.model_validate(row) for row in rows]
+        })
+        return [Notice.model_validate(row) for row in result.mappings()]
 
 
-def nearby_facilities(lat: float, lng: float, radius_m: int, mode: TransitMode) -> list[FacilityStation]:
+async def nearby_facilities(lat: float, lng: float, radius_m: int, mode: TransitMode) -> list[FacilityStation]:
     query = text("""
         SELECT CASE category WHEN 'subway_station' THEN 'subway' ELSE 'bus' END AS type,
                facility_id AS station_id, name, lat, lng, region_code, source_id, source_item_id, ref_code
@@ -62,19 +59,19 @@ def nearby_facilities(lat: float, lng: float, radius_m: int, mode: TransitMode) 
     """)
     lat_delta = radius_m / 110_000
     lng_delta = lat_delta / cos(radians(lat))
-    with get_festival_engine().connect() as connection:
-        rows = connection.execute(query, {
+    async with user_db_session(user_id=None) as db:
+        rows = await db.execute(query, {
             "south": lat - lat_delta, "north": lat + lat_delta,
             "west": lng - lng_delta, "east": lng + lng_delta,
             "bus": mode != "subway", "subway": mode != "bus",
-        }).mappings()
+        })
         return [
             FacilityStation(
                 type=row.type, station_id=row.station_id, name=row.name, lat=float(row.lat),
                 lng=float(row.lng), region_code=row.region_code, source_id=row.source_id,
                 source_item_id=row.source_item_id, ref_code=row.ref_code,
             )
-            for row in rows
+            for row in rows.mappings()
         ]
 
 
@@ -86,8 +83,8 @@ def read_tour_snapshot(source: str, target: str, since: datetime, now: datetime)
            AND sample_kind = 'original' AND observed_at >= :since AND observed_at <= :now
          ORDER BY observed_at DESC LIMIT 1
     """)
-    with _snapshot_engine().connect() as connection:
-        row = connection.execute(query, {"source": source, "target": target, "since": since, "now": now}).first()
+    with service_db_session() as db:
+        row = db.execute(query, {"source": source, "target": target, "since": since, "now": now}).first()
     if row is None:
         return None
     return TourReading(row.observed_at, row.payload["items"])
@@ -102,16 +99,16 @@ def save_tour_snapshot(source: str, target: str, region: str, reading: TourReadi
         "name": "관광지 집중률 방문자 추이 예측" if source == "visit_forecast" else "지역별 관광 수요 강도",
         "target_type": "attraction" if source == "visit_forecast" else "region",
     }
-    with _snapshot_engine().begin() as connection:
-        connection.execute(text("""
+    with service_db_session() as db:
+        db.execute(text("""
             INSERT INTO data_sources (source_id, name, provider_org, scope, is_realtime, refresh_s)
             VALUES (:source, :name, '한국관광공사', 'national', false, 86400)
             ON CONFLICT (source_id) DO NOTHING
         """), parameters)
-        connection.execute(
+        db.execute(
             text("SELECT pg_advisory_xact_lock(hashtext(:source), hashtext(:target))"), parameters,
         )
-        connection.execute(text("""
+        db.execute(text("""
             INSERT INTO realtime_snapshots (
                 source_id, data_type, target_type, target_id, region_code, observed_at,
                 payload, payload_hash, source_result_code, sample_kind
@@ -124,8 +121,3 @@ def save_tour_snapshot(source: str, target: str, region: str, reading: TourReadi
                    AND sample_kind = 'original' AND observed_at >= :since
              )
         """), parameters)
-
-
-@lru_cache(maxsize=1)
-def _snapshot_engine() -> Engine:
-    return create_ingestion_engine(pool_pre_ping=True)
