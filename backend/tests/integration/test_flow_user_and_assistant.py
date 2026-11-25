@@ -15,7 +15,7 @@ def test_I08_login_save_favorite_then_return_route_then_logout(flow: Flow) -> No
     tokens = flow.sign_up_and_login("Taek")
     auth = _bearer(tokens)
 
-    festival_id = flow.festivals(q="야시장")["items"][0]["festival_id"]
+    festival_id = flow.festivals(q="광화문")["items"][0]["festival_id"]  # 모의 서울 축제(fst_000001)
     saved = flow.ok(flow.client.put(f"{FAVORITES}/{festival_id}", headers=auth), 201)
     assert saved["festival_id"] == festival_id
 
@@ -89,8 +89,13 @@ def test_I11_assistant_return_question_gives_usable_route(flow: Flow) -> None:
     assert route["route_status"] == "ready"
     assert_route_matches_festival(route, festival)
 
-    # 같은 대화로 이어서 질문하면 같은 대화 번호를 쓴다
-    follow_up = flow.ask("i11-ask-0002", "이번 주 축제 알려줘", conversation_id=accepted["conversation_id"])
+    # 같은 대화로 이어서 질문하면 같은 대화 번호를 쓴다.
+    # API v0.5: 비로그인 사용자가 대화를 이어 가려면 그 대화의 X-Run-Access-Token이 필요하고, 없으면 403
+    ask_url, run_token = "/api/v1/assistant/query", "X-Run-Access-Token"
+    again = {"request_id": "i11-ask-0002", "message": "이번 주 축제 알려줘", "conversation_id": accepted["conversation_id"]}
+    flow.error(flow.client.post(ask_url, json=again), 403, "FORBIDDEN")
+    follow_up = flow.ok(flow.client.post(ask_url, json={**again, "request_id": "i11-ask-0003"},
+                                         headers={run_token: accepted["run_access_token"]}), 202)
     assert follow_up["conversation_id"] == accepted["conversation_id"]
 
 

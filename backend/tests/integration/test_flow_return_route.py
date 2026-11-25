@@ -223,18 +223,19 @@ def test_I13_side_info_degraded_but_return_route_works(flow: Flow, kind: str) ->
 def test_I14_sync_ready_result_same_as_later_lookup(flow: Flow) -> None:
     """바로 결과가 오는 경우(200): 받은 결과와 나중에 다시 조회한 결과가 같고, 같은 토큰으로 조회됨."""
     festival = flow.festival("fst_000003")
-    immediate = flow.ok(
-        flow.submit_route(RETURN, {"request_id": "i14-return-0001", "festival_id": "fst_000003",
-                                   "destination": {"query": "부산역"}}, scenario="sync_ready"),
-        200,
-    )
+    response = flow.submit_route(RETURN, {"request_id": "i14-return-0001", "festival_id": "fst_000003",
+                                          "destination": {"query": "부산역"}}, scenario="sync_ready")
+    immediate = flow.ok(response, 200)
     assert immediate["route_status"] == "ready"
-    assert immediate["route_access_token"].startswith("rrt_")
+    # API v0.5: 동기 200은 조회 토큰을 본문이 아니라 응답 헤더로 준다(202만 본문 route_access_token)
+    assert "route_access_token" not in immediate
+    token = response.headers[ROUTE_TOKEN]
+    assert token.startswith("rrt_")
     assert_route_matches_festival(immediate, festival)
 
     later = flow.poll_route({
         "status_url": f"{RETURN}/{immediate['route_request_id']}",
-        "route_access_token": immediate["route_access_token"],
+        "route_access_token": token,
     })
     assert flow.polls == ["ready"]  # 기다릴 필요 없이 첫 조회부터 결과
     for key in ("route_request_id", "festival_id", "origin", "destination", "route_candidates", "coverage"):
