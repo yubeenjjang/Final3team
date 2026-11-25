@@ -14,6 +14,7 @@
 
 - A02/A03 구현 및 W100 축제 로컬 적재 검증 기록이 있다. A04/A05 구현과 실제 TMAP 기본 흐름 보고가 있다.
 - `backend/tests/integration/test_screen_flows.py::test_midterm_search_detail_return_and_result`는 일회용 DB의 공개 축제를 검색·상세 조회한 뒤 같은 ID로 **모의 공급원** 귀가 결과까지 잇는다. 실제 외부 공급원 성공을 증명하는 시험은 아니다.
-- `backend/tests/api/test_midterm_core_flow.py`의 모의 4단계 연속 시험은 Python 3.14 Docker에서 **1 passed**. 202 대기 응답에는 `festival_id`가 없고, `ready` 결과에서 동일 ID와 출발 좌표를 확인한다. 일회용 DB 통합 시험은 DB 준비 후 별도 실행해야 한다.
+- `backend/tests/api/test_midterm_core_flow.py`의 모의 4단계 연속 시험은 Python 3.14 Docker에서 **1 passed**. 202 대기 응답에는 `festival_id`가 없고, `ready` 결과에서 동일 ID와 출발 좌표를 확인한다.
+- 2026-11-25 최신 `yubeen`에서 별도 Docker 네트워크의 일회용 PostgreSQL 17+pgvector에 SQL **001~028**을 적용했다. 앱·서비스 역할 비밀번호를 설정한 뒤 `test_midterm_search_detail_return_and_result` **1 passed**(DB 공개 축제 A02→A03, 모의 경로 A04→A05), `test_P18_db_a02_a03_a04_a05_status_and_expiry` **1 passed**(DB 경로 저장·A05 조회, 토큰 검증·만료)였다. 시험 컨테이너와 네트워크는 종료 후 삭제했다. 두 시험 모두 실제 TMAP 호출 결과를 증명하지 않는다.
 - 발표용 화면 W31(검색·상세)과 W38(목적지·상태·결과)은 R05/R01 담당으로 아직 통합 검증 기록이 없다. 그 두 화면에서 위 계약과 오류 표시를 확인해야 발표 동선이 완성된다.
 - 중간 시연 W56에는 동일 축제 ID의 검색→상세→귀가→결과 1회, 좌표 없는 축제 또는 조회 불가 1회, 모의/실제 구분과 출처·시각을 기록한다. 실제 화면 리허설은 W58에서 한다.
