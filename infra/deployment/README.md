@@ -21,6 +21,8 @@ docker compose --env-file .env -f infra/deployment/compose.yaml up -d --build
 curl http://127.0.0.1:8000/api/v1/health
 ```
 - 축제 목록을 DB에서 읽으려면 `.env`에 `FESTIVAL_DATA=db`
+- 정기 수집은 기본 기동에 포함하지 않는다. 공급원 키를 설정한 뒤 `docker compose --env-file .env -f infra/deployment/compose.yaml --profile scheduled up -d --build`로 `scheduler`를 켠다. 매시간 한국 시각 회차를 확인하고 축제 수집은 06:00 이후 하루 한 번 실행한다. 성공 회차는 DB에 기록되어 재시작해도 중복 실행하지 않으며, 실패 회차는 다음 실행 때 다시 시도한다. 서울시 2차 수집은 `SEOUL_CULTURE_ENABLED=true`와 `SEOUL_OPEN_API_KEY`를 설정한 경우에만 실행한다.
+- 정기 실행 결과: `docker compose --env-file .env -f infra/deployment/compose.yaml logs scheduler`. `status=ok`는 실행, `status=already_done`은 같은 회차 건너뜀, `status=error`는 실패 후 재시도 대상이다. 공급원 목록에서 사라진 행은 취소로 단정하지 않고 공개 보류·관리자 검토로 보낸다.
 - 끄기: `docker compose --env-file .env -f infra/deployment/compose.yaml down` (DB까지 지우려면 `down -v`)
 
 ## 지키는 원칙
