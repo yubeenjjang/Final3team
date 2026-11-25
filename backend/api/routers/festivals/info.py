@@ -4,15 +4,29 @@ from fastapi import APIRouter, Header, Path, Query, Request
 
 from api.providers.traffic_incidents import DEFAULT_RADIUS_M, MAX_RADIUS_M, MIN_RADIUS_M
 from api.schemas.festival_info import (
-    CrowdResponse, NoticeResponse, NoticeType, RealCrowdResponse, TrafficIncidentResponse,
+    CrowdResponse, FacilitiesResponse, NoticeResponse, NoticeType, RealCrowdResponse, TrafficIncidentResponse,
     TrafficIncidentType, TransitMode, TransitResponse, VisitForecastResponse, WeatherResponse,
 )
 from api.schemas.festivals import FESTIVAL_ID_PATTERN
-from api.services import mock_festival_info, real_festival_info, seoul_crowd
+from api.services import facilities, mock_festival_info, real_festival_info, seoul_crowd
 
 router = APIRouter(prefix="/festivals")
 FestivalId = Annotated[str, Path(pattern=FESTIVAL_ID_PATTERN)]
 Scenario = Annotated[str | None, Header(alias="X-Mock-Scenario")]
+
+
+@router.get("/{festival_id}/facilities")
+async def get_facilities(
+    request: Request, festival_id: FestivalId,
+    categories: str | None = None,
+    radius_m: Annotated[int, Query(ge=100, le=3000)] = 1000,
+    limit_per_category: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> FacilitiesResponse:
+    result = await facilities.get_facilities(
+        festival_id, facilities.parse_categories(categories), radius_m, limit_per_category,
+    )
+    request.state.result_status = result.status
+    return result
 
 
 @router.get("/{festival_id}/notices")

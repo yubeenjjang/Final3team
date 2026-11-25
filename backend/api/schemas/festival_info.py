@@ -132,6 +132,30 @@ class TransitResponse(InfoResponse):
     stations: list[TransitStation] = Field(default_factory=list)
 
 
+FacilityCategory = Literal[
+    "toilet", "parking", "hospital", "emergency", "subway_station", "bus_stop",
+    "bike_zone", "taxi_stand", "food", "attraction", "locker", "pharmacy",
+]
+
+
+class FacilityItem(BaseModel):
+    facility_id: str
+    category: FacilityCategory
+    name: str
+    lat: float
+    lng: float
+    distance_m: float
+    address: str | None = None
+    source: str
+    ref_code: str | None = None
+    extra: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+
+
+class FacilitiesResponse(InfoResponse):
+    categories_status: dict[FacilityCategory, InfoStatus] = Field(default_factory=dict)
+    items: list[FacilityItem] = Field(default_factory=list)
+
+
 class TrafficIncident(BaseModel):
     type: TrafficIncidentType
     title: str
