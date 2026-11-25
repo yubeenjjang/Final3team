@@ -14,7 +14,7 @@ LOCK_ID = 8726481
 
 def migration_files() -> list[tuple[int, Path, str]]:
     """되돌리기 SQL은 제외하고 001부터 빠짐없는 적용 파일만 선택합니다."""
-    files = [path for path in SQL_DIR.glob("[0-9][0-9][0-9]_*.sql") if not path.name.endswith("_down.sql")]
+    files = [path for path in SQL_DIR.glob("[0-9][0-9][0-9]_*.sql") if not path.name.endswith(("_down.sql", "_precheck.sql"))]
     files.sort()
     numbers = [int(path.name[:3]) for path in files]
     if not numbers or numbers != list(range(1, numbers[-1] + 1)):

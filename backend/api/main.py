@@ -157,7 +157,7 @@ _HEALTH_PATH = re.compile(r"^/api/v1/health/?$")
 _REAL_ROUTE_PATHS = re.compile(r"^/api/v1/routes/(return|visit)(/[^/]+)?/?$")
 _REAL_CROWD_PATH = re.compile(r"^/api/v1/festivals/[^/]+/crowd/?$")
 _FESTIVAL_INFO_PATH = re.compile(
-    r"^/api/v1/festivals/[^/]+/(notices|weather|transit|traffic-incidents|visit-forecast)/?$"
+    r"^/api/v1/festivals/[^/]+/(facilities|notices|weather|transit|traffic-incidents|visit-forecast)/?$"
 )
 
 

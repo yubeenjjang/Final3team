@@ -146,3 +146,32 @@ def test_I10_bad_record_rolls_back_its_savepoint(db_engine: Engine, record: Fest
         assert connection.execute(text("SELECT source_item_id FROM festival_sources")).scalar_one() == record.source_item_id
         assert connection.execute(text("SELECT COUNT(*) FROM festivals")).scalar_one() == 1
         assert connection.execute(text("SELECT error FROM ingestion_jobs")).scalar_one() == errors
+
+
+@pytest.mark.db
+def test_W100_admin_cancellation_survives_source_refresh(db_engine: Engine, record: FestivalRecord) -> None:
+    store = FestivalStore(db_engine)
+    assert store.finish_job(store.start_job(NOW), [record], []).inserted == 1
+    with db_engine.begin() as connection:
+        festival_id = connection.scalar(text(
+            "SELECT festival_id FROM festival_sources WHERE source_id = 'tourapi'"
+        ))
+        connection.execute(text(
+            "UPDATE festivals SET event_status = 'cancelled' WHERE festival_id = :id"
+        ), {"id": festival_id})
+        connection.execute(text("""
+            INSERT INTO festival_change_history
+                (festival_id, field, before_value, after_value, actor, changed_at)
+            VALUES (:id, 'event_status', '"ended"'::jsonb, '"cancelled"'::jsonb, 'admin', now())
+        """), {"id": festival_id})
+
+    changed = replace(record, title="공급원에서 바뀐 제목", raw_checksum="new-checksum")
+    assert store.finish_job(store.start_job(NOW + timedelta(days=1)), [changed], []).updated == 1
+    with db_engine.connect() as connection:
+        assert connection.execute(text(
+            "SELECT title, event_status FROM festivals WHERE festival_id = :id"
+        ), {"id": festival_id}).one() == (changed.title, "cancelled")
+        assert connection.scalar(text("""
+            SELECT proposed_value->>'event_status' FROM festival_review_queue
+            WHERE festival_id = :id AND reason = 'conflict' AND approval_status = 'pending'
+        """), {"id": festival_id}) == "ended"

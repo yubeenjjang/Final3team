@@ -28,6 +28,7 @@ _PROVIDER_ENVS: dict[ModeName, str] = {
     "notices": "NOTICES_PROVIDER", "weather": "WEATHER_PROVIDER",
     "transit": "TRANSIT_PROVIDER", "traffic-incidents": "TRAFFIC_INCIDENT_PROVIDER",
     "visit-forecast": "VISIT_FORECAST_PROVIDER",
+    "facilities": "FACILITIES_PROVIDER",
 }
 _DB_ERRORS = (SQLAlchemyError, RuntimeError, ValueError)
 _STALE_NOTICE = "정보가 오래됐어요"
