@@ -158,8 +158,9 @@ def test_mock_password_change_validates_and_ends_sessions(client, monkeypatch):
 
     changed = client.post(path, headers=mine, json={"current_password": PASSWORD, "new_password": new})
     assert changed.status_code == 204 and changed.content == b""
-    for headers in (mine, second_device):
-        assert client.get(f"{ME}/profile", headers=headers).status_code == 401
+    assert client.get(f"{ME}/profile", headers=mine).status_code == 401
+    # 다른 기기의 Access는 남은 수명 동안 유지되고, 갱신은 막힙니다(DB 모드와 같음).
+    assert client.get(f"{ME}/profile", headers=second_device).status_code == 200
     for token in (refresh, second_refresh):
         assert client.post(f"{AUTH}/refresh", json={"refresh_token": token}).status_code == 401
     assert client.post(f"{AUTH}/login", json=credentials).status_code == 401

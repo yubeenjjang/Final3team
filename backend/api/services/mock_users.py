@@ -101,10 +101,9 @@ def change_password(authorization: str | None, current_password: str, new_passwo
             raise password_mismatch()
         salt = secrets.token_bytes(16)
         users_by_email[email] = replace(user, salt=salt, password_hash=_password_hash(new_password, salt))
-        # DB 모드와 같게 모든 기기의 Refresh와 이 계정의 Access를 끝냅니다.
-        for token, access in tuple(access_sessions.items()):
-            if access.user_id == user.user_id:
-                del access_sessions[token]
+        # DB 모드와 같게 이 기기의 Access와 모든 기기의 Refresh를 끝냅니다.
+        # 다른 기기의 Access는 남은 수명 동안 유지됩니다(A82).
+        access_sessions.pop(authorization.partition(" ")[2], None)
         for token, refresh in tuple(refresh_sessions.items()):
             if refresh.user.user_id == user.user_id:
                 del refresh_sessions[token]

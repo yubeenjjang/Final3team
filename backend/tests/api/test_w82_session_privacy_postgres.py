@@ -220,6 +220,8 @@ def test_a82_password_change_postgres(client, w82):
             SELECT count(*) FROM public.refresh_tokens WHERE user_id = :id AND revoked_at IS NULL
         """), {"id": my_id}) == 0
     assert client.get(PROFILE, headers=mine).status_code == 401
+    # 설계서 7-16-6: 다른 기기의 Access는 남은 수명 동안 유지, 갱신은 거부.
+    assert client.get(PROFILE, headers=second_device).status_code == 200
     for token in (refresh, second_refresh):
         assert client.post(f"{AUTH}/refresh", json={"refresh_token": token}).status_code == 401
     assert client.post(f"{AUTH}/login", json=credentials).status_code == 401
