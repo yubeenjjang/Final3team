@@ -1,7 +1,6 @@
 import hashlib
 import json
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from html.parser import HTMLParser
@@ -221,7 +220,6 @@ def normalize_festival(
     *,
     today: date,
     details_requested: bool = True,
-    geocode: Callable[[str], tuple[float, float] | None] | None = None,
 ) -> FestivalRecord:
     issues: list[str] = []
     title = _text(item.get("title"))
@@ -236,12 +234,9 @@ def normalize_festival(
     coords = _coordinates(item.get("mapy"), item.get("mapx"))
     coords_source = "tourapi" if coords else None
     if coords is None:
+        # 카카오 주소 검색 결과는 저장할 수 없어 좌표를 보정하지 않는다(DB 설계서 6-3 coords_source).
+        # 좌표는 NULL로 두고 목록·상세에는 남기며, 지도 마커와 좌표가 필요한 기능에서만 빠진다.
         issues.append(COORDS_OUT_OF_RANGE)
-        if address and geocode:
-            result = geocode(address)
-            coords = _coordinates(*result) if result is not None else None
-            if coords is not None:
-                coords_source = "geocoded"
     lat, lng = coords if coords is not None else (None, None)
     image, thumbnail, copyright_type = _images(item, issues)
 
@@ -255,7 +250,6 @@ def normalize_festival(
         issues.append(NOT_FESTIVAL_CLASS)
     publishable = (
         class_level2 == FESTIVAL_CLASS
-        and (coords is not None or address is None)
         and all(value is not None for value in (title, start, end, region))
     )
     if details_requested and (not common or not intro):

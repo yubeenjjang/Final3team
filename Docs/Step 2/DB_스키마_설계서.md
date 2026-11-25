@@ -839,7 +839,7 @@ API 목록의 GET부터 보고, **필터 컬럼 먼저 · 정렬 컬럼 다음**
 | | start_date / end_date | DATE / NULL 허용, `CHECK(end_date >= start_date)` | 기간(미확정이면 NULL + 상태 `needs_review`) |
 | | venue_name / address | TEXT / NULL | 장소·주소 |
 | | latitude / longitude | NUMERIC(9,6) / NULL, 대한민국 범위 CHECK | 원본 또는 시·군 확인 후 카카오로 보정한 좌표. 주소가 있으나 보정 실패면 검토 대기. 주소도 없으면 좌표 NULL이며 공개 조건 충족 시 목록·상세 유지, 지도 마커 제외 |
-| | coords_source (018) | TEXT / NULL, 값이 있으면 좌표 두 칸 필수 | `tourapi`는 원본, `geocoded`는 카카오 주소 보정, NULL은 좌표가 없거나 출처를 기록하기 전의 기존 행 |
+| | coords_source (018) | TEXT / NULL, 값이 있으면 좌표 두 칸 필수 | `tourapi`는 원본, `geocoded`는 관리자가 직접 입력·승인한 보정 좌표(A24·A56), NULL은 좌표가 없는 행. 카카오 주소 검색 결과는 저장하지 않으므로 수집 때 자동 보정하지 않음 |
 | | region_code | TEXT / NOT NULL | 03 문서 0-1절 코드(`SEOUL` 등) |
 | | category | TEXT / NULL | TourAPI `lclsSystm2` 대응. `EV01` → `festival`(공개 대상), `EV02` → `performance`, `EV03` → `event`, 미분류 → `unknown` |
 | | source_class_level1 / source_class_level2 / source_class_code (014) | TEXT / NULL | TourAPI `searchFestival2`의 `lclsSystm1` / `lclsSystm2` / `lclsSystm3` 원본 코드. 빈 값이면 NULL |

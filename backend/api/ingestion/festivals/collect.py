@@ -19,8 +19,6 @@ from api.ingestion.festivals.normalize import (
 )
 from api.ingestion.festivals.store import ErrorEntry, FestivalStore, JobResult, ListingScope, StoredFestival
 from api.jobs.locks import FESTIVALS
-from api.providers.kakao import KakaoClient
-from api.providers.route_base import ProviderError
 from api.providers.tourapi import TourApiClient, TourApiError
 from shared.db.session import service_db_session
 
@@ -83,7 +81,6 @@ def _normalize_items(
     issues: Counter[str],
     errors: list[ErrorEntry],
     stored: Mapping[str, StoredFestival] | None = None,
-    geocode: Callable[[str], tuple[float, float] | None] | None = None,
 ) -> list[FestivalRecord]:
     records: list[FestivalRecord] = []
     for item in items:
@@ -100,21 +97,13 @@ def _normalize_items(
         elif changed and quota_reached and not no_detail:
             issues["detail_skipped_quota"] += 1
         record = normalize_festival(
-            item, common, intro, today=today, details_requested=fetch_details, geocode=geocode,
+            item, common, intro, today=today, details_requested=fetch_details,
         )
         if stored is not None and (common is None or intro is None):
             record = _reuse_details(record, previous, changed)
         records.append(record)
         issues.update(record.issues)
     return records
-
-
-def _geocode_address(address: str, http_client: httpx2.Client | None) -> tuple[float, float] | None:
-    try:
-        return KakaoClient(http_client).search_address(address)
-    except ProviderError:
-        # 주소 보정 실패는 해당 축제의 검토 사유로만 남겨 목록 전체의 누락 대조를 유지한다.
-        return None
 
 
 def _record_json(record: FestivalRecord, client: TourApiClient) -> str:
@@ -203,7 +192,6 @@ def _collect(
                     stored = store.load({source_item_id(item) for item in items} - {""})
                 records = _normalize_items(
                     client, items, started_at.date(), args.no_detail, issues, errors, stored,
-                    geocode=lambda address: _geocode_address(address, http_client),
                 )
                 if output is not None:
                     for record in records:
