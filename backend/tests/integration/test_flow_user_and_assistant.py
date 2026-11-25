@@ -3,7 +3,7 @@
 챗봇이 실패해도 축제 검색과 귀가 조회는 계속 쓸 수 있는지(기능 저하 시 동작)를 함께 확인한다.
 """
 
-from conftest import AUTH, FAVORITES, RETURN, Flow, assert_route_matches_festival
+from .legacy_flow import AUTH, FAVORITES, RETURN, Flow, assert_route_matches_festival, flow, reset_mock_state
 
 
 def _bearer(tokens: dict[str, str]) -> dict[str, str]:

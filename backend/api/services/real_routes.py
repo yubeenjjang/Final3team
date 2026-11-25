@@ -104,6 +104,7 @@ class _CachedRoute:
     valid_until: datetime
     result: ProviderResult | None = field(repr=False)
     request_keys: set[str] = field(default_factory=set, repr=False)
+    db_route_ids: set[str] = field(default_factory=set, repr=False)
 
 
 @dataclass
@@ -174,6 +175,7 @@ class RealRouteService:
         self._records: dict[str, _RouteRecord] = {}
         self._request_keys: dict[str, _RouteRecord] = {}
         self._cache: dict[str, _CachedRoute] = {}
+        self._db_match_results: dict[str, _CachedRoute] = {}
         self._flights: dict[str, asyncio.Task[_PrimaryResult]] = {}
 
     async def create_route(
@@ -228,6 +230,16 @@ class RealRouteService:
         record = self._authorized_record(direction, route_id, access_token)
         control = await asyncio.to_thread(self._control_snapshot, record.festival_id)
         return self._memory_status(record, control)
+
+    def return_selection_token(self, route_id: str) -> str:
+        if self._store is not None:
+            return self._db_token(route_id)
+        return self._records[route_id].access_token
+
+    def live_candidates_for_selection(self, route_id: str) -> list[dict[str, object]] | None:
+        cached = self._db_match_results.get(route_id)
+        result = self._live_result(cached) if cached is not None else None
+        return result.candidates if result is not None else None
 
     def get_route(
         self, direction: RouteDirection, route_id: str, access_token: str | None
@@ -372,6 +384,9 @@ class RealRouteService:
             result = _UPSTREAM_ERROR
 
         if self._store is not None:
+            if record.direction == "return" and isinstance(result, _CachedRoute) and self._live_result(result) is not None:
+                result.db_route_ids.add(record.route_id)
+                self._db_match_results[record.route_id] = result
             try:
                 await asyncio.to_thread(self._persist_result, record, result)
             except DBPoolTimeout:
@@ -551,6 +566,9 @@ class RealRouteService:
         for request_key in cached.request_keys:
             self._request_keys[request_key].request = None
         cached.request_keys.clear()
+        for route_id in cached.db_route_ids:
+            self._db_match_results.pop(route_id, None)
+        cached.db_route_ids.clear()
         if self._cache.get(cached.key) is cached:
             del self._cache[cached.key]
 

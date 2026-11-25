@@ -63,6 +63,9 @@ class MemoryAuthState:
             self._entries[key] = _Entry(1, now + ttl_s)
 
     def count_login(self, key: str, ttl_s: int) -> int:
+        return self.increment(key, ttl_s)
+
+    def increment(self, key: str, ttl_s: int) -> int:
         with self._lock:
             now = monotonic()
             entry = self._get(key, now)

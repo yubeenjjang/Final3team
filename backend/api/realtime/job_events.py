@@ -1,9 +1,9 @@
 """Live A06 events. Postgres notifications carry only progress and wakeup signals."""
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import aclosing
-from datetime import datetime
+from datetime import datetime, timezone
 
 import psycopg
 from fastapi import APIRouter
@@ -12,11 +12,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import StreamingResponse
 
-from api.deps import AuthenticatedSession
+from api.deps import AuthenticatedSession, Authorization
 from api.errors import ApiError
 from api.repositories import assistant as store
 from api.routers.assistant.chatbot import Access, RunId
 from api.services import assistant, mock_assistant
+from api.services.chat import ChatIdentity, is_current
 from shared.config import load_db_settings
 from shared.db.session import user_db_session
 
@@ -29,7 +30,7 @@ def _event(kind: str, **payload: object) -> str:
     return f"event: {kind}\ndata: {data}\n\n"
 
 
-async def _terminal(snapshot: dict, *, live: bool) -> AsyncIterator[str]:
+async def _terminal(snapshot: dict, *, live: bool) -> AsyncGenerator[str, None]:
     if snapshot["run_status"] == "failed":
         yield _event("failed", code=snapshot["error"]["code"])
     elif snapshot["run_status"] == "succeeded":
@@ -38,7 +39,7 @@ async def _terminal(snapshot: dict, *, live: bool) -> AsyncIterator[str]:
         yield _event("done")
 
 
-async def _mock_events(run_id: str, access: Access, initial: dict) -> AsyncIterator[str]:
+async def _mock_events(run_id: str, access: Access, initial: dict) -> AsyncGenerator[str, None]:
     if initial["run_status"] in assistant.TERMINAL:
         async for event in _terminal(initial, live=False):
             yield event
@@ -69,14 +70,13 @@ async def _snapshot(run_id: str, access: Access) -> dict:
         return await store.read(run_id, access, db, include_route_token=False)
 
 
-async def _postgres_events(run_id: str, access: Access, initial: dict) -> AsyncIterator[str]:
+async def _postgres_events(
+    run_id: str, access: Access, initial: dict, expires_at: datetime,
+) -> AsyncGenerator[str, None]:
     if initial["run_status"] in assistant.TERMINAL:
         async for event in _terminal(initial, live=False):
             yield event
         return
-    expires_at = None
-    if access.user_id is None:
-        expires_at = datetime.fromisoformat(initial["queued_at"]) + assistant.TOKEN_TTL
     try:
         async with await _listen_connection() as connection:
             await connection.execute(sql.SQL("LISTEN {}").format(sql.Identifier(assistant.notify_channel(run_id))))
@@ -84,16 +84,14 @@ async def _postgres_events(run_id: str, access: Access, initial: dict) -> AsyncI
             result = await _snapshot(run_id, access)
             yield ": connected\n\n"
             while result["run_status"] not in assistant.TERMINAL:
-                wait = _KEEPALIVE_SECONDS
-                if expires_at is not None:
-                    wait = min(wait, (expires_at - assistant.now()).total_seconds())
-                    if wait <= 0:
-                        return
+                wait = min(_KEEPALIVE_SECONDS, (expires_at - assistant.now()).total_seconds())
+                if wait <= 0:
+                    return
                 received_step = received_terminal = False
                 async with aclosing(connection.notifies(timeout=wait, stop_after=1)) as notifications:
                     # A single database packet can contain several notifications.
                     async for signal in notifications:
-                        if expires_at is not None and assistant.now() >= expires_at:
+                        if assistant.now() >= expires_at:
                             return
                         if signal.payload in assistant.NODES:
                             received_step = True
@@ -111,15 +109,47 @@ async def _postgres_events(run_id: str, access: Access, initial: dict) -> AsyncI
         return
 
 
+async def _authorized_events(
+    events: AsyncGenerator[str, None], identity: ChatIdentity | None, expires_at: datetime | None,
+) -> AsyncGenerator[str, None]:
+    async with aclosing(events):
+        async for event in events:
+            if identity is not None:
+                try:
+                    if not await run_in_threadpool(is_current, identity):
+                        return
+                except (psycopg.Error, SQLAlchemyError, OSError):
+                    return
+            if expires_at is not None and assistant.now() >= expires_at:
+                return
+            yield event
+
+
 @router.get(
     "/assistant/runs/{run_id}/events", response_class=StreamingResponse,
     responses={200: {"content": {"text/event-stream": {}}}},
 )
-async def stream_run(run_id: RunId, access: Access, auth: AuthenticatedSession) -> StreamingResponse:
+async def stream_run(
+    run_id: RunId, access: Access, auth: AuthenticatedSession, authorization: Authorization = None,
+) -> StreamingResponse:
+    identity = None
+    expires_at = None
+    if auth:
+        claims = auth[0].claims
+        identity = ChatIdentity(claims.user_id, claims=claims)
+        expires_at = datetime.fromtimestamp(claims.expires_at, timezone.utc)
+    elif access.user_id is not None:
+        identity = ChatIdentity(access.user_id, mock_authorization=authorization)
+
     if assistant.uses_assistant_db():
         initial = await store.read(run_id, access, auth[1] if auth else None, include_route_token=False)
-        events = _postgres_events(run_id, access, initial)
+        if expires_at is None:
+            expires_at = datetime.fromisoformat(initial["queued_at"]) + assistant.TOKEN_TTL
+        events = _postgres_events(run_id, access, initial, expires_at)
     else:
         initial = await run_in_threadpool(mock_assistant.get_run, run_id, access)
         events = _mock_events(run_id, access, initial)
-    return StreamingResponse(events, media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        _authorized_events(events, identity, expires_at), media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no"},
+    )

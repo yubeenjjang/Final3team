@@ -10,6 +10,14 @@ for path in (_BACKEND_DIR.parent, _BACKEND_DIR):
     sys.path.insert(0, str(path))
 
 
+@pytest.fixture(autouse=True)
+def reset_route_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from api.auth.state import MemoryAuthState
+    from api.services import route_rate_limit
+
+    monkeypatch.setattr(route_rate_limit, "state", MemoryAuthState())
+
+
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "db: 일회용 PostgreSQL DB를 사용하는 시험")
 

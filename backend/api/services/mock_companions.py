@@ -8,7 +8,8 @@ from ulid import ULID
 from api.mocks import store
 from api.schemas import companions as schema
 from api.services import companion_rules as rules
-from api.services import mock_chat
+from api.services import mock_chat, mock_friends
+from api.services.friends import blocked
 
 
 @dataclass
@@ -155,17 +156,21 @@ class MockCompanions:
         if post.hidden and post.author_id != self.actor_id:
             raise rules.not_found()
         rules.check_application(post.author_id, self.actor_id, post.status)
-        if any(
-            row.post_id == post_id and row.applicant_id == self.actor_id and row.status != "cancelled"
-            for row in self.memory.applications.values()
-        ):
-            raise rules.application_exists()
-        application_id = "cap_" + str(ULID())
-        self.memory.applications[application_id] = Application(
-            application_id, self.actor_id, post_id, request.message, rules.now_utc(),
-        )
-        mock_chat.mock_rooms.notify(UUID(post.author_id), "companion_applied", "companion_application", application_id)
-        return schema.ApplicationCreated(application_id=application_id)
+        # Mock friend changes and these writes share the same lock.
+        with store.auth_lock:
+            if mock_friends.store.is_blocked(UUID(self.actor_id), UUID(post.author_id)):
+                raise blocked()
+            if any(
+                row.post_id == post_id and row.applicant_id == self.actor_id and row.status != "cancelled"
+                for row in self.memory.applications.values()
+            ):
+                raise rules.application_exists()
+            application_id = "cap_" + str(ULID())
+            self.memory.applications[application_id] = Application(
+                application_id, self.actor_id, post_id, request.message, rules.now_utc(),
+            )
+            mock_chat.mock_rooms.notify(UUID(post.author_id), "companion_applied", "companion_application", application_id)
+            return schema.ApplicationCreated(application_id=application_id)
 
     def list_applications(
         self, post_id: str, status: schema.VisibleApplicationStatus | None,
@@ -196,18 +201,21 @@ class MockCompanions:
             raise rules.forbidden()
         rules.require_pending(row.status)
         status = {"approve": "approved", "reject": "rejected", "cancel": "cancelled"}[action]
-        if action == "approve":
-            rules.require_active(post.status, post.meet_at, rules.now_utc())
-            rules.require_approval_slot(post.status, post.approved_count, post.capacity)
-            mock_chat.mock_rooms.add_member(post.room_id, UUID(row.applicant_id))
-            post.approved_count += 1
-            post.status = rules.edited_status(post.capacity, post.approved_count, post.recruitment_closed)
-            post.members.add(row.applicant_id)
-        row.status = status
-        if action != "cancel":
-            mock_chat.mock_rooms.notify(UUID(row.applicant_id), f"companion_{status}",
-                                        "companion_application", application_id)
-        return schema.ApplicationChanged(application_id=application_id, status=status, post_status=post.status)
+        with store.auth_lock:
+            if action == "approve":
+                if mock_friends.store.is_blocked(UUID(post.author_id), UUID(row.applicant_id)):
+                    raise blocked()
+                rules.require_active(post.status, post.meet_at, rules.now_utc())
+                rules.require_approval_slot(post.status, post.approved_count, post.capacity)
+                mock_chat.mock_rooms.add_member(post.room_id, UUID(row.applicant_id))
+                post.approved_count += 1
+                post.status = rules.edited_status(post.capacity, post.approved_count, post.recruitment_closed)
+                post.members.add(row.applicant_id)
+            row.status = status
+            if action != "cancel":
+                mock_chat.mock_rooms.notify(UUID(row.applicant_id), f"companion_{status}",
+                                            "companion_application", application_id)
+            return schema.ApplicationChanged(application_id=application_id, status=status, post_status=post.status)
 
     def set_meeting_place(self, post_id: str, request: schema.MeetingPlace) -> schema.MeetingPlaceUpdated:
         post = self.own_post(post_id)

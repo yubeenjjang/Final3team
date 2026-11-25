@@ -168,5 +168,5 @@ def _candidate(index: int, entry: dict[str, Any]) -> dict[str, object]:
         fare_krw=entry["fare"]["regular"]["totalFare"],
         legs=[leg for leg, _ in legs],
         service_running=running,
-        bus_crowding={"status": "unverified", "reason": "버스 혼잡 연결 전"},
+        bus_crowding={"status": "unverified", "reason": "버스 혼잡을 확인하지 않았어요."},
     )

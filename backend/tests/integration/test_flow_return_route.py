@@ -5,7 +5,7 @@
 """
 
 import pytest
-from conftest import RETURN, ROUTE_TOKEN, VISIT, Flow, assert_route_matches_festival
+from .legacy_flow import RETURN, ROUTE_TOKEN, VISIT, Flow, assert_route_matches_festival, flow, reset_mock_state
 
 
 def test_I01_search_festival_then_return_route_ready(flow: Flow) -> None:

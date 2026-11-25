@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from ulid import ULID
 
 from api.auth.tokens import unauthorized
+from api.errors import ApiError
 from api.schemas.assistant import AssistantRequest
 from api.services import assistant
 from shared.db.session import service_db_session

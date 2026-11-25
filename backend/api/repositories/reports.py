@@ -162,6 +162,18 @@ def _apply_action(db: Session, target: str, action: schema.ReportAction, admin_i
             user_id = UUID(target)
         except ValueError:
             raise rules.target_not_found() from None
+        if db.scalar(text("""
+            SELECT 1 FROM public.users WHERE user_id = :id FOR NO KEY UPDATE
+        """), {"id": user_id}) is None:
+            raise rules.target_not_found()
+        # A80 locks the user before updating the profile.
+        role = db.scalar(text("""
+            SELECT role FROM public.profiles WHERE user_id = :id FOR SHARE
+        """), {"id": user_id})
+        if role is None:
+            raise rules.target_not_found()
+        if role != "user":
+            raise rules.cannot_block_staff()
         result = db.execute(text("""
             UPDATE public.users SET status = 'disabled' WHERE user_id = :id AND status <> 'deleted'
         """), {"id": user_id})
@@ -191,8 +203,8 @@ class PostgresReports:
         with service_db_session() as db:
             report = _locked_report(db, decision.report_id)
             rules.check_decision(report.status, report.target_type, decision.action)
-            _start_review(db, report)
             _apply_action(db, report.target_id, decision.action, admin_id)
+            _start_review(db, report)
             result = db.execute(text("""
                 UPDATE public.reports
                 SET status = :status, handled_by = :admin, handled_at = statement_timestamp()

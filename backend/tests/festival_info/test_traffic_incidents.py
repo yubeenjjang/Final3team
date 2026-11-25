@@ -102,6 +102,7 @@ def test_traffic_filters_merges_and_caches_national_and_seoul_feeds(upstream):
             ("police_incident", "accident"), ("seoul_topis", "accident"), ("police_incident", "construction"),
         ]
         first, second, work = body["items"]
+        assert second["title"] == "세종대로 별도 고장 차량"
         assert first["start_at"] == "2026-11-19T17:15:00+09:00"
         assert second["end_at"] == "2026-11-19T19:30:00+09:00"
         assert (second["lat"], second["lng"]) == pytest.approx((37.5765, 126.9771), abs=0.000001)

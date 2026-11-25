@@ -27,7 +27,7 @@ _POLICE_TYPES: dict[str, TrafficIncidentType] = {
     "1": "accident", "2": "construction", "3": "event", "5": "control",
 }
 _TOPIS_TYPES: dict[str, TrafficIncidentType] = {
-    "A01": "accident", "A04": "construction",
+    "A01": "accident", "A02": "accident", "A04": "construction",
     "사고": "accident", "공사": "construction", "행사": "event", "통제": "control",
 }
 _KOREAN_TIME = re.compile(r"(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일\s*(\d{1,2})시\s*(\d{1,2})분")

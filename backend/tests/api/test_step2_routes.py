@@ -352,3 +352,57 @@ def test_R17_mock_doc() -> None:
     assert "curl -sS -X POST 'http://localhost:8000/api/v1/routes/return'" in content
     assert "curl -sS 'http://localhost:8000/api/v1/routes/return/<route_request_id>'" in content
     assert "X-Route-Access-Token: <route_access_token>" in content
+
+
+def test_a04_a25_share_ip_limit_until_next_minute(client, monkeypatch):
+    from datetime import timezone
+
+    from api.services import route_rate_limit
+
+    class Minute(datetime):
+        current = datetime(2026, 11, 25, 1, 10, 47, tzinfo=timezone.utc)
+
+        @classmethod
+        def now(cls, tz):
+            return cls.current.astimezone(tz)
+
+    monkeypatch.delenv("ROUTE_RATE_LIMIT_PER_MIN", raising=False)
+    monkeypatch.setattr(route_rate_limit, "datetime", Minute)
+    for _ in range(5):
+        assert client.post(_RETURN, json=_RETURN_BODY).status_code == 202
+        assert client.post(_VISIT, json=_VISIT_BODY).status_code == 202
+
+    blocked = client.post(_VISIT, json=_VISIT_BODY)
+    _error(blocked, 429, "RATE_LIMITED", retryable=True)
+    assert blocked.headers["Retry-After"] == "13"
+    Minute.current += timedelta(seconds=13)
+    assert client.post(_RETURN, json=_RETURN_BODY).status_code == 202
+
+
+def test_route_session_limit_spans_ips_and_memory_counter_is_atomic(client, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from api.errors import ApiError
+    from api.services import route_rate_limit
+
+    from .test_my_account import register_and_login
+
+    monkeypatch.setenv("AUTH_PROVIDER", "mock")
+    monkeypatch.setenv("ROUTE_RATE_LIMIT_PER_MIN", "2")
+    headers, _, _ = register_and_login(client, "RouteMember")
+    session = headers["Authorization"]
+    route_rate_limit.enforce("192.0.2.1", session)
+    route_rate_limit.enforce("192.0.2.2", session)
+    with pytest.raises(ApiError) as blocked:
+        route_rate_limit.enforce("192.0.2.3", session)
+    assert (blocked.value.status, blocked.value.code) == (429, "RATE_LIMITED")
+
+    def status(_):
+        try:
+            route_rate_limit.enforce("192.0.2.4", None)
+        except ApiError as error:
+            return error.status
+        return 200
+
+    with ThreadPoolExecutor(max_workers=8) as workers:
+        assert sorted(workers.map(status, range(8))) == [200, 200, *([429] * 6)]

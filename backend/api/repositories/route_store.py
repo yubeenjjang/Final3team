@@ -80,7 +80,7 @@ def stored_candidates(result: ProviderResult) -> list[dict[str, Any]]:
             candidate["legs"].append(summary)
         candidate["area_evidence"] = {"crowd_areas": [], "traffic_incidents": []}
         candidate["mode_evidence"] = {
-            "bus_crowding": {"status": "unverified", "reason": "버스 혼잡 연결 전"},
+            "bus_crowding": {"status": "unverified", "reason": "버스 혼잡을 확인하지 않았어요."},
         }
         candidates.append(candidate)
     return candidates

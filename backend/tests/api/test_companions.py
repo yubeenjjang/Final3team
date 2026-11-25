@@ -165,3 +165,22 @@ def test_mock_competing_approvals_observe_one_seat(client, clock):
     assert sorted(response.status_code for response in results) == [200, 409]
     assert_error(next(response for response in results if response.status_code == 409), 409, "CAPACITY_FULL")
     assert client.get(detail).json()["approved_count"] == 1
+
+
+@pytest.mark.parametrize("author_blocks", [True, False])
+def test_blocks_prevent_apply_and_approve_in_either_direction(client, clock, author_blocks):
+    from .test_chat import signup
+
+    (author, owner_headers), (applicant, applicant_headers) = [signup(client, i) for i in range(2)]
+    first = client.post(POSTS, headers=owner_headers, json=post_body()).json()
+    second = client.post(POSTS, headers=owner_headers, json=post_body()).json()
+    pending = client.post(f"{POSTS}/{first['post_id']}/applications", headers=applicant_headers).json()
+    actor, target = (owner_headers, applicant) if author_blocks else (applicant_headers, author)
+    assert client.put(f"/api/v1/me/blocks/{target}", headers=actor).status_code == 200
+
+    assert_error(client.post(f"{POSTS}/{second['post_id']}/applications", headers=applicant_headers), 409, "BLOCKED")
+    approve = f"{APPLICATIONS}/{pending['application_id']}/approve"
+    assert_error(client.post(approve, headers=owner_headers), 409, "BLOCKED")
+    assert client.get(f"{POSTS}/{first['post_id']}", headers=owner_headers).json()["approved_count"] == 0
+    assert client.delete(f"/api/v1/me/blocks/{target}", headers=actor).status_code == 204
+    assert client.post(approve, headers=owner_headers).json()["status"] == "approved"

@@ -28,6 +28,8 @@ _RETRY_AFTER_S = 2
 _FINAL_STATUSES: dict[str, RouteStatus] = {
     "async_ready": "ready",
     "sync_ready": "ready",
+    "async_bus_ready": "ready",
+    "sync_bus_ready": "ready",
     "sync_secondary": "unavailable",
     "async_unavailable": "unavailable",
     "async_timeout": "timed_out",
@@ -133,7 +135,7 @@ def create_route(
         return 200, _control_changed(record, control)
     if record.scenario == "overloaded":
         raise ApiError(503, "ROUTE_OVERLOADED", "경로 요청이 많아요. 잠시 후 다시 시도해 주세요.", True)
-    if record.scenario in ("sync_ready", "sync_secondary"):
+    if record.scenario in ("sync_ready", "sync_bus_ready", "sync_secondary"):
         return 200, _ready_payload(record, control)
     return 202, {
         "route_request_id": record.route_request_id,
@@ -163,6 +165,11 @@ def verify_return_route_token(route_id: str, token: str | None) -> None:
             or not secrets.compare_digest(token.encode(), route.access_token.encode())
         ):
             raise ApiError(403, "FORBIDDEN", "이 경로에 접근할 수 없어요.")
+
+
+def return_selection_token(route_id: str) -> str:
+    with route_lock:
+        return route_requests[route_id].access_token
 
 
 def get_route(
@@ -241,7 +248,7 @@ def _coordinates(
 
 
 def _candidate(
-    request: RouteRequest, festival: FestivalDetail, *, secondary: bool
+    request: RouteRequest, festival: FestivalDetail, *, secondary: bool, demo_bus: bool = False,
 ) -> dict[str, object]:
     # 검색어 장소의 좌표는 외부 조회 없이 고정 좌표로 표시한다.
     start = _coordinates(request.origin, festival, (37.5547, 126.9707))
@@ -254,9 +261,15 @@ def _candidate(
             "status": "unsupported",
             "reason": "2차 공급원은 버스 혼잡 근거를 주지 않아요(모의)",
         }
+    transit = {"mode": "subway", "line": "(모의)", "duration_min": 24, "path": [first, second]}
+    if demo_bus:
+        transit.update(mode="bus", line="753", stops=[
+            {"id": "123456", "name": "예시 승차 정류장", "lat": first[0], "lng": first[1]},
+            {"id": "123457", "name": "예시 다음 정류장", "lat": second[0], "lng": second[1]},
+        ])
     return {
         "candidate_id": "c1",
-        "summary": "지하철 1회 환승(모의)",
+        "summary": "버스 1회(모의)" if demo_bus else "지하철 1회 환승(모의)",
         "duration_min": 38,
         "distance_m": 9200,
         "walk_m": 650,
@@ -264,7 +277,7 @@ def _candidate(
         "fare_krw": 1550,
         "legs": [
             {"mode": "walk", "duration_min": 6, "path": [start, first]},
-            {"mode": "subway", "line": "(모의)", "duration_min": 24, "path": [first, second]},
+            transit,
             {"mode": "walk", "duration_min": 8, "path": [second, end]},
         ],
         "service_running": True,
@@ -294,7 +307,10 @@ def _ready_payload(record: RouteRecord, control: ControlSnapshot) -> dict[str, o
         "destination": _format_endpoint(request.destination, festival),
         "travel_mode": request.travel_mode,
         "route_preference": request.route_preference,
-        "route_candidates": [_candidate(request, festival, secondary=secondary)],
+        "route_candidates": [_candidate(
+            request, festival, secondary=secondary,
+            demo_bus=record.direction == "return" and record.scenario in ("sync_bus_ready", "async_bus_ready"),
+        )],
         "provider": "kakao" if secondary else "mock_adapter",
         "provider_tier": "secondary" if secondary else "mock",
         "queried_at": record.updated_at,
