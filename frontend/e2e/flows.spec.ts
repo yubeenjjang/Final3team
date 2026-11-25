@@ -101,20 +101,19 @@ test("F9 홈 AI 답변에서 귀가 경로 카드로 이동한다", async ({ pag
   await capture(page, "f9-03-assistant-route");
 });
 
-test("F10 회원가입과 로그인 후 찜한 축제는 다시 들어가도 유지된다", async ({ page }) => {
+test("F10 회원가입과 로그인 후 축제 상세로 복귀한다", async ({ page }) => {
   const nickname = `${Date.now().toString(36)}${randomBytes(2).toString("hex")}`;
   const email = `${nickname}@example.com`;
   const password = `E2e${randomBytes(12).toString("hex")}`;
-  const favorite = page.getByRole("button", { name: "찜하기", exact: true });
-  const savedFavorite = page.getByRole("button", { name: "찜 해제", exact: true });
 
   await page.goto(festivalPath);
-  await favorite.click();
-  await expect(page).toHaveURL(`/auth/login?next=${encodeURIComponent(festivalPath)}`);
+  await expect(page.getByRole("button", { name: /찜/ })).toHaveCount(0);
+  await page.getByRole("link", { name: "로그인" }).click();
+  await expect(page).toHaveURL("/auth/login");
   await capture(page, "f10-01-guest-login");
 
   await page.getByRole("link", { name: "회원가입", exact: true }).click();
-  await expect(page).toHaveURL(`/auth/signup?next=${encodeURIComponent(festivalPath)}`);
+  await expect(page).toHaveURL("/auth/signup");
   await expect(page.getByLabel("닉네임", { exact: true })).toBeVisible();
   await capture(page, "f10-02-signup");
 
@@ -134,16 +133,12 @@ test("F10 회원가입과 로그인 후 찜한 축제는 다시 들어가도 유
 
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await loginButton.click();
-  await expect(page).toHaveURL(festivalPath);
+  await expect(page).toHaveURL("/");
   await expect(page.getByRole("link", { name: `내 계정 (${nickname})`, exact: true })).toBeVisible();
-  await expect(favorite).toHaveAttribute("aria-pressed", "false");
   await capture(page, "f10-04-signed-in");
 
-  await favorite.click();
-  await expect(savedFavorite).toHaveAttribute("aria-pressed", "true");
-  await capture(page, "f10-05-favorite-saved");
-
-  await page.reload();
-  await expect(savedFavorite).toHaveAttribute("aria-pressed", "true");
-  await capture(page, "f10-06-favorite-persisted");
+  await page.goto(festivalPath);
+  await expect(page.getByRole("heading", { name: /축제/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /찜/ })).toHaveCount(0);
+  await capture(page, "f10-05-festival-without-favorite");
 });

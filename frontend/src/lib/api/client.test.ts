@@ -104,7 +104,7 @@ describe("F4 API client", () => {
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    await apiGet("/me/favorites");
+    await apiGet("/me/profile");
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(init.headers);

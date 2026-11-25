@@ -55,6 +55,7 @@ describe("F2 design tokens", () => {
       string,
       string
     >;
+    const maxWidth = tailwindConfig.theme?.extend?.maxWidth as Record<string, string>;
 
     const requiredColors = [
       "bg",
@@ -62,10 +63,6 @@ describe("F2 design tokens", () => {
       "ink",
       "muted",
       "brand",
-      "accent",
-      "neon",
-      "dark-bg",
-      "dark-surface",
       "crowd-green",
       "crowd-yellow",
       "crowd-orange",
@@ -76,8 +73,13 @@ describe("F2 design tokens", () => {
       expect(colors[token]).toBeTruthy();
     }
 
-    expect(borderRadius.card).toBe("18px");
+    expect(colors.brand).toBe("#F74F85");
+    expect(colors.ink).toBe("#343536");
+    expect(borderRadius.card).toBe("14px");
     expect(borderRadius.input).toBe("25px");
     expect(borderRadius.chip).toBe("9999px");
+    expect(maxWidth.mobile).toBe("390px");
+    expect(colors["screen-dark"]).toBe("#292A2D");
+    expect(colors["brand-soft"]).toBe("#FFE8F0");
   });
 });

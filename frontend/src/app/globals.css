@@ -5,28 +5,126 @@
 @tailwind utilities;
 
 :root {
+  --app-mobile-width: 390px;
+  --app-header-height: 60px;
+  --app-bottom-nav-height: 82px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-control: 12px;
+  --radius-card: 14px;
+  --radius-card-lg: 20px;
+  --radius-panel: 24px;
+  --radius-nav: 28px;
+  --radius-input: 25px;
+  --radius-pill: 9999px;
+
+  --shadow-shell: 0 18px 54px rgba(52, 53, 54, 0.12);
+  --shadow-card: 0 8px 24px rgba(52, 53, 54, 0.08);
+  --shadow-nav: 0 -8px 28px rgba(52, 53, 54, 0.07);
+
+  --color-canvas: #F6F6F7;
   --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-surface-soft: #FEEEF2;
-  --color-surface-muted: #F4F5F7;
-  --color-banner-dark: #2D2E32;
-  --color-ink: #0A101F;
-  --color-muted: #6B7280;
-  --color-brand: #F0145F;
-  --color-accent: #7C36FC;
-  --color-neon: #C8FF2F;
-  --color-dark-bg: #0D0D0C;
-  --color-dark-surface: #1E1D1C;
-  --color-crowd-green: #22C55E;
-  --color-crowd-yellow: #EAB308;
-  --color-crowd-orange: #F97316;
-  --color-crowd-red: #EF4444;
+  --color-surface-soft: #FFF0F5;
+  --color-surface-muted: #F5F6F8;
+  --color-banner-dark: #343536;
+  --color-screen-dark: #292A2D;
+  --color-ink: #343536;
+  --color-muted: #6B7078;
+  --color-brand: #F74F85;
+  --color-brand-soft: #FFE8F0;
+  --color-line-light: #E7E8EC;
+  --color-line-strong: #D9DBE1;
+  --color-crowd-green: #8FDCBE;
+  --color-crowd-yellow: #F5D778;
+  --color-crowd-orange: #F6B978;
+  --color-crowd-red: #F19AA1;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
+  min-height: 100%;
   font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+body {
+  min-width: 320px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app-shell-frame {
+  width: min(100%, var(--app-mobile-width));
+  box-shadow: var(--shadow-shell);
+}
+
+.app-header {
+  min-height: calc(var(--app-header-height) + var(--safe-area-top));
+  padding-top: var(--safe-area-top);
+  padding-right: calc(var(--space-5) + var(--safe-area-right));
+  padding-left: calc(var(--space-3) + var(--safe-area-left));
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.app-main {
+  min-width: 0;
+  padding-bottom: calc(var(--app-bottom-nav-height) + var(--safe-area-bottom) + var(--space-4));
+}
+
+.app-bottom-nav {
+  width: min(100%, var(--app-mobile-width));
+  min-height: calc(var(--app-bottom-nav-height) + var(--safe-area-bottom));
+  padding-right: calc(var(--space-2) + var(--safe-area-right));
+  padding-bottom: var(--safe-area-bottom);
+  padding-left: calc(var(--space-2) + var(--safe-area-left));
+  box-shadow: var(--shadow-nav);
+}
+
+@media (max-width: 390px) {
+  .app-shell-frame {
+    box-shadow: none;
+  }
+}
+
+.festival-carousel-card {
+  flex: 0 0 calc((100% - 24px) / 3.5);
+}
+
+@media (max-width: 359px) {
+  .festival-carousel-card {
+    flex-basis: calc((100% - 16px) / 2.5);
+  }
 }

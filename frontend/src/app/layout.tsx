@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -14,6 +14,13 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "놀다가 (NOLDAGA)",
   description: "전국 축제 탐색부터 AI 안심 귀가까지, 놀다가와 함께하세요.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "white",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

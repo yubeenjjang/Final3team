@@ -1,5 +1,5 @@
 import { FestivalExploreView } from "@/features/festivals/explore/FestivalExploreView";
 
 export default function FestivalsPage() {
-  return <FestivalExploreView />;
+  return <FestivalExploreView showSearch={false} />;
 }

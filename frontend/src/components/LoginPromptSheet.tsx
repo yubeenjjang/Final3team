@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { Heart, X } from "lucide-react";
+import { UserRound, X } from "lucide-react";
 
 export interface LoginPromptSheetProps {
   open: boolean;
@@ -17,22 +17,18 @@ export function LoginPromptSheet({
   onClose,
   nextPath,
   title = "로그인이 필요해요",
-  description = "관심 축제를 저장하고 내 목록에서 모아 보려면 로그인해 주세요.",
+  description = "회원 전용 기능을 이용하려면 로그인해 주세요.",
 }: LoginPromptSheetProps) {
   useEffect(() => {
     if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
+      if (event.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, open]);
 
-  if (!open) {
-    return null;
-  }
+  if (!open) return null;
 
   const loginHref = `/auth/login?next=${encodeURIComponent(nextPath)}`;
 
@@ -52,7 +48,7 @@ export function LoginPromptSheet({
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-chip bg-surface-soft text-brand">
-              <Heart className="h-4 w-4 fill-brand text-brand" aria-hidden="true" />
+              <UserRound className="h-4 w-4 text-brand" aria-hidden="true" />
             </span>
             <h2 id="login-prompt-title" className="text-base font-black text-ink">
               {title}
@@ -67,21 +63,19 @@ export function LoginPromptSheet({
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-
         <p className="mt-2.5 text-sm leading-relaxed text-muted">{description}</p>
-
         <div className="mt-5 flex gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-chip border border-line-light bg-surface py-3 text-sm font-bold text-ink transition-colors hover:bg-surface-muted"
+            className="flex-1 rounded-chip border border-line-light bg-surface py-3 text-sm font-bold text-ink hover:bg-surface-muted"
           >
             다음에 할게요
           </button>
           <Link
             href={loginHref}
             onClick={onClose}
-            className="flex flex-1 items-center justify-center rounded-chip bg-brand py-3 text-sm font-extrabold text-surface shadow-sm transition-opacity hover:opacity-90"
+            className="flex flex-1 items-center justify-center rounded-chip bg-brand py-3 text-sm font-extrabold text-surface shadow-sm hover:opacity-90"
           >
             로그인하기
           </Link>

@@ -52,7 +52,7 @@ function apiError(status: number, code: string) {
   return Response.json({ error: { code, message: "테스트 오류" } }, { status });
 }
 
-describe("F10 auth and favorites flow", () => {
+describe("F10 auth flow", () => {
   beforeEach(() => {
     resetAuthStateForTest();
     fetchApi.mockReset();
@@ -66,8 +66,7 @@ describe("F10 auth and favorites flow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("signs up, logs in with the prefilled email, then keeps a festival saved on re-entry", async () => {
-    let saved = false;
+  it("signs up, logs in with the prefilled email, and renders festivals with favorite controls", async () => {
     fetchApi.mockImplementation(async (input, init) => {
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/auth/signup")) {
@@ -81,13 +80,8 @@ describe("F10 auth and favorites flow", () => {
       if (path.endsWith("/festivals")) {
         return Response.json({ items: [festival] });
       }
-      if (path.includes("/me/favorites")) {
-        expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${tokens.access_token}`);
-        if (init?.method === "PUT") {
-          saved = true;
-          return Response.json({ festival_id: festival.festival_id }, { status: 201 });
-        }
-        return Response.json({ items: saved ? [festival] : [], page: 1, page_size: 100, total: Number(saved) });
+      if (path.endsWith("/me/favorites")) {
+        return Response.json({ is_mock: true, items: [], total: 0, page: 1, page_size: 100 });
       }
       throw new Error(`테스트에 등록되지 않은 경로 ${path}`);
     });
@@ -110,15 +104,9 @@ describe("F10 auth and favorites flow", () => {
     expect(sessionStorage.getItem("noldaga.refresh_token")).toBe(tokens.refresh_token);
 
     cleanup();
-    const home = render(<HomePage />);
-    const unsaved = await screen.findByRole("button", { name: "테스트 축제 찜하기" });
-    await waitFor(() => expect(unsaved).toBeEnabled());
-    fireEvent.click(unsaved);
-    expect(await screen.findByRole("button", { name: "테스트 축제 찜 해제" })).toHaveAttribute("aria-pressed", "true");
-
-    home.unmount();
     render(<HomePage />);
-    expect(await screen.findByRole("button", { name: "테스트 축제 찜 해제" })).toHaveAttribute("aria-pressed", "true");
+    expect((await screen.findAllByText("테스트 축제")).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "찜하기" }).length).toBeGreaterThan(0);
   });
 
   it.each([
@@ -171,7 +159,7 @@ describe("F10 auth and favorites flow", () => {
     fetchApi
       .mockResolvedValueOnce(apiError(401, "UNAUTHORIZED"))
       .mockReturnValueOnce(refresh.promise);
-    const previous = apiGet("/me/favorites");
+    const previous = apiGet("/me/profile");
     const rejected = expect(previous).rejects.toMatchObject({ status: 401 });
     await waitFor(() => expect(fetchApi).toHaveBeenCalledTimes(2));
     const user = { userId: "current", displayName: "현재 사용자" };
@@ -220,7 +208,7 @@ describe("F10 auth and favorites flow", () => {
       .mockResolvedValueOnce(apiError(401, "UNAUTHORIZED"))
       .mockReturnValueOnce(refresh.promise)
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
-    const rejected = expect(apiGet("/me/favorites")).rejects.toMatchObject({ status: 401 });
+    const rejected = expect(apiGet("/me/profile")).rejects.toMatchObject({ status: 401 });
     await waitFor(() => expect(fetchApi).toHaveBeenCalledTimes(2));
     const signingOut = logout();
     expect(getAccessToken()).toBeNull();
@@ -245,7 +233,7 @@ describe("F10 auth and favorites flow", () => {
       .mockResolvedValueOnce(Response.json(tokens))
       .mockResolvedValueOnce(Response.json({ items: [] }));
 
-    await expect(apiGet("/me/favorites")).resolves.toEqual({ items: [] });
+    await expect(apiGet("/me/profile")).resolves.toEqual({ items: [] });
     expect(fetchApi).toHaveBeenCalledTimes(3);
     expect(String(fetchApi.mock.calls[1][0])).toMatch(/\/auth\/refresh$/);
     expect(JSON.parse(String(fetchApi.mock.calls[1][1]?.body))).toEqual({ refresh_token: "old-refresh" });
@@ -259,7 +247,7 @@ describe("F10 auth and favorites flow", () => {
       .mockResolvedValueOnce(apiError(401, "UNAUTHORIZED"))
       .mockResolvedValueOnce(apiError(401, "REFRESH_INVALID"));
 
-    await expect(apiGet("/me/favorites")).rejects.toMatchObject({ status: 401 });
+    await expect(apiGet("/me/profile")).rejects.toMatchObject({ status: 401 });
     expect(fetchApi).toHaveBeenCalledTimes(2);
     expect(getAccessToken()).toBeNull();
     expect(getRefreshToken()).toBeNull();

@@ -332,7 +332,7 @@ function ChatListContent() {
                         </span>
                       ) : null}
                       {room.my_status === "invited" ? (
-                        <span className="rounded-chip bg-accent/15 px-2 py-0.5 text-[10px] font-extrabold text-accent">
+                        <span className="rounded-chip bg-brand/15 px-2 py-0.5 text-[10px] font-extrabold text-brand">
                           초대됨
                         </span>
                       ) : null}

@@ -1,49 +1,33 @@
-import Image from "next/image";
 import Link from "next/link";
-import { FerrisWheel, Sparkles, Tent, TentTree } from "lucide-react";
+import { ArrowLeft, FerrisWheel, Sparkles, Tent } from "lucide-react";
 import type { ReactNode } from "react";
+import { BrandLogo as BrandLogoImage } from "@/components/BrandLogo";
 import styles from "./AuthScreen.module.css";
 
-function BrandLogo({ onDark = false }: { onDark?: boolean }) {
+function BrandLogo() {
   return (
     <Link
       href="/"
       aria-label="놀다가 홈"
-      className={
-        onDark
-          ? "inline-flex items-center rounded-chip bg-surface/95 px-4 py-1.5 shadow-md"
-          : "inline-flex items-center"
-      }
+      className="inline-flex items-center"
     >
-      <Image
-        src="/logo-noldaga.png"
-        alt="NOLDAGA"
-        width={138}
-        height={46}
-        priority
-        unoptimized
-        className="h-7 w-auto object-contain mix-blend-multiply"
-      />
+      <BrandLogoImage priority className="h-auto w-full" />
     </Link>
   );
 }
 
 export function LoginScreen({ children }: { children: ReactNode }) {
   return (
-    <div className={`${styles.screen} ${styles.login} relative isolate grid min-h-dvh content-center gap-5 overflow-hidden px-[8.5%] pb-14 pt-10`}>
-      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
-        <Sparkles strokeWidth={1} className="absolute -right-3 top-6 h-28 w-28 text-surface/85 drop-shadow-[0_0_10px_var(--color-brand)]" />
-        <Sparkles strokeWidth={1} className="absolute right-[14%] top-[21%] h-10 w-10 text-surface/70" />
-        <TentTree className="absolute -bottom-4 -left-3 h-28 w-28 text-ink/85" />
-        <TentTree className="absolute -bottom-6 right-0 h-28 w-28 text-ink/85" />
-        <div className="absolute bottom-9 left-[18%] right-[18%] h-10 rounded-b-[50%] border-b-2 border-dotted border-surface-soft/80" />
+    <div className={`${styles.screen} ${styles.login} min-h-dvh bg-surface px-5 pb-14 pt-16`}>
+      <div className="mx-auto max-w-[330px] text-center text-ink">
+        <div className="mx-auto w-[285px]"><BrandLogo /></div>
+        <h1 className="mt-10 text-[30px] font-black leading-tight tracking-tight">
+          <span className="text-brand">놀다가</span>에 오신 것을 환영해요!
+        </h1>
+        <p className="mt-3 text-base font-semibold text-ink">축제도, 즐길도, 안전한 귀가까지 한 번에!</p>
+        <FestivalIllustration />
       </div>
-      <div className="text-center text-surface">
-        <BrandLogo onDark />
-        <p className="mx-auto mt-3 w-fit -rotate-3 border-b-[5px] border-brand pb-1 text-5xl font-black italic leading-none tracking-tight">놀다가</p>
-        <p className="mt-3 text-sm font-semibold text-surface/95">축제를 더 안전하고, 더 즐겁게</p>
-      </div>
-      <div className={`${styles.loginCard} rounded-[25px] px-[7%] py-6 shadow-xl`}>
+      <div className="mx-auto mt-8 max-w-[350px]">
         {children}
       </div>
     </div>
@@ -52,27 +36,38 @@ export function LoginScreen({ children }: { children: ReactNode }) {
 
 export function SignupScreen({ children, footer }: { children: ReactNode; footer: ReactNode }) {
   return (
-    <div className={`${styles.screen} ${styles.signup} min-h-dvh px-4 pb-8 pt-4`}>
-      <div className="relative isolate mb-4 overflow-hidden px-1">
-        <BrandLogo />
-        <div className="pointer-events-none absolute -right-1 bottom-0 -z-10 w-[40%] text-brand" aria-hidden="true">
-          <FerrisWheel strokeWidth={1.3} className="absolute bottom-4 right-1 h-16 w-16 text-ink/70" />
-          <Sparkles strokeWidth={1.3} className="absolute bottom-[68px] left-5 h-7 w-7 text-brand/75" />
-          <Tent strokeWidth={1.4} className="relative ml-1 h-14 w-20 fill-brand/25" />
-        </div>
-        <h1 className="mt-5 text-[clamp(24px,6.8vw,30px)] font-black leading-tight tracking-tight text-ink">
-          <span className="text-brand">놀다가</span> 시작하기
-        </h1>
-        <p className="mt-1 text-sm font-medium leading-snug text-muted">
-          축제를 더 편하게 즐기기 위한
-          <br />
-          기본 정보를 입력해 주세요
-        </p>
+    <div className={`${styles.screen} ${styles.signup} min-h-dvh bg-surface px-5 pb-10 pt-4`}>
+      <div className="relative flex h-14 items-center justify-center">
+        <Link href="/auth/login" aria-label="로그인으로 돌아가기" className="absolute left-0 grid h-11 w-11 place-items-center rounded-chip text-ink">
+          <ArrowLeft className="h-6 w-6" aria-hidden="true" />
+        </Link>
+        <span className="text-xl font-extrabold">회원가입</span>
       </div>
-      <div className="rounded-[24px] border border-line-light bg-surface p-5 shadow-md">
+      <div className="mx-auto max-w-[350px]">
+        <div className="mx-auto mt-5 w-[270px]"><BrandLogo /></div>
+        <h1 className="mt-4 text-center text-[25px] font-black leading-tight tracking-tight text-ink">
+          <span className="text-brand">놀다가</span>와 함께 시작해요!
+        </h1>
+        <p className="mt-2 text-center text-sm font-medium text-muted">
+          간단한 정보를 입력하고 취향에 맞는 축제를 만나보세요.
+        </p>
+        <FestivalIllustration compact />
+      </div>
+      <div className="mx-auto mt-6 max-w-[350px]">
         {children}
       </div>
-      <div className="mt-4 text-center text-sm font-medium text-muted">{footer}</div>
+      <div className="mx-auto mt-5 max-w-[350px] text-center text-sm font-medium text-muted">{footer}</div>
+    </div>
+  );
+}
+
+function FestivalIllustration({ compact = false }: { compact?: boolean }) {
+  return (
+    <div aria-hidden="true" className={`relative mx-auto mt-6 ${compact ? "h-28 w-64" : "h-40 w-72"}`}>
+      <div className="absolute inset-x-2 bottom-0 h-16 rounded-[50%] bg-brand-soft blur-sm" />
+      <Sparkles className="absolute left-16 top-0 h-10 w-10 text-brand" strokeWidth={1.4} />
+      <FerrisWheel className="absolute bottom-2 right-4 h-24 w-24 text-ink" strokeWidth={1.35} />
+      <Tent className="absolute bottom-0 left-12 h-24 w-32 fill-brand/25 text-brand" strokeWidth={1.45} />
     </div>
   );
 }

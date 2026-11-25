@@ -287,7 +287,7 @@ export function ReturnRouteView({ festivalId, routeId }: { festivalId?: string; 
             value={scenario}
             disabled={pending}
             onChange={(event) => setScenario(MOCK_SCENARIOS.find(({ value }) => value === event.target.value)?.value ?? "")}
-            className="rounded-lg border border-line-light bg-bg px-2 py-1 text-ink focus-visible:outline-accent"
+            className="rounded-lg border border-line-light bg-bg px-2 py-1 text-ink focus-visible:outline-brand"
           >
             {MOCK_SCENARIOS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
           </select>

@@ -2,18 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Bus,
   CalendarDays,
   Compass,
-  Heart,
   Hospital,
   MapPin,
   ParkingCircle,
   RotateCcw,
+  Share2,
   ShieldCheck,
   Ticket,
   TrainFront,
@@ -22,23 +22,12 @@ import {
 } from "lucide-react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import { KakaoMap } from "@/components/KakaoMap";
-import { LoginPromptSheet } from "@/components/LoginPromptSheet";
-import {
-  getAccessToken,
-  getAuthSessionVersion,
-  subscribeAuth,
-} from "@/lib/api/auth";
+import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { ApiError } from "@/lib/api/client";
 import { dday, formatFestivalPeriod } from "../explore/dday";
 import { getRegionLabel } from "../explore/regions";
 import { LiveInfoSection } from "../live-info/LiveInfoSection";
-import {
-  deleteFavorite,
-  getFestivalDetail,
-  findFavorites,
-  saveFavorite,
-  type FestivalDetail,
-} from "./api";
+import { getFestivalDetail, type FestivalDetail } from "./api";
 import { FestivalAiPrompt } from "./FestivalAiPrompt";
 
 export interface FestivalDetailViewProps {
@@ -61,19 +50,8 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const session = useSyncExternalStore(subscribeAuth, getAuthSessionVersion, () => 0);
-  const signedIn = useSyncExternalStore(subscribeAuth, () => Boolean(getAccessToken()), () => false);
-  const [favorite, setFavorite] = useState<{ session: number; festivalId: string; saved: boolean | null } | null>(null);
-  const [favoriteBusy, setFavoriteBusy] = useState(false);
-  const [favoriteError, setFavoriteError] = useState<string | null>(null);
-  const lookupRequest = useRef<AbortController | null>(null);
-  const currentFavorite = favorite?.session === session && favorite.festivalId === festivalId ? favorite : null;
-  const favoriteLocked = signedIn && (!currentFavorite || favoriteBusy);
-  const isFavorite = signedIn && currentFavorite?.saved === true;
-
   const [nearbyMessage, setNearbyMessage] = useState<string | null>(null);
   const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -116,56 +94,6 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       controller.abort();
     };
   }, [festivalId, reloadTick]);
-
-  useEffect(() => {
-    if (!signedIn) return;
-    const controller = new AbortController();
-    lookupRequest.current = controller;
-
-    function apply(saved: boolean | null) {
-      if (!controller.signal.aborted && session === getAuthSessionVersion()) {
-        setFavorite({ session, festivalId, saved });
-      }
-    }
-
-    findFavorites([festivalId], controller.signal)
-      .then((matches) => apply(matches.has(festivalId)))
-      .catch(() => apply(null));
-
-    return () => controller.abort();
-  }, [festivalId, session, signedIn]);
-
-  const handleToggleFavorite = useCallback(async () => {
-    if (!getAccessToken()) {
-      setLoginPromptOpen(true);
-      return;
-    }
-    if (!currentFavorite || favoriteLocked || session !== getAuthSessionVersion()) return;
-
-    lookupRequest.current?.abort();
-    setFavoriteBusy(true);
-    setFavoriteError(null);
-    try {
-      if (isFavorite) await deleteFavorite(festivalId);
-      else await saveFavorite(festivalId);
-
-      if (session === getAuthSessionVersion()) {
-        setFavorite((current) =>
-          current === currentFavorite ? { ...current, saved: !isFavorite } : current,
-        );
-      }
-    } catch (error) {
-      if (session === getAuthSessionVersion()) {
-        setFavoriteError(
-          error instanceof ApiError
-            ? error.message
-            : "찜 상태를 변경하지 못했어요",
-        );
-      }
-    } finally {
-      setFavoriteBusy(false);
-    }
-  }, [currentFavorite, favoriteLocked, festivalId, isFavorite, session]);
 
   if (loading) {
     return (
@@ -234,31 +162,33 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const hasCoordinates = festival.lat !== null && festival.lng !== null;
 
   return (
-    <div className="space-y-5 px-4 py-3 pb-6">
+    <div className="space-y-6 px-4 py-3 pb-6">
       {/* 상단 내비게이션 줄 */}
       <div className="flex items-center justify-between">
         <Link
           href="/festivals"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-ink transition-colors hover:text-brand"
+          aria-label="축제 목록으로"
+          className="grid h-11 w-11 place-items-center rounded-chip text-ink transition-colors hover:bg-surface-soft hover:text-brand"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          <span>축제 상세</span>
+          <ArrowLeft className="h-6 w-6" aria-hidden="true" />
         </Link>
+        <button type="button" aria-label="공유하기" className="grid h-11 w-11 place-items-center rounded-chip text-ink hover:bg-surface-soft"><Share2 className="h-6 w-6" aria-hidden="true" /></button>
       </div>
 
-      {/* 대표 이미지 + D-day + 하트 */}
-      <section className="space-y-2">
-        <div className="relative h-56 w-full overflow-hidden rounded-card border border-line-light bg-surface-soft/45 shadow-md">
+      <FestivalAiPrompt festivalId={festival.festival_id} />
+
+      <section className="grid grid-cols-[44%_1fr] gap-3">
+        <div className="relative aspect-[1/1.414] w-full overflow-hidden rounded-card-lg border border-line-light bg-surface-soft/45 shadow-card">
           {showHeroImage && heroImage ? (
             <>
               <Image
                 src={heroImage}
                 alt={festival.name}
                 fill
-                sizes="(max-width: 480px) 100vw, 448px"
+                sizes="180px"
                 unoptimized
                 onError={() => setFailedHeroSrc(heroImage)}
-                className="object-contain p-1"
+                className="bg-ink/5 object-contain"
               />
               <span className="absolute bottom-2.5 right-2.5 rounded-chip bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-surface backdrop-blur-sm">
                 출처: 한국관광공사
@@ -273,76 +203,17 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
               {badge}
             </span>
           ) : null}
-
-          <button
-            type="button"
-            onClick={() => void handleToggleFavorite()}
-            disabled={favoriteLocked}
-            aria-label={isFavorite ? "찜 해제" : "찜하기"}
-            aria-pressed={isFavorite}
-            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-chip bg-surface/90 text-ink shadow-sm backdrop-blur-sm transition-transform hover:scale-105 disabled:opacity-60"
-          >
-            <Heart
-              className={
-                isFavorite
-                  ? "h-5 w-5 fill-brand text-brand"
-                  : "h-5 w-5 text-ink"
-              }
-              aria-hidden="true"
-            />
-          </button>
+          <FavoriteButton festivalId={festival.festival_id} className="absolute right-2 top-2 z-10" />
         </div>
-
-        {favoriteError ? (
-          <p role="alert" className="text-xs font-medium text-brand">
-            {favoriteError}
-          </p>
-        ) : null}
-      </section>
-
-      {/* 제목 & 한 줄 소개 */}
-      <section className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <span className="h-5 w-1.5 rounded-chip bg-brand" aria-hidden="true" />
-          <h1 className="text-xl font-black tracking-tight text-ink">
-            {festival.name}
-          </h1>
-        </div>
-        {festival.overview ? (
-          <p className="text-sm leading-relaxed text-muted">
-            {festival.overview}
-          </p>
-        ) : null}
-      </section>
-
-      {/* AI 질문창 */}
-      <FestivalAiPrompt festivalId={festival.festival_id} />
-
-      {/* 정보 칩 */}
-      <section aria-label="기본 정보" className="grid grid-cols-2 gap-2">
-        <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
-          <CalendarDays className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-          <span className="whitespace-normal font-semibold leading-snug text-ink">
-            {periodText}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
-          <MapPin className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-          <span className="truncate font-semibold text-ink">
-            {festival.venue_name ?? festival.address ?? "장소 미정"}
-          </span>
-        </div>
-        {festival.fee_text ? (
-          <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
-            <Ticket className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-            <span className="truncate font-semibold text-ink">
-              {festival.fee_text}
-            </span>
+        <div className="min-w-0 space-y-2">
+          <div className="flex items-start gap-2"><span className="mt-1 h-6 w-1.5 shrink-0 rounded-chip bg-brand" /><h1 className="text-[24px] font-black leading-tight tracking-tight text-ink">{festival.name}</h1></div>
+          {festival.overview ? <p className="line-clamp-3 text-xs leading-relaxed text-muted">{festival.overview}</p> : null}
+          <div aria-label="기본 정보" className="space-y-1.5 pt-1">
+            <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><CalendarDays className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="font-semibold">{periodText}</span></div>
+            <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><MapPin className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{festival.venue_name ?? festival.address ?? "장소 미정"}</span></div>
+            {festival.fee_text ? <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><Ticket className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{festival.fee_text}</span></div> : null}
+            <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><Compass className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{regionLabel}</span></div>
           </div>
-        ) : null}
-        <div className="flex items-center gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-xs">
-          <Compass className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-          <span className="truncate font-semibold text-ink">{regionLabel}</span>
         </div>
       </section>
 
@@ -477,11 +348,17 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         </div>
       </section>
 
-      <LoginPromptSheet
-        open={loginPromptOpen}
-        onClose={() => setLoginPromptOpen(false)}
-        nextPath={`/festivals/${festivalId}`}
-      />
+      <section className="space-y-3">
+        <div className="flex items-end justify-between"><div><h2 className="flex items-center gap-2 text-xl font-black"><span className="h-5 w-1.5 rounded-chip bg-brand" />동행 모집</h2><p className="ml-3.5 mt-1 text-xs text-muted">함께 축제를 즐길 동행을 찾아보세요!</p></div><Link href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}`} className="text-sm font-extrabold text-brand">전체보기 ›</Link></div>
+        <div className="grid grid-cols-2 gap-3">
+          {["이 축제 같이 가요!", "사진 같이 찍어요!"].map((title, index) => (
+            <Link key={title} href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}`} className="rounded-card-lg border border-brand/20 bg-surface-soft p-3 shadow-sm">
+              <div className="flex items-center gap-2"><span className="grid h-10 w-10 place-items-center rounded-chip bg-surface text-brand"><Users className="h-5 w-5" /></span><div><p className="line-clamp-1 text-xs font-extrabold">{title}</p><p className="mt-1 text-[11px] text-muted">12.0{index + 6} · <b className="text-brand">{index + 2} / {index + 4}명</b></p></div></div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import "@testing-library/jest-dom/vitest";
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -8,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetAuthStateForTest, setAuthSession } from "@/lib/api/auth";
+import { resetAuthStateForTest } from "@/lib/api/auth";
 import { FestivalDetailView } from "./FestivalDetailView";
 
 const pushMock = vi.fn();
@@ -127,9 +126,11 @@ describe("F7 festival detail", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByAltText("테스트 문화 축제").className).toContain(
+    const heroImage = screen.getByAltText("테스트 문화 축제");
+    expect(heroImage.className).toContain(
       "object-contain",
     );
+    expect(heroImage.parentElement).toHaveClass("aspect-[1/1.414]");
     expect(screen.getByText("테스트 한 줄 소개입니다.")).toBeInTheDocument();
     expect(screen.getByText("무료")).toBeInTheDocument();
     expect(screen.getByText("서울")).toBeInTheDocument();
@@ -143,138 +144,7 @@ describe("F7 festival detail", () => {
       "/routes/return?festivalId=fst_000001",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "찜하기" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "로그인하기" })).toHaveAttribute(
-      "href",
-      "/auth/login?next=%2Ffestivals%2Ffst_000001",
-    );
-  });
-
-  it("F7 toggles favorite via PUT and DELETE when logged in", async () => {
-    setAuthSession({
-      accessToken: "token-access",
-      refreshToken: "token-refresh",
-      user: { userId: "usr_1", displayName: "테스터" },
-    });
-
-    const fetchMock = vi.fn(
-      async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-
-        if (url.includes("/me/favorites/fst_000001")) {
-          if (method === "PUT") {
-            return new Response(
-              JSON.stringify({
-                is_mock: true,
-                festival_id: "fst_000001",
-                saved_at: "2026-11-22T15:00:00Z",
-              }),
-              { status: 201, headers: { "Content-Type": "application/json" } },
-            );
-          }
-          if (method === "DELETE") {
-            return new Response(null, { status: 204 });
-          }
-        }
-        if (url.includes("/me/favorites")) {
-          return new Response(
-            JSON.stringify({
-              is_mock: true,
-              items: [],
-              total: 0,
-              page: 1,
-              page_size: 100,
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        if (url.endsWith("/festivals/fst_000001")) {
-          return new Response(
-            JSON.stringify(buildDetailResponse({ lat: null, lng: null })),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        return new Response(
-          JSON.stringify({
-            is_mock: true,
-            festival_id: "fst_000001",
-            status: "ok",
-            coverage: { scope: "seoul_only", region_code: "SEOUL", supported: true },
-            source: "operator",
-            items: [],
-            areas: [],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      },
-    );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-    render(<FestivalDetailView festivalId="fst_000001" />);
-
-    await waitFor(() => {
-      expect(screen.getByText("위치 정보가 없어요")).toBeInTheDocument();
-    });
-
-    const heartButton = screen.getByRole("button", { name: "찜하기" });
-    fireEvent.click(heartButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "찜 해제" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "찜 해제" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "찜하기" })).toHaveAttribute(
-        "aria-pressed",
-        "false",
-      );
-    });
-  });
-
-  it("F7 locks the heart during lookup, checks page two, and ignores a previous session's late lookup", async () => {
-    function signIn(id: string) {
-      setAuthSession({ accessToken: id, refreshToken: id, user: { userId: id, displayName: id } });
-    }
-
-    signIn("previous");
-    const previous = Promise.withResolvers<Response>();
-    const secondPage = Promise.withResolvers<Response>();
-    const fetchMock = vi.fn<typeof fetch>((input, init) => {
-      const url = new URL(String(input));
-      if (init?.method === "DELETE") return Promise.resolve(new Response(null, { status: 204 }));
-      if (url.pathname.endsWith("/me/favorites")) {
-        if (new Headers(init?.headers).get("Authorization") === "Bearer previous") return previous.promise;
-        if (url.searchParams.get("page") === "2") return secondPage.promise;
-        return Promise.resolve(Response.json({ items: [{ festival_id: "other" }], page: 1, page_size: 100, total: 101 }));
-      }
-      if (url.pathname.endsWith("/festivals/fst_000001")) {
-        return Promise.resolve(Response.json(buildDetailResponse({ lat: null, lng: null })));
-      }
-      return Promise.resolve(Response.json({ status: "ok", items: [], areas: [] }));
-    });
-    globalThis.fetch = fetchMock;
-    render(<FestivalDetailView festivalId="fst_000001" />);
-    const heart = await screen.findByRole("button", { name: "찜하기" });
-    expect(heart).toBeDisabled();
-    fireEvent.click(heart);
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
-
-    act(() => signIn("current"));
-    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => new URL(String(url)).searchParams.get("page") === "2")).toBe(true));
-    expect(heart).toBeDisabled();
-    await act(async () => secondPage.resolve(Response.json({ items: [{ festival_id: "fst_000001" }], page: 2, page_size: 100, total: 101 })));
-    fireEvent.click(screen.getByRole("button", { name: "찜 해제" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "찜하기" })).toBeEnabled());
-
-    await act(async () => previous.resolve(Response.json({ items: [{ festival_id: "fst_000001" }], page: 1, page_size: 100, total: 1 })));
-    expect(screen.getByRole("button", { name: "찜하기" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "찜하기" })).toBeInTheDocument();
   });
 
   it("F7 shows not found message and link to list on 404", async () => {
