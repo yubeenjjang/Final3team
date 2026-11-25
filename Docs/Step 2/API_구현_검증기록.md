@@ -619,7 +619,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 
 ### 17-3. 저장·캐시 규칙 ↔ 실제 코드 (강사 11/20 API 2)
 
-**구현 상태** · 022 적용 뒤 `api.jobs.scheduler`가 시간당 TMAP 결과 정리(23시간)와 06:00 KST 일일 경로 요청 보존 정리를 실행합니다. [실행·감시 예시](../../backend/Doc/jobs/IMP-PLAN.md)
+**구현 상태** · 026 적용 뒤 `api.jobs.scheduler`가 시간당 TMAP 결과 정리(23시간)와 06:00 KST 일일 경로 요청 보존 정리를 실행합니다. [실행·감시 예시](../../backend/Doc/jobs/IMP-PLAN.md)
 
 실제 경로 모드에서 `ROUTE_STORE` 기본값은 `memory`입니다. `db` 선택 시 011 적용 DB에서 공통 서비스 세션으로 A04 요청과 결과를 저장하고 A05 토큰 해시와 결과를 조회합니다. `FESTIVAL_DATA=db`이면 A02·A03과 같은 축제를 사용합니다. 서비스 계정 설정과 마이그레이션 파일 선택은 [귀가 경로 SPEC](../../backend/Doc/route-providers/SPEC.md#8-step5-공통-db-연결과-시험-명령)에 기록했습니다.
 11/24 10:29 합의에 따라 011 이전 요청 행은 보존하며 조회 토큰은 재발급하지 않습니다. 조회하려면 새 요청을 접수합니다. API 컨테이너에는 `.env.example`의 DB 환경변수 7개를 전달하고, `DB_MIGRATION_DSN`은 관리자용 실행 환경에만 둡니다.
@@ -793,7 +793,7 @@ AWS에서는 아직 실행하지 않았습니다(W65, AWS 환경 신유빈 관�
 | 7-16 | **구현 상태 (itest)** — 동시 1:1 방 생성, WebSocket 발신, 마지막 수신 순번으로 HTTP 재조회, 차단 전후 방 상태를 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md) |
 | 7-16 | **검증 상태 (W82, 11/25)** — 로그아웃·만료·정지 계정의 보호 API 거부, 로그아웃·탈퇴 뒤 열린 WebSocket 종료(4403), 탈퇴자 메시지 작성자 비공개를 실제 DB로 확인했습니다(DB 시험 62). [W82 검증 기록](../../backend/Doc/w82/VERIFY.md) |
 | 7-16 | **구현 상태 (itest)** — A76 신고 접수와 A77 운영자 열람에 해당하는 감사 행을 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md) |
-| 7-16-6 | **A82 비밀번호 변경 (11/25)** — 모의: `test_my_account.py::test_mock_password_change_validates_and_ends_sessions`(규칙 위반 422 4종·틀린 비밀번호 403·성공 뒤 두 기기 Access·Refresh 거부·옛 비밀번호 로그인 401·새 비밀번호 로그인). 실제 DB: `test_w82_session_privacy_postgres.py::test_a82_password_change_postgres`(실패 시 해시·Refresh 그대로, 성공 시 Argon2id 새 해시·Refresh 0개). 오프라인 637·DB 63 통과 |
+| 7-16-6 | **A82 비밀번호 변경 (11/25)** — 모의: `test_my_account.py::test_mock_password_change_validates_and_ends_sessions`(규칙 위반 422 4종·틀린 비밀번호 403·성공 뒤 이 기기 Access 거부·다른 기기 Access는 만료까지 유지·두 기기 Refresh 거부·옛 비밀번호 로그인 401·새 비밀번호 로그인). 실제 DB: `test_w82_session_privacy_postgres.py::test_a82_password_change_postgres`(실패 시 해시·Refresh 그대로, 성공 시 Argon2id 새 해시·Refresh 0개). 오프라인 637·DB 63 통과 |
 
 ## 21. 정보 전달 허용·차단 시험 (설계서 3-1-2에서 옮김)
 
@@ -836,3 +836,32 @@ AWS에서는 아직 실행하지 않았습니다(W65, AWS 환경 신유빈 관�
 | 7-15 A26 | 공급원 응답 fixture 검증을 마쳤으며, 실제 키와 시연 대상 시설로 연결 확인 예정입니다. |
 | 7-15 A28 | UTIC 응답 실측 7.5~10.7초(11/25 학원 노트북) |
 | 7-15 A28 | **실호출 확인(11/25)**: TOPIS 6건 변환 정상(고장 차량 `A02`는 사고로 분류), UTIC 학원 노트북에서 189건 변환, A28 응답 전국+서울 70건(반경 10km)·1.3초. |
+
+## 24. 2차 교차 검토 때 설계서에서 옮긴 메모 (11/25)
+
+| 내용 |
+|---|
+| 4절 Festival Agent 대조: 11/24 `origin/dayoung` 브랜치 기준으로 대조함 |
+| 7-12 A02 `status` 여러 값: 11/23 추가, 시험 `backend/tests/api/test_i13_multi_status.py` |
+| 7-15 A29: 학원 노트북 실데이터 응답 확인(0.5초, 11/25) |
+
+## 25. 제한값 확정 기록 (설계서 8-2의 초기값 → 측정 뒤 확정값)
+
+[설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)의 숫자는 초기값입니다. 측정·결정으로 값을 확정하면 이 표에 한 줄씩 추가하고, 묶음 버전 `LIMITS_VERSION`을 올립니다(설계서는 고치지 않음). 첫 확정 예정: W96 계측 → W48 복구 정책(12/04, 신유빈·권오현).
+
+| 설정 키 | 초기값([설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)) | 확정값 | `LIMITS_VERSION` | 근거(측정·결정) | 확정일·담당 |
+|---|---|---|---|---|---|
+| (12/04 W48에서 채움) | | | `lim-0.1` → | | |
+
+## 26. 제한값 설정의 현재 코드 상태 (설계서 8-2에서 옮김, 11/23 교차 검토 기준)
+
+**현재 코드 기준(11/23, 교차 검토로 확인):** `backend/shared/config.py`는 아직 비어 있어 `Limits`·`LIMITS_VERSION`은 **구현 전**입니다. 지금 경로 코드는 아래처럼 **코드 상수와 다른 이름의 환경변수**를 씁니다. 설정 한 곳으로 모으는 일은 아래 표 각 행의 담당·확정 시험 때 합니다.
+
+| 이 표의 설정 키 | 지금 코드 | 기본값 |
+|---|---|---|
+| `ROUTE_SYNC_WAIT_S` / `ROUTE_TOTAL_TIMEOUT_S` | `real_routes.py` 상수 `_SYNC_WAIT_S` / `_REQUEST_LIMIT_S`(같은 경로 병합 대기 `_FLIGHT_LIMIT_S`) | 3초 / 10초(12초) |
+| `ROUTE_ADAPTER_TIMEOUT_S` | `tmap.py`·`kakao.py`의 `_timeout` 상수 | TMAP 5초 · 카카오 3초 |
+| `ROUTE_CACHE_TTL_S` | `real_routes.py` 상수 `_CACHE_TTL_S`, **Redis가 아니라 서버 메모리** | 60초 |
+| `QUOTA_TMAP_FREE` / `QUOTA_KAKAO_FREE` | 환경변수 **`ROUTE_TMAP_DAILY_LIMIT`** / **`ROUTE_KAKAO_DAILY_LIMIT`**, 장소 검색 **`ROUTE_KAKAO_LOCAL_DAILY_LIMIT`**(`providers/quota.py`). 센 횟수는 파일 `ROUTE_QUOTA_FILE`(Redis `quota:*`는 예정) | 10 / 1,000 / 1,000 (장소 검색 1,000은 공급원 한도 100,000건/일보다 낮게 둔 우리 보호값) |
+| (route_key 비밀키) | 환경변수 `ROUTE_KEY_SECRET` — **없으면 서버가 켜질 때 임의 키를 만듦**(재시작하면 키가 바뀌어 캐시 키도 바뀜) | 없음 |
+| `TMAP_PAID_PLAN` | **코드가 읽는 환경변수가 아님** — 유료 전환 결정 항목의 이름 | — |

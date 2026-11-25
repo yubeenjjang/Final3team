@@ -18,6 +18,7 @@ from api.ingestion.seoul_culture import collect as seoul_culture
 from api.jobs import locks, retention
 from api.jobs.maintain_companions import maintain_companions
 from api.jobs.purge_route_results import DEFAULT_PURGE_AFTER_HOURS, RouteStore
+from api.services import withdrawal_log
 from shared.db.session import service_db_session
 
 
@@ -58,10 +59,16 @@ def _collect_seoul_culture(db: Session, now: datetime) -> dict[str, int]:
     return {"scanned": job.scanned, "inserted": job.inserted, "updated": job.updated, "rejected": job.rejected}
 
 
+def _prune_withdrawal_log(db: Session, now: datetime) -> dict[str, int]:
+    # 탈퇴 기록은 DB 밖 파일이다. 잠금은 실행기 두 개가 같은 파일을 동시에 줄이지 않게 할 때만 쓴다.
+    return {"deleted": withdrawal_log.prune(now)}
+
+
 JOBS = (
     Job("purge_route_results", locks.ROUTE_RESULTS, _purge_routes),
     Job("maintain_companions", locks.COMPANIONS, maintain_companions),
     Job("retention", locks.RETENTION, _sweep, daily=True),
+    Job("prune_withdrawal_log", locks.WITHDRAWAL_LOG, _prune_withdrawal_log, daily=True),
     Job("collect_festivals", locks.FESTIVALS, _collect_festivals, daily=True),
     Job("collect_seoul_culture", locks.FESTIVALS, _collect_seoul_culture, daily=True, enabled=seoul_culture.enabled),
 )

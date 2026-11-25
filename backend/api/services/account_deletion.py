@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from time import time
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from api.auth.state import AuthStateUnavailable, get_auth_state
 from api.auth.tokens import AccessClaims, password_matches, unauthorized
 from api.errors import ApiError
+from api.services import withdrawal_log
 from shared.db.session import service_db_session
 
 _logger = logging.getLogger(__name__)
@@ -28,25 +30,9 @@ def delete_account(claims: AccessClaims, password: str) -> None:
             raise unauthorized()
         if not password_matches(password, account.password_hash):
             raise password_mismatch()
+        purge_account(db, claims.user_id)
 
-        for table in ("refresh_tokens", "favorites", "user_festival_preferences", "notifications"):
-            db.execute(text(f"DELETE FROM public.{table} WHERE user_id = :uid"), owner)
-        cancelled_rooms = _cancel_companion_activity(db, owner)
-        db.execute(text("DELETE FROM public.friendships WHERE user_a = :uid OR user_b = :uid"), owner)
-        db.execute(text("DELETE FROM public.friend_requests WHERE from_user = :uid OR to_user = :uid"), owner)
-        db.execute(text("DELETE FROM public.user_blocks WHERE blocker = :uid OR blocked = :uid"), owner)
-        _leave_chat_rooms(db, owner, cancelled_rooms)
-        _purge_assistant_content(db, owner)
-        db.execute(text("""
-            UPDATE public.profiles SET display_name = NULL, birth_year = NULL, gender = NULL
-            WHERE user_id = :uid
-        """), owner)
-        db.execute(text("""
-            UPDATE public.users
-            SET email = 'deleted+' || CAST(:uid AS text) || '@invalid', password_hash = '!', status = 'deleted'
-            WHERE user_id = :uid
-        """), owner)
-
+    withdrawal_log.append(claims.user_id, datetime.now(timezone.utc))
     ttl = claims.expires_at - int(time())
     if ttl > 0:
         try:
@@ -54,6 +40,28 @@ def delete_account(claims: AccessClaims, password: str) -> None:
         except AuthStateUnavailable:
             # The committed account status already invalidates every access token.
             _logger.warning("Account deleted while the token revocation store was unavailable.")
+
+
+def purge_account(db: Session, user_id: UUID) -> None:
+    """A80 정리 본문. 백업 복원 뒤 다시 정리할 때도 같은 순서로 쓴다(api.jobs.reapply_withdrawals)."""
+    owner = {"uid": user_id}
+    for table in ("refresh_tokens", "favorites", "user_festival_preferences", "notifications"):
+        db.execute(text(f"DELETE FROM public.{table} WHERE user_id = :uid"), owner)
+    cancelled_rooms = _cancel_companion_activity(db, owner)
+    db.execute(text("DELETE FROM public.friendships WHERE user_a = :uid OR user_b = :uid"), owner)
+    db.execute(text("DELETE FROM public.friend_requests WHERE from_user = :uid OR to_user = :uid"), owner)
+    db.execute(text("DELETE FROM public.user_blocks WHERE blocker = :uid OR blocked = :uid"), owner)
+    _leave_chat_rooms(db, owner, cancelled_rooms)
+    _purge_assistant_content(db, owner)
+    db.execute(text("""
+        UPDATE public.profiles SET display_name = NULL, birth_year = NULL, gender = NULL
+        WHERE user_id = :uid
+    """), owner)
+    db.execute(text("""
+        UPDATE public.users
+        SET email = 'deleted+' || CAST(:uid AS text) || '@invalid', password_hash = '!', status = 'deleted'
+        WHERE user_id = :uid
+    """), owner)
 
 
 def _cancel_companion_activity(db: Session, owner: dict[str, UUID]) -> list[str]:

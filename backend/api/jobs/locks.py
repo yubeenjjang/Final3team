@@ -6,3 +6,4 @@ ROUTE_RESULTS = text("SELECT pg_try_advisory_xact_lock(hashtext('noldaga.purge_r
 COMPANIONS = text("SELECT pg_try_advisory_xact_lock(190072)")
 RETENTION = text("SELECT pg_try_advisory_xact_lock(hashtext('noldaga.retention'))")
 FESTIVALS = text("SELECT pg_try_advisory_xact_lock(hashtext('noldaga.collect_festivals'))")
+WITHDRAWAL_LOG = text("SELECT pg_try_advisory_xact_lock(hashtext('noldaga.withdrawal_log'))")
