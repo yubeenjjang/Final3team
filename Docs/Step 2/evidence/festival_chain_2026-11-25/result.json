@@ -1,0 +1,83 @@
+{
+  "executed_at": "2026-11-25T10:19:34+09:00",
+  "server": "학원 시연 노트북 API(주소 비공개), FESTIVAL_DATA=db · CROWD_PROVIDER=real",
+  "steps": [
+    {
+      "step": "A02 검색",
+      "request": "GET /api/v1/festivals?q=%EC%84%9C%EC%9A%B8%EB%B9%9B%EC%B4%88%EB%A1%B1&status=ongoing%2Cupcoming&region=SEOUL",
+      "http": 200,
+      "ms": 22.0,
+      "x_mock": null,
+      "has_request_id": true,
+      "total": 1,
+      "picked": {
+        "festival_id": "fst_01M835B57450M888RBNEFVRWWA",
+        "name": "서울빛초롱축제",
+        "event_status": "upcoming",
+        "start_date": "2026-12-11",
+        "end_date": "2027-01-31"
+      },
+      "is_mock": false
+    },
+    {
+      "step": "A03 상세",
+      "request": "GET /api/v1/festivals/fst_01M835B57450M888RBNEFVRWWA",
+      "http": 200,
+      "ms": 11.0,
+      "x_mock": null,
+      "has_request_id": true,
+      "festival_id": "fst_01M835B57450M888RBNEFVRWWA",
+      "name": "서울빛초롱축제",
+      "venue_name": "청계천(청계광장 ~ 삼일교)",
+      "event_status": "upcoming",
+      "is_mock": false
+    },
+    {
+      "step": "A10 혼잡",
+      "request": "GET /api/v1/festivals/fst_01M835B57450M888RBNEFVRWWA/crowd",
+      "http": 200,
+      "ms": 9.9,
+      "x_mock": null,
+      "has_request_id": true,
+      "festival_id": "fst_01M835B57450M888RBNEFVRWWA",
+      "status": "ok",
+      "observed_at": "2026-11-25T09:50:00+09:00",
+      "stale": null,
+      "is_mock": false,
+      "areas": [
+        {
+          "area_code": "POI003",
+          "area_name": "명동 관광특구",
+          "relation_type": "contains",
+          "congest_level": "보통",
+          "congest_color": "yellow",
+          "observed_at": "2026-11-25T09:50:00+09:00"
+        }
+      ],
+      "notices": [
+        "행사장 안 혼잡과 다를 수 있어요",
+        "출처 서울특별시 · 2026년 서울시 인구데이터 (OA-21778)",
+        "주변 지역 혼잡(서울시 실시간 도시데이터) · 명동 관광특구 · 0m · 기준 2026-11-25 09:50 KST",
+        "주변 지역 혼잡(서울시 실시간 도시데이터) · 광화문·덕수궁 · 0m · 기준 2026-11-25 09:50 KST",
+        "주변 지역 혼잡(서울시 실시간 도시데이터) · 시의회 앞 · 0m · 기준 2026-11-25 09:50 KST"
+      ]
+    },
+    {
+      "step": "A10 혼잡(서울 밖)",
+      "request": "GET /api/v1/festivals/fst_01M835BS447VDC8PVAQNM8GKHF/crowd",
+      "http": 200,
+      "ms": 8.5,
+      "x_mock": null,
+      "has_request_id": true,
+      "festival_id": "fst_01M835BS447VDC8PVAQNM8GKHF",
+      "status": "unsupported",
+      "unsupported_reason": "outside_seoul",
+      "coverage": {
+        "scope": "seoul_only",
+        "region_code": "BUSAN",
+        "supported": false
+      },
+      "is_mock": false
+    }
+  ]
+}

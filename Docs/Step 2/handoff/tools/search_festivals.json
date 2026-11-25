@@ -1,0 +1,62 @@
+{
+  "name": "search_festivals",
+  "description": "지역·기간·키워드로 축제 목록을 찾는다. 상대 날짜(\"이번 주말\")는 대화의 기준 날짜로 바꿔서 넣는다. 축제를 정하기 전에 쓴다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "region": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "SEOUL",
+          "BUSAN",
+          "DAEGU",
+          "INCHEON",
+          "GWANGJU",
+          "DAEJEON",
+          "ULSAN",
+          "SEJONG",
+          "GYEONGGI",
+          "GANGWON",
+          "CHUNGBUK",
+          "CHUNGNAM",
+          "JEONBUK",
+          "JEONNAM",
+          "GYEONGBUK",
+          "GYEONGNAM",
+          "JEJU"
+        ],
+        "default": "ALL"
+      },
+      "date_from": {
+        "type": "string",
+        "format": "date",
+        "description": "YYYY-MM-DD. 이 기간과 겹치는 축제"
+      },
+      "date_to": {
+        "type": "string",
+        "format": "date",
+        "description": "YYYY-MM-DD. date_from 이상, 최대 366일"
+      },
+      "q": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50,
+        "description": "축제 이름·장소 키워드"
+      },
+      "status": {
+        "type": "string",
+        "pattern": "^(upcoming|ongoing|ended|cancelled)(,(upcoming|ongoing|ended|cancelled))*$",
+        "description": "상태 하나 또는 쉼표로 구분한 여러 상태. 예: ongoing,upcoming."
+      },
+      "page_size": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20,
+        "default": 10
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}
