@@ -1,4 +1,4 @@
--- 009 적용 전 검사 (2026-11-23, 강사 11/20 DB 피드백 1). 0행이 아니면 009를 적용하지 말고 먼저 데이터를 고친다.
+-- 009 적용 전 검사 (2026-11-23, 강사 11/20 DB 피드백 1). ①·② 검사 결과가 0행이 아니면 009를 적용하지 말고 먼저 데이터를 고친다. ③ 손실 안내는 참고용이다.
 -- 실행: psql -v ON_ERROR_STOP=1 -f 009_precheck.sql   (읽기만 함, 데이터 변경 없음)
 -- ① 닉네임 길이 2~12자 위반(009 CHECK profiles_nickname_length에서 실패)
 SELECT 'nickname_length' AS check, user_id::text AS ref, display_name FROM profiles

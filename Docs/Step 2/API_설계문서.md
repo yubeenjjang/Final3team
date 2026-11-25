@@ -535,7 +535,7 @@ A02와 같은 공개 조건을 적용합니다. 공개 범위에 없는 ID는 40
 | `festival_id` | string | 불가 | `fst_…` |
 | `name` · `region_code` | string | 불가 | 이름·지역 |
 | `venue_name` · `address` | string | null 가능 | 장소·주소(원본에 없을 수 있음, 실호출 전) |
-| `lat` / `lng` | number | null 가능 | 원본 또는 주소 보정 좌표. 두 값이 null이면 지도 마커를 표시하지 않으며 A04·A10은 2-3절의 좌표 없음 응답을 사용합니다. |
+| `lat` / `lng` | number | null 가능 | 원본 또는 관리자가 직접 입력·승인한 보정 좌표. 두 값이 null이면 지도 마커를 표시하지 않으며 A04·A10은 2-3절의 좌표 없음 응답을 사용합니다. |
 | `start_date` / `end_date` | string | null 가능(미확정 일정) | 기간 |
 | `event_status` | string | 불가 | `upcoming`·`ongoing`·`ended`·`cancelled`·`needs_review` |
 | `overview` · `fee_text` · `homepage_url` · `image_url` | string | null 가능 | 소개·입장료·홈페이지·대표 이미지(공급원에 있을 때만, D-015·D-031). 입장료 = `usetimefestival`, 소개 = `detailCommon2`의 `overview`, **대표 이미지 = `firstimage`**(모두 실호출 확인, 10절) |
