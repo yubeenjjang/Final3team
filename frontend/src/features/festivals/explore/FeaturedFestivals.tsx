@@ -7,7 +7,7 @@ import { FestivalCard } from "./FestivalCard";
 import { listFestivals, type FestivalListItem } from "./api";
 
 export function FeaturedFestivals({
-  title = "지금, 여기서 열리는 축제",
+  title = "인기있는 축제",
   status = "ongoing",
   moreLabel = "전체보기",
 }: {

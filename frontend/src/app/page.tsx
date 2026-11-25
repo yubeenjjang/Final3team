@@ -25,7 +25,7 @@ export default function HomePage() {
       {/* AI 질문 입력 + 예시 칩 */}
       <AssistantPrompt />
 
-      {/* 지금, 여기서 열리는 축제 */}
+      {/* 인기있는 축제 */}
       <FeaturedFestivals />
 
       <FeaturedFestivals title="나만을 위한 축제" status="upcoming" moreLabel="더보기" />

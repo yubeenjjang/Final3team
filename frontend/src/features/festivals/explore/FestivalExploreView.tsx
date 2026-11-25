@@ -295,7 +295,7 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
             <section key={section.title} className="space-y-3">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <h2 className="flex items-center gap-2 text-xl font-black text-ink"><span className="h-5 w-1.5 rounded-chip bg-brand" aria-hidden="true" />{section.title}</h2>
+                  <h2 className="flex items-center gap-2 text-base font-extrabold tracking-tight text-ink"><span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />{section.title}</h2>
                   {index < 3 ? <p className="ml-3.5 mt-1 text-xs text-muted">{index === 0 ? "지금 가장 많은 관심을 받는 축제예요!" : index === 1 ? "나의 취향과 선택에 맞춘 축제를 추천드려요!" : "최근 등록된 따끈한 축제 소식이에요!"}</p> : null}
                 </div>
                 <Link href="/festivals/all" className="shrink-0 text-xs font-bold text-muted hover:text-brand">전체보기 ›</Link>
