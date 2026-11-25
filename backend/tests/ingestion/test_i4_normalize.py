@@ -229,20 +229,22 @@ def test_I6_missing_intro_keeps_common_fields(listing: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize(
-    ("changes", "expected_status", "issues"),
+    ("changes", "expected_status", "issues", "publishable"),
     [
-        ({}, "ongoing", []),
-        ({"mapx": "117"}, "ongoing", ["coords_out_of_range"]),
-        ({"eventstartdate": ""}, "needs_review", ["date_invalid"]),
-        ({"title": " "}, "ongoing", ["title_missing"]),
-        ({"lDongRegnCd": "99"}, "ongoing", ["region_unknown"]),
+        ({}, "ongoing", [], True),
+        # 좌표가 범위 밖이면 좌표만 비우고 공개한다(카카오 주소 검색 결과는 저장 불가라 보정하지 않음).
+        ({"mapx": "117"}, "ongoing", ["coords_out_of_range"], True),
+        ({"eventstartdate": ""}, "needs_review", ["date_invalid"], False),
+        ({"title": " "}, "ongoing", ["title_missing"], False),
+        ({"lDongRegnCd": "99"}, "ongoing", ["region_unknown"], False),
     ],
 )
 def test_I7_publication_requirements(
-    listing: dict[str, Any], changes: dict[str, str], expected_status: str, issues: list[str]
+    listing: dict[str, Any], changes: dict[str, str], expected_status: str, issues: list[str],
+    publishable: bool,
 ) -> None:
     record = normalize_festival(listing | changes, today=TODAY, details_requested=False)
-    assert record.publishable is (not issues)
-    assert record.review_status == ("pending" if issues else "approved")
+    assert record.publishable is publishable
+    assert record.review_status == ("approved" if publishable else "pending")
     assert record.event_status == expected_status
     assert record.issues == issues
