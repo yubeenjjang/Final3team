@@ -8,7 +8,7 @@ from typing import Literal
 from sqlalchemy import text
 
 from api.providers.visit_forecast import TourReading
-from api.schemas.festival_info import Notice, NoticeType, TransitMode
+from api.schemas.festival_info import FacilityCategory, FacilityItem, Notice, NoticeType, TransitMode
 from shared.db.session import service_db_session, user_db_session
 
 
@@ -73,6 +73,31 @@ async def nearby_facilities(lat: float, lng: float, radius_m: int, mode: Transit
             )
             for row in rows.mappings()
         ]
+
+
+async def nearby_facility_items(
+    lat: float, lng: float, radius_m: int, categories: list[FacilityCategory],
+) -> list[FacilityItem]:
+    if not categories:
+        return []
+    lat_delta = radius_m / 110_000
+    lng_delta = lat_delta / cos(radians(lat))
+    query = text("""
+        SELECT facility_id, category, name, lat, lng, address, source_id, ref_code
+          FROM facilities
+         WHERE category = ANY(:categories)
+           AND lat BETWEEN :south AND :north AND lng BETWEEN :west AND :east
+    """)
+    async with user_db_session(user_id=None) as db:
+        rows = await db.execute(query, {
+            "categories": categories, "south": lat - lat_delta, "north": lat + lat_delta,
+            "west": lng - lng_delta, "east": lng + lng_delta,
+        })
+        return [FacilityItem(
+            facility_id=row.facility_id, category=row.category, name=row.name,
+            lat=float(row.lat), lng=float(row.lng), distance_m=0,
+            address=row.address, source=row.source_id, ref_code=row.ref_code,
+        ) for row in rows.mappings()]
 
 
 def read_tour_snapshot(source: str, target: str, since: datetime, now: datetime) -> TourReading | None:

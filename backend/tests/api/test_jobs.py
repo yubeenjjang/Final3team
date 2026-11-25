@@ -12,8 +12,8 @@ from api.jobs import locks, retention, scheduler
 
 @pytest.mark.parametrize(("utc", "jobs"), [
     ("2026-12-31T20:59:59+00:00", ["purge_route_results", "maintain_companions"]),
-    ("2026-12-31T21:00:00+00:00", ["purge_route_results", "maintain_companions", "retention", "collect_festivals"]),
-    ("2026-12-31T21:17:00+00:00", ["purge_route_results", "maintain_companions", "retention", "collect_festivals"]),
+    ("2026-12-31T21:00:00+00:00", ["purge_route_results", "maintain_companions", "retention", "prune_withdrawal_log", "collect_festivals"]),
+    ("2026-12-31T21:17:00+00:00", ["purge_route_results", "maintain_companions", "retention", "prune_withdrawal_log", "collect_festivals"]),
 ])
 def test_due_slots_in_korea(monkeypatch, capsys, utc, jobs):
     run = Mock(return_value={"processed": 0})
@@ -36,10 +36,10 @@ def test_due_slots_in_korea(monkeypatch, capsys, utc, jobs):
     (scheduler.JobLocked(), 3, "locked"),
 ])
 def test_failure_is_summarized_and_other_jobs_continue(monkeypatch, capsys, exception, code, status):
-    run = Mock(side_effect=[exception, {}, None, {"scanned": 5}])
+    run = Mock(side_effect=[exception, {}, None, {"deleted": 0}, {"scanned": 5}])
     monkeypatch.setattr(scheduler, "_run_once", run)
     assert scheduler.run_due(datetime(2027, 1, 1, 0, tzinfo=timezone.utc)) == code
-    assert run.call_count == 4
+    assert run.call_count == 5
     output = capsys.readouterr()
     assert len(output.err.splitlines()) == 1
     assert f"purge_route_results status={status}" in output.err

@@ -5,6 +5,12 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)
+def isolated_withdrawal_log(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # 탈퇴 기록이 실제 홈 폴더에 쌓이지 않게 시험마다 임시 파일을 쓴다.
+    monkeypatch.setenv("WITHDRAWAL_LOG_PATH", str(tmp_path / "withdrawals.jsonl"))
+
+
+@pytest.fixture(autouse=True)
 def reset_mock_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     from api.mocks.store import reset_store
     from api.services import assistant

@@ -7,6 +7,7 @@
 - 열린 WebSocket이 로그아웃·탈퇴 뒤 종료(4403)
 - 탈퇴자 메시지 본문은 방 보존 정책대로 남고, 작성자 이름은 다른 참여자에게 비공개
 - 탈퇴 뒤 옛 이메일·비밀번호로 로그인 거부
+- A82 비밀번호 변경: 해시 교체, 모든 기기 Refresh 폐기, 현재 Access 차단, 새 비밀번호로만 로그인
 """
 import os
 from datetime import datetime, timedelta, timezone
@@ -20,7 +21,9 @@ from starlette.websockets import WebSocketDisconnect
 
 from api.auth import state, tokens
 from api.ingestion.db import create_ingestion_engine
+from api.jobs import reapply_withdrawals
 from api.realtime import chat_socket
+from api.services import withdrawal_log
 from shared.db import session as sessions
 
 from .test_chat import ROOMS, connect_url, send, subscribe
@@ -188,3 +191,74 @@ def test_w82_websocket_closes_after_logout_and_withdrawal(client, w82):
     with engine.connect() as db:
         assert db.scalar(text("SELECT count(*) FROM public.users WHERE email = :email"),
                          {"email": f"o{key}@example.test"}) == 0
+
+
+def test_a82_password_change_postgres(client, w82):
+    engine, key, uids = w82
+    mine, my_id, refresh = _signup(client, uids, "p" + key)
+    credentials = {"email": f"p{key}@example.test", "password": PASSWORD}
+    second_device, _, second_refresh = login(client, credentials)
+    path = f"{ME}/password"
+    new = "ChangedPostgres123"
+    with engine.connect() as db:
+        before = db.scalar(text("SELECT password_hash FROM public.users WHERE user_id = :id"), {"id": my_id})
+
+    wrong = client.post(path, headers=mine, json={"current_password": "incorrect1", "new_password": new})
+    assert wrong.status_code == 403 and wrong.json()["error"]["code"] == "PASSWORD_MISMATCH"
+    same = client.post(path, headers=mine, json={"current_password": PASSWORD, "new_password": PASSWORD})
+    assert same.status_code == 422
+    with engine.connect() as db:
+        assert db.scalar(text("SELECT password_hash FROM public.users WHERE user_id = :id"), {"id": my_id}) == before
+        assert db.scalar(text("""
+            SELECT count(*) FROM public.refresh_tokens WHERE user_id = :id AND revoked_at IS NULL
+        """), {"id": my_id}) == 2
+
+    changed = client.post(path, headers=mine, json={"current_password": PASSWORD, "new_password": new})
+    assert changed.status_code == 204
+    with engine.connect() as db:
+        after = db.scalar(text("SELECT password_hash FROM public.users WHERE user_id = :id"), {"id": my_id})
+        assert after != before and after.startswith("$argon2id$") and new not in after
+        assert db.scalar(text("""
+            SELECT count(*) FROM public.refresh_tokens WHERE user_id = :id AND revoked_at IS NULL
+        """), {"id": my_id}) == 0
+    assert client.get(PROFILE, headers=mine).status_code == 401
+    # 설계서 7-16-6: 다른 기기의 Access는 남은 수명 동안 유지, 갱신은 거부.
+    assert client.get(PROFILE, headers=second_device).status_code == 200
+    for token in (refresh, second_refresh):
+        assert client.post(f"{AUTH}/refresh", json={"refresh_token": token}).status_code == 401
+    assert client.post(f"{AUTH}/login", json=credentials).status_code == 401
+    fresh, _, _ = login(client, {**credentials, "password": new})
+    assert client.get(PROFILE, headers=fresh).status_code == 200
+
+
+def test_withdrawal_log_reapplies_cleanup_after_restore(client, w82):
+    """DB 설계서 7-0 ⑥: 탈퇴 전 백업으로 되돌려도 탈퇴 기록으로 다시 정리한다."""
+    engine, key, uids = w82
+    mine, my_id, _ = _signup(client, uids, "r" + key)
+    assert client.request("DELETE", ME, headers=mine, json={"password": PASSWORD}).status_code == 204
+    assert [user for user, _ in withdrawal_log.entries()] == [my_id]
+
+    # 탈퇴 전 백업을 복원한 상태를 흉내 낸다: 계정·닉네임·Refresh가 되살아남.
+    with engine.begin() as db:
+        db.execute(text("""
+            UPDATE public.users SET status = 'active', email = :email, password_hash = 'restored'
+            WHERE user_id = :id
+        """), {"id": my_id, "email": f"r{key}@example.test"})
+        db.execute(text("UPDATE public.profiles SET display_name = :name WHERE user_id = :id"),
+                   {"id": my_id, "name": "r" + key})
+        db.execute(text("""
+            INSERT INTO public.refresh_tokens (token_id, user_id, token_hash, expires_at)
+            VALUES (:tid, :id, :hash, now() + interval '1 day')
+        """), {"tid": "rt_" + uuid4().hex[:26], "id": my_id, "hash": uuid4().hex})
+
+    assert reapply_withdrawals.reapply(dry_run=True)["reapplied"] == 1
+    with engine.connect() as db:
+        assert db.scalar(text("SELECT status FROM public.users WHERE user_id = :id"), {"id": my_id}) == "active"
+    assert reapply_withdrawals.reapply() == {"entries": 1, "reapplied": 1, "already_deleted": 0, "missing": 0}
+    with engine.connect() as db:
+        assert db.execute(text("""
+            SELECT u.status, u.email, p.display_name,
+                   (SELECT count(*) FROM public.refresh_tokens t WHERE t.user_id = u.user_id)
+            FROM public.users u JOIN public.profiles p USING (user_id) WHERE u.user_id = :id
+        """), {"id": my_id}).one() == ("deleted", f"deleted+{my_id}@invalid", None, 0)
+    assert reapply_withdrawals.reapply()["already_deleted"] == 1

@@ -147,7 +147,8 @@ def test_attempt_process_is_hard_bounded():
     result, retry = assistant_worker.run_attempt(Claim("run_000001", 1, 0.5), target=_hang)
     assert retry and result.error_code == "AI_AGENT_FAILED"
     assert time.monotonic() - started < 5
-    result, retry = assistant_worker.run_attempt(Claim("run_000001", 2, 5), target=_return_result)
+    # Windows 호스트의 Docker 바인드 마운트에서는 spawn/import가 5초를 넘을 수 있다.
+    result, retry = assistant_worker.run_attempt(Claim("run_000001", 2, 15), target=_return_result)
     assert not retry and result.answer == "완료"
 
 

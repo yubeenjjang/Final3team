@@ -13,9 +13,11 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 
 
-FESTIVAL_TOOLS = frozenset({"search_festivals", "get_festival", "get_crowd"})
+FESTIVAL_TOOLS = frozenset({"search_festivals", "get_festival", "get_official_notices", "get_facilities", "get_crowd"})
 ROUTE_TOOLS = frozenset({"get_festival", "request_return_route", "get_route_request_status"})
 _STATUSES = frozenset({"upcoming", "ongoing", "ended", "cancelled"})
+_NOTICE_TYPES = frozenset({"operation", "traffic_control", "no_stop", "bus_detour", "road_closure"})
+_FACILITY_CATEGORIES = frozenset({"toilet", "parking", "locker", "hospital", "emergency", "pharmacy", "subway_station", "bus_stop", "bike_zone", "taxi_stand", "food", "attraction"})
 _LOGGER = logging.getLogger(__name__)
 Transport = Callable[[Request, float], tuple[int, Mapping[str, str], Any]]
 
@@ -109,13 +111,31 @@ class ToolExecutor:
             ):
                 return self._failure("VALIDATION_ERROR", "축제 상태값이 올바르지 않습니다")
             path = "/festivals?" + urlencode({"page_size": 10, **args})
-        elif name in {"get_festival", "get_crowd"}:
+        elif name in {"get_festival", "get_crowd", "get_official_notices", "get_facilities"}:
             festival_id = args.get("festival_id")
-            if set(args) != {"festival_id"} or not isinstance(festival_id, str) or not festival_id:
+            expected = {"festival_id"}
+            if name == "get_facilities":
+                expected.add("category")
+            if name == "get_official_notices" and "type" in args:
+                expected.add("type")
+            if set(args) != expected or not isinstance(festival_id, str) or not festival_id:
                 return self._failure("VALIDATION_ERROR", "축제 ID가 필요합니다")
             path = "/festivals/" + quote(festival_id, safe="")
             if name == "get_crowd":
                 path += "/crowd"
+            elif name == "get_official_notices":
+                notice_type = args.get("type")
+                if notice_type is not None and (not isinstance(notice_type, str) or notice_type not in _NOTICE_TYPES):
+                    return self._failure("VALIDATION_ERROR", "공지 유형이 올바르지 않습니다")
+                path += "/notices"
+                if notice_type:
+                    path += "?" + urlencode({"type": notice_type})
+            elif name == "get_facilities":
+                category = args.get("category")
+                if not isinstance(category, str) or category not in _FACILITY_CATEGORIES:
+                    return self._failure("VALIDATION_ERROR", "시설 종류가 올바르지 않습니다")
+                # 도구는 한 종류를 받고 A08 API의 categories 목록에 한 항목으로 전달합니다.
+                path += "/facilities?" + urlencode({"categories": category})
         elif name == "request_return_route":
             if not isinstance(operation_id, str) or not operation_id:
                 return self._failure("VALIDATION_ERROR", "재시도에 사용할 작업 ID가 필요합니다")

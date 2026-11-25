@@ -2,6 +2,8 @@
 # 놀다가 DB 시험 실행기 — 운영과 같은 이미지(pgvector/pgvector:pg17)를 새로 띄워 DDL·시험·백업 시험·실행 계획을 순서대로 실행하고 지움
 # 사용법: ./run_tests.sh  (결과는 화면과 results_YYYY-MM-DD.log에 남음)
 set -euo pipefail
+# Git Bash가 Docker 컨테이너 내부의 /tmp 경로를 Windows 경로로 바꾸지 않게 한다.
+export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")"
 IMG=pgvector/pgvector:pg17
 NAME=noldaga-dbtest-$$
@@ -300,7 +302,7 @@ echo "## 5-15. 028_review-fix 경로 캐시 메타 보존 적용·되돌리기·
 
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
-docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive" < backup_long_term.sh
+tr -d '\r' < backup_long_term.sh | docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive"
 docker exec "$NAME" createdb -U postgres -T template0 "$restore_db"
 docker exec "$NAME" pg_restore -U postgres -d "$restore_db" --single-transaction "$archive"
 docker exec -i "$NAME" psql -U postgres -d "$restore_db" -v ON_ERROR_STOP=1 -X -q \
