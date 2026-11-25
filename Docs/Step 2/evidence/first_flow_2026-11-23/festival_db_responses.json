@@ -1,0 +1,39 @@
+{
+  "run_started_at": "2026-11-23T15:40:43+09:00",
+  "source_record": "result.json#real.steps",
+  "responses": [
+    {
+      "api": "A02",
+      "path": "/api/v1/festivals?status=ongoing,upcoming&region=SEOUL",
+      "http": 200,
+      "response_excerpt": {
+        "is_mock": false,
+        "total": 22,
+        "items": [
+          {
+            "festival_id": "fst_01M835C2V19VJPP5F8MSNBMCQ2",
+            "name": "DDP 건축투어",
+            "region_code": "SEOUL",
+            "venue_name": "동대문디자인플라자(DDP)",
+            "event_status": "ongoing",
+            "source": "tourapi"
+          }
+        ]
+      }
+    },
+    {
+      "api": "A03",
+      "path": "/api/v1/festivals/fst_01M835C2V19VJPP5F8MSNBMCQ2",
+      "http": 200,
+      "response_excerpt": {
+        "is_mock": false,
+        "festival_id": "fst_01M835C2V19VJPP5F8MSNBMCQ2",
+        "name": "DDP 건축투어",
+        "region_code": "SEOUL",
+        "venue_name": "동대문디자인플라자(DDP)",
+        "event_status": "ongoing",
+        "source": "tourapi"
+      }
+    }
+  ]
+}

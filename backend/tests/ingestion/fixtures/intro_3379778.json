@@ -1,0 +1,41 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "3379778",
+      "contenttypeid": "15",
+      "sponsor1": "서울시농수산식품공사",
+      "sponsor1tel": "02-3435-1000",
+      "sponsor2": "",
+      "sponsor2tel": "",
+      "eventenddate": "20261018",
+      "playtime": "16:00~22:00",
+      "eventplace": "가락몰 3층 하늘공원",
+      "eventhomepage": "",
+      "agelimit": "",
+      "bookingplace": "",
+      "placeinfo": "",
+      "subevent": "",
+      "program": "1. 메인 프로그램 \n- 전국 수제맥주 : 전국 팔도의 유명 양조장에서 나온 수제맥주가 가락몰 하늘공원에 모였습니다!\n- 다람쥐 가족 퍼레이드 : 다람쥐 인형이 움직인다! 다람쥐 가족의 도토리 식사길 퍼레이드 (※ 어린이 관객참여형으로 진행)\n\n2. 부대 프로그램\n- 인디락 공연 : 심장이 두근 거리는 락공연\n- EDM 디제잉 : 팝음악 디제잉 공연\n- 키즈 프로그램 : 에어바운스와 대형 컬러링북으로 즐기는 어린이 프로그램\n\n3. 소비자 참여 이벤트\n- 경품 추첨 이벤트 : 다이슨 에어랩, 스탠바이미 등 두근거리는 경품이 와르르\n\n4. 기타 먹거리\n- 가락몰 먹거리 : 가락몰 상인분들의 신선한 생물이 바로 올라와 요리되는 먹거리\n- 지역 업체 푸드 : 쫀득감자볼, 마라꼬치, 뿌링클타코야끼 등 특별한 지역의 푸드가 모두 하늘공원에!",
+      "eventstartdate": "20261016",
+      "usetimefestival": "무료",
+      "discountinfofestival": "",
+      "spendtimefestival": "",
+      "festivalgrade": "",
+      "progresstype": "",
+      "festivaltype": ""
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}

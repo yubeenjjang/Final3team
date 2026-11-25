@@ -1,0 +1,28 @@
+{
+  "name": "predict_route_delay_risk",
+  "description": "(운영자 맥락) 귀가 조회 지연 위험을 추세로 예측한다. 아직 구현 전이면 NOT_IMPLEMENTED가 오고, 그때는 관측 추세만 설명하고 '예측 기능은 아직 없다'고 답한다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "window": {
+        "type": "string",
+        "enum": [
+          "5m",
+          "15m",
+          "1h"
+        ],
+        "default": "15m"
+      },
+      "horizon": {
+        "type": "string",
+        "enum": [
+          "5m",
+          "15m"
+        ],
+        "default": "5m"
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}

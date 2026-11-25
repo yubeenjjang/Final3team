@@ -1,0 +1,41 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "2865122",
+      "contenttypeid": "15",
+      "sponsor1": "아산시, 국가유산청 현충사관리소",
+      "sponsor1tel": "041-540-2428",
+      "sponsor2": "(재)아산문화재단",
+      "sponsor2tel": "",
+      "eventenddate": "20260503",
+      "playtime": "18:00~21:30",
+      "eventplace": "현충사",
+      "eventhomepage": "",
+      "agelimit": "",
+      "bookingplace": "",
+      "placeinfo": "",
+      "subevent": "",
+      "program": "1. 야간경관 : 야간 아트렉티브 조명\n2. 공연: 줄타기, 사자탈춤, 퓨전국악밴드, 태권도시범단, 무용, LED퍼포먼스 등\n3. 체험: 스탬프투어, 청사초롱, 공예, 전통놀이, 해설사투어",
+      "eventstartdate": "20260501",
+      "usetimefestival": "무료",
+      "discountinfofestival": "",
+      "spendtimefestival": "",
+      "festivalgrade": "",
+      "progresstype": "선택안함",
+      "festivaltype": ""
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}

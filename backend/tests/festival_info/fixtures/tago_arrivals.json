@@ -1,0 +1,37 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "arrprevstationcnt": 0,
+            "arrtime": 8,
+            "nodeid": "BSB164680201",
+            "nodenm": "서면역",
+            "routeid": "BSB5290512000",
+            "routeno": "부산진구12",
+            "routetp": "마을버스",
+            "vehicletp": "일반차량"
+          },
+          {
+            "arrprevstationcnt": 0,
+            "arrtime": 8,
+            "nodeid": "BSB164680201",
+            "nodenm": "서면역",
+            "routeid": "BSB5290512000",
+            "routeno": "부산진구12",
+            "routetp": "마을버스",
+            "vehicletp": "일반차량"
+          }
+        ]
+      },
+      "numOfRows": 10,
+      "pageNo": 1,
+      "totalCount": 2
+    }
+  }
+}

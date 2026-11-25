@@ -1,0 +1,33 @@
+# TODO — 계약 기반 모의 API 서버
+
+요청서(`REQUEST.md`)의 말 ①~⑫를 할 일로 바꾼 것. **꼭** = 이번에 반드시, **나중** = 실제 구현 때.
+
+| # | 할 일 | 요청의 말 | 구분 |
+|---|---|---|---|
+| T1 | FastAPI 앱, `/api/v1` 라우터 등록, 실행·시험 명령 | ①⑪ | 꼭 |
+| T2 | 공통 오류 형식 + 422 변환 + `X-Request-ID` | ③④ | 꼭 |
+| T3 | `GET /api/v1/health` (A01) | ① | 꼭 |
+| T4 | 가상 축제 데이터 6건 + A02 목록 필터·페이지 | ②⑤ | 꼭 |
+| T5 | A03 상세 + 이미지 출처 규칙 | ②⑤ | 꼭 |
+| T6 | 출발·도착 입력 모델(`Endpoint`) + 둘 다 축제면 422 | ⑥ | 꼭 |
+| T7 | A04 귀갓길 접수(202) / 즉시 완료(200) + 멱등 키 | ⑥⑦ | 꼭 |
+| T8 | A05 상태 조회: 조회할 때마다 상태가 나아감, 토큰 검사 | ⑦ | 꼭 |
+| T9 | 시험용 시나리오 선택(`X-Mock-Scenario`): 실패·시간 초과·거절 | ⑦ | 꼭 |
+| T10 | A25 가는 길(같은 흐름, `direction=visit`) | ⑥⑦ | 꼭 |
+| T11 | A06 챗봇 작업 접수 + A06-1 결과 조회(진행 중 → 완료/실패) | ⑧ | 꼭 |
+| T12 | A32~A35 가짜 인증(메모리 저장) | ⑨ | 꼭 |
+| T13 | 시험 `backend/tests/api/` — SPEC의 확인 방법 전부 | ⑪ | 꼭 |
+| T14 | 실행 방법 문서 `backend/api/MOCK_API.md` | ⑪ | 꼭 |
+| T15 | 외부 API 호출 0건 확인(네트워크 라이브러리를 외부로 쓰지 않음) | ⑫ | 꼭 |
+| — | A06-2 SSE 진행 이벤트 | — | 나중 |
+| — | 실제 DB·Redis 연결, 실제 JWT 서명, TMAP·카카오 어댑터 | — | 나중 (W16~W36) |
+| — | 추천·친구·동행·채팅 API (A36~A80) | — | 나중 |
+| — | 다른 담당자 라우터(시설·데이터 공급원·운영) | — | 담당자 |
+
+## 6단계 (11/23 추가)
+| # | 할 일 | 요청의 말 | 구분 |
+|---|---|---|---|
+| T16 | 시나리오 `sync_secondary`: A04 200 `ready`, `provider:"kakao"`, `provider_tier:"secondary"`, 버스 혼잡 근거 `unsupported` | ⑬ | 꼭 |
+| T17 | 시나리오 `async_secondary_sync_only`: 202 → `processing` → `unavailable` + `ROUTE_SECONDARY_SYNC_ONLY`(retryable true) | ⑭ | 꼭 |
+| T18 | 시나리오 `async_no_result`(`ROUTE_NO_RESULT`, retryable false)·`async_quota_exceeded`(`ROUTE_QUOTA_EXCEEDED`, retryable false) | ⑮ | 꼭 |
+| T19 | 시험 + `MOCK_API.md` 시나리오 표 갱신(A04·A25 모두) | ⑯ | 꼭 |

@@ -1,0 +1,47 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "3486674",
+      "contenttypeid": "15",
+      "title": "강진 전라병영성축제",
+      "createdtime": "20250414134036",
+      "modifiedtime": "20260702144327",
+      "tel": "061-430-3413",
+      "telname": "강진군",
+      "homepage": "www.gangjin.go.kr/",
+      "firstimage": "https://tong.visitkorea.or.kr/cms/resource/62/4050362_image2_1.png",
+      "firstimage2": "https://tong.visitkorea.or.kr/cms/resource/62/4050362_image3_1.png",
+      "cpyrhtDivCd": "Type3",
+      "areacode": "",
+      "sigungucode": "",
+      "lDongRegnCd": "12",
+      "lDongSignguCd": "780",
+      "lclsSystm1": "EV",
+      "lclsSystm2": "EV01",
+      "lclsSystm3": "EV010400",
+      "cat1": "",
+      "cat2": "",
+      "cat3": "",
+      "addr1": "전남광주통합특별시 강진군 병영면 병영성로 175",
+      "addr2": "전라병영성 일원",
+      "zipcode": "59214",
+      "mapx": "126.8171925361",
+      "mapy": "34.7200812775",
+      "mlevel": "6",
+      "overview": "전라병영성축제는 전남광주통합특별시 강진군 병영면에 위치한 전라병영성에서 열리는 역사문화축제로, 조선시대 전라도와 제주도를 관할하던 군사 중심지였던 병영성의 역사적 배경을 바탕으로 진행된다. 약 500년 동안 군사 시설로 사용된 전라병영성의 실제 성곽과 유적을 활용해 축제가 이루어지기 때문에, 조선시대 병영의 분위기를 보다 생생하게 느낄 수 있는 것이 특징이다.\n축제 기간에는 전통 의상 체험, 병사 훈련 재현, 전통 공연 등 다양한 프로그램이 운영되어 방문객들이 당시의 생활과 문화를 자연스럽게 체험할 수 있도록 구성되어 있다. 또한 성곽을 따라 펼쳐지는 행사와 여러 체험 활동을 통해 단순히 관람하는 데서 그치지 않고, 직접 참여하며 즐길 수 있는 체험형 축제로서의 성격을 지닌다."
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}

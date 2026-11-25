@@ -1,0 +1,31 @@
+{
+  "comMsgHeader": {
+    "errMsg": null,
+    "responseMsgID": null,
+    "returnCode": null,
+    "successYN": null,
+    "responseTime": null,
+    "requestMsgID": null
+  },
+  "msgHeader": {
+    "headerMsg": "정상적으로 처리되었습니다.",
+    "headerCd": "0",
+    "itemCount": 0
+  },
+  "msgBody": {
+    "itemList": [
+      {
+        "stId": "111000115",
+        "arsId": "12203",
+        "stNm": "연신내역.로데오거리",
+        "busRouteId": "100100118",
+        "rtNm": "753",
+        "dir": " ",
+        "rerdie_Div1": "4",
+        "reride_Num1": "3",
+        "arrmsg1": "2분42초후[0번째 전]",
+        "mkTm": "2026-11-19 17:23:24.0"
+      }
+    ]
+  }
+}

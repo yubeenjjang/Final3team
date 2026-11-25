@@ -1,0 +1,14 @@
+## 환경: 로컬 Docker pgvector/pgvector:pg17 일회용 컨테이너 (AWS 아님) · 2026-11-23 14:13:54
+PASS T44 사전 검사(정상 데이터): 실패 원인 0건, 손실 안내 friend_code 1·검색 허용 1 — drops_friend_code|1 drops_nickname_searchable_true|1 
+PASS T45a 사전 검사가 대소문자 중복 닉네임을 찾음 — 1
+PASS T45b 중복 있는 DB에 -1로 적용 → 실패 — 3
+PASS T45c 실패 뒤 전부 취소(birth_year 칸 없음·friend_code 칸 그대로) — 01
+PASS T45d (대조) -1 없이 적용하면 일부만 바뀐 상태로 남음 → -1 필수 — 1
+PASS T46a 정상 데이터에 -1로 적용 성공 — 0
+PASS T46b 기존 귀가·가는 길 행의 장소 해시가 새 칸으로 옮겨짐 — rr_test000001:festival/user:-/hmac_home rr_test000002:user/festival:hmac_start/-
+PASS T47a 좌표 없는 축제의 '둘 다 사용자' 경로가 있으면 되돌리기 멈춤 — 3
+PASS T47b 멈춘 뒤 전부 취소(birth_year 칸 그대로) — 1
+PASS T47c 축제 좌표가 있으면 채우고 되돌리기 성공 — 0
+PASS T47d 손실 확인: chat_room 신고·app_guide 문서 삭제, 출생연도 칸 삭제, 경로 행 3개 유지 — 0/0/0/3
+PASS T47e '둘 다 사용자' 경로는 장소 해시 하나(도착)만 남음 — hmac_d
+PASS T48 되돌린 뒤 다시 적용 성공 — 0

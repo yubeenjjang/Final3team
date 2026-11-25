@@ -1,0 +1,41 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "3486674",
+      "contenttypeid": "15",
+      "sponsor1": "강진군",
+      "sponsor1tel": "061-430-3413",
+      "sponsor2": "강진군축제추진위원회",
+      "sponsor2tel": "",
+      "eventenddate": "20260419",
+      "playtime": "10:00~18:00",
+      "eventplace": "전라병영성 일원",
+      "eventhomepage": "",
+      "agelimit": "",
+      "bookingplace": "",
+      "placeinfo": "",
+      "subevent": "",
+      "program": "1. 메인프로그램 : 입성식 퍼레이드, 활쏘기 리그, 병영성게임\n2. 체험프로그램 : 민속전통놀이, 성곽밟기, 성곽쌓기, 의복체험, 전라병영 공방소, 무기제작소, 도화서, 바둑 한 수 장기 한 판, 운세자판기, 밀리터리 타투체험, 페인트탄 사격체험, 현대무기 전시, FPV RC카 레이싱, 문화유산 발굴하기 등\n3.무대프로그램 : 성(成)을 울리다 병영성을 채우다, 병영성 하멜 버스킹, 병영 역사 이야기\n4. 부대프로그램 : 수인산성 탐방, 마천목 장군 숭모제\n5. 상설프로그램 : 병영주막, 병영 노을장, 병영향시, 상평통보 환전소",
+      "eventstartdate": "20260417",
+      "usetimefestival": "입장료 무료 (일부 체험프로그램 유료)",
+      "discountinfofestival": "",
+      "spendtimefestival": "",
+      "festivalgrade": "",
+      "progresstype": "",
+      "festivaltype": ""
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}

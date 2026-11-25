@@ -1,0 +1,17 @@
+{
+  "name": "get_crowd",
+  "description": "축제와 연결이 확인된 서울 혼잡 구역의 혼잡도와 예측을 본다. 지역 혼잡이지 길·행사장 안 혼잡이 아니다. status가 unsupported면 '이 축제는 혼잡 정보를 지원하지 않는다'고 답한다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "festival_id": {
+        "type": "string",
+        "description": "축제 ID"
+      }
+    },
+    "required": [
+      "festival_id"
+    ],
+    "additionalProperties": false
+  }
+}

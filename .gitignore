@@ -8,6 +8,10 @@
 __pycache__/
 *.py[cod]
 .venv/
+.crowd_quota.json
+.crowd_quota.json.lock
+.festival_info_quota.json
+.festival_info_quota.json.lock
 .pytest_cache/
 
 # Node / Next.js
