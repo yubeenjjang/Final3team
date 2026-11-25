@@ -118,7 +118,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 
 ## 6-5. 기능 연결표 — 요구사항 → 화면 → API → 도구 → DB → 시험 (강사 11/20 자료 「설계서 한 줄을 실제 동작으로 연결하기」)
 
-같은 사용자 작업을 모든 문서가 같은 이름으로 가리키는지 한 줄로 확인하는 표입니다. 화면 경로·담당은 **GitHub main 협업 규칙(11/20 신유빈)**, 시험 ID는 04 문서 10절(T…)·BFCL(NLD-…)·기획서 수용 시험(…-TC)입니다.
+같은 사용자 작업을 모든 문서가 같은 이름으로 가리키는지 한 줄로 확인하는 표입니다. 화면 경로·담당은 **GitHub main 협업 규칙(11/20 신유빈)**, 시험 ID는 DB 구현·검증 기록 10절(T…)·BFCL(NLD-…)·기획서 수용 시험(…-TC)입니다.
 
 **실행 범위 표기(자료 07쪽):** A = 화면↔모의 응답 / B = API↔시험 DB / C = 어댑터↔실제 외부 API / D = LLM↔도구↔결과. 11/20 현재 코드는 뼈대(주석)뿐이라 **A·D는 전부 미구현**, B는 DB만 로컬 시험, C는 외부 API 실호출만 확인했습니다. 모의·로컬 성공을 실제 연동 성공으로 쓰지 않습니다.
 
@@ -621,7 +621,7 @@ TMAP 정리는 013까지 적용한 DB에 연결해 `backend/`에서 `python -m a
 
 새 캐시·병합과 복구 후보의 일치 판단에는 v2 키를 사용합니다. 기존 무접두사 키와 처리 전 `pending:` 키는 재사용 대상으로 보지 않습니다. 기존 DB 행의 A05 조회와 POST 멱등 재전송은 경로 ID·토큰·요청 ID 및 본문 HMAC으로 처리하므로 키 재계산 없이 이어집니다. 같은 방향의 요청 ID로 다른 본문을 보내면 409를 반환합니다.
 
-팀 공통 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 설계서 10-A-1절에 남겼습니다.
+팀 공통 시험은 저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. 경로 DB 통합 시험은 `TEST_DB_URL`이 설정된 일회용 PostgreSQL에서 실행합니다. 11/23 밤의 DB 실행 기록은 DB 구현·검증 기록 10-A-1절에 남겼습니다.
 
 11/24 SQL·DB 시험 기준 커밋은 `ohyun` `719484d`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~028를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 265줄(개별 시험 PASS 260건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 490개 통과·25개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](db/results_2026-11-24.log)
 
@@ -738,7 +738,7 @@ AWS에서는 아직 실행하지 않았습니다(W65, AWS 환경 신유빈 관�
 
 | 결정 | 상태 | 반영된 곳 (API·도구·시험) | 작성 / 검토 | 날짜 |
 |---|---|---|---|---|
-| D1 DB 접근: SQLAlchemy 2 + psycopg 3, 계정 2개, 트랜잭션마다 `SET LOCAL`, 로그인 요청은 `user_db_session(user_id)` | ✅ 11/24 `ohyun` 병합·PG17 실DB 연결·권한 시험 17개 통과(tk `649d50b`) | `backend/shared/db/session.py`(신유빈, `83220c9`)의 `service_db_session`을 A04·A05에 연결. 수집·축제 조회는 별도 연결 사용. SQL T21~T23, DB 설계서 10-A절 | 권오현 / 신유빈 | 11/24 |
+| D1 DB 접근: SQLAlchemy 2 + psycopg 3, 계정 2개, 트랜잭션마다 `SET LOCAL`, 로그인 요청은 `user_db_session(user_id)` | ✅ 11/24 `ohyun` 병합·PG17 실DB 연결·권한 시험 17개 통과(tk `649d50b`) | `backend/shared/db/session.py`(신유빈, `83220c9`)의 `service_db_session`을 A04·A05에 연결. 수집·축제 조회는 별도 연결 사용. SQL T21~T23, DB 구현·검증 기록 10-A절 | 권오현 / 신유빈 | 11/24 |
 | 관심 저장 도구 호출 주체 = Supervisor | ✅ 문서 | 4절 표(변경 없음), 인계 문서 수정 | 권오현 / 검토 대기 | 11/23 |
 | 에이전트 실패 → 규칙 정책(B1) → 안 되면 확인 불가 | 🟡 구현 전 | 7절, 상태 전이 설계(W25) | 한다영·권오현 / 검토 대기 | 11/23 |
 | 카카오 결과 동기 전용 | ✅ 코드·시험 | 17-3 | 권오현 / 검토 대기 | 11/23 |
