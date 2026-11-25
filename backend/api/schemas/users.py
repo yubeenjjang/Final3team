@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+
+from api.schemas.auth import check_password_rule
 
 from api.schemas.common import DisplayName
 
@@ -73,3 +75,21 @@ class AccountDeletion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     password: SecretStr
+
+
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: SecretStr
+    new_password: SecretStr
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: SecretStr) -> SecretStr:
+        return check_password_rule(value)
+
+    @model_validator(mode="after")
+    def differs_from_current(self) -> "PasswordChange":
+        if self.new_password.get_secret_value() == self.current_password.get_secret_value():
+            raise ValueError("새 비밀번호는 현재 비밀번호와 달라야 합니다.")
+        return self

@@ -576,7 +576,7 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | FR-COM19 | 지난 동행 | Must | A65 읽기 전용·A66 `past` (설계서 7-16-4~7-16-6) / 007 | ✅ |
 | FR-COM20 | 채팅 탭 목록·빈 상태 | Must | A66 필터·`empty_hint` (설계서 7-16-4~7-16-6) / 007 | ✅ |
 | FR-COM21 | 신청·친구·방·장소 알림 | Must | A74·A75 (설계서 7-16-4~7-16-6) / 007 | ✅ |
-| FR-COM22 | 마이페이지 | Must | 비밀번호 변경·A80 탈퇴·A11~A13 관심 축제, 운영 공지·이용약관 고정 문서 링크(설계서 7-16-6) | 확정(11/24 팀 결정) |
+| FR-COM22 | 마이페이지 | Must | A82 비밀번호 변경·A80 탈퇴·A11~A13 관심 축제, 운영 공지·이용약관 고정 문서 링크(설계서 7-16-6) | 확정(11/24 팀 결정) |
 | FR-COM23 | 신고·차단·운영 | Must | A76·A77·`chat_admin_access` (설계서 7-16-4~7-16-6) / 007 | ✅ |
 | FR-COM24 | 보안·탈퇴·데이터 처리 | Must | A80 탈퇴·WS 권한 재확인 (설계서 7-16-4~7-16-6) / 007 | ✅ |
 
@@ -784,3 +784,4 @@ AWS에서는 아직 실행하지 않았습니다(W65, AWS 환경 신유빈 관�
 | 7-16 | **구현 상태 (itest)** — 동시 1:1 방 생성, WebSocket 발신, 마지막 수신 순번으로 HTTP 재조회, 차단 전후 방 상태를 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md) |
 | 7-16 | **검증 상태 (W82, 11/25)** — 로그아웃·만료·정지 계정의 보호 API 거부, 로그아웃·탈퇴 뒤 열린 WebSocket 종료(4403), 탈퇴자 메시지 작성자 비공개를 실제 DB로 확인했습니다(DB 시험 62). [W82 검증 기록](../../backend/Doc/w82/VERIFY.md) |
 | 7-16 | **구현 상태 (itest)** — A76 신고 접수와 A77 운영자 열람에 해당하는 감사 행을 확인하는 DB 통합 시험을 추가했습니다. [itest 실행 방법](../../backend/Doc/itest/IMP-PLAN.md) |
+| 7-16-6 | **A82 비밀번호 변경 (11/25)** — 모의: `test_my_account.py::test_mock_password_change_validates_and_ends_sessions`(규칙 위반 422 4종·틀린 비밀번호 403·성공 뒤 두 기기 Access·Refresh 거부·옛 비밀번호 로그인 401·새 비밀번호 로그인). 실제 DB: `test_w82_session_privacy_postgres.py::test_a82_password_change_postgres`(실패 시 해시·Refresh 그대로, 성공 시 Argon2id 새 해시·Refresh 0개). 오프라인 637·DB 63 통과 |

@@ -10,6 +10,18 @@ _EMAIL_LOCAL = re.compile(r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&
 _EMAIL_LABEL = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 
 
+def check_password_rule(value: SecretStr) -> SecretStr:
+    """A32 가입과 A82 비밀번호 변경이 함께 쓰는 비밀번호 규칙."""
+    password = value.get_secret_value()
+    if not (
+        8 <= len(password) <= 64
+        and re.search(r"[A-Za-z]", password)
+        and re.search(r"[0-9]", password)
+    ):
+        raise ValueError("비밀번호는 영문과 숫자를 포함해 8~64자로 입력해 주세요.")
+    return value
+
+
 class LoginRequest(BaseModel):
     email: str
     password: SecretStr
@@ -45,14 +57,7 @@ class SignupRequest(LoginRequest):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: SecretStr) -> SecretStr:
-        password = value.get_secret_value()
-        if not (
-            8 <= len(password) <= 64
-            and re.search(r"[A-Za-z]", password)
-            and re.search(r"[0-9]", password)
-        ):
-            raise ValueError("비밀번호는 영문과 숫자를 포함해 8~64자로 입력해 주세요.")
-        return value
+        return check_password_rule(value)
 
 
 class RefreshRequest(BaseModel):
