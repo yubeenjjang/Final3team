@@ -4,16 +4,12 @@ import { FerrisWheel, Sparkles, Tent, TentTree } from "lucide-react";
 import type { ReactNode } from "react";
 import styles from "./AuthScreen.module.css";
 
-function BrandLogo({ onDark = false }: { onDark?: boolean }) {
+function BrandLogo() {
   return (
     <Link
       href="/"
       aria-label="놀다가 홈"
-      className={
-        onDark
-          ? "inline-flex items-center rounded-chip bg-surface/95 px-4 py-1.5 shadow-md"
-          : "inline-flex items-center"
-      }
+      className="inline-flex items-center"
     >
       <Image
         src="/logo-noldaga.png"
@@ -32,16 +28,16 @@ export function LoginScreen({ children }: { children: ReactNode }) {
   return (
     <div className={`${styles.screen} ${styles.login} relative isolate grid min-h-dvh content-center gap-5 overflow-hidden px-[8.5%] pb-14 pt-10`}>
       <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
-        <Sparkles strokeWidth={1} className="absolute -right-3 top-6 h-28 w-28 text-surface/85 drop-shadow-[0_0_10px_var(--color-brand)]" />
-        <Sparkles strokeWidth={1} className="absolute right-[14%] top-[21%] h-10 w-10 text-surface/70" />
-        <TentTree className="absolute -bottom-4 -left-3 h-28 w-28 text-ink/85" />
-        <TentTree className="absolute -bottom-6 right-0 h-28 w-28 text-ink/85" />
-        <div className="absolute bottom-9 left-[18%] right-[18%] h-10 rounded-b-[50%] border-b-2 border-dotted border-surface-soft/80" />
+        <Sparkles strokeWidth={1} className="absolute -right-3 top-6 h-28 w-28 text-brand/30" />
+        <Sparkles strokeWidth={1} className="absolute right-[14%] top-[21%] h-10 w-10 text-brand/25" />
+        <TentTree className="absolute -bottom-4 -left-3 h-28 w-28 text-ink/20" />
+        <TentTree className="absolute -bottom-6 right-0 h-28 w-28 text-ink/20" />
+        <div className="absolute bottom-9 left-[18%] right-[18%] h-10 rounded-b-[50%] border-b-2 border-dotted border-brand/30" />
       </div>
-      <div className="text-center text-surface">
-        <BrandLogo onDark />
+      <div className="text-center text-ink">
+        <BrandLogo />
         <p className="mx-auto mt-3 w-fit -rotate-3 border-b-[5px] border-brand pb-1 text-5xl font-black italic leading-none tracking-tight">놀다가</p>
-        <p className="mt-3 text-sm font-semibold text-surface/95">축제를 더 안전하고, 더 즐겁게</p>
+        <p className="mt-3 text-sm font-semibold text-muted">축제를 더 안전하고, 더 즐겁게</p>
       </div>
       <div className={`${styles.loginCard} rounded-[25px] px-[7%] py-6 shadow-xl`}>
         {children}

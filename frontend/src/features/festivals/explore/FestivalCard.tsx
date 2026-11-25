@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, Heart, MapPin } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import type { FestivalListItem } from "./api";
 import { dday, formatFestivalPeriod } from "./dday";
@@ -12,17 +12,13 @@ import { getRegionLabel } from "./regions";
 export interface FestivalCardProps {
   item: FestivalListItem;
   today?: string;
-  isFavorite?: boolean;
-  favoriteDisabled?: boolean;
-  onToggleFavorite?: (festivalId: string) => void;
+  className?: string;
 }
 
 export function FestivalCard({
   item,
   today,
-  isFavorite = false,
-  favoriteDisabled = false,
-  onToggleFavorite,
+  className = "",
 }: FestivalCardProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const badge =
@@ -37,25 +33,25 @@ export function FestivalCard({
   const showImage = Boolean(item.thumbnail_url) && failedSrc !== item.thumbnail_url;
 
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       <Link
         href={`/festivals/${item.festival_id}`}
         data-testid={`festival-card-${item.festival_id}`}
         className="group block overflow-hidden rounded-card border border-line-light bg-surface shadow-sm transition-shadow hover:shadow-md"
       >
-        <div className="relative h-44 w-full overflow-hidden bg-surface-soft/45">
+        <div className="relative aspect-[1/1.414] w-full overflow-hidden bg-surface-soft/45">
           {showImage && item.thumbnail_url ? (
             <>
               <Image
                 src={item.thumbnail_url}
                 alt={item.name}
                 fill
-                sizes="(max-width: 480px) 100vw, 448px"
+                sizes="(max-width: 359px) 40vw, (max-width: 767px) 29vw, 180px"
                 unoptimized
                 onError={() => setFailedSrc(item.thumbnail_url ?? null)}
                 className="object-contain p-1 transition-transform duration-200 group-hover:scale-[1.02]"
               />
-              <span className="absolute bottom-2 right-2 rounded-chip bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-surface backdrop-blur-sm">
+              <span className="absolute bottom-1.5 right-1.5 rounded-chip bg-ink/70 px-1.5 py-0.5 text-[8px] font-medium text-surface backdrop-blur-sm">
                 출처: 한국관광공사
               </span>
             </>
@@ -64,44 +60,27 @@ export function FestivalCard({
           )}
 
           {badge ? (
-            <span className="absolute left-3 top-3 rounded-chip bg-brand px-2.5 py-1 text-xs font-extrabold text-surface shadow-sm">
+            <span className="absolute left-1.5 top-1.5 rounded-chip bg-brand px-1.5 py-0.5 text-[10px] font-extrabold text-surface shadow-sm">
               {badge}
             </span>
           ) : null}
         </div>
 
-        <div className="space-y-1.5 p-3.5">
-          <h2 className="line-clamp-1 text-base font-extrabold text-ink">
+        <div className="space-y-1 p-2">
+          <h2 className="line-clamp-2 text-xs font-extrabold leading-tight text-ink">
             {item.name}
           </h2>
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <div className="flex items-center gap-1 text-[10px] text-muted">
+            <CalendarDays className="h-3 w-3 shrink-0 text-brand" aria-hidden="true" />
             <span className="truncate">{period}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <div className="flex items-center gap-1 text-[10px] text-muted">
+            <MapPin className="h-3 w-3 shrink-0 text-brand" aria-hidden="true" />
             <span className="truncate">{locationText}</span>
           </div>
         </div>
       </Link>
 
-      {onToggleFavorite ? (
-        <button
-          type="button"
-          onClick={() => onToggleFavorite(item.festival_id)}
-          disabled={favoriteDisabled}
-          aria-label={`${item.name} ${isFavorite ? "찜 해제" : "찜하기"}`}
-          aria-pressed={isFavorite}
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-chip bg-surface/90 text-ink shadow-sm backdrop-blur-sm transition-transform hover:scale-105 disabled:opacity-60"
-        >
-          <Heart
-            className={
-              isFavorite ? "h-4 w-4 fill-brand text-brand" : "h-4 w-4 text-ink"
-            }
-            aria-hidden="true"
-          />
-        </button>
-      ) : null}
     </div>
   );
 }

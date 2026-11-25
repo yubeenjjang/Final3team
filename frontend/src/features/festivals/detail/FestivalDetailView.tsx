@@ -2,14 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Bus,
   CalendarDays,
   Compass,
-  Heart,
   Hospital,
   MapPin,
   ParkingCircle,
@@ -22,23 +21,11 @@ import {
 } from "lucide-react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import { KakaoMap } from "@/components/KakaoMap";
-import { LoginPromptSheet } from "@/components/LoginPromptSheet";
-import {
-  getAccessToken,
-  getAuthSessionVersion,
-  subscribeAuth,
-} from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { dday, formatFestivalPeriod } from "../explore/dday";
 import { getRegionLabel } from "../explore/regions";
 import { LiveInfoSection } from "../live-info/LiveInfoSection";
-import {
-  deleteFavorite,
-  getFestivalDetail,
-  findFavorites,
-  saveFavorite,
-  type FestivalDetail,
-} from "./api";
+import { getFestivalDetail, type FestivalDetail } from "./api";
 import { FestivalAiPrompt } from "./FestivalAiPrompt";
 
 export interface FestivalDetailViewProps {
@@ -61,19 +48,8 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const session = useSyncExternalStore(subscribeAuth, getAuthSessionVersion, () => 0);
-  const signedIn = useSyncExternalStore(subscribeAuth, () => Boolean(getAccessToken()), () => false);
-  const [favorite, setFavorite] = useState<{ session: number; festivalId: string; saved: boolean | null } | null>(null);
-  const [favoriteBusy, setFavoriteBusy] = useState(false);
-  const [favoriteError, setFavoriteError] = useState<string | null>(null);
-  const lookupRequest = useRef<AbortController | null>(null);
-  const currentFavorite = favorite?.session === session && favorite.festivalId === festivalId ? favorite : null;
-  const favoriteLocked = signedIn && (!currentFavorite || favoriteBusy);
-  const isFavorite = signedIn && currentFavorite?.saved === true;
-
   const [nearbyMessage, setNearbyMessage] = useState<string | null>(null);
   const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -116,56 +92,6 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       controller.abort();
     };
   }, [festivalId, reloadTick]);
-
-  useEffect(() => {
-    if (!signedIn) return;
-    const controller = new AbortController();
-    lookupRequest.current = controller;
-
-    function apply(saved: boolean | null) {
-      if (!controller.signal.aborted && session === getAuthSessionVersion()) {
-        setFavorite({ session, festivalId, saved });
-      }
-    }
-
-    findFavorites([festivalId], controller.signal)
-      .then((matches) => apply(matches.has(festivalId)))
-      .catch(() => apply(null));
-
-    return () => controller.abort();
-  }, [festivalId, session, signedIn]);
-
-  const handleToggleFavorite = useCallback(async () => {
-    if (!getAccessToken()) {
-      setLoginPromptOpen(true);
-      return;
-    }
-    if (!currentFavorite || favoriteLocked || session !== getAuthSessionVersion()) return;
-
-    lookupRequest.current?.abort();
-    setFavoriteBusy(true);
-    setFavoriteError(null);
-    try {
-      if (isFavorite) await deleteFavorite(festivalId);
-      else await saveFavorite(festivalId);
-
-      if (session === getAuthSessionVersion()) {
-        setFavorite((current) =>
-          current === currentFavorite ? { ...current, saved: !isFavorite } : current,
-        );
-      }
-    } catch (error) {
-      if (session === getAuthSessionVersion()) {
-        setFavoriteError(
-          error instanceof ApiError
-            ? error.message
-            : "찜 상태를 변경하지 못했어요",
-        );
-      }
-    } finally {
-      setFavoriteBusy(false);
-    }
-  }, [currentFavorite, favoriteLocked, festivalId, isFavorite, session]);
 
   if (loading) {
     return (
@@ -246,9 +172,9 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         </Link>
       </div>
 
-      {/* 대표 이미지 + D-day + 하트 */}
+      {/* 대표 축제 포스터: 가로:세로 1:1.414 */}
       <section className="space-y-2">
-        <div className="relative h-56 w-full overflow-hidden rounded-card border border-line-light bg-surface-soft/45 shadow-md">
+        <div className="relative aspect-[1/1.414] w-full overflow-hidden rounded-card border border-line-light bg-surface-soft/45 shadow-md">
           {showHeroImage && heroImage ? (
             <>
               <Image
@@ -274,30 +200,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
             </span>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => void handleToggleFavorite()}
-            disabled={favoriteLocked}
-            aria-label={isFavorite ? "찜 해제" : "찜하기"}
-            aria-pressed={isFavorite}
-            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-chip bg-surface/90 text-ink shadow-sm backdrop-blur-sm transition-transform hover:scale-105 disabled:opacity-60"
-          >
-            <Heart
-              className={
-                isFavorite
-                  ? "h-5 w-5 fill-brand text-brand"
-                  : "h-5 w-5 text-ink"
-              }
-              aria-hidden="true"
-            />
-          </button>
         </div>
-
-        {favoriteError ? (
-          <p role="alert" className="text-xs font-medium text-brand">
-            {favoriteError}
-          </p>
-        ) : null}
       </section>
 
       {/* 제목 & 한 줄 소개 */}
@@ -477,11 +380,6 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         </div>
       </section>
 
-      <LoginPromptSheet
-        open={loginPromptOpen}
-        onClose={() => setLoginPromptOpen(false)}
-        nextPath={`/festivals/${festivalId}`}
-      />
     </div>
   );
 }

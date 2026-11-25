@@ -35,8 +35,13 @@ export function PreferencesSection({
       try {
         const res = await getFestivalPreferences(controller.signal);
         if (controller.signal.aborted) return;
-        setSelected(res.scenarios);
-        setStatus(res.onboarding_status);
+        setSelected(Array.isArray(res.scenarios) ? res.scenarios : []);
+        setStatus(
+          res.onboarding_status === "completed" ||
+            res.onboarding_status === "skipped"
+            ? res.onboarding_status
+            : "pending",
+        );
       } catch (cause) {
         if (controller.signal.aborted) return;
         if (handleAuthError(cause)) return;

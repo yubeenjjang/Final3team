@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, MessageCircle, User } from "lucide-react";
+import { MessageCircle, User } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
   getAuthUser,
@@ -51,13 +51,6 @@ export function Header() {
               className="flex h-9 w-9 items-center justify-center rounded-chip text-ink transition-colors hover:bg-surface-soft hover:text-brand"
             >
               <MessageCircle className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
-            </Link>
-            <Link
-              href="/notifications"
-              aria-label="알림"
-              className="flex h-9 w-9 items-center justify-center rounded-chip text-ink transition-colors hover:bg-surface-soft hover:text-brand"
-            >
-              <Bell className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
             </Link>
             <Link
               href="/me"

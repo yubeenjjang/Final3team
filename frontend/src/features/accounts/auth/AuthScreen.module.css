@@ -9,9 +9,9 @@
 
 .login {
   background:
-    radial-gradient(ellipse at 91% 21%, color-mix(in srgb, var(--color-accent) 62%, transparent), transparent 42%),
-    radial-gradient(ellipse at 2% 49%, color-mix(in srgb, var(--color-accent) 82%, transparent), transparent 53%),
-    linear-gradient(var(--color-ink) 0%, var(--color-accent) 56%, var(--color-brand) 87%, var(--color-ink) 100%);
+    radial-gradient(ellipse at 91% 21%, color-mix(in srgb, var(--color-brand) 22%, transparent), transparent 42%),
+    radial-gradient(ellipse at 2% 49%, color-mix(in srgb, var(--color-brand) 14%, transparent), transparent 53%),
+    var(--color-bg);
 }
 
 .loginCard {

@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
-import { FeaturedFestivals } from "@/features/accounts/favorites/FeaturedFestivals";
+import { FeaturedFestivals } from "@/features/festivals/explore/FeaturedFestivals";
 
 const PERSONAL_PLACEHOLDER_CARDS = [
   { id: "taste", title: "취향 맞춤 추천", sub: "준비 중" },

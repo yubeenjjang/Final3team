@@ -1,5 +1,4 @@
 import { apiDelete, apiGet, apiPatch, apiPut } from "@/lib/api/client";
-import type { FestivalListItem } from "@/features/festivals/explore/api";
 
 export type Scenario =
   | "family_relaxed"
@@ -22,25 +21,6 @@ export interface FestivalPreferences {
   scenarios: Scenario[];
   onboarding_status: OnboardingStatus;
   updated_at: string | null;
-}
-
-export interface FavoriteListItem {
-  festival_id: string;
-  name: string;
-  region_code: FestivalListItem["region_code"];
-  start_date: string | null;
-  end_date: string | null;
-  event_status: FestivalListItem["event_status"];
-  thumbnail_url: string | null;
-  saved_at: string;
-}
-
-export interface FavoritesListResponse {
-  items: FavoriteListItem[];
-  total: number;
-  page: number;
-  page_size: number;
-  is_mock?: boolean;
 }
 
 export const SCENARIO_OPTIONS: {
@@ -100,24 +80,6 @@ export function saveFestivalPreferences(body: {
   skip: boolean;
 }): Promise<FestivalPreferences> {
   return apiPut<FestivalPreferences>("/me/festival-preferences", body);
-}
-
-export function listFavorites(
-  params: {
-    page?: number;
-    page_size?: number;
-    sort?: "-saved_at" | "start_date";
-  } = {},
-  signal?: AbortSignal,
-): Promise<FavoritesListResponse> {
-  return apiGet<FavoritesListResponse>("/me/favorites", {
-    query: {
-      page: params.page ?? 1,
-      page_size: params.page_size ?? 20,
-      sort: params.sort ?? "-saved_at",
-    },
-    signal,
-  });
 }
 
 export function deleteAccount(password: string): Promise<void> {

@@ -45,7 +45,7 @@ describe("F9 assistant flow", () => {
     await advance(0);
     const festivalQuery = new URL(String(fetchApi.mock.calls[0][0]));
     expect(festivalQuery.searchParams.get("status")).toBe("ongoing");
-    expect(festivalQuery.searchParams.get("page_size")).toBe("3");
+    expect(festivalQuery.searchParams.get("page_size")).toBe("4");
 
     reply(run, 202);
     reply({ run_status: "running" });

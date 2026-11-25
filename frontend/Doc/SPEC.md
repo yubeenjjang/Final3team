@@ -1,6 +1,7 @@
 # SPEC — 웹 화면 1차
 
-- 기준: `REQUEST.md`, `DESIGN.md`, 모의 API(`backend/api/MOCK_API.md`, `openapi.json`). **API 설계문서 전체를 읽지 않는다.**
+- 최신 기준: `FRONTEND-PLAN.md`, `UI-DESIGN-SYSTEM.md`, `API-INTEGRATION.md`. 이 문서는 11/22 구현 이력을 함께 보존한다.
+- 모의 API: `backend/api/MOCK_API.md`, `openapi.json`. 백엔드 스키마에 관심 API가 남아 있어도 프론트에서는 호출하지 않는다.
 - 실행 환경: Node 26, npm. 명령은 `frontend/`에서.
   - 개발 서버: `npm run dev` → `http://localhost:3000` (모의 API는 `cd backend && uv run --with-requirements api/requirements.txt uvicorn api.main:app --port 8000`)
   - 확인: `npm run typecheck` · `npm run lint` · `npm test`(vitest) · `npm run build` · `npm run e2e`(Playwright, 5단계)
@@ -15,8 +16,8 @@
 - 스크립트: `dev`(3000), `build`, `start`, `typecheck`(`tsc --noEmit`), `lint`, `test`(vitest run), `e2e`(playwright), `gen:api`.
 - **확인:** `npm run typecheck`·`npm run lint`·`npm test`·`npm run build`가 모두 0으로 끝남.
 
-### F2. 디자인 토큰 (`DESIGN.md` 값)
-- Tailwind 테마에 색 이름으로 등록: `bg`, `surface`, `ink`(글자), `muted`, `brand`(분홍 `#F0145F`), `accent`(보라 `#7C36FC`), `neon`(`#C8FF2F`), `dark-bg`(`#0D0D0C`), `dark-surface`(`#1E1D1C`) + 혼잡 색 `crowd-green`·`crowd-yellow`·`crowd-orange`·`crowd-red`.
+### F2. 디자인 토큰 (`UI-DESIGN-SYSTEM.md` 값)
+- Tailwind 테마에 색 이름으로 등록: `bg`·`surface`(`#FFFFFF`), `ink`(`#343536`), `muted`, `brand`(`#F74F85`) + 혼잡 색 `crowd-green`·`crowd-yellow`·`crowd-orange`·`crowd-red`.
 - 글꼴: Pretendard(본문), Outfit(로고·숫자). 모서리 토큰 `card`(18px)·`input`(25px)·`chip`(완전 둥글게).
 - 화면 코드에 색 값(`#…`)을 직접 쓰지 않는다(토큰만).
 - **확인:** `src/` 아래 `.tsx` 파일에 `#[0-9A-Fa-f]{6}` 문자열이 없음(시험 `F2 no raw colors`).
@@ -48,13 +49,13 @@
 
 ### F6. 축제 목록 `/festivals` (A02)
 - 위: 검색창(`q`), 지역 선택(0-1 지역 코드 → 한국어 이름: 전체·서울·부산·…·제주), 상태 칩(전체·진행 중 `ongoing`·예정 `upcoming`·종료 `ended`).
-- 카드: 대표 이미지(`thumbnail_url`, 없으면 기본 그림, **잘리지 않게 `object-contain`**), 이름, 기간, 장소, **D-day 배지**(시작 전 `D-n`, 진행 중 `진행 중`, 종료 `종료`), 이미지 있으면 "출처: 한국관광공사".
+- 카드: 대표 이미지(`thumbnail_url`, 없으면 기본 그림)는 **가로:세로 `1:1.414`**, 잘리지 않게 `object-contain`; 390px에서 3개와 다음 카드 약 반 개가 보이는 가로 스크롤. 이름은 최대 2줄, 기간·장소·D-day 배지를 표시한다.
 - 20개씩, 더 있으면 "더 보기". 결과 0개면 "조건에 맞는 축제가 없어요".
 - `dday(start, end, today)` 순수 함수로 분리.
 - **확인(단위):** `dday("2026-12-05","2026-12-07","2026-11-22")=="D-13"` · 기간 안이면 "진행 중" · 끝나면 "종료" · 날짜 없으면 빈 값. **(흐름)** 서울 선택 → 카드 2개.
 
-### F7. 축제 상세 `/festivals/[festivalId]` (A03·A07·A09·A10·A12·A13)
-- 위: 큰 이미지(`object-contain`) + 하트, 이름, 한 줄 소개(`overview`), AI 질문창(홈과 같은 동작, 3단계 F9 재사용).
+### F7. 축제 상세 `/festivals/[festivalId]` (A03·A07·A09·A10)
+- 위: `1:1.414` 축제 포스터(`object-contain`), 이름, 한 줄 소개(`overview`), AI 질문창(홈과 같은 동작, 3단계 F9 재사용). 하트·찜 버튼은 두지 않는다.
 - 정보 칩: 기간, 장소(`venue_name`), 입장료(`fee_text`), 지역.
 - **현장 정보** 3칸 — 각자 따로 불러오고 하나가 실패해도 나머지는 보임:
   - 혼잡(A10): `ok` → 구역 이름 + 색 칩(`congest_color` 토큰) + 인구 범위 / `unsupported` → "이 지역은 아직 지원하지 않아요" / `unavailable` → 오류 문구 / `stale` → 값 + "정보가 오래됐어요"
@@ -63,7 +64,6 @@
 - 작은 지도(F11, 축제 좌표 마커). 좌표 없으면 "위치 정보가 없어요".
 - 주변 정보 아이콘 줄(화장실·주차장·맛집·병원·지하철·버스): 눌러도 "준비 중이에요"(A08 없음).
 - **AI 안심 귀가 배너** → `/routes/return?festivalId=<id>`.
-- 하트: 로그인 안 했으면 `/auth/login?next=…`로, 했으면 A12/A13(201·200·204 모두 성공 처리).
 - 없는 축제(404) → "축제를 찾을 수 없어요" + 목록으로.
 - **확인(흐름):** `fst_000001` 상세에 혼잡 "보통", 날씨 기온, 공지 2개 · `fst_000003`(부산) 혼잡 "아직 지원하지 않아요" · `fst_999999` → 찾을 수 없음.
 
@@ -95,12 +95,12 @@
 - 토큰: access는 메모리 + `sessionStorage`(모의 단계), refresh는 `sessionStorage`. 401을 받으면 A34로 1번 갱신 후 다시 시도, 실패하면 로그아웃 처리. 로그아웃 A35.
 - 비밀번호·토큰을 `console`에 찍지 않는다.
 - 검사 규칙은 `validators.ts`로 분리.
-- **확인(단위):** 닉네임 1자·13자 거부, 공백만 거부 · 비밀번호 숫자만 거부 · 출생연도 범위. **(흐름)** 가입 → 로그인 → 축제 하트 → 다시 들어가도 하트 유지.
+- **확인(단위):** 닉네임 1자·13자 거부, 공백만 거부 · 비밀번호 숫자만 거부 · 출생연도 범위. **(흐름)** 가입 → 로그인 → 축제 상세 복귀, 찜 UI 없음.
 
 ## 4. 시험·문서
 
 ### F12. 흐름 시험 (Playwright, 5단계)
-- 모의 서버(8000)와 개발 서버(3000)를 띄우는 설정(`webServer`)을 Playwright 설정에 넣는다. 크롬만, 화면 402×874.
+- 모의 서버(8000)와 개발 서버(3000)를 띄우는 설정(`webServer`)을 Playwright 설정에 넣는다. 크롬만, 모바일 기준 폭 390px.
 - F6·F7·F8·F9·F10의 **(흐름)** 확인을 시험으로 만든다. 단계마다 화면 캡처를 `frontend/e2e-screenshots/`(저장소 제외)에 남긴다.
 
 ### F13. 문서·환경

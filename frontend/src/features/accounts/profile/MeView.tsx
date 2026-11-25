@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
-  Bell,
-  Heart,
   LogOut,
   MessageCircle,
   Pencil,
@@ -16,15 +14,13 @@ import {
   Users,
 } from "lucide-react";
 import { handleAuthError, RequireAuth } from "@/components/RequireAuth";
-import { FavoritesSection } from "@/features/accounts/favorites/FavoritesView";
 import { BlockManagerSection } from "@/features/community/friends/BlockManagerSection";
-import { NotificationsSection } from "@/features/community/notifications/NotificationsView";
 import { clearAuthSession, updateAuthUser } from "@/lib/api/auth";
 import { ApiError, logoutAuthSession } from "@/lib/api/client";
 import { deleteAccount, getProfile, updateProfile, type Profile } from "./api";
 import { PreferencesSection } from "./PreferencesView";
 
-type MeSectionTab = "favorites" | "preferences" | "notifications" | "blocks";
+type MeSectionTab = "preferences" | "blocks";
 
 function MeContent() {
   const router = useRouter();
@@ -33,7 +29,7 @@ function MeContent() {
   const [error, setError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const [activeTab, setActiveTab] = useState<MeSectionTab>("favorites");
+  const [activeTab, setActiveTab] = useState<MeSectionTab>("preferences");
 
   // Profile edit
   const [editingName, setEditingName] = useState(false);
@@ -290,13 +286,11 @@ function MeContent() {
       <div
         role="tablist"
         aria-label="마이페이지 섹션"
-        className="grid grid-cols-4 gap-1 rounded-chip border border-line-light bg-surface p-1 shadow-sm"
+        className="grid grid-cols-2 gap-1 rounded-chip border border-line-light bg-surface p-1 shadow-sm"
       >
         {(
           [
-            { id: "favorites", label: "관심 축제", icon: Heart },
             { id: "preferences", label: "취향", icon: Sparkles },
-            { id: "notifications", label: "알림", icon: Bell },
             { id: "blocks", label: "차단", icon: ShieldBan },
           ] as const
         ).map((item) => {
@@ -321,9 +315,7 @@ function MeContent() {
       </div>
 
       {/* 선택된 섹션 */}
-      {activeTab === "favorites" ? (
-        <FavoritesSection embedded />
-      ) : activeTab === "preferences" ? (
+      {activeTab === "preferences" ? (
         <PreferencesSection
           embedded
           onSaved={(nextStatus) =>
@@ -332,8 +324,6 @@ function MeContent() {
             )
           }
         />
-      ) : activeTab === "notifications" ? (
-        <NotificationsSection embedded />
       ) : (
         <BlockManagerSection />
       )}
@@ -344,7 +334,7 @@ function MeContent() {
           <div>
             <h2 className="text-sm font-extrabold text-ink">회원 탈퇴</h2>
             <p className="text-[11px] text-muted">
-              탈퇴 시 관심 축제, 취향, 알림, 친구 관계가 모두 삭제돼요.
+              탈퇴 시 취향과 친구 관계가 모두 삭제돼요.
             </p>
           </div>
           <button

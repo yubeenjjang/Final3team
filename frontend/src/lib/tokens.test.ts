@@ -62,10 +62,6 @@ describe("F2 design tokens", () => {
       "ink",
       "muted",
       "brand",
-      "accent",
-      "neon",
-      "dark-bg",
-      "dark-surface",
       "crowd-green",
       "crowd-yellow",
       "crowd-orange",
@@ -76,7 +72,9 @@ describe("F2 design tokens", () => {
       expect(colors[token]).toBeTruthy();
     }
 
-    expect(borderRadius.card).toBe("18px");
+    expect(colors.brand).toBe("#F74F85");
+    expect(colors.ink).toBe("#343536");
+    expect(borderRadius.card).toBe("14px");
     expect(borderRadius.input).toBe("25px");
     expect(borderRadius.chip).toBe("9999px");
   });

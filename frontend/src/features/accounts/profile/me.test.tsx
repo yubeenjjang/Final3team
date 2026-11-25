@@ -34,7 +34,7 @@ describe("My Page screen", () => {
     });
   });
 
-  it("renders profile, updates nickname, manages favorites, preferences, notifications, and withdrawal", async () => {
+  it("renders profile, updates nickname, manages preferences, and withdrawal", async () => {
     setAuthSession({
       accessToken: "token-a",
       refreshToken: "token-r",
@@ -57,14 +57,6 @@ describe("My Page screen", () => {
           onboarding_status: "pending",
         });
       }
-      if (url.pathname.endsWith("/me/favorites")) {
-        return Response.json({
-          items: [],
-          total: 0,
-          page: 1,
-          page_size: 20,
-        });
-      }
       if (url.pathname.endsWith("/me/festival-preferences")) {
         if (init?.method === "PUT") {
           const body = JSON.parse(String(init.body)) as { scenarios: string[]; skip: boolean };
@@ -80,24 +72,6 @@ describe("My Page screen", () => {
           updated_at: null,
         });
       }
-      if (url.pathname.endsWith("/me/notifications")) {
-        return Response.json({
-          items: [
-            {
-              notification_id: 10,
-              type: "companion_approved",
-              ref_type: "companion_post",
-              ref_id: "cpo_01JD8Q3K2M",
-              created_at: "2026-11-24T12:00:00+09:00",
-              read_at: null,
-            },
-          ],
-          unread_count: 1,
-        });
-      }
-      if (url.pathname.endsWith("/me/notifications/read")) {
-        return new Response(null, { status: 204 });
-      }
       if (url.pathname.endsWith("/me") && init?.method === "DELETE") {
         return new Response(null, { status: 204 });
       }
@@ -110,8 +84,6 @@ describe("My Page screen", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "테스터" })).toBeInTheDocument();
     });
-    expect(screen.getByText("저장한 관심 축제가 없어요")).toBeInTheDocument();
-
     // Edit nickname
     fireEvent.click(screen.getByRole("button", { name: "닉네임 수정" }));
     fireEvent.change(screen.getByLabelText("새 닉네임"), { target: { value: "놀다가왕" } });
@@ -131,16 +103,6 @@ describe("My Page screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "취향 저장" }));
     await waitFor(() => {
       expect(screen.getByText("축제 취향을 저장했어요!")).toBeInTheDocument();
-    });
-
-    // Notifications tab
-    fireEvent.click(screen.getByRole("tab", { name: /알림/ }));
-    await waitFor(() => {
-      expect(screen.getByText("동행 신청이 승인됐어요")).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByRole("button", { name: "모두 읽음" }));
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "모두 읽음" })).toBeDisabled();
     });
 
     // Withdrawal confirmation step

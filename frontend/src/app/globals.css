@@ -7,20 +7,16 @@
 :root {
   --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-surface-soft: #FEEEF2;
-  --color-surface-muted: #F4F5F7;
-  --color-banner-dark: #2D2E32;
-  --color-ink: #0A101F;
-  --color-muted: #6B7280;
-  --color-brand: #F0145F;
-  --color-accent: #7C36FC;
-  --color-neon: #C8FF2F;
-  --color-dark-bg: #0D0D0C;
-  --color-dark-surface: #1E1D1C;
-  --color-crowd-green: #22C55E;
-  --color-crowd-yellow: #EAB308;
-  --color-crowd-orange: #F97316;
-  --color-crowd-red: #EF4444;
+  --color-surface-soft: #FFF0F5;
+  --color-surface-muted: #F5F6F8;
+  --color-banner-dark: #343536;
+  --color-ink: #343536;
+  --color-muted: #6B7078;
+  --color-brand: #F74F85;
+  --color-crowd-green: #8FDCBE;
+  --color-crowd-yellow: #F5D778;
+  --color-crowd-orange: #F6B978;
+  --color-crowd-red: #F19AA1;
 }
 
 html,
@@ -29,4 +25,14 @@ body {
   padding: 0;
   font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.festival-carousel-card {
+  flex: 0 0 calc((100% - 24px) / 3.5);
+}
+
+@media (max-width: 359px) {
+  .festival-carousel-card {
+    flex-basis: calc((100% - 16px) / 2.5);
+  }
 }

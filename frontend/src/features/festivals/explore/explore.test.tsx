@@ -284,44 +284,4 @@ describe("F6 festival explore", () => {
     expect(screen.queryByAltText("이미지 실패 테스트 축제")).not.toBeInTheDocument();
   });
 
-  it("opens login prompt sheet when guest clicks festival card heart", async () => {
-    globalThis.fetch = vi.fn(async () =>
-      Response.json({
-        is_mock: true,
-        items: [
-          {
-            festival_id: "fst_000011",
-            name: "하트 테스트 축제",
-            region_code: "SEOUL",
-            venue_name: "서울 광장",
-            lat: 37.566,
-            lng: 126.978,
-            start_date: "2026-12-05",
-            end_date: "2026-12-07",
-            event_status: "upcoming",
-            thumbnail_url: null,
-            image_credit: null,
-            source: "tourapi",
-            last_synced_at: "2026-11-22T00:00:00Z",
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 20,
-      }),
-    ) as unknown as typeof fetch;
-
-    render(<FestivalExploreView />);
-
-    const heartButton = await screen.findByRole("button", {
-      name: "하트 테스트 축제 찜하기",
-    });
-    fireEvent.click(heartButton);
-
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "로그인하기" })).toHaveAttribute(
-      "href",
-      "/auth/login?next=%2Ffestivals",
-    );
-  });
 });

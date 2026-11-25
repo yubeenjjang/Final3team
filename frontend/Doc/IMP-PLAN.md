@@ -1,5 +1,7 @@
 # IMP-PLAN — 웹 화면 1차
 
+> 2026-11-25 최신 변경: 브랜드색 `#F74F85`, 축제 이미지 `1:1.414`, 390px 카드 3.5개, 찜·하트 제거. 상세 작업 기준은 `FRONTEND-IMP-PLAN.md`를 우선한다.
+
 단계마다 **만들 파일 범위 안에서만** 만들고, 확인 → 체크 → (Claude가) commit. 한 단계가 끝나기 전에 다음 단계로 가지 않는다.
 구현 도구·모델은 실행 전에 사용자에게 알리고 정한다(아래 '도구' 칸은 제안).
 
@@ -18,7 +20,7 @@
 ## 1단계 — 뼈대
 **만들 파일:** `frontend/` 아래 Next.js 기본 파일(`package.json`·`package-lock.json`·`tsconfig.json`·`next.config.*`·`postcss.config.*`·`tailwind` 설정·`eslint` 설정·`vitest.config.*`), `src/app/layout.tsx`·`page.tsx`(임시)·`globals.css`·`companions/page.tsx`·`map/page.tsx`, `src/components/`(아래 탭·헤더·모의 표시·KakaoMap·준비 중), `src/lib/api/`(client·schema.d.ts·auth 토큰 저장), `src/lib/kakao.ts`, 단위 시험 `src/**/*.test.ts(x)`, `.env.local.example`, `.gitignore`, `README.md`(실행 절 추가만)
 - [x] F1 프로젝트·스크립트
-- [x] F2 토큰(색 직접 쓰기 금지 시험 포함)
+- [x] F2 최신 토큰 `#F74F85`(색 직접 쓰기 금지 시험 포함)
 - [x] F3 틀·탭
 - [x] F4 API 연결·타입 생성
 - [x] F5 모의 표시
@@ -30,7 +32,7 @@
 **만들 파일:** `src/app/festivals/page.tsx`, `src/app/festivals/[festivalId]/page.tsx`, `src/features/festivals/explore/`, `detail/`, `live-info/`, 관련 시험
 - 추가 허용: `next.config.ts`에 개발 도구 표시 위치만 바꾸기(`devIndicators: { position: 'top-right' }` 등 — 아래 탭의 홈 버튼을 가림, 1단계 확인 때 발견)
 - [x] F6 목록·필터·D-day
-- [x] F7 상세·현장 정보·하트·지도·배너
+- [x] F7 상세·현장 정보·1:1.414 포스터·지도·배너(하트 제거)
 - [x] 공통 확인 명령 통과
 
 ## 3단계 — 귀가
@@ -39,7 +41,7 @@
 - [x] 공통 확인 명령 통과
 
 ## 4단계 — 홈·계정
-**만들 파일:** `src/app/page.tsx`(임시를 홈으로), `src/app/auth/login/page.tsx`, `src/app/auth/signup/page.tsx`, `src/features/assistant/chatbot/`, `src/features/accounts/auth/`, `src/features/accounts/favorites/`, 관련 시험
+**만들 파일:** `src/app/page.tsx`(임시를 홈으로), `src/app/auth/login/page.tsx`, `src/app/auth/signup/page.tsx`, `src/features/assistant/chatbot/`, `src/features/accounts/auth/`, 관련 시험. 과거 `src/features/accounts/favorites/`는 최신 범위에서 제거.
 - [x] F9 홈·AI 질문창 → 귀가 연결
 - [x] F10 로그인·회원가입·토큰 갱신·로그아웃
 - [x] 공통 확인 명령 통과
