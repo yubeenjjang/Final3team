@@ -16,15 +16,15 @@
 | 4 | Refresh 교체, 재사용 감지 시 그 계정 Refresh 전부 폐기 | A34 | `test_auth_postgres.py::test_a32_to_a35_postgres_and_rls` | ✅ |
 | 5 | **로그아웃한 기기의 Access로 보호 API → 401, 다른 기기는 계속 사용** | A35 "이 기기만 로그아웃" | `test_w82_...::test_w82_logout_expiry_and_disabled_accounts_end_sessions` | ✅ 신규 |
 | 6 | **정지(disabled) 계정: 남은 Access·Refresh 거부(401), 로그인 403 `ACCOUNT_DISABLED`, 개인정보는 유지** | 1-1절 "탈퇴·정지 계정", A33 | 같은 시험 | ✅ 신규 |
-| 7 | **열린 WebSocket이 로그아웃 뒤 `unsubscribed(deleted)` 후 4403으로 닫힘** | 6-4-5 WS 재인증 | `test_w82_...::test_w82_websocket_closes_after_logout_and_withdrawal` | ✅ 신규 |
+| 7 | **열린 WebSocket이 로그아웃 뒤 `unsubscribed(deleted)` 후 4403으로 닫힘** | API 7-16-5 WS 재인증 | `test_w82_...::test_w82_websocket_closes_after_logout_and_withdrawal` | ✅ 신규 |
 | 8 | **열린 WebSocket이 탈퇴 뒤 닫힘** (A80 "열린 WebSocket 종료는 채팅 연결 구현 시 연동") | A80 | 같은 시험 | ✅ 신규 |
 | 9 | 본인 정보는 본인만 조회·수정(RLS): 관심 축제·취향·프로필·동행 내역 | A11~A13·A36·A37·A78·A79, DB 7-1 | `test_my_account_postgres.py::test_account_routes_and_withdrawal_with_postgres_rls` | ✅ |
 | 10 | 탈퇴 비밀번호 틀림 → 403, 처리 중 오류 → 전부 되돌림(한 트랜잭션) | A80 | 같은 시험 | ✅ |
 | 11 | 탈퇴 처리: 이메일·비밀번호 해시 덮어쓰기, 프로필 개인정보 NULL, 관심·취향·알림·Refresh·친구·차단 삭제, 동행 글·신청 취소(정원 반환), 방 퇴장·방장 승계, 챗봇 질문·답변 삭제, 모든 기기 Access·Refresh 거부 | A80, DB 7-0 ② | 같은 시험 | ✅ |
 | 12 | **탈퇴자 메시지 본문은 방 보존 정책대로 남고, 다른 참여자에게 작성자 이름 비공개(화면 '알 수 없음')** | DB 7-1 표 "동행 채팅 메시지" | `test_w82_...::test_w82_websocket_closes_after_logout_and_withdrawal` | ✅ 신규 |
 | 13 | **탈퇴 뒤 옛 이메일·비밀번호 로그인 → 401, DB에 옛 이메일 없음** | DB 7-0 계정·프로필 | 같은 시험 | ✅ 신규 |
-| 14 | 보존 기간 정리: 경로 요청 30일, 채팅(동행 종료 3일·친구 30일), 알림 90일, 체크포인트 7일, 챗봇 30일 | DB 7-0·API 9-1 | `test_jobs_postgres.py` 5개(`daily_route_retention`, `chat_friend_and_notification_cutoffs_and_rls`, `checkpoints_expire`, `daily_retention_cutoffs`, `competing_runners`) | ✅ |
-| 15 | 인증 요청 로그에 비밀번호·토큰 원문 없음 | API 18절 | `test_a3_log_redaction.py::test_a3_db_auth_keeps_ids_and_status_without_raw_credentials` | ✅ |
+| 14 | 보존 기간 정리: 경로 요청 30일, 채팅(동행 종료 3일·친구 30일), 알림 90일, 체크포인트 7일, 챗봇 30일 | DB 7-0·API 8-2 | `test_jobs_postgres.py` 5개(`daily_route_retention`, `chat_friend_and_notification_cutoffs_and_rls`, `checkpoints_expire`, `daily_retention_cutoffs`, `competing_runners`) | ✅ |
+| 15 | 인증 요청 로그에 비밀번호·토큰 원문 없음 | API 3-1절 | `test_a3_log_redaction.py::test_a3_db_auth_keeps_ids_and_status_without_raw_credentials` | ✅ |
 
 "신규"는 이번 W82에서 추가한 실제 DB 시험이다(`backend/tests/api/test_w82_session_privacy_postgres.py`, 2개).
 
