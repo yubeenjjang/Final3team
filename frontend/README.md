@@ -16,4 +16,52 @@
 | `src/lib/` | 공통 API 요청과 실시간 연결 등 공통 도구 |
 
 `app/`은 화면의 위치를 정하고, 실제 화면 기능은 `features/`에 작성합니다.
-프론트 코드 언어와 실행 명령은 팀에서 정한 뒤 이 문서에 추가합니다.
+프론트 코드는 Next.js(App Router), TypeScript, Tailwind CSS로 작성합니다.
+
+## 실행 명령
+
+모든 프론트엔드 명령은 `frontend/` 폴더에서 실행합니다(Node 26, npm 기준).
+
+### 1. 환경변수 준비
+
+`.env.local.example`을 참고해 필요 시 `.env.local`을 만듭니다(`.env.local`은 git에 올라가지 않습니다).
+
+- `NEXT_PUBLIC_API_BASE`: 기본값 `http://localhost:8000/api/v1`
+- `NEXT_PUBLIC_KAKAO_JS_KEY`: 카카오 지도 JavaScript 키(비워 두면 지도 자리에 안내 문구 표시)
+- `NEXT_PUBLIC_SHOW_MOCK_TOOLS`: `1`이면 개발용 모의 시나리오 도구 표시
+
+### 2. 모의 API 서버와 개발 서버 함께 띄우기
+
+터미널 1 — 모의 API 서버(`backend/` 폴더):
+
+```sh
+cd backend
+uv run --with-requirements api/requirements.txt uvicorn api.main:app --port 8000
+```
+
+터미널 2 — 프론트 개발 서버(`frontend/` 폴더):
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+브라우저에서 `http://localhost:3000`으로 접속합니다.
+
+### 3. API 타입 생성·확인·빌드 명령
+
+```sh
+npm run gen:api      # Doc/openapi.json → src/lib/api/schema.d.ts 생성
+npm run typecheck    # TypeScript 타입 검사 (tsc --noEmit)
+npm run lint         # ESLint 검사
+npm test             # 단위 시험 (vitest run)
+npm run build        # 프로덕션 빌드
+npm run e2e          # 흐름 시험 (Playwright)
+```
+
+공통 확인 한 줄 명령:
+
+```sh
+npm run typecheck && npm run lint && npm test && npm run build
+```
