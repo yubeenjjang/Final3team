@@ -11,6 +11,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from api.jobs import locks, retention, scheduler
+from api.ingestion.festivals.store import JobResult
 
 pytestmark = pytest.mark.db
 
@@ -56,6 +57,56 @@ def test_postgres_competing_runners_share_lock_and_success_slot(jobs_engine, mon
     finally:
         with jobs_engine.begin() as db:
             db.execute(text("DELETE FROM public.scheduled_job_runs WHERE job_name = :name"), {"name": job.name})
+
+
+def test_w100_daily_sources_run_in_order_and_retry_failed_source(jobs_engine, monkeypatch):
+    @contextmanager
+    def service_session():
+        with Session(jobs_engine) as db, db.begin():
+            db.execute(text("SET LOCAL ROLE noldaga_service"))
+            yield db
+
+    calls = []
+    failed = True
+
+    def tourapi(*args, **kwargs):
+        nonlocal failed
+        calls.append("tourapi")
+        if failed:
+            failed = False
+            raise RuntimeError("temporary provider failure")
+        return JobResult("tourapi-test", "success", 2, 2, 0, 0)
+
+    def seoul(*args, **kwargs):
+        calls.append("seoul_culture")
+        return JobResult("seoul-test", "success", 1, 0, 1, 0)
+
+    monkeypatch.setattr(scheduler, "service_db_session", service_session)
+    monkeypatch.setattr(scheduler.collect, "collect_to_db", tourapi)
+    monkeypatch.setattr(scheduler.seoul_culture, "collect_to_db", seoul)
+    monkeypatch.setattr(scheduler, "JOBS", tuple(
+        job for job in scheduler.JOBS if job.name in {"collect_festivals", "collect_seoul_culture"}
+    ))
+    monkeypatch.setattr(scheduler.seoul_culture, "enabled", lambda: True)
+    # Job.enabled captures the original function, so turn on the selected job explicitly.
+    monkeypatch.setattr(scheduler, "JOBS", tuple(
+        scheduler.Job(job.name, job.lock, job.run, daily=True, enabled=lambda: True)
+        for job in scheduler.JOBS
+    ))
+    now = datetime.fromisoformat("2027-01-01T06:00:00+09:00")
+    try:
+        assert scheduler.run_due(now) == 1
+        assert calls == ["tourapi", "seoul_culture"]
+        assert scheduler.run_due(now) == 0
+        assert calls == ["tourapi", "seoul_culture", "tourapi"]
+        assert scheduler.run_due(now) == 0
+        assert calls == ["tourapi", "seoul_culture", "tourapi"]
+    finally:
+        with jobs_engine.begin() as db:
+            db.execute(text("""
+                DELETE FROM public.scheduled_job_runs
+                WHERE job_name IN ('collect_festivals', 'collect_seoul_culture')
+            """))
 
 
 def test_postgres_daily_route_retention_and_dependencies(jobs_engine):

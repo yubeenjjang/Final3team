@@ -137,6 +137,50 @@ def test_public_festival_catalog_and_private_favorites(browser, register, festiv
     assert checked(request("GET", FAVORITES, headers=member.headers), 200)["items"] == []
 
 
+def test_midterm_search_detail_return_and_result(browser, festivals, service_db):
+    """공개 DB 축제의 동일 ID를 검색부터 귀가 결과까지 사용한다."""
+    ids, key = festivals
+    with service_db.begin() as db:
+        db.execute(text("""
+            UPDATE public.festivals
+               SET venue_name = '광화문광장', latitude = 37.5759, longitude = 126.9768
+             WHERE festival_id = :festival_id
+        """), {"festival_id": ids["public"]})
+    page = checked(browser.request("GET", f"{API}/festivals", params={"q": key}), 200)
+    assert page["total"] == 1 and page["is_mock"] is False
+    selected = page["items"][0]
+    assert selected["festival_id"] == ids["public"]
+
+    detail = checked(browser.request("GET", f"{API}/festivals/{selected['festival_id']}"), 200)
+    assert detail["festival_id"] == selected["festival_id"]
+    assert detail["lat"] is not None and detail["lng"] is not None
+
+    submitted = browser.request("POST", f"{API}/routes/return", json={
+        "request_id": f"midterm-{uuid4().hex}", "festival_id": detail["festival_id"],
+        "destination": {"query": "서울역"},
+    })
+    assert submitted.status_code == 202
+    assert submitted.headers["X-Mock"] == "true"  # 경로 공급원만 모의
+    queued = submitted.json()
+    token = queued["route_access_token"]
+    assert token and queued["status_url"]
+
+    states = []
+    for _ in range(4):
+        result = browser.request("GET", queued["status_url"], headers={"X-Route-Access-Token": token})
+        assert result.status_code == 200
+        body = result.json()
+        states.append(body["route_status"])
+        if body["route_status"] == "ready":
+            assert body["festival_id"] == detail["festival_id"]
+            assert body["origin"]["lat"] == detail["lat"]
+            assert body["origin"]["lng"] == detail["lng"]
+            assert body["route_candidates"]
+            break
+    else:
+        pytest.fail(f"발표 동선의 경로 결과가 준비되지 않음: {states}")
+
+
 def test_friends_direct_chat_cursor_concurrent_create_and_block(browser, register, service_db):
     request = browser.request
     sender, recipient, outsider = register(), register(), register()

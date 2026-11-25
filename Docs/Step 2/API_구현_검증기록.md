@@ -91,8 +91,8 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | 기능 | 기획 FR | API | 계약 상태 | 명세 확정 | DB | 구현 (담당) | 검증 |
 |---|---|---|---|---|---|---|---|
 | 맞춤 추천(취향·추천·인기·둘러보기·최신) | FR-REC01~16 | A36~A41 | 상세 작성([설계서 7-16](API_설계문서.md#7-16-맞춤-추천과-친구--상세-명세-v033-1120)) · 담당 확정(11/24 팀 결정) | W112 · 11/20 → 남은 상세는 W123 전(11/30) | **DDL·시험 완료**(005 `user_festival_preferences`·`festival_tags`·`festival_engagement_daily`, T29~T31) | **신유빈**(11/20 GitHub 협업 규칙 `recommendations.py` 담당) — WBS W124·W125 담당 표기는 협업 규칙에 맞춰 갱신 | W128 12/17–18 |
-| **지금 핫한 축제** | 기획서 FR 추가 필요 | **A42** | 데이터랩·구석구석 점수 60:40 합산([설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | 11/24 신유빈 B안·권오현 확정 | `festival_trends`(004·017) | 신유빈 API · 정예진 화면(W125·W127 범위) | W128 |
-| **요즘 올라온 글** | 축제 상세 | **A81** | 블로그·뉴스·카페 최신 결과 표시([설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | 11/24 한태경 제안·권오현 채택 | Redis `posts:{festival_id}` | 신유빈 API W125 12/03–04 · 정예진 화면 W127 12/09–11 | W128 |
+| **지금 핫한 축제** | FR-REC17 | **A42** | 데이터랩·구석구석 점수 60:40 합산([설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | 11/24 신유빈 B안·권오현 확정 | `festival_trends`(004·017) | 신유빈 API · 정예진 화면(W125·W127 범위) | W128 |
+| **요즘 올라온 글** | FR-REC18 | **A81** | 블로그·뉴스·카페 최신 결과 표시([설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | 11/24 한태경 제안·권오현 채택 | Redis `posts:{festival_id}` | 신유빈 API W125 12/03–04 · 정예진 화면 W127 12/09–11 | W128 |
 | 동행 모집·신청·승인·만남 장소·종료 | FR-COM01~11·18~19 | **A57~A65** | **상세 작성**([설계서 7-16-4](API_설계문서.md#7-16-4-동행-api-a57a65--담당-권오현communitycompanionspy-화면-companions정예진), 정원 잠금 승인·재신청 규칙) | 11/20 | **DDL·시험 완료**(007 `companion_posts`·`companion_applications`·`meeting_places`, T36·T37) | W115 12/03–07, W117 12/09–10 (R03) | W128 |
 | 친구 검색·신청·삭제·차단 | FR-COM12~14 | **A43~A50** | **상세 작성**([설계서 7-16-3](API_설계문서.md#7-16-3-친구-api-a43a50--담당-권오현1120-github-협업-규칙-communityfriendspy)). 친구 추천은 범위 밖(후보) | 11/20 | **DDL·시험 완료**(005 `friend_requests`·`friendships`·`user_blocks`, 닉네임 중복 금지 009, T32~T33·T43) | W118 12/03–04 (R03) | W128 |
 | 채팅(동행방·1:1·단체)·채팅 탭 | FR-COM09·15~17·20 | **A66~A73 + WebSocket** | **상세 작성**([설계서 7-16-5](API_설계문서.md#7-16-5-채팅-api-a66a73--websocket--담당-권오현communitychatpy-realtimechat_socketpy-화면-chatsroomidfriends정예진)) · 전송 방식 = WebSocket(11/20 협업 규칙) | 11/20 | **DDL·시험 완료**(007 `chat_rooms`·`chat_members`·`chat_messages`, T37·T38·T41) | W116 12/03–08 (R03 권오현 — 협업 규칙도 권오현), W119 12/09–10 (R03) | W128 |
@@ -142,8 +142,8 @@ A32~A35는 `AUTH_PROVIDER=db`에서 실제 PostgreSQL에 연결합니다. 가입
 | 관심 축제 저장 | FR-A08 | `favorites/` (정예진) | A11~A13 (`accounts/favorites.py`, 권오현) | `save_favorite` | `favorites` | T1·T2·T21~T23 | B ✅ / A·D ⬜ |
 | 회원가입·로그인 | FR-A, D-037 | `auth/`, `me/` (정예진) | A32~A35 (`accounts/auth.py`·`users.py`, 권오현) | — | `users`·`profiles`·`refresh_tokens` + Redis `revoked:*` | T12·T16·T21 | B 🔶 권한만 / A ⬜ |
 | 취향 고르기·맞춤 추천 | FR-REC01~16 | `onboarding/`, `recommendations/` (정예진) | A36~A41 (`festivals/recommendations.py`, 신유빈) | — | `user_festival_preferences`·`festival_tags`·`festival_engagement_daily`(005) | T29~T31, REC-TC-01~07 | B ✅ / A·C·D(태그 LLM 검증) ⬜ |
-| 지금 핫한 축제 | (기획서 FR 추가 필요) | `recommendations/` (정예진) | A42 데이터랩·구석구석 점수 60:40 합산(신유빈, [설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | — | `festival_trends`(004·017) | T27, T017, W128 | A·B·C ⬜ |
-| 요즘 올라온 글 | 축제 상세 | `festivals/[festivalId]/` (정예진) | A81 네이버 블로그·뉴스·카페 검색(신유빈, [설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | — | Redis `posts:{festival_id}` | W128(제목·게시일 필터, 출처·실패 표시) | A·B·C ⬜ |
+| 지금 핫한 축제 | FR-REC17 | `recommendations/` (정예진) | A42 데이터랩·구석구석 점수 60:40 합산(신유빈, [설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | — | `festival_trends`(004·017) | T27, T017, W128 | A·B·C ⬜ |
+| 요즘 올라온 글 | FR-REC18 | `festivals/[festivalId]/` (정예진) | A81 네이버 블로그·뉴스·카페 검색(신유빈, [설계서 7-15](API_설계문서.md#7-15-나머지-api-상세-명세-v032--111920-실호출-필드-기준)) | — | Redis `posts:{festival_id}` | W128(제목·게시일 필터, 출처·실패 표시) | A·B·C ⬜ |
 | 친구 추가·차단 | FR-COM12~14 | `friends/` (정예진) | A43~A50 (`community/friends.py`, 권오현) | — | `friend_requests`·`friendships`·`user_blocks`(005) | T32·T33, COM-TC | B ✅ / A ⬜ |
 | AI 방문 코스 | FR-P01·P03 | `assistant/` 방문 코스 (이수언) | A51 → A06-1 (`assistant/chatbot.py` 권오현) → Festival 에이전트(한다영) | `get_festival`·`get_facilities`·`get_official_notices`·`get_crowd` | `assistant_runs`(`run_kind`·`result`, 006) | T34 | B ✅ / A·D ⬜ |
 | 공지·축제 관리(관리자) | FR-O06·D05·D12·O10 | `admin/operations/`(이수언), `admin/festival-management/`(정예진) | A52~A56, A23·A24 | — | `official_notices`·`notice_events`(006)·`festival_change_history`·`festival_review_queue` | T35, T6·T15(이력 추가만) | B ✅ / A ⬜ |
@@ -847,11 +847,15 @@ AWS에서는 아직 실행하지 않았습니다(W65, AWS 환경 신유빈 관�
 
 ## 25. 제한값 확정 기록 (설계서 8-2의 초기값 → 측정 뒤 확정값)
 
-[설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)의 숫자는 초기값입니다. 측정·결정으로 값을 확정하면 이 표에 한 줄씩 추가하고, 묶음 버전 `LIMITS_VERSION`을 올립니다(설계서는 고치지 않음). 첫 확정 예정: W96 계측 → W48 복구 정책(12/04, 신유빈·권오현).
+[설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)의 숫자는 초기값입니다. 측정·결정으로 값을 확정하면 이 표에 한 줄씩 추가하고, 묶음 버전 `LIMITS_VERSION`을 올립니다(설계서는 고치지 않음). 11/25 W48 정책 v1(`w48-v1`)로 감지·복귀 기준을 확정했습니다. 코드에는 아직 `LIMITS_VERSION` 통합 설정이 없어 W49 구현 때 `w48-v1`과 실제 값을 함께 기록합니다. W48 정책 문서의 'API 설계서 9-1'은 v0.7 번호로 8-2절입니다.
 
 | 설정 키 | 초기값([설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)) | 확정값 | `LIMITS_VERSION` | 근거(측정·결정) | 확정일·담당 |
 |---|---|---|---|---|---|
-| (12/04 W48에서 채움) | | | `lim-0.1` → | | |
+| 장애 감지(8-2 '장애 감지' 행) | p95 3초 초과 30초 지속 | **3초 / 30초 유지**(30초 관측창 p95, 창마다 완료 표본 30개 이상 — 미달 창은 `insufficient_sample`) | `w48-v1` | [W48 정책 v1](../../backend/Doc/w48/POLICY-v1.md) 1절, W96 로컬 계측 | 11/25 신유빈 |
+| 복구(8-2 '복구' 행) | p95 3초 이하 5분 유지 | **5분 유지**(유효 관측창에서 p95 3초 이하 5분 연속 + 거절·시간 초과·유효 완료율 악화 없음) | `w48-v1` | W48 정책 v1 1절 | 11/25 신유빈 |
+| `RECOVERY_DEFAULT_MAX_MIN` | 5분 | **5분 유지**(한 사건의 자동 조치 시도 상한, 정상 복귀 확인 5분과 별도 시계) | `w48-v1` | W48 정책 v1 1절 | 11/25 신유빈 |
+| 유효 완료 기준 | 10초 | **10초 유지**(요청 제출부터 10초 안에 검증된 경로) | `w48-v1` | W48 정책 v1 3절 | 11/25 신유빈 |
+| 동시 처리·대기열 등 나머지 | 8-2 초기값 | 미확정 — W49·W50 구현과 W106·W51 비교 시험 뒤 확정 | — | W48 정책 v1 인계 | 신유빈 |
 
 ## 26. 제한값 설정의 현재 코드 상태 (설계서 8-2에서 옮김, 11/23 교차 검토 기준)
 
