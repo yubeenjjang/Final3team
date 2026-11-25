@@ -49,7 +49,8 @@ def _normalized_name(name: str) -> str:
 
 def find_attraction(festival_id: str, venue: str | None) -> AttractionMatch | None:
     match = _load_mappings(os.environ.get("VISIT_FORECAST_MAPPING_FILE", str(_DEFAULT_MAPPING))).get(festival_id)
-    if match is not None and match.approved and venue and _normalized_name(venue) == _normalized_name(match.attraction):
+    # 승인된 연결만 쓰고, 축제 장소 이름 안에 관광공사 관광지 이름이 들어 있어야 한다(예: "청계천(청계광장 ~ 삼일교)" ⊃ "청계광장").
+    if match is not None and match.approved and venue and _normalized_name(match.attraction) in _normalized_name(venue):
         return match
     return None
 
