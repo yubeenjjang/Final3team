@@ -89,17 +89,18 @@ def _accepted(run: AssistantRun) -> dict[str, object]:
     return assistant.accepted(run.run_id, run.conversation_id, "queued", run.access_token, True)
 
 
-def get_run(run_id: str, access: assistant.RunAccess) -> dict[str, object]:
+async def get_run(run_id: str, access: assistant.RunAccess) -> dict[str, object]:
     assistant.require_access(access)
     with assistant_lock:
         run = assistant_runs.get(run_id)
         if run is None:
             raise assistant.not_found()
+    async with run.progress_lock:
         assistant.authorize_run(run.user_id, assistant.digest(run.access_token), datetime.fromisoformat(run.queued_at), access)
         if run.started_at is None:
             run.started_at = _now()
         elif run.outcome is None:
-            run.outcome = complete_run(run.request)
+            run.outcome = await complete_run(run.request)
             run.ended_at = _now()
         return {
             "run_id": run.run_id,
@@ -129,7 +130,7 @@ def _failed(tool_error: str) -> dict[str, object]:
     }
 
 
-def complete_run(request: AssistantRequest, *, in_process_routes: bool = True) -> dict[str, object]:
+async def complete_run(request: AssistantRequest, *, in_process_routes: bool = True) -> dict[str, object]:
     if "실패" in request.message:
         return _failed("TOOL_TIMEOUT")
     wants_route = any(keyword in request.message for keyword in ("귀가", "돌아가", "가는 길"))
@@ -143,14 +144,14 @@ def complete_run(request: AssistantRequest, *, in_process_routes: bool = True) -
     db_mode = uses_festival_db()
     festival_id = request.context.festival_id
     if festival_id is None and db_mode:
-        page = festival_store.list_festivals(FestivalQuery(status="ongoing", page_size=1))
+        page = await festival_store.list_festivals(FestivalQuery(status="ongoing", page_size=1))
         festival_id = page.items[0].festival_id if page.items else None
     elif not db_mode:
         festival_id = festival_id if wants_route and festival_id else _MOCK_FESTIVAL_ID
     if wants_route and festival_id is not None:
-        return _complete_route_run(festival_id)
+        return await _complete_route_run(festival_id)
 
-    festival = find_festival(festival_id) if festival_id is not None else None
+    festival = await find_festival(festival_id) if festival_id is not None else None
     answer = "현재 안내할 수 있는 축제가 없어요.(모의)"
     evidence: list[dict[str, str]] = []
     if festival is not None:
@@ -169,9 +170,9 @@ def complete_run(request: AssistantRequest, *, in_process_routes: bool = True) -
     }
 
 
-def _complete_route_run(festival_id: str) -> dict[str, object]:
+async def _complete_route_run(festival_id: str) -> dict[str, object]:
     try:
-        route_id, route_token = create_ready_route(festival_id, "서울역")
+        route_id, route_token = await create_ready_route(festival_id, "서울역")
     except ApiError as error:
         # 형식이 맞는 축제 ID도 경로를 만들 수 없는 경우가 있다.
         return _failed(error.code)

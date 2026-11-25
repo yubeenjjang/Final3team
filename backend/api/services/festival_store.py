@@ -1,15 +1,13 @@
-import os
-from collections.abc import Mapping
 from datetime import date, datetime
-from functools import lru_cache
 
-from sqlalchemy import URL, Engine, RowMapping, case, create_engine, func, or_, select
+from sqlalchemy import RowMapping, case, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from api.ingestion.festivals.normalize import FESTIVAL_CATEGORY, FESTIVAL_CLASS, KST
 from api.ingestion.festivals.store import FESTIVAL_SOURCES, FESTIVALS, SOURCE_ID
 from api.schemas.festivals import FestivalDetail, FestivalListItem, FestivalPage, FestivalQuery
 from api.services.admin_festivals import ADMIN_IMAGE_CREDIT, ADMIN_SOURCE_ID
+from shared.db.session import user_db_session
 
 _F = FESTIVALS.c
 _SOURCE = FESTIVAL_SOURCES.c
@@ -38,35 +36,6 @@ _IS_ADMIN_SOURCE = (
     .exists()
     .label("is_admin_source")
 )
-
-
-def get_app_db_url(environ: Mapping[str, str]) -> URL:
-    password = environ.get("DB_USER_PASSWORD")
-    if not password:
-        raise RuntimeError("DB_USER_PASSWORD를 설정해 주세요.")
-    try:
-        port = int(environ.get("DB_PORT", "5432"))
-    except ValueError:
-        raise RuntimeError("DB_PORT는 숫자여야 합니다.") from None
-    if not 1 <= port <= 65535:
-        raise RuntimeError("DB_PORT는 1부터 65535 사이여야 합니다.")
-    return URL.create(
-        "postgresql+psycopg",
-        username=environ.get("DB_USER_USERNAME", "noldaga_app"),
-        password=password,
-        host=environ.get("DB_HOST", "127.0.0.1"),
-        port=port,
-        database=environ.get("DB_NAME", "noldaga"),
-    )
-
-
-def get_festival_engine() -> Engine:
-    return _create_engine(get_app_db_url(os.environ))
-
-
-@lru_cache(maxsize=1)
-def _create_engine(url: URL) -> Engine:
-    return create_engine(url, hide_parameters=True, isolation_level="REPEATABLE READ")
 
 
 def _event_status(today: date) -> ColumnElement[str]:
@@ -120,37 +89,41 @@ def _response_values(row: RowMapping) -> dict[str, object]:
     return values
 
 
-def list_festivals(query: FestivalQuery) -> FestivalPage:
-    with get_festival_engine().begin() as connection:
+async def list_festivals(query: FestivalQuery) -> FestivalPage:
+    async with user_db_session(user_id=None) as db:
+        # Set isolation before the session checks out a connection or runs its first query.
+        await db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
         status = _event_status(datetime.now(KST).date())
         filters = _filters(query, status)
-        total = connection.execute(
+        count = await db.execute(
             select(func.count()).select_from(FESTIVALS).where(*filters)
-        ).scalar_one()
+        )
+        total = count.scalar_one()
         offset = (query.page - 1) * query.page_size
         items: list[FestivalListItem] = []
         if offset < total:
-            rows = connection.execute(
+            page = await db.execute(
                 select(*_list_columns(status))
                 .where(*filters)
                 .order_by(_SORT_ORDERS[query.sort], _F.festival_id)
                 .offset(offset)
                 .limit(query.page_size)
-            ).mappings()
-            items = [FestivalListItem.model_validate(_response_values(row)) for row in rows]
+            )
+            items = [FestivalListItem.model_validate(_response_values(row)) for row in page.mappings()]
     return FestivalPage(items=items, total=total, page=query.page, page_size=query.page_size, is_mock=False)
 
 
-def get_festival(festival_id: str) -> FestivalDetail | None:
-    with get_festival_engine().begin() as connection:
+async def get_festival(festival_id: str) -> FestivalDetail | None:
+    async with user_db_session(user_id=None) as db:
         status = _event_status(datetime.now(KST).date())
-        row = connection.execute(
+        result = await db.execute(
             select(
                 *_list_columns(status), _F.address, _F.summary.label("overview"),
                 _F.admission_fee_text.label("fee_text"), _F.official_url.label("homepage_url"),
                 _F.image_copyright_type, _SOURCE_REF,
             ).where(*_PUBLIC, _F.festival_id == festival_id)
-        ).mappings().one_or_none()
+        )
+        row = result.mappings().one_or_none()
     if row is None:
         return None
 

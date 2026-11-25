@@ -104,7 +104,6 @@ def test_I11_detail_error_keeps_saved_details_and_can_retry() -> None:
 def test_I19_reclassifies_legacy_rows_with_cached_details_and_is_idempotent(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
     payload = listing()
     body = payload["response"]["body"]
     items = body["items"]["item"]
@@ -187,7 +186,6 @@ def test_I19_reclassifies_legacy_rows_with_cached_details_and_is_idempotent(
 def test_I11_collect_db_refetches_only_changed_item(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
     payload = listing()
     items = payload["response"]["body"]["items"]["item"]
     handler = mock_responses(payload)
@@ -216,7 +214,6 @@ def test_I11_collect_db_refetches_only_changed_item(
 def test_I10_collect_list_error_records_failed_job(
     db_engine: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(collect, "create_ingestion_engine", lambda: db_engine)
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path.endswith("/searchFestival2")

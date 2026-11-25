@@ -1,3 +1,4 @@
+import asyncio
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -323,7 +324,7 @@ def test_R13_route_ids_are_only_available_in_their_direction(client: TestClient)
 
 
 def test_R12_ready_route_helper_registers_a_queryable_route(client: TestClient) -> None:
-    route_id, token = create_ready_route("fst_000001", "서울역")
+    route_id, token = asyncio.run(create_ready_route("fst_000001", "서울역"))
     response = client.get(f"{_RETURN}/{route_id}", headers={_TOKEN_HEADER: token})
     ready = _success(response, 200)
     assert ready["route_status"] == "ready"

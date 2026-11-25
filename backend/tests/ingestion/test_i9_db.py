@@ -1,7 +1,10 @@
+import asyncio
+
 import pytest
 
 from api.ingestion.db import IngestionDBError, create_ingestion_engine
-from api.services.festival_store import get_festival_engine
+from shared.config import DBSettings
+from shared.db.connection import create_user_engine
 
 TEST_PASSWORD = "TEST_KEY_DO_NOT_USE"
 
@@ -42,13 +45,12 @@ def test_I9_missing_password_has_safe_error(monkeypatch: pytest.MonkeyPatch) -> 
         create_ingestion_engine()
 
 
-def test_festival_engine_uses_configured_user_role(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DB_USER_USERNAME", "test_app")
-    monkeypatch.setenv("DB_USER_PASSWORD", TEST_PASSWORD)
-    monkeypatch.setenv("DB_PORT", "5432")
-    engine = get_festival_engine()
+def test_shared_user_engine_uses_app_credentials() -> None:
+    engine = create_user_engine(DBSettings(
+        "test.invalid", 5432, "test_db", "test_app", TEST_PASSWORD, "test_service", "fixture-service-password",
+    ))
     try:
         assert engine.url.username == "test_app"
-        assert engine.hide_parameters
+        assert TEST_PASSWORD not in repr(engine.url)
     finally:
-        engine.dispose()
+        asyncio.run(engine.dispose())

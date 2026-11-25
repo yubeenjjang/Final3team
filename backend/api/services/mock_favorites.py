@@ -17,11 +17,14 @@ def _user_id(authorization: str | None, now: datetime) -> str:
     return session.user_id
 
 
-def save_favorite(authorization: str | None, festival_id: str) -> tuple[FavoriteSave, bool]:
+async def save_favorite(authorization: str | None, festival_id: str) -> tuple[FavoriteSave, bool]:
+    with auth_lock:
+        _user_id(authorization, datetime.now(timezone.utc))
+    festival = await find_festival(festival_id)
     with auth_lock:
         now = datetime.now(timezone.utc)
         user_id = _user_id(authorization, now)
-        if find_festival(festival_id) is None:
+        if festival is None:
             raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없습니다.")
         saved = favorites_by_user.setdefault(user_id, {})
         record = saved.get(festival_id)
@@ -40,15 +43,15 @@ def delete_favorite(authorization: str | None, festival_id: str) -> None:
             saved.pop(festival_id, None)
 
 
-def list_favorites(authorization: str | None, query: FavoritesQuery) -> FavoritesPage:
+async def list_favorites(authorization: str | None, query: FavoritesQuery) -> FavoritesPage:
     with auth_lock:
         user_id = _user_id(authorization, datetime.now(timezone.utc))
-        saved = favorites_by_user.get(user_id, {})
-        entries = [
-            (festival, record)
-            for festival_id, record in saved.items()
-            if (festival := find_festival(festival_id)) is not None
-        ]
+        saved = tuple(favorites_by_user.get(user_id, {}).items())
+    entries = [
+        (festival, record)
+        for festival_id, record in saved
+        if (festival := await find_festival(festival_id)) is not None
+    ]
 
     entries.sort(key=lambda entry: entry[1].sequence, reverse=True)
     if query.sort == "start_date":

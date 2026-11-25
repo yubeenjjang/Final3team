@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import Engine, text
 
 from api.ingestion.db import create_ingestion_engine
+from shared.db import session as sessions
 
 
 @pytest.fixture(autouse=True)
@@ -13,7 +14,7 @@ def clear_geocoding_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def db_engine() -> Iterator[Engine]:
+def db_engine(monkeypatch: pytest.MonkeyPatch) -> Iterator[Engine]:
     url = os.environ.get("TEST_DB_URL")
     if not url:
         pytest.skip("일회용 DB의 TEST_DB_URL이 없습니다.")
@@ -39,6 +40,7 @@ def db_engine() -> Iterator[Engine]:
                     "ingestion_jobs",
                 ):
                     connection.execute(text(f"DELETE FROM {table}"))
+        monkeypatch.setattr(sessions, "_service_engine", lambda: engine)
         yield engine
     finally:
         engine.dispose()

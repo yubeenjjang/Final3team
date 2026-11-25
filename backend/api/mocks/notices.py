@@ -4,6 +4,10 @@ from datetime import datetime
 from threading import Lock
 from uuid import UUID
 
+from anyio import from_thread
+
+from api.mocks.store import get_public_mock_festival
+from api.routers.festivals.catalog import uses_festival_db
 from api.schemas.festival_info import Notice, NoticeType
 from api.schemas.notices import NoticeCreate, NoticeUpdate
 from api.services.festival_lookup import find_festival
@@ -98,7 +102,14 @@ class MemoryNoticeStore:
 
     @staticmethod
     def _check_festival(festival_id: str | None) -> None:
-        if festival_id is not None and find_festival(festival_id) is None:
+        if festival_id is None:
+            return
+        # Sync admin routes run in AnyIO workers. Use the API loop for pooled DB reads.
+        if uses_festival_db():
+            festival = from_thread.run(find_festival, festival_id)
+        else:
+            festival = get_public_mock_festival(festival_id)
+        if festival is None:
             raise festival_not_found()
 
     def _public(

@@ -15,7 +15,7 @@ from sqlalchemy import Engine, create_engine, event, text
 from api.ingestion.db import create_ingestion_engine
 from api.main import app
 from api.repositories.route_store import TOKEN_TTL, RouteStore, token_hash
-from api.services import festival_store, real_routes
+from api.services import real_routes
 from shared.db import session as db_sessions
 from tests.routes.test_p9_real_routes import Clock, FakeProvider, FakeQuota
 
@@ -86,13 +86,13 @@ def use_service_session(route_engine, monkeypatch):
     return RouteStore()
 
 
-def use_db(route_engine, app_engine, monkeypatch, clock, tmap, kakao):
+def use_db(route_engine, app_engine, monkeypatch, use_user_db, clock, tmap, kakao):
     store = use_service_session(route_engine, monkeypatch)
     monkeypatch.setenv("ROUTE_PROVIDER", "real")
     monkeypatch.setenv("ROUTE_STORE", "db")
     monkeypatch.setenv("FESTIVAL_DATA", "db")
     monkeypatch.setenv("ROUTE_KEY_SECRET", "TEST_KEY_DO_NOT_USE")
-    monkeypatch.setattr(festival_store, "get_festival_engine", lambda: app_engine)
+    use_user_db(app_engine.url)
     monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 0.4)
 
     def service():
@@ -114,10 +114,10 @@ def body_for(festival_id):
     }
 
 
-def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, festival_id, monkeypatch):
+def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, festival_id, monkeypatch, use_user_db):
     clock = Clock()
     tmap = FakeProvider("tmap", clock, gate=Event())
-    _, new_service = use_db(route_engine, app_engine, monkeypatch, clock, tmap, FakeProvider("kakao", clock))
+    _, new_service = use_db(route_engine, app_engine, monkeypatch, use_user_db, clock, tmap, FakeProvider("kakao", clock))
     body = body_for(festival_id)
     with TestClient(app) as client:
         listing = client.get("/api/v1/festivals", params={"q": festival_id}).json()
@@ -202,10 +202,10 @@ def test_P18_db_a02_a03_a04_a05_status_and_expiry(route_engine, app_engine, fest
         assert len(tmap.queries) == 1
 
 
-def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, festival_id, monkeypatch):
+def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, festival_id, monkeypatch, use_user_db):
     clock = Clock()
     tmap = FakeProvider("tmap", clock, gate=Event())
-    use_db(route_engine, app_engine, monkeypatch, clock, tmap, FakeProvider("kakao", clock))
+    use_db(route_engine, app_engine, monkeypatch, use_user_db, clock, tmap, FakeProvider("kakao", clock))
     with TestClient(app) as client:
         try:
             submitted = client.post(_RETURN, json=body_for(festival_id))
@@ -244,9 +244,9 @@ def test_P18_db_ready_request_without_restored_result(route_engine, app_engine, 
         assert "route_candidates" not in restored
 
 
-def test_P18_db_kakao_has_no_result_row(route_engine, app_engine, festival_id, monkeypatch):
+def test_P18_db_kakao_has_no_result_row(route_engine, app_engine, festival_id, monkeypatch, use_user_db):
     clock = Clock()
-    use_db(route_engine, app_engine, monkeypatch, clock, FakeProvider("tmap", clock, error="temporary"),
+    use_db(route_engine, app_engine, monkeypatch, use_user_db, clock, FakeProvider("tmap", clock, error="temporary"),
            FakeProvider("kakao", clock))
     monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
     with TestClient(app) as client:
@@ -270,9 +270,9 @@ def test_P18_db_kakao_has_no_result_row(route_engine, app_engine, festival_id, m
     assert row == ("unavailable", "ROUTE_SECONDARY_SYNC_ONLY", None)
 
 
-def test_P18_db_sweeper_clears_cached_api_result_at_23h(route_engine, app_engine, festival_id, monkeypatch):
+def test_P18_db_sweeper_clears_cached_api_result_at_23h(route_engine, app_engine, festival_id, monkeypatch, use_user_db):
     clock = Clock()
-    store, _ = use_db(route_engine, app_engine, monkeypatch, clock, FakeProvider("tmap", clock),
+    store, _ = use_db(route_engine, app_engine, monkeypatch, use_user_db, clock, FakeProvider("tmap", clock),
                       FakeProvider("kakao", clock))
     monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
     with TestClient(app) as client:
@@ -374,12 +374,14 @@ def test_P18_db_sweeper_counts_and_purges_only_expired_tmap(route_engine, festiv
     assert result_state(expired_id).result_purged_at == clock.now
 
 
-def test_a3_db_route_rows_exclude_raw_places_before_and_after_purge(route_engine, festival_id, monkeypatch):
+def test_a3_db_route_rows_exclude_raw_places_before_and_after_purge(
+    route_engine, app_engine, festival_id, monkeypatch, use_user_db,
+):
     clock = Clock()
     kakao = FakeProvider("kakao", clock)
     place_query = "synthetic-private-place"
     monkeypatch.setattr(kakao, "search_place", lambda query: (37.234512, 126.876512, place_query))
-    store, _ = use_db(route_engine, route_engine, monkeypatch, clock, FakeProvider("tmap", clock), kakao)
+    store, _ = use_db(route_engine, app_engine, monkeypatch, use_user_db, clock, FakeProvider("tmap", clock), kakao)
     monkeypatch.setattr(real_routes, "_SYNC_WAIT_S", 3)
     point = {"lat": 37.123412, "lng": 126.789112}
     place = {"query": place_query}

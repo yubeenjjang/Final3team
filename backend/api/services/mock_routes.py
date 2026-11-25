@@ -3,6 +3,8 @@ import secrets
 import string
 from datetime import datetime, timedelta, timezone
 
+from starlette.concurrency import run_in_threadpool
+
 from api.errors import ApiError
 from api.mocks.store import RouteRecord, route_lock, route_request_keys, route_requests
 from api.schemas.festivals import FestivalDetail
@@ -83,11 +85,9 @@ def _register_route(
     request: RouteRequest,
     body: dict[str, object],
     scenario: str,
+    festival: FestivalDetail,
 ) -> RouteRecord:
     with route_lock:
-        festival = find_festival(request.festival_id)
-        if festival is None:
-            raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없어요.")
         _validate_endpoints(request, festival)
 
         submitted_body = json.dumps(body, sort_keys=True)
@@ -123,13 +123,24 @@ def _register_route(
         return record
 
 
-def create_route(
+async def create_route(
     direction: RouteDirection,
     request: RouteRequest,
     body: dict[str, object],
     scenario: str,
 ) -> tuple[int, dict[str, object]]:
-    record = _register_route(direction, request, body, scenario)
+    festival = await _route_festival(request.festival_id)
+    return await run_in_threadpool(_create_route, direction, request, body, scenario, festival)
+
+
+def _create_route(
+    direction: RouteDirection,
+    request: RouteRequest,
+    body: dict[str, object],
+    scenario: str,
+    festival: FestivalDetail,
+) -> tuple[int, dict[str, object]]:
+    record = _register_route(direction, request, body, scenario, festival)
     control = control_reader().snapshot(record.festival.festival_id)
     if record.control_version != control.version:
         return 200, _control_changed(record, control)
@@ -147,13 +158,23 @@ def create_route(
     }
 
 
-def create_ready_route(festival_id: str, destination_query: str) -> tuple[str, str]:
+async def _route_festival(festival_id: str) -> FestivalDetail:
+    festival = await find_festival(festival_id)
+    if festival is None:
+        raise ApiError(404, "FESTIVAL_NOT_FOUND", "축제를 찾을 수 없어요.")
+    return festival
+
+
+async def create_ready_route(festival_id: str, destination_query: str) -> tuple[str, str]:
     request = ReturnRouteRequest(
         request_id=_new_id("req_"),
         festival_id=festival_id,
         destination=PlaceEndpoint(query=destination_query),
     )
-    record = _register_route("return", request, request.model_dump(mode="json"), "sync_ready")
+    festival = await _route_festival(festival_id)
+    record = await run_in_threadpool(
+        _register_route, "return", request, request.model_dump(mode="json"), "sync_ready", festival,
+    )
     return record.route_request_id, record.access_token
 
 

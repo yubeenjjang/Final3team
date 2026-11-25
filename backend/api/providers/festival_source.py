@@ -112,6 +112,7 @@ class FestivalSource:
         self, source: QuotaProvider, endpoint: str, parse: Callable[[dict[str, Any]], T] | None = None, *,
         params: dict[str, str | int | float] | None = None, key_env: str = DATA_KEY,
         key_param: str = "serviceKey", parse_xml: Callable[[ElementTree.Element], T] | None = None,
+        timeout_s: float = _TIMEOUT_S, retry: bool = True,
     ) -> T:
         raw_key = os.environ.get(key_env, "").strip()
         if not raw_key:
@@ -125,18 +126,19 @@ class FestivalSource:
 
         for attempt in range(2):
             try:
-                response = await self._send(source, url, params)
+                response = await self._send(source, url, params, timeout_s)
                 return self._parse(response, parse, parse_xml)
             except FestivalSourceError as exc:
                 delay = exc.retry_delay if exc.retry_delay is not None else _RETRY_DELAY_S
                 # 긴 Retry-After는 요청을 붙들지 않고 호출자에게 일시 오류를 반환한다.
-                if attempt or not exc.error.retryable or delay > _TIMEOUT_S:
+                if not retry or attempt or not exc.error.retryable or delay > timeout_s:
                     raise
             await asyncio.sleep(delay)
         raise AssertionError("외부 조회 시도가 끝났습니다.")
 
     async def _send(
         self, source: QuotaProvider, url: str, params: dict[str, str | int | float] | None,
+        timeout_s: float,
     ) -> httpx2.Response:
         try:
             acquired = await asyncio.to_thread(lambda: self._quota.try_acquire(source))
@@ -146,9 +148,9 @@ class FestivalSource:
             raise FestivalSourceError("오늘 공급원 조회 한도를 다 썼어요.", retryable=False)
         with private_transport_logs():
             try:
-                async with asyncio.timeout(_TIMEOUT_S):
+                async with asyncio.timeout(timeout_s):
                     async with httpx2.AsyncClient(
-                        transport=self._transport, trust_env=False, timeout=_TIMEOUT_S,
+                        transport=self._transport, trust_env=False, timeout=timeout_s,
                     ) as client:
                         return await client.get(url, params=params, follow_redirects=False)
             except (TimeoutError, httpx2.TimeoutException):

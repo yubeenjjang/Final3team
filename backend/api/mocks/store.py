@@ -1,3 +1,4 @@
+from asyncio import Lock as AsyncLock
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -56,6 +57,7 @@ class AssistantRun:
     started_at: str | None = None
     ended_at: str | None = None
     outcome: dict[str, object] | None = field(default=None, repr=False)
+    progress_lock: AsyncLock = field(default_factory=AsyncLock, repr=False, compare=False)
 
 
 @dataclass(frozen=True)

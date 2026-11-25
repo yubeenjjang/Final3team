@@ -13,7 +13,7 @@ import httpx2
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from api.ingestion.db import IngestionDBError, create_ingestion_engine
+from api.ingestion.db import IngestionDBError
 from api.ingestion.festivals.normalize import (
     KST, FestivalRecord, normalize_festival, source_item_id, source_version,
 )
@@ -22,6 +22,7 @@ from api.jobs.locks import FESTIVALS
 from api.providers.kakao import KakaoClient
 from api.providers.route_base import ProviderError
 from api.providers.tourapi import TourApiClient, TourApiError
+from shared.db.session import service_db_session
 
 DETAIL_CALL_LIMIT = 900
 DETAIL_ENDPOINTS = ("detailCommon2", "detailIntro2")
@@ -178,12 +179,15 @@ def _collect(
             if args.db:
                 engine = locked_engine
                 if engine is None:
-                    engine = create_ingestion_engine()
-                    stack.callback(engine.dispose)
-                    lock = stack.enter_context(engine.begin())
+                    try:
+                        lock = stack.enter_context(service_db_session())
+                    except ValueError:
+                        raise IngestionDBError("공통 DB 접속 설정을 확인해 주세요.") from None
                     if not lock.scalar(FESTIVALS):
                         print("축제 수집 작업이 이미 실행 중입니다.", file=sys.stderr)
                         return 3, None
+                    # Store operations keep their own commits while the lock transaction stays open.
+                    engine = lock.get_bind()
                 store = FestivalStore(engine)
             if args.out is not None:
                 args.out.mkdir(parents=True, exist_ok=True)
