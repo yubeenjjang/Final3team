@@ -1,0 +1,27 @@
+{
+  "name": "get_official_notices",
+  "description": "축제의 공식 운영 공지와 교통 통제(무정차·우회·도로 통제)를 본다. 귀가 경로에 영향이 있는지 확인할 때 쓴다. 공지가 없으면 '확인할 수 있는 공지가 없다'고 답한다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "festival_id": {
+        "type": "string",
+        "description": "축제 ID"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "operation",
+          "traffic_control",
+          "no_stop",
+          "bus_detour",
+          "road_closure"
+        ]
+      }
+    },
+    "required": [
+      "festival_id"
+    ],
+    "additionalProperties": false
+  }
+}
