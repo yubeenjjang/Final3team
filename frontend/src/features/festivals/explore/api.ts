@@ -1,5 +1,6 @@
 import { apiGet } from "@/lib/api/client";
 import type { components, operations } from "@/lib/api/schema";
+import { listMockFestivals } from "./mockFestivals";
 
 export type FestivalListItem = components["schemas"]["FestivalListItem"];
 export type FestivalPage = components["schemas"]["FestivalPage"];
@@ -17,6 +18,13 @@ export function listFestivals(
   query: ListFestivalsQuery,
   signal?: AbortSignal,
 ): Promise<FestivalPage> {
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_USE_MOCK_FESTIVALS === "1"
+  ) {
+    return Promise.resolve(listMockFestivals(query));
+  }
+
   return apiGet<FestivalPage>("/festivals", {
     query: {
       region: query.region,

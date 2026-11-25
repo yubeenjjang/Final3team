@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FestivalCard } from "./FestivalCard";
+import { FestivalCarousel } from "./FestivalCarousel";
 import { listFestivals, type FestivalListItem } from "./api";
 
 export function FeaturedFestivals({
@@ -66,11 +66,7 @@ export function FeaturedFestivals({
           진행 중인 축제가 없어요.
         </div>
       ) : (
-        <div className="no-scrollbar -mx-4 flex touch-pan-x snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
-          {items.map((item) => (
-            <FestivalCard key={item.festival_id} item={item} className="festival-carousel-card snap-start" />
-          ))}
-        </div>
+        <FestivalCarousel items={items} ariaLabel={title} />
       )}
     </section>
   );

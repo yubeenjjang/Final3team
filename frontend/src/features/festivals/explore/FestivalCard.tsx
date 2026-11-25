@@ -53,7 +53,7 @@ export function FestivalCard({
                 className="bg-ink/5 object-cover object-center transition-transform duration-200 group-hover:scale-[1.02]"
               />
               <span className="absolute bottom-1 right-1 rounded-chip bg-ink/55 px-1.5 py-0.5 text-[7px] font-medium text-surface/80 backdrop-blur-sm">
-                출처: 한국관광공사
+                출처: {item.image_credit ?? "제공 이미지"}
               </span>
             </>
           ) : (
@@ -76,7 +76,11 @@ export function FestivalCard({
           </div>
         </div>
       </Link>
-      <FavoriteButton festivalId={item.festival_id} className="absolute right-1.5 top-1.5 z-10" />
+      <FavoriteButton
+        festivalId={item.festival_id}
+        appearance="icon"
+        className="absolute right-0 top-0 z-10"
+      />
     </div>
   );
 }

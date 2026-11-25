@@ -218,6 +218,9 @@ describe("F6 festival explore", () => {
     const image = screen.getByAltText("첫 번째 축제");
     expect(image.className).toContain("object-cover");
     expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
+    const favoriteButton = screen.getByRole("button", { name: "찜하기" });
+    expect(favoriteButton.className).toContain("bg-transparent");
+    expect(favoriteButton.className).not.toContain("rounded-chip");
 
     fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
     await waitFor(() => {

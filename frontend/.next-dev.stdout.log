@@ -92,3 +92,22 @@
  GET /map 200 in 29ms (next.js: 3ms, application-code: 26ms)
  GET /routes/return 200 in 31ms (next.js: 3ms, application-code: 28ms)
  GET /companions 200 in 25ms (next.js: 3ms, application-code: 22ms)
+ GET /companions 200 in 81ms (next.js: 3ms, application-code: 78ms)
+  Reload env: .env.local
+ GET / 200 in 314ms (next.js: 121ms, application-code: 194ms)
+ GET /festivals 200 in 88ms (next.js: 17ms, application-code: 71ms)
+ GET / 200 in 49ms (next.js: 4ms, application-code: 45ms)
+✓ Compiled in 101ms
+✓ Compiled in 88ms
+ GET /festivals 200 in 63ms (next.js: 8ms, application-code: 55ms)
+ GET /companions 200 in 40ms (next.js: 15ms, application-code: 26ms)
+ GET /routes/return 200 in 45ms (next.js: 12ms, application-code: 33ms)
+ GET /map 200 in 41ms (next.js: 13ms, application-code: 27ms)
+ GET / 200 in 28ms (next.js: 5ms, application-code: 22ms)
+✓ Compiled in 99ms
+✓ Compiled in 107ms
+ GET / 200 in 105ms (next.js: 6ms, application-code: 100ms)
+ GET /festivals 200 in 66ms (next.js: 4ms, application-code: 62ms)
+ GET /festivals 200 in 48ms (next.js: 8ms, application-code: 41ms)
+ GET / 200 in 24ms (next.js: 3ms, application-code: 22ms)
+ GET /festivals/all 200 in 52ms (next.js: 14ms, application-code: 39ms)

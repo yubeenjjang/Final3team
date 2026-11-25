@@ -6,7 +6,7 @@ import { RotateCcw, Search, X } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
-import { FestivalCard } from "./FestivalCard";
+import { FestivalCarousel } from "./FestivalCarousel";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
 import {
   REGION_OPTIONS,
@@ -300,10 +300,7 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
                 </div>
                 <Link href="/festivals/all" className="shrink-0 text-xs font-bold text-muted hover:text-brand">전체보기 ›</Link>
               </div>
-              <div className="no-scrollbar -mx-4 flex touch-pan-x snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
-                {section.items.map((item) => <FestivalCard key={`${section.title}-${item.festival_id}`} item={item} className="festival-carousel-card snap-start" />)}
-              </div>
-              <div className="flex justify-center gap-2"><span className="h-2 w-2 rounded-chip bg-brand" /><span className="h-2 w-2 rounded-chip bg-brand/25" /><span className="h-2 w-2 rounded-chip bg-brand/25" /></div>
+              <FestivalCarousel items={section.items} ariaLabel={section.title} />
             </section>
           ))}
 

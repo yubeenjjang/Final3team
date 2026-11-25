@@ -29,6 +29,7 @@
 - `NEXT_PUBLIC_API_BASE`: 기본값 `http://localhost:8000/api/v1`
 - `NEXT_PUBLIC_KAKAO_JS_KEY`: 카카오 지도 JavaScript 키(비워 두면 지도 자리에 안내 문구 표시)
 - `NEXT_PUBLIC_SHOW_MOCK_TOOLS`: `1`이면 개발용 모의 시나리오 도구 표시
+- `NEXT_PUBLIC_USE_MOCK_FESTIVALS`: `1`이면 개발 서버에서 디자인 확인용 로컬 축제 데이터 사용
 
 ### 2. 모의 API 서버와 개발 서버 함께 띄우기
 
