@@ -21,7 +21,9 @@ from starlette.websockets import WebSocketDisconnect
 
 from api.auth import state, tokens
 from api.ingestion.db import create_ingestion_engine
+from api.jobs import reapply_withdrawals
 from api.realtime import chat_socket
+from api.services import withdrawal_log
 from shared.db import session as sessions
 
 from .test_chat import ROOMS, connect_url, send, subscribe
@@ -227,3 +229,36 @@ def test_a82_password_change_postgres(client, w82):
     assert client.post(f"{AUTH}/login", json=credentials).status_code == 401
     fresh, _, _ = login(client, {**credentials, "password": new})
     assert client.get(PROFILE, headers=fresh).status_code == 200
+
+
+def test_withdrawal_log_reapplies_cleanup_after_restore(client, w82):
+    """DB 설계서 7-0 ⑥: 탈퇴 전 백업으로 되돌려도 탈퇴 기록으로 다시 정리한다."""
+    engine, key, uids = w82
+    mine, my_id, _ = _signup(client, uids, "r" + key)
+    assert client.request("DELETE", ME, headers=mine, json={"password": PASSWORD}).status_code == 204
+    assert [user for user, _ in withdrawal_log.entries()] == [my_id]
+
+    # 탈퇴 전 백업을 복원한 상태를 흉내 낸다: 계정·닉네임·Refresh가 되살아남.
+    with engine.begin() as db:
+        db.execute(text("""
+            UPDATE public.users SET status = 'active', email = :email, password_hash = 'restored'
+            WHERE user_id = :id
+        """), {"id": my_id, "email": f"r{key}@example.test"})
+        db.execute(text("UPDATE public.profiles SET display_name = :name WHERE user_id = :id"),
+                   {"id": my_id, "name": "r" + key})
+        db.execute(text("""
+            INSERT INTO public.refresh_tokens (token_id, user_id, token_hash, expires_at)
+            VALUES (:tid, :id, :hash, now() + interval '1 day')
+        """), {"tid": "rt_" + uuid4().hex[:26], "id": my_id, "hash": uuid4().hex})
+
+    assert reapply_withdrawals.reapply(dry_run=True)["reapplied"] == 1
+    with engine.connect() as db:
+        assert db.scalar(text("SELECT status FROM public.users WHERE user_id = :id"), {"id": my_id}) == "active"
+    assert reapply_withdrawals.reapply() == {"entries": 1, "reapplied": 1, "already_deleted": 0, "missing": 0}
+    with engine.connect() as db:
+        assert db.execute(text("""
+            SELECT u.status, u.email, p.display_name,
+                   (SELECT count(*) FROM public.refresh_tokens t WHERE t.user_id = u.user_id)
+            FROM public.users u JOIN public.profiles p USING (user_id) WHERE u.user_id = :id
+        """), {"id": my_id}).one() == ("deleted", f"deleted+{my_id}@invalid", None, 0)
+    assert reapply_withdrawals.reapply()["already_deleted"] == 1

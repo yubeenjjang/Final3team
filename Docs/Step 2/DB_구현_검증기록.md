@@ -10,6 +10,7 @@
 |---|---|
 | 진행 단계 | ☑ 초안 작성(11/19) → ☑ 팀 검토 완료(11/19) → ☑ GitHub 정본 업로드(v0.3.1, 11/19 `91b3337`) → ☑ v0.3.2 교체(11/20 12:32 `41c66a5`) → ☑ v0.3.3 교체 + `db/` 폴더 업로드(11/20 16:24 신유빈 `e8aecb4`) → ☑ **v0.4 작성(11/23, 강사 11/20 피드백 반영)** → ☑ v0.5 팀 결정 반영(11/24) → ☐ v0.5 GitHub 정본 교체(`ohyun` 병합) → ☐ 대시보드 링크·제출·접수 상태 팀 확인 대기 |
 | 001 DDL 적용 기록 | `db/001_schema_v0.3.1.sql`은 운영과 같은 Docker 이미지(`pgvector/pgvector:pg17`)로 실행 확인(기록 10절), AWS 서버에서는 미실행. 실제 적용(WBS W17)은 마이그레이션 001번으로 하고 적용·되돌리기 로그를 증빙으로 남김(v0.6 부록 머리말에서 옮김) |
+| 탈퇴 기록 위치(7-0 ⑥) | 로컬·시험: 기본 `~/.local/state/noldaga/withdrawals.jsonl`(시험은 임시 파일). 학원 노트북: `/state/withdrawals.jsonl`(DB 볼륨과 다른 `~/noldaga-state`). AWS: W65 때 신유빈이 DB 볼륨·백업과 다른 위치를 정해 여기에 적음 |
 | 대조 기준 | 11/25 로컬 SQL·DB 시험 기준 코드 커밋은 `ohyun` `788260e`(시험 환경·명령·결과는 [API 구현·검증 기록 17-6](API_구현_검증기록.md#17-6-서울빛초롱축제-같은-id-검색상세혼잡-연속-실행1125-강사-1124-피드백-2)절). 11/27 제출 기준 커밋은 `main` 병합 뒤 신유빈이 고정 |
 | **SQL 실행 확인** | 로컬 PostgreSQL 17 + pgvector에서 001~028 적용(11/24, `719484d` 이후). 실행기 출력 PASS 표기 265줄(개별 시험 PASS 260건 + 요약 5줄), FAIL 0. [기록 10](DB_구현_검증기록.md#10-실행-확인-기록-2026-11-23-밤-로컬-기록-포함)·10-A절 및 [11/24 SQL 로그](db/results_2026-11-24.log) 참조. AWS 시험은 W65(12/07~10, 신유빈 담당) |
 
@@ -341,3 +342,10 @@
 | 7-1 권한: 005·007 RLS·GRANT 로컬 검증(T29~T41), 1:1 새 방 개설 구현(016·021), API 함께 권한 검증은 W128 |
 | 7-2 채팅 열람: A77 시험 `test_notify_postgres.py`, T40c·T022 |
 | 2절 임베딩 모델 근거·시험: 근거: [RAG 샘플 검색 준비](https://github.com/yubeenjjang/Final3team/blob/dayoung/Docs/Step%202/RAG_공식축제문서_샘플검색_준비.md)(`dayoung`). 확인 결과: 별도 pgvector DB(`pgvector/pgvector:pg17` 일회용 `rag_scratch`)에서 실제 OpenAI `text-embedding-3-small`·1024차원 임베딩과 HNSW 코사인 검색·필터 시험 **10/10 통과**(한다영 `dayoung` `bd9a014`·`feabaf5`, 11/24): 정상 질문 Q01~Q04는 선택 축제의 문서가 1위(서울빛초롱축제·청계천의 빛), Q05·Q06은 다른 축제 문서가 축제 ID 필터로 제외, Q07은 만료 문서 제외, 미승인 문서는 검색 제외, 같은 문서 중복 적재 없음([시험 기록](https://github.com/yubeenjjang/Final3team/blob/dayoung/Docs/Step%202/RAG_공식축제문서_샘플검색_준비.md)). 서비스 DB 적재·검색 API·답변 생성과 근거 부족 시 보류 판단은 W27 구현 범위(한다영) |
+
+## 23. 탈퇴 기록 재정리 시험 (11/25)
+
+| 시험 | 결과 |
+|---|---|
+| `backend/tests/api/test_withdrawal_log.py` 3개 — 추가·읽기·8일 보존 정리, 개인정보 없음, 읽을 수 없는 줄 보존, 쓰기 실패 시 False, 정기 작업 등록 | 통과(오프라인 640) |
+| `test_w82_session_privacy_postgres.py::test_withdrawal_log_reapplies_cleanup_after_restore` — 탈퇴 → 탈퇴 전 상태로 되돌림(계정·닉네임·Refresh) → `--dry-run` 1건·변경 없음 → 재정리 1건(이메일 덮어쓰기·닉네임 NULL·Refresh 0) → 다시 실행하면 `already_deleted` | 통과(일회용 DB 64/64) |
