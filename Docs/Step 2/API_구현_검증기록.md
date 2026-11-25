@@ -844,3 +844,24 @@ AWS에서는 아직 실행하지 않았습니다(W65, AWS 환경 신유빈 관�
 | 4절 Festival Agent 대조: 11/24 `origin/dayoung` 브랜치 기준으로 대조함 |
 | 7-12 A02 `status` 여러 값: 11/23 추가, 시험 `backend/tests/api/test_i13_multi_status.py` |
 | 7-15 A29: 학원 노트북 실데이터 응답 확인(0.5초, 11/25) |
+
+## 25. 제한값 확정 기록 (설계서 8-2의 초기값 → 측정 뒤 확정값)
+
+[설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)의 숫자는 초기값입니다. 측정·결정으로 값을 확정하면 이 표에 한 줄씩 추가하고, 묶음 버전 `LIMITS_VERSION`을 올립니다(설계서는 고치지 않음). 첫 확정 예정: W96 계측 → W48 복구 정책(12/04, 신유빈·권오현).
+
+| 설정 키 | 초기값([설계서 8-2](API_설계문서.md#8-2-제한값-기준표-단일-기준--강사-1119-피드백-4)) | 확정값 | `LIMITS_VERSION` | 근거(측정·결정) | 확정일·담당 |
+|---|---|---|---|---|---|
+| (12/04 W48에서 채움) | | | `lim-0.1` → | | |
+
+## 26. 제한값 설정의 현재 코드 상태 (설계서 8-2에서 옮김, 11/23 교차 검토 기준)
+
+**현재 코드 기준(11/23, 교차 검토로 확인):** `backend/shared/config.py`는 아직 비어 있어 `Limits`·`LIMITS_VERSION`은 **구현 전**입니다. 지금 경로 코드는 아래처럼 **코드 상수와 다른 이름의 환경변수**를 씁니다. 설정 한 곳으로 모으는 일은 아래 표 각 행의 담당·확정 시험 때 합니다.
+
+| 이 표의 설정 키 | 지금 코드 | 기본값 |
+|---|---|---|
+| `ROUTE_SYNC_WAIT_S` / `ROUTE_TOTAL_TIMEOUT_S` | `real_routes.py` 상수 `_SYNC_WAIT_S` / `_REQUEST_LIMIT_S`(같은 경로 병합 대기 `_FLIGHT_LIMIT_S`) | 3초 / 10초(12초) |
+| `ROUTE_ADAPTER_TIMEOUT_S` | `tmap.py`·`kakao.py`의 `_timeout` 상수 | TMAP 5초 · 카카오 3초 |
+| `ROUTE_CACHE_TTL_S` | `real_routes.py` 상수 `_CACHE_TTL_S`, **Redis가 아니라 서버 메모리** | 60초 |
+| `QUOTA_TMAP_FREE` / `QUOTA_KAKAO_FREE` | 환경변수 **`ROUTE_TMAP_DAILY_LIMIT`** / **`ROUTE_KAKAO_DAILY_LIMIT`**, 장소 검색 **`ROUTE_KAKAO_LOCAL_DAILY_LIMIT`**(`providers/quota.py`). 센 횟수는 파일 `ROUTE_QUOTA_FILE`(Redis `quota:*`는 예정) | 10 / 1,000 / 1,000 (장소 검색 1,000은 공급원 한도 100,000건/일보다 낮게 둔 우리 보호값) |
+| (route_key 비밀키) | 환경변수 `ROUTE_KEY_SECRET` — **없으면 서버가 켜질 때 임의 키를 만듦**(재시작하면 키가 바뀌어 캐시 키도 바뀜) | 없음 |
+| `TMAP_PAID_PLAN` | **코드가 읽는 환경변수가 아님** — 유료 전환 결정 항목의 이름 | — |
