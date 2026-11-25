@@ -2,8 +2,32 @@
 
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { clearAuthSession, getAccessToken, subscribeAuth } from "@/lib/api/auth";
+import {
+  clearAuthSession,
+  getAccessToken,
+  getAuthSessionVersion,
+  subscribeAuth,
+} from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+
+type AuthGuardState = "checking" | "signed_in" | "signed_out";
+
+let suppressedRedirectVersion: number | null = null;
+
+export function suppressNextAuthRedirect(): void {
+  suppressedRedirectVersion = getAuthSessionVersion();
+}
+
+function getAuthGuardSnapshot(): AuthGuardState {
+  if (typeof window === "undefined") {
+    return "checking";
+  }
+  return getAccessToken() ? "signed_in" : "signed_out";
+}
+
+function getAuthGuardServerSnapshot(): AuthGuardState {
+  return "checking";
+}
 
 function getSignedInSnapshot(): boolean {
   return Boolean(getAccessToken());
@@ -37,16 +61,36 @@ export interface RequireAuthProps {
 export function RequireAuth({ children, nextPath }: RequireAuthProps) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
-  const signedIn = useIsSignedIn();
+  const authState = useSyncExternalStore(
+    subscribeAuth,
+    getAuthGuardSnapshot,
+    getAuthGuardServerSnapshot,
+  );
   const target = nextPath ?? pathname;
 
   useEffect(() => {
-    if (!signedIn) {
-      router.replace(`/auth/login?next=${encodeURIComponent(target)}`);
+    if (authState !== "signed_out") {
+      return;
     }
-  }, [router, signedIn, target]);
+    if (suppressedRedirectVersion === getAuthSessionVersion()) {
+      suppressedRedirectVersion = null;
+      return;
+    }
+    router.replace(`/auth/login?next=${encodeURIComponent(target)}`);
+  }, [authState, router, target]);
 
-  if (!signedIn) {
+  if (authState === "checking") {
+    return (
+      <div
+        role="status"
+        className="flex min-h-[50vh] flex-col items-center justify-center gap-2 px-4 py-12 text-center"
+      >
+        <p className="text-sm font-semibold text-muted">로그인 상태를 확인하고 있어요…</p>
+      </div>
+    );
+  }
+
+  if (authState === "signed_out") {
     return (
       <div
         role="status"
