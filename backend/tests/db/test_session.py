@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from backend.shared.config import load_db_settings
 from backend.shared.db.connection import create_user_engine
+from backend.shared.db import session as db_sessions
 from backend.shared.db.session import service_db_session, user_db_session
 
 
@@ -82,6 +83,15 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
 @unittest.skipUnless(os.environ.get("DB_LIVE_TEST") == "1", "실제 테스트 DB가 필요합니다")
 class LiveSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncTearDown(self):
+        # 공용 풀의 열린 연결은 뒤의 통합 시험이 원본 DB를 복제하지 못하게 한다.
+        if db_sessions._user_engine.cache_info().currsize:
+            await db_sessions._user_engine().dispose()
+            db_sessions._user_engine.cache_clear()
+        if db_sessions._service_engine.cache_info().currsize:
+            db_sessions._service_engine().dispose()
+            db_sessions._service_engine.cache_clear()
+
     async def test_committed_session_setting_is_reset_on_pool_return(self):
         """DB-09: 커밋된 일반 세션 설정도 다음 요청에 남지 않아야 합니다."""
         engine = create_user_engine(load_db_settings())

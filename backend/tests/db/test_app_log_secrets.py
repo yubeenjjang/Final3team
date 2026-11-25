@@ -87,6 +87,11 @@ def db_mode(monkeypatch):
     monkeypatch.setenv("APP_ENV", "test")
     festival_store._create_engine.cache_clear()
     yield TestClient, app, festival_store
+    # 캐시를 비우기 전에 연결을 닫아 원본 DB 복제 시험을 막지 않는다.
+    try:
+        festival_store.get_festival_engine().dispose()
+    except Exception:
+        pass
     festival_store._create_engine.cache_clear()
 
 
@@ -132,8 +137,8 @@ def test_sec05_wrong_db_password_rejected_does_not_expose_it(monkeypatch, captur
 def published_festival():
     psycopg = pytest.importorskip("psycopg")
     with psycopg.connect(os.environ["DB_MIGRATION_DSN"], autocommit=True) as db:
-        db.execute("""INSERT INTO festivals (festival_id, title, region_code, review_status, published_at, start_date, end_date)
-                      VALUES ('fst_01SEC05TEST0000000000000', 'SEC-05 시험 축제(가상)', 'SEOUL', 'approved', now(), current_date, current_date)""")
+        db.execute("""INSERT INTO festivals (festival_id, title, region_code, category, source_class_level2, review_status, published_at, start_date, end_date)
+                      VALUES ('fst_01SEC05TEST0000000000000', 'SEC-05 시험 축제(가상)', 'SEOUL', 'festival', 'EV01', 'approved', now(), current_date, current_date)""")
     yield
     with psycopg.connect(os.environ["DB_MIGRATION_DSN"], autocommit=True) as db:
         db.execute("DELETE FROM festivals WHERE festival_id = 'fst_01SEC05TEST0000000000000'")
