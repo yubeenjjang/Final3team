@@ -38,7 +38,7 @@
 | 항목 | 내용 |
 |---|---|
 | 개발 서버 | `http://localhost:8000/api/v1` |
-| 배포 서버 | AWS Docker(D-037). 주소는 W65 AWS 구성(12/07~10, AWS 환경 신유빈 관리) 뒤 기입 — 지금은 학원 시연 서버 `http://192.100.200.242:3000`(웹)·같은 노트북의 API(`ohyun-web`) |
+| 배포 서버 | AWS Docker(D-037). 주소는 W65 AWS 구성(12/07~10, AWS 환경 신유빈 관리) 뒤 기입 — 지금은 학원 시연 서버 `<학원 시연 서버 주소>`(웹, 팀 규칙상 문서에 주소를 적지 않음)·같은 노트북의 API(`ohyun-web`) |
 | 자동 문서 | 개발: `http://localhost:8000/docs`(Swagger UI), `http://localhost:8000/openapi.json` — API 기본 경로(`/api/v1`)가 아니라 **서버 루트**에 있음(FastAPI 기본값, `backend/api/main.py`). 구현 후 이 문서와 대조하고, 다르면 문서 버전을 올립니다 |
 | 인증 | `Authorization: Bearer <JWT>` (1절) |
 | 오류 형식 | 모든 API 공통 (0절) |
