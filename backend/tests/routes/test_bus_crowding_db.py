@@ -18,12 +18,12 @@ pytestmark = pytest.mark.db
 
 
 def test_bus_selection_concurrency_tokens_rls_and_retention(
-    route_engine, app_engine, festival_id, monkeypatch, source,
+    route_engine, app_engine, festival_id, monkeypatch, source, use_user_db,
 ):
     calls, _ = source("success", delay=0.03)
     clock = Clock()
     use_db(
-        route_engine, app_engine, monkeypatch, clock,
+        route_engine, app_engine, monkeypatch, use_user_db, clock,
         BusRouteProvider("tmap", clock), FakeProvider("kakao", clock),
     )
     monkeypatch.setenv("AUTH_PROVIDER", "db")
