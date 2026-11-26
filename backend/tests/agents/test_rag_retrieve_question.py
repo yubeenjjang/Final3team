@@ -5,9 +5,12 @@ import io
 import json
 from datetime import datetime
 from unittest.mock import patch
+from uuid import uuid4
 
 from agents.rag.embedding import embed_texts
 from agents.rag.retrieve_question import retrieve_festival_question
+from agents.rag.search import search_festival_evidence
+from agents.rag.answer_question import answer_from_retrieval
 
 
 AS_OF = datetime.fromisoformat("2026-11-26T10:00:00+09:00")
@@ -87,6 +90,38 @@ class RagQuestionRetrievalTests(unittest.TestCase):
                    return_value=io.BytesIO(json.dumps(body).encode("utf-8"))):
             with self.assertRaises(ValueError):
                 embed_texts(["질문"], "test-key")
+
+    def test_postgres_uuid_ids_reach_answer_citations(self):
+        document_id, chunk_id = uuid4(), uuid4()
+
+        class Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def execute(self, sql, params):
+                self.sql, self.params = sql, params
+
+            def fetchall(self):
+                return [(chunk_id, document_id, FESTIVAL_ID, ROW["source_url"], "서울시",
+                         None, None, None, ROW["content"], 0.1)]
+
+        cursor = Cursor()
+        connection = type("Connection", (), {"cursor": lambda self: cursor})()
+        rows = search_festival_evidence(connection, festival_id=FESTIVAL_ID,
+            query_vector=VECTOR, as_of=AS_OF, embedding_model="text-embedding-3-small",
+            embedding_version="official-v1")
+        self.assertEqual(rows[0]["document_id"], str(document_id))
+        self.assertEqual(rows[0]["chunk_id"], str(chunk_id))
+        self.assertIn("d.approval_status = 'approved'", cursor.sql)
+        self.assertIn("d.effective_to IS NULL", cursor.sql)
+        result = answer_from_retrieval({"festival_id": FESTIVAL_ID, "status": "candidates",
+                                        "candidates": rows}, selected_festival_name="시험 축제",
+            question="언제 시작해요?", generate=lambda *_: {"decision": "answer",
+                "answer": "공식 안내에 따릅니다.", "citation_ids": [str(document_id)]})
+        self.assertEqual(result["source_urls"], [ROW["source_url"]])
 
 
 if __name__ == "__main__":

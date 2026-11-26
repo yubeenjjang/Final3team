@@ -58,8 +58,8 @@ def search_festival_evidence(
         rows = cur.fetchall()
     return [
         {
-            "chunk_id": row[0],
-            "document_id": row[1],
+            "chunk_id": str(row[0]),
+            "document_id": str(row[1]),
             "festival_id": row[2],
             "source_url": row[3],
             "publisher": row[4],
