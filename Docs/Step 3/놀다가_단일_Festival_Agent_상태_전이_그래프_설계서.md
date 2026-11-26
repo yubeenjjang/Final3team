@@ -439,6 +439,10 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 이 `observed_at`은 **혼잡 자료의 관측 기준 시각**이며 명령을 실행한 시각은 출력에 없다. 확인 범위는 공개 서울빛초롱축제 1건의 실제 검색→상세→혼잡 HTTP 연속 실행이다. 미지원 지역의 현재 실호출, 공식 공지·주변 시설의 실제 공급원 응답, 팀 `main` 병합 후 통합 시험은 여기에 포함되지 않는다.
 
+### A-15. 서로 다른 축제 ID의 실DB 상세 분리 확인 (2026-11-26)
+
+`dayoung 777d743` 점검기에 `--verify-multi-festival`을 추가했다. 다영님이 변경을 받은 뒤 실제 API로 실행한 결과, 진행·예정 검색에서 선택한 서로 다른 두 축제 ID `fst_01M835BCHV21MGQF4333AAJZJ4`와 `fst_01M835BS447VDC8PVAQNM8GKHF`의 상세가 각각 `answered`였다. 점검기는 두 번째 축제의 원시 상세 `is_mock:false`·응답 ID와 Agent 상세 근거 ID를 요청 ID와 대조하며, 다르면 실패한다. 별도로 서울빛초롱축제의 상세·혼잡·복합 흐름도 다시 `answered`였고 혼잡 관측 시각은 `2026-11-26T10:00:00+09:00`, 출처는 `seoul_citydata`였다. [원출력·범위](evidence/Festival_live_2026-11-26.md)를 기록했다. 두 번째 축제의 혼잡, 공식 공지·시설의 실제 공급원 응답은 확인하지 않았다.
+
 ## 부록 B. 후속 구현에서 확인할 결정
 
 1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.

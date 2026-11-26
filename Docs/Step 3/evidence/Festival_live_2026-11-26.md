@@ -30,3 +30,12 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - 출력에 404 `FESTIVAL_NOT_FOUND`와 503 `TOOL_HTTP_ERROR`의 `ResourceWarning` 두 줄이 있었으나 시험 실패는 없었다. 경고를 오류 처리 정상 동작의 증거로 확대하지 않는다.
 
 이 35개는 고정 응답·모의 HTTP를 이용한 Festival 단독 시험이다. 위 실조회와 동일 커밋에서 실행했지만, 팀 `main` 병합 후 전체 백엔드 시험 결과는 아니다.
+
+## 추가 실조회: 서로 다른 축제 두 건 (2026-11-26)
+
+- 실행 전 `git pull origin dayoung`은 `3ce98dc..777d743` 빠른 전진으로 끝났다. 별도의 `git rev-parse` 출력은 제공되지 않았으므로 실행 HEAD는 이 pull 결과를 기준으로 기록한다.
+- 실행 옵션: 위 실조회 명령에 `--verify-multi-festival` 추가. 점검기는 진행·예정 검색에서 서로 다른 두 ID를 고르고, 각 ID의 실제 DB 상세와 Agent 상세 근거가 요청 ID와 일치하는지 검사한다.
+- 터미널 출력: `ongoing: total=1, agent_evidence=1`, `upcoming: total=15, agent_evidence=10`; 첫 상세 `fst_01M835BCHV21MGQF4333AAJZJ4`는 `answered`·`source=tourapi`였다. `multi_festival: first_id=fst_01M835BCHV21MGQF4333AAJZJ4, second_id=fst_01M835BS447VDC8PVAQNM8GKHF, outcome=answered`가 출력됐다.
+- 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 상세·혼잡·복합 조회도 `answered`였다. 혼잡 공급원은 `seoul_citydata`, `is_estimate=False`, `observed_at=2026-11-26T10:00:00+09:00`이며 복합 그래프는 도구 호출 3회·근거 3건이었다.
+
+이는 실제 DB의 **서로 다른 두 축제 상세 ID 분리**와 서울빛초롱축제의 별도 연속 조회를 확인한 결과다. 두 번째 축제의 혼잡 조회, 공식 공지·시설 공급원, 팀 `main` 병합 후 전체 시험은 이 실행에 포함되지 않는다.
