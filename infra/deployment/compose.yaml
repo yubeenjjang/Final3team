@@ -132,6 +132,9 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME:-noldaga}
+      # 공통 DBSettings 로더는 서비스 연결에도 앱 계정 설정을 요구한다.
+      DB_USER_USERNAME: ${DB_USER_USERNAME:-noldaga_app}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:?}
       DB_SERVICE_USERNAME: ${DB_SERVICE_USERNAME:-noldaga_service}
       DB_SERVICE_PASSWORD: ${DB_SERVICE_PASSWORD:?}
       FESTIVAL_DATA: ${FESTIVAL_DATA:-}
