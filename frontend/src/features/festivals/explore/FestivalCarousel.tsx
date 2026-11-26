@@ -78,7 +78,7 @@ export function FestivalCarousel({
         ref={scrollerRef}
         role="region"
         aria-label={`${ariaLabel} 카드 목록`}
-        className={`no-scrollbar -mx-4 flex touch-pan-x gap-2 overflow-x-auto px-4 pb-2 select-none ${
+        className={`no-scrollbar -mx-4 flex touch-pan-x gap-2 overflow-x-auto px-4 pb-2 select-none md:mx-0 md:gap-4 md:px-0 ${
           dragging ? "cursor-grabbing snap-none" : "cursor-grab snap-x snap-mandatory"
         }`}
         onScroll={updateActivePage}
@@ -104,7 +104,7 @@ export function FestivalCarousel({
       </div>
 
       {dotCount > 0 ? (
-        <div className="flex justify-center gap-2" aria-label={`${ariaLabel} 페이지 선택`}>
+        <div className="flex justify-center gap-2 md:hidden" aria-label={`${ariaLabel} 페이지 선택`}>
           {Array.from({ length: dotCount }, (_, page) => (
             <button
               key={page}

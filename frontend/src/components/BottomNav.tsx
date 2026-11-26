@@ -54,7 +54,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="주요 메뉴"
-      className="app-bottom-nav fixed bottom-0 left-1/2 z-30 -translate-x-1/2 rounded-t-nav border border-b-0 border-line-light bg-surface/95 backdrop-blur-md"
+      className="app-bottom-nav fixed bottom-0 left-1/2 z-30 -translate-x-1/2 rounded-t-nav border border-b-0 border-line-light bg-surface/95 backdrop-blur-md md:hidden"
     >
       <ul className="grid h-full grid-cols-5 items-center gap-1">
         {NAV_ITEMS.map((item) => {

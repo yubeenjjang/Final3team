@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { MessageCircle, User } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
@@ -13,6 +14,7 @@ import { BrandLogo } from "./BrandLogo";
 const nicknameSegmenter = new Intl.Segmenter("ko", { granularity: "grapheme" });
 
 export function Header() {
+  const pathname = usePathname() ?? "/";
   const user = useSyncExternalStore(
     subscribeAuth,
     getAuthUser,
@@ -33,6 +35,30 @@ export function Header() {
       >
         <BrandLogo priority className="h-11 w-auto max-w-[184px] object-left" />
       </Link>
+
+      <nav className="hidden h-full items-stretch md:flex" aria-label="데스크톱 주요 메뉴">
+        {[
+          { href: "/", label: "홈", active: pathname === "/" },
+          { href: "/festivals", label: "축제", active: pathname.startsWith("/festivals") },
+          { href: "/companions", label: "동행", active: pathname.startsWith("/companions") },
+          { href: "/routes/return", label: "귀가", active: pathname.startsWith("/routes/return") },
+          { href: "/map", label: "지도", active: pathname.startsWith("/map") },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-label={`${item.label} 메뉴`}
+            aria-current={item.active ? "page" : undefined}
+            className={`relative grid min-w-20 place-items-center px-4 text-sm font-bold transition-colors after:absolute after:inset-x-4 after:bottom-0 after:h-[3px] after:rounded-t-chip after:content-[''] ${
+              item.active
+                ? "text-brand after:bg-brand"
+                : "text-muted after:bg-transparent hover:text-brand"
+            }`}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
 
       <div className="flex items-center gap-1.5">
         {initial ? (

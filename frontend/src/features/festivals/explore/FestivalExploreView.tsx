@@ -147,7 +147,7 @@ export function FestivalExploreView({
     .filter((section) => section.items.length > 0);
 
   return (
-    <div className="space-y-4 px-4 py-4">
+    <div className="space-y-4 px-4 py-4 md:space-y-7 md:px-8 md:py-8">
       <TabPageHero
         title={
           mode === "list" ? (
@@ -268,7 +268,7 @@ export function FestivalExploreView({
       ) : (
         <div className="space-y-8">
           {mode === "list" ? (
-            <section aria-label={`${listTitle} 목록`} className="grid grid-cols-2 gap-x-2 gap-y-4">
+            <section aria-label={`${listTitle} 목록`} className="grid grid-cols-2 gap-x-2 gap-y-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
               {items.map((item) => (
                 <FestivalCard key={item.festival_id} item={item} />
               ))}
