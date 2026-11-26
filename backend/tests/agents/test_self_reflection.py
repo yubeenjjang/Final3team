@@ -3,6 +3,7 @@
 import unittest
 from datetime import date
 
+from agents.festival_graph import build_festival_graph, run_festival_graph
 from agents.roles.festival import FestivalRequest
 from agents.self_reflection import run_reflected_detail
 
@@ -87,6 +88,41 @@ class SelfReflectionTests(unittest.TestCase):
         self.assertEqual(result.outcome, "unavailable")
         self.assertEqual(record["final_reason"], "judge_abstained")
         self.assertEqual(calls, ["get_festival"])
+
+    def test_langgraph_routes_opted_in_detail_through_reflection(self):
+        calls = []
+        def tool(name, args):
+            calls.append(name)
+            if name == "search_festivals":
+                return {"ok": True, "data": {"items": [GOOD]}}
+            return {"ok": True, "data": {**GOOD, "festival_id": "F02"} if len(calls) == 1 else GOOD}
+        graph = build_festival_graph(tool, as_of=date(2026, 11, 26),
+            reflect_judge=lambda context: {"decision": "recheck", "reason": context["first_issue"]})
+        state = graph.invoke({"request": REQUEST})
+        self.assertEqual(state["result"].outcome, "answered")
+        self.assertEqual(state["reflection_record"]["final_reason"], "revised_evidence_valid")
+        self.assertEqual(calls, ["get_festival", "search_festivals", "get_festival"])
+
+    def test_default_graph_keeps_existing_detail_flow(self):
+        result = run_festival_graph(lambda *_: {"ok": True, "data": GOOD}, REQUEST)
+        self.assertEqual(result.outcome, "answered")
+        self.assertNotIn("reflect", result.transitions)
+
+    def test_reflection_missing_conditions_asks_before_tool_call(self):
+        result = run_festival_graph(lambda *_: self.fail("must not call"),
+            FestivalRequest("detail", festival_id="F01"),
+            reflect_judge=lambda *_: self.fail("must not judge"), as_of=date(2026, 11, 26))
+        self.assertEqual(result.outcome, "clarification_needed")
+
+    def test_judge_failure_ends_without_using_wrong_id(self):
+        def failed_judge(_):
+            raise TimeoutError("model unavailable")
+        result, record = run_reflected_detail(
+            lambda *_: {"ok": True, "data": {**GOOD, "festival_id": "F02"}},
+            REQUEST, failed_judge, as_of=date(2026, 11, 26))
+        self.assertEqual(result.outcome, "unavailable")
+        self.assertEqual(record["final_reason"], "judge_unavailable")
+        self.assertEqual(len(record["tool_calls"]), 1)
 
 
 if __name__ == "__main__":

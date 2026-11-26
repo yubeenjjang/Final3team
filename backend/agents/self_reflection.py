@@ -63,11 +63,17 @@ def run_reflected_detail(
 
     if len(calls) >= max_calls or clock() >= deadline:
         return unavailable("budget_exhausted")
-    decision = judge({"festival_id": request.festival_id, "q": request.q,
-                      "region": request.region, "as_of": as_of.isoformat(),
-                      "first_issue": issue, "first_evidence": record["first_evidence"],
-                      "remaining_calls": max_calls - len(calls)})
+    try:
+        decision = judge({"festival_id": request.festival_id, "q": request.q,
+                          "region": request.region, "as_of": as_of.isoformat(),
+                          "first_issue": issue, "first_evidence": record["first_evidence"],
+                          "remaining_calls": max_calls - len(calls)})
+    except (OSError, TimeoutError, ValueError):
+        record["judge_used"] = True
+        return unavailable("judge_unavailable")
     record["judge_used"] = True
+    if not isinstance(decision, Mapping):
+        return unavailable("judge_unavailable")
     record["judge_decision"] = dict(decision)
     if clock() >= deadline:
         return unavailable("budget_exhausted")

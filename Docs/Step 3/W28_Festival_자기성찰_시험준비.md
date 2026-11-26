@@ -41,6 +41,8 @@
 
 ## 5. 현재 상태와 다음 연결
 
-현재 Festival LangGraph에는 `interpret → check_slots → select_tool → call_tool → validate`와 통신 재시도·예산 종료가 구현돼 있다. 위 모델 판단·재확인 분기는 **아직 구현하지 않았다**. W28(12/01~12/03)에서 이 계약으로 노드·시험을 추가하고, W29 측정 및 W30 결과서에는 실제 실행 출력과 코드 커밋을 연결한다.
+기존 Festival LangGraph에는 `interpret → check_slots → select_tool → call_tool → validate`와 통신 재시도·예산 종료가 구현돼 있다. 아래 선행 구현은 별도 선택 경로이며, W28(12/01~12/03)의 실제 모델 판단과 W29 측정 및 W30 결과서에는 실행 출력과 코드 커밋을 연결해야 한다.
 
 **11/26 선행 구현:** `backend/agents/self_reflection.py`에 상세 결과 검토→모델 판단 주입→원조건 검색→선택 ID 상세 재조회 흐름을 별도 실행기로 구현했다. `backend/tests/agents/test_self_reflection.py`는 고정 응답으로 ID 오류 수정, 반복 오류 보류, 예정 축제 기각, 정상 결과의 불필요한 재조회 방지, 호출 상한, 잘못된 모델 승인 기각을 검사한다. Windows Python 3.12에서 에이전트 시험 **58개 통과**는 모델 판단을 고정 함수로 대체한 단위 시험 결과다. **실제 LLM 판단, 기존 LangGraph 노드 연결, W29 지연·토큰 측정은 아직 남아 있다.** 따라서 이 결과를 12/4 자기 성찰 시험 완료로 집계하지 않는다.
+
+**추가 선행 연결(11/26):** `build_festival_graph(..., reflect_judge=..., as_of=...)`를 명시적으로 사용할 때만 상세 요청이 `reflect_detail` 노드로 간다. 기존 호출은 변하지 않는다. 고정 판단 함수를 넣은 LangGraph 흐름에서 F02를 기각하고 원조건 검색→F01 재조회가 이어졌으며, 입력 조건 누락·판단 실패는 안전 종료했다. Windows Python 3.12 에이전트 시험 **62개 통과**. 현재 `reflect_detail`은 내부 재확인 과정을 한 노드에서 수행하므로, W29에서 단계별 추적과 실제 모델 지연·비용을 기록할 때 노드 분리 또는 명시적 실행 기록이 더 필요하다. **실제 LLM 판단과 팀 공통 실행기·운영 API 연속 시험은 아직 수행하지 않았다.**

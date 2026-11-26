@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import date
 from time import monotonic
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, Mapping, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
 from agents.roles.festival import FestivalAgent, FestivalRequest, FestivalResult, ToolCall
+from agents.self_reflection import run_reflected_detail
 
 MAX_TOOL_CALLS = 4  # Three normal stages plus one transient retry.
 
@@ -28,10 +30,16 @@ class FestivalGraphState(TypedDict, total=False):
     deadline_at: float
     tool_call_count: int
     timeout_s: float
+    reflection_record: dict[str, Any]
 
 
-def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock: Callable[[], float] = monotonic):
+def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0,
+                         clock: Callable[[], float] = monotonic,
+                         reflect_judge: Callable[[dict[str, Any]], Mapping[str, Any]] | None = None,
+                         as_of: date | None = None):
     """Compile a bounded graph; callers provide resolved intent and slots."""
+    if reflect_judge is not None and as_of is None:
+        raise ValueError("as_of is required for W28 detail reflection")
     agent = FestivalAgent(call_tool)
 
     def interpret(state: FestivalGraphState) -> dict[str, Any]:
@@ -51,10 +59,19 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
         if request.intent in {"detail", "crowd", "notices"} and not request.festival_id:
             result = FestivalResult("clarification_needed", "어느 축제인지 알려주세요.", transitions=trace + ["clarification_needed", "END"])
             return {"trace": result.transitions, "result": result}
+        if reflect_judge is not None and request.intent == "detail" and (not request.q or not request.region):
+            result = FestivalResult("clarification_needed", "축제 이름과 지역을 알려주세요.",
+                                    transitions=trace + ["clarification_needed", "END"])
+            return {"trace": result.transitions, "result": result}
         if request.intent == "search_detail_crowd" and not request.select_first:
             result = FestivalResult("clarification_needed", "검색 결과 중 어느 축제를 볼지 알려주세요.", transitions=trace + ["clarification_needed", "END"])
             return {"trace": result.transitions, "result": result}
         return {"trace": trace}
+
+    def reflect_detail(state: FestivalGraphState) -> dict[str, Any]:
+        result, record = run_reflected_detail(call_tool, state["request"], reflect_judge,
+            as_of=as_of, clock=clock, timeout_s=timeout_s, max_calls=MAX_TOOL_CALLS)
+        return {"result": result, "reflection_record": record, "trace": result.transitions}
 
     def select_tool(state: FestivalGraphState) -> dict[str, Any]:
         request = state["request"]
@@ -153,6 +170,7 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
     graph = StateGraph(FestivalGraphState)
     graph.add_node("interpret", interpret)
     graph.add_node("check_slots", slots)
+    graph.add_node("reflect_detail", reflect_detail)
     graph.add_node("select_tool", select_tool)
     graph.add_node("call_tool", invoke_tool)
     graph.add_node("retry", retry)
@@ -160,7 +178,10 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
     graph.add_node("error", error)
     graph.add_edge(START, "interpret")
     graph.add_conditional_edges("interpret", lambda s: "done" if "result" in s else "slots", {"done": END, "slots": "check_slots"})
-    graph.add_conditional_edges("check_slots", lambda s: "done" if "result" in s else "select", {"done": END, "select": "select_tool"})
+    graph.add_conditional_edges("check_slots", lambda s: "done" if "result" in s else
+        "reflect" if reflect_judge is not None and s["request"].intent == "detail" else "select",
+        {"done": END, "reflect": "reflect_detail", "select": "select_tool"})
+    graph.add_edge("reflect_detail", END)
     graph.add_edge("select_tool", "call_tool")
     graph.add_conditional_edges("call_tool", after_call, {"validate": "validate", "retry": "retry", "error": "error", "done": END})
     graph.add_edge("retry", "call_tool")
@@ -169,6 +190,10 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
     return graph.compile()
 
 
-def run_festival_graph(call_tool: ToolCall, request: FestivalRequest, *, timeout_s: float = 30.0, clock: Callable[[], float] = monotonic) -> FestivalResult:
-    state = build_festival_graph(call_tool, timeout_s=timeout_s, clock=clock).invoke({"request": request})
+def run_festival_graph(call_tool: ToolCall, request: FestivalRequest, *, timeout_s: float = 30.0,
+                       clock: Callable[[], float] = monotonic,
+                       reflect_judge: Callable[[dict[str, Any]], Mapping[str, Any]] | None = None,
+                       as_of: date | None = None) -> FestivalResult:
+    state = build_festival_graph(call_tool, timeout_s=timeout_s, clock=clock,
+        reflect_judge=reflect_judge, as_of=as_of).invoke({"request": request})
     return state["result"]
