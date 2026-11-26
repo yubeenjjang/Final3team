@@ -382,8 +382,9 @@ function MeContent() {
 
       <FavoriteListSection />
 
-      {/* 비밀번호 변경 */}
-      <section className="space-y-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
+      <div className="space-y-3">
+        {/* 비밀번호 변경 */}
+        <section className="space-y-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-extrabold text-ink">비밀번호 변경</h2>
@@ -456,10 +457,10 @@ function MeContent() {
             </button>
           </form>
         ) : null}
-      </section>
+        </section>
 
-      {/* 로그아웃 */}
-      <section className="flex items-center justify-between gap-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
+        {/* 로그아웃 */}
+        <section className="flex items-center justify-between gap-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
         <div className="min-w-0">
           <h2 className="text-sm font-extrabold text-ink">로그아웃</h2>
           <p className="text-[11px] text-muted">현재 계정에서 로그아웃합니다.</p>
@@ -474,10 +475,10 @@ function MeContent() {
           <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>{logoutBusy ? "로그아웃 중…" : "로그아웃"}</span>
         </button>
-      </section>
+        </section>
 
-      {/* 회원 탈퇴 */}
-      <section className="space-y-3 rounded-card border border-line-light bg-surface-muted/40 p-4">
+        {/* 회원 탈퇴 */}
+        <section className="space-y-3 rounded-card border border-line-light bg-surface-muted/40 p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-extrabold text-ink">회원 탈퇴</h2>
@@ -536,7 +537,8 @@ function MeContent() {
             </button>
           </form>
         ) : null}
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
