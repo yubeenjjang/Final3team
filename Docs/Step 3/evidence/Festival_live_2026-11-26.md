@@ -62,7 +62,7 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - 코드 기준: `dayoung f454e7e`, Windows·Python 3.12.15. `backend/`에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m unittest discover -s tests/agents -p 'test_festival_*.py' -q` 실행: **37개, OK**.
 - 같은 환경에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget` 실행: 호출 전 30.1초 가상 경계는 2회 호출·`partial`·벽시계 7.264ms, 4회 상한은 4회 호출·`partial`·벽시계 4.244ms였다.
 - 신규 37번째 시험은 검색·상세 성공 후 혼잡 도구가 성공 응답을 **30초가 지난 뒤** 반환한 고정 응답이다. 응답은 답변에 사용되지 않았고, 도구 기록에는 `ok=True`가 남았으며, 최종 결과는 상세 근거와 혼잡 미확인 안내를 포함한 `partial`이었다. 실제 공급원에서 30초 대기를 재현한 시험은 아니다.
-- 위 결과는 개인 브랜치 시험이다. 제출 `main` 한 커밋에서의 Festival·백엔드 전체 시험 결과는 별도로 기록해야 한다.
+- 위 결과는 개인 브랜치 시험이다. 제출 기준 `main`의 Festival·백엔드 전체 시험 결과는 아래 병합 후 시험 절에 별도로 기록했다.
 
 ## 팀원 독립 재검토 (2026-11-26)
 
@@ -74,10 +74,49 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - 코드 기준: `dayoung 0b2369a`, Windows·Python 3.12.15. 저장소 루트에서 `PYTHONPATH=backend`를 지정하고 LangGraph·pytest를 제공한 환경으로 `python -B -m pytest backend/tests -q` 실행: **51 passed, 2 subtests passed in 0.73s**.
 - `dayoung` 단독 체크아웃에서 루트 명령을 경로 지정 없이 실행하면 `agents` 모듈을 찾지 못해 시험 수집 단계에서 실패한다. 위 결과는 실행 환경의 모듈 경로를 보완한 **병합 전 사전 점검**이며, 팀 `main`의 최종 시험으로 기록하지 않는다.
 
-## 첫 main 병합 커밋 시험 (2026-11-26)
+## 제출 기준 `main` 병합 후 시험 확인 (2026-11-26)
 
-- 병합 커밋: `main 0fda8fd` (`dayoung 699c214` 포함). 별도 Git 작업 폴더를 해당 커밋으로 고정해 실행했고, `git rev-parse --short HEAD`로 `0fda8fd`를 확인했다.
-- Windows·Python 3.12, `backend/`에서 `uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python -B -m unittest discover -s tests/agents -p 'test_festival_*.py' -q`: **Ran 37 tests, OK**.
-- 같은 체크아웃에서 `uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget`: 가상 30.1초 경계는 2회 호출·`partial`·벽시계 8.048ms, 4회 상한은 4회 호출·`partial`·벽시계 4.464ms. 이 경과는 고정 응답의 로컬 측정값이다.
-- 저장소 루트에서 `PYTHONPATH=backend`를 지정하고 LangGraph·pytest를 제공한 환경으로 `python -B -m pytest backend/tests -q`: **51 passed, 2 subtests passed in 0.77s**. 현재 main에는 별도의 루트 패키지 설치 설정이 없어 `PYTHONPATH` 지정 없이 실행하면 `agents` import 단계에서 실패한다.
-- 이 결과를 문서에 추가한 `dayoung` 커밋이 다시 main에 병합되면 **새 main 커밋 번호가 생긴다**. 위 시험을 새 커밋의 시험 결과로 바꾸어 적지 않고, 제출 대상 커밋에서 다시 실행한다.
+- **실행 코드 커밋:** `main 0fda8fd` (`dayoung 699c214` 병합). 별도 Git 작업 폴더에서 `git rev-parse --short HEAD` → `0fda8fd`를 확인했다.
+- **설계서·증빙 커밋:** `main c3526bc`. `0fda8fd..c3526bc` 사이 변경은 이 설계서와 증빙 두 Markdown 파일뿐이며, `backend/agents`·`backend/tests` 코드는 동일하다. 따라서 아래 결과는 실행 코드 `0fda8fd`의 시험이지 문서 커밋에서 실행한 결과로 바꾸어 쓰지 않는다.
+- **환경:** Windows, Python **3.12.15**, `uv`로 `backend/agents/requirements.txt`의 LangGraph를 제공했다. 실제 공급원 HTTP·운영 DB는 호출하지 않았다. 명령의 `--no-project`는 별도 프로젝트 설정을 읽지 않기 위한 옵션이다.
+
+`backend/`에서 실행한 Festival 단독 시험 및 예산 재현 명령(캐시 위치는 각 작업 폴더에 맞게 설정):
+
+```powershell
+$env:UV_CACHE_DIR = Join-Path (Get-Location) '.tmp-uv-cache'
+$env:PYTHONIOENCODING = 'utf-8'
+git rev-parse --short HEAD
+uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python --version
+uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python -B -m unittest discover -s tests/agents -p 'test_festival_*.py' -q
+uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget
+```
+
+핵심 터미널 출력(같은 코드 커밋 재실행, 시간 수치는 가상 시계 시험의 로컬 벽시계 측정값):
+
+```text
+0fda8fd
+Python 3.12.15
+----------------------------------------------------------------------
+Ran 37 tests in 0.084s
+
+OK
+deadline: simulated_elapsed_s=30.1, wall_elapsed_ms=7.902, calls=2, outcome=partial, answer=검색된 축제: 시험 축제 (출처 tourapi, 갱신 2026-11-26T09:00:00+09:00). 시험 축제: 시험 광장. 출처 tourapi, 자료 갱신 2026-11-26T09:00:00+09:00. 조회 제한에 도달해 혼잡 정보를 확인할 수 없습니다.
+call_limit: wall_elapsed_ms=4.448, calls=4, outcome=partial, answer=검색된 축제: 시험 축제 (출처 tourapi, 갱신 2026-11-26T09:00:00+09:00). 시험 축제: 시험 광장. 출처 tourapi, 자료 갱신 2026-11-26T09:00:00+09:00. 조회 제한에 도달해 혼잡 정보를 확인할 수 없습니다.
+```
+
+저장소 **루트**에서 실행한 백엔드 전체 시험. `PYTHONPATH`에 `backend`를 넣어 `agents` 모듈을 찾게 했다. 현재 저장소는 루트용 패키지 설치 설정이 없으므로 이 설정 없이 실행하면 시험 수집에서 실패한다.
+
+```powershell
+$env:UV_CACHE_DIR = Join-Path (Get-Location) '.tmp-uv-cache'
+$env:PYTHONPATH = Join-Path (Get-Location) 'backend'
+uv run --python 3.12 --no-project --with-requirements backend/agents/requirements.txt --with pytest python --version
+uv run --python 3.12 --no-project --with-requirements backend/agents/requirements.txt --with pytest python -B -m pytest backend/tests -q
+```
+
+```text
+Python 3.12.15
+...................................................                    [100%]
+51 passed, 2 subtests passed in 0.70s
+```
+
+이 시험은 고정 응답·모의 HTTP를 쓰는 재현 시험이다. `deadline`은 혼잡 호출 전 가상 시계가 30.1초를 가리킨 경우이며, `call_limit`은 재시도를 포함해 4회 호출을 소진한 경우다. 두 경우 모두 기존 축제 상세와 혼잡 미확인 안내를 함께 반환한다. **이미 시작한 HTTP 호출을 30초에 강제로 끊었다는 뜻은 아니다.** 실제 공급원 복합 조회는 앞의 A-14·A-15 실행과 범위를 구분한다.
