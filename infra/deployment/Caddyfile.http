@@ -1,0 +1,9 @@
+:80 {
+	@health path /api/v1/health /api/v1/health/
+	handle @health {
+		reverse_proxy api:8000
+	}
+	handle {
+		respond "HTTP test endpoint: health only" 403
+	}
+}

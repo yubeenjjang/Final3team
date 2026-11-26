@@ -1,0 +1,9 @@
+# 도메인 DNS와 인증서 준비 후에만 compose.aws.yaml 뒤에 추가한다.
+services:
+  proxy:
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required for HTTPS}
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
