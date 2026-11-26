@@ -29,6 +29,7 @@
 | 기준 자료 | [기획서](../Step%201/놀다가_기획서.md), [WBS](../Step%201/놀다가_WBS.md) W22 축제 질의·도구·상태 정의, W23 상태 전이 설계, W24 DB·혼잡 조회 구현, W25 설계서 검토·제출, [API 설계문서](../Step%202/API_설계문서.md), [에이전트 도구 인계](../Step%202/handoff/에이전트_도구_인계.md) W14(Function Calling 도구 명세·실행기 연결) |
 | 실행 기준 | 실조회 `dayoung dc35ad5` · 11/27 제출용 병합 후 시험의 **코드 기준 `main 0fda8fd`** |
 | 시험 증빙 | 개인 브랜치 시험과 병합 후 시험을 [실조회·시험 증빙](evidence/Festival_live_2026-11-26.md) 및 부록 D에 구분해 기록 |
+| 문서 정본·남은 확인 | 이 설계서와 연결된 증빙의 **`main` 최신본**을 제출 대상으로 삼는다. 제출 직전 `git rev-parse HEAD`로 문서 커밋을 고정하고, 제출 링크에서 두 파일이 열리는지와 접수 상태를 확인한다. |
 
 ---
 
@@ -535,7 +536,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **최신 개인 브랜치 시험:** 11/26 `dayoung 122cb32`, macOS·Python 3.14.7에서 같은 Festival 단독 명령을 다시 실행해 `Ran 35 tests in 0.077s`, `OK`를 확인했다. 404·503 시험에서 `ResourceWarning` 두 줄이 있었으나 실패는 없었다. 이후 시간 예산 시험 코드 변경은 이 결과에 포함되지 않는다.
 - **시간 예산 반영본:** 11/26 `dayoung 45be6ed`, 같은 환경에서 Festival 단독 시험 `Ran 36 tests in 0.080s`, `OK`; `python -m agents.check_festival_budget`은 30.1초 가상 경계·4회 호출 상한 두 사례를 모두 `partial`로 확인했다. 벽시계 경과와 부분 답변은 [증빙](evidence/Festival_live_2026-11-26.md)에 있다.
 - **늦은 성공 응답 반영본:** 11/26 `dayoung f454e7e`, Windows·Python 3.12.15에서 LangGraph 설치 후 Festival 단독 시험 `Ran 37 tests`, `OK`. 혼잡 성공 응답이 30초를 넘겨 도착하면 그 내용을 버리고 상세 근거와 혼잡 미확인 안내를 포함한 `partial`로 끝나는 신규 시험을 포함한다. `check_festival_budget`의 2회·4회 호출 사례도 모두 `partial`이었다. [환경·명령·결과](evidence/Festival_live_2026-11-26.md)를 따른다.
-- **11/27 제출 시험의 코드 기준:** `main 0fda8fd`에서 다영님이 Festival 단독 **37개 통과**, 백엔드 전체 **51개 통과·하위 시험 2개 통과**, 시간 제한·4회 호출 상한 재현 사례 **각각 `partial` 종료**를 확인했다. 태경님 최종 검토도 완료됐다. 이 결과는 실행 코드 `0fda8fd`에 귀속하며 설계서·증빙 제출 커밋은 `main c3526bc`다. 두 커밋 사이에는 Markdown 문서만 바뀌었다. Windows·Python 3.12.15, `backend/`의 `uv` 단독 명령과 저장소 루트의 `PYTHONPATH=backend` 설정을 사용했다. [증빙](evidence/Festival_live_2026-11-26.md)에 정확한 명령·터미널 출력·시험 한계를 붙였다.
+- **11/27 제출 시험의 코드 기준:** `main 0fda8fd`에서 다영님이 Festival 단독 **37개 통과**, 백엔드 전체 **51개 통과·하위 시험 2개 통과**, 시간 제한·4회 호출 상한 재현 사례 **각각 `partial` 종료**를 확인했다. 태경님 최종 검토도 완료됐다. 이 결과는 실행 코드 `0fda8fd`에 귀속한다. `main c3526bc`는 설계서와 증빙을 처음 함께 기록한 문서 커밋이며, `0fda8fd..c3526bc`의 변경은 두 Markdown 파일뿐이다. 제출할 문서의 정확한 커밋은 제출 직전 `main`에서 확인한다. Windows·Python 3.12.15, `backend/`의 `uv` 단독 명령과 저장소 루트의 `PYTHONPATH=backend` 설정을 사용했다. [증빙](evidence/Festival_live_2026-11-26.md)에 정확한 명령·터미널 출력·시험 한계를 붙였다.
 - **환경 구분:** Windows 환경에도 LangGraph를 설치해 최신 37개를 실행했다. 기존 35개와 시간 예산 반영본 36개 기록은 macOS 실행 결과다. 시간 예산 시험은 가상 시계와 고정 응답을 사용하는 재현 시험이며 실제 HTTP 장애 지연을 측정한 결과로 쓰지 않는다.
 
 ## 참고 파일
