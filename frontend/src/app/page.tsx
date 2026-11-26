@@ -64,7 +64,7 @@ export default function HomePage() {
       <SafeReturnBanner className="md:col-start-2 md:row-span-2 md:row-start-1 md:self-center" />
 
       {/* 하단 바로가기 버튼 2개 */}
-      <div className="grid grid-cols-2 gap-2.5 md:col-span-2 md:row-start-5 md:max-w-xl">
+      <div className="grid w-full grid-cols-2 gap-2.5 md:col-span-2 md:row-start-5">
         <Link href="/map" className={shortcutClass}>
           <MapPinned size={22} className="shrink-0 text-brand" aria-hidden="true" />
           <span className="min-w-0 leading-tight">지도에서<br />축제찾기</span>

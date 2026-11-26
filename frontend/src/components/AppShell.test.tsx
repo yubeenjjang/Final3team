@@ -110,9 +110,9 @@ describe("F3 AppShell & F5 MockBadge", () => {
       });
     });
 
-    const accountButton = screen.getByRole("button", { name: /계정 메뉴/ });
-    expect(accountButton.textContent).toBe(initial);
-    expect(accountButton).toHaveAttribute("aria-expanded", "false");
+    const accountLink = screen.getByRole("link", { name: /마이페이지/ });
+    expect(accountLink.textContent).toBe(initial);
+    expect(accountLink).toHaveAttribute("href", "/me");
   });
 
   it("F5 displays mock badge once mock response is observed", () => {

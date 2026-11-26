@@ -209,21 +209,11 @@ function MeContent() {
 
   return (
     <div className="space-y-7 px-5 py-6">
-      <div className="flex items-start justify-between">
+      <div>
         <div>
           <h1 className="text-[32px] font-black text-ink">마이페이지</h1>
           <p className="mt-2 text-base text-muted">나의 축제 활동을 한눈에 확인해요!</p>
         </div>
-        <button
-          type="button"
-          disabled={logoutBusy}
-          onClick={() => void handleLogout()}
-          aria-label="로그아웃"
-          className="grid h-11 w-11 place-items-center rounded-chip border border-line-light bg-surface text-ink hover:border-brand/40 hover:text-brand disabled:opacity-60"
-        >
-          <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-          <span className="sr-only">{logoutBusy ? "로그아웃 중…" : "로그아웃"}</span>
-        </button>
       </div>
 
       {/* 프로필 카드 */}
@@ -465,6 +455,24 @@ function MeContent() {
             </button>
           </form>
         ) : null}
+      </section>
+
+      {/* 로그아웃 */}
+      <section className="flex items-center justify-between gap-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
+        <div className="min-w-0">
+          <h2 className="text-sm font-extrabold text-ink">로그아웃</h2>
+          <p className="text-[11px] text-muted">현재 계정에서 로그아웃합니다.</p>
+        </div>
+        <button
+          type="button"
+          disabled={logoutBusy}
+          onClick={() => void handleLogout()}
+          aria-label="로그아웃"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-chip border border-line-light bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:border-brand/40 hover:text-brand disabled:opacity-60"
+        >
+          <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{logoutBusy ? "로그아웃 중…" : "로그아웃"}</span>
+        </button>
       </section>
 
       {/* 회원 탈퇴 */}
