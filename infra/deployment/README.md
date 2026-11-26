@@ -7,6 +7,7 @@
 ## 파일
 
 W65의 첫 AWS 배포 구성안과 검증 체크리스트는 [W65-AWS-PLAN.md](W65-AWS-PLAN.md)에 정리했다. AWS 적용 결과가 아닌 사전 설계다.
+AWS 전용 포트·HTTPS 오버레이와 실행 순서는 [W65-AWS-RUNBOOK.md](W65-AWS-RUNBOOK.md)에 정리했다. 실제 도메인·계정·예산을 채운 뒤 사용한다.
 Redis의 로컬 컨테이너 연결·장애·복구 결과는 [W65-REDIS-VERIFY-2026-11-26.md](W65-REDIS-VERIFY-2026-11-26.md)에 기록했다.
 데이터가 적재된 별도 시험 DB의 A02 목록·A03 상세 결과는 [W65-FESTIVAL-DB-VERIFY-2026-11-26.md](W65-FESTIVAL-DB-VERIFY-2026-11-26.md)에 기록했다.
 
@@ -49,8 +50,8 @@ curl http://127.0.0.1:8000/api/v1/health
 2. **`api`에 서비스 계정을 줄지**(A05 귀가 결과 조회). 귀가 DB 저장(`ROUTE_STORE=db`)에는 필요해서 지금은 넣어 두었다.
 3. **프론트 Docker 포함 여부**: 실제 사용할 프론트 구현 기준으로 확정 예정.
 4. **Redis·워커**: Redis 연결 확인과 기존 PostgreSQL A06 워커는 선택 프로필로 추가했다. Celery는 아직 사용하지 않는다. Redis를 쓰는 세션·채팅 코드 전환은 별도 작업이다.
-5. **배포 비밀값 보관 방법**(서버 권한 제한 파일 vs AWS 보관 서비스): W65에서 결정.
-6. **7일 백업**: `Docs/Step 2/db/backup_long_term.sh`(경로 본문 제외)를 언제·어디서 돌릴지 W65에서 결정.
+5. **배포 비밀값**: 첫 AWS 배포 기준안은 Secrets Manager→권한 제한 런타임 파일이다. 실제 IAM 권한·비용·주입 절차는 W65 실행 전에 확인한다.
+6. **7일 백업**: `Docs/Step 2/db/backup_long_term.sh`의 경로 본문 제외 규칙으로 KST 06:30 S3 논리 백업을 계획했다. 작업 등록·복원 시험은 아직이다.
 
 ## 참고
 - **11/25 최신 `yubeen` 재검증:** 별도 Compose 프로젝트에서 001~028 적용·재기동 시 전부 건너뜀, API healthy, `/health` 200(`db=ok`), 빈 시험 DB의 축제 목록 200(`is_mock=false`, 0건), 시험 비밀값의 이미지·히스토리·로그 노출 0건. [검증 기록](../../backend/Doc/w64/VERIFY-2026-11-25.md).

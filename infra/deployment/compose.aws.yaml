@@ -1,0 +1,30 @@
+# W65 첫 배포용 오버레이. 로컬 compose.yaml과 함께 사용한다.
+# API_DOMAIN의 DNS가 EC2를 가리키기 전에는 프록시를 기동하지 않는다.
+services:
+  db:
+    ports: !reset []
+
+  api:
+    ports: !reset []
+    environment:
+      APP_ENV: production
+
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:
