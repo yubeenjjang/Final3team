@@ -52,7 +52,6 @@ export function RecommendationsView() {
     dragStartScrollLeft.current = carousel.scrollLeft;
     dragged.current = false;
     setDragging(true);
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function moveDrag(event: ReactPointerEvent<HTMLDivElement>) {
@@ -60,7 +59,11 @@ export function RecommendationsView() {
     const carousel = carouselRef.current;
     if (!carousel) return;
     const distance = event.clientX - dragStartX.current;
-    if (Math.abs(distance) > 4) dragged.current = true;
+    if (Math.abs(distance) > 4 && !dragged.current) {
+      dragged.current = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    if (!dragged.current) return;
     carousel.scrollLeft = dragStartScrollLeft.current - distance;
     event.preventDefault();
   }
@@ -68,7 +71,9 @@ export function RecommendationsView() {
   function finishDrag(event: ReactPointerEvent<HTMLDivElement>) {
     if (!dragging) return;
     setDragging(false);
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (dragged.current) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
   }
 
   return (

@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAuthStateForTest, setAuthSession } from "@/lib/api/auth";
 import { RecommendationsView } from "./RecommendationsView";
@@ -61,6 +61,27 @@ describe("RecommendationsView", () => {
       expect(screen.getByText((content) => content.includes(label))).toBeInTheDocument();
     }
     expect(screen.getByText("추천 축제").closest("div.no-scrollbar")).toBeInTheDocument();
+    const detailLink = screen.getByRole("link", { name: /축제 상세보기/ });
+    expect(detailLink).toHaveAttribute("href", "/festivals/festival-1");
+
+    const carousel = detailLink.closest("div.no-scrollbar") as HTMLDivElement;
+    const setPointerCapture = vi.fn();
+    Object.defineProperty(carousel, "setPointerCapture", {
+      configurable: true,
+      value: setPointerCapture,
+    });
+    fireEvent.pointerDown(carousel, {
+      pointerType: "mouse",
+      pointerId: 1,
+      button: 0,
+      clientX: 200,
+    });
+    fireEvent.pointerUp(carousel, {
+      pointerType: "mouse",
+      pointerId: 1,
+      clientX: 200,
+    });
+    expect(setPointerCapture).not.toHaveBeenCalled();
     expect(screen.getByRole("link", { name: /메인페이지로 가기/ })).toHaveAttribute("href", "/");
   });
 });
