@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
-import { PageHero } from "@/components/PageHero";
+import Image from "next/image";
+import { TabPageHero } from "@/components/TabPageHero";
 import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
 import { FestivalCarousel } from "./FestivalCarousel";
@@ -146,13 +147,32 @@ export function FestivalExploreView({
     .filter((section) => section.items.length > 0);
 
   return (
-    <div className="space-y-5 px-4 pb-4 pt-1">
-      <PageHero
-        title={mode === "list" ? listTitle : "축제"}
+    <div className="space-y-4 px-4 py-4">
+      <TabPageHero
+        title={
+          mode === "list" ? (
+            listTitle
+          ) : (
+            <>
+              축제 <span className="text-brand">즐겨봐!</span>
+            </>
+          )
+        }
         subtitle={
           mode === "list"
             ? "원하는 조건으로 축제를 살펴보세요!"
             : "지금 열리는 축제부터, 나에게 딱 맞는 축제까지!"
+        }
+        aside={
+          <div className="relative h-14 w-[104px]">
+            <Image
+              src="/brand/festival-hero-compact.png"
+              alt=""
+              fill
+              sizes="104px"
+              className="object-contain object-right"
+            />
+          </div>
         }
       />
 

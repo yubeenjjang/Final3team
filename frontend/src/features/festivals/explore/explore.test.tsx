@@ -209,7 +209,7 @@ describe("F6 festival explore", () => {
     const image = screen.getAllByAltText("첫 번째 축제")[0];
     expect(image.className).toContain("object-cover");
     expect(image.parentElement?.className).toContain("aspect-[3/2]");
-    expect(screen.getAllByText("출처: 한국관광공사").length).toBeGreaterThan(0);
+    expect(screen.queryByText("출처: 한국관광공사")).not.toBeInTheDocument();
     const favoriteButton = screen.getAllByRole("button", { name: "찜하기" })[0];
     expect(favoriteButton.className).toContain("bg-transparent");
     expect(favoriteButton.className).not.toContain("rounded-chip");
@@ -259,7 +259,7 @@ describe("F6 festival explore", () => {
     );
 
     const img = screen.getByAltText("이미지 실패 테스트 축제");
-    expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
+    expect(screen.queryByText("출처: 한국관광공사")).not.toBeInTheDocument();
 
     fireEvent.error(img);
 
