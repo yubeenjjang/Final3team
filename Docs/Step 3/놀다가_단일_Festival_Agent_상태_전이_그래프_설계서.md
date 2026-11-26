@@ -1,6 +1,6 @@
 # 놀다가 단일 Festival Agent 상태 전이 그래프 설계서
 
-> 작성 기준: 2026-11-23, 제출본 정리: 2026-11-24. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, `origin/ohyun:Docs/Step 2/API_설계문서.md` v0.4, `origin/yubeen:Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 현재 작업 브랜치의 API 문서 사본은 v0.3.3이며, 최신 도구 계약은 오현님 브랜치를 기준으로 확인한다. 코드 기준은 `dayoung 7b8451a`다.
+> 작성 기준: 2026-11-23, 실조회·시험 기록 갱신: 2026-11-26. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, 현재 브랜치의 `Docs/Step 2/API_설계문서.md`와 `Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 실조회 기준은 `dayoung dc35ad5`이며, 11/27 제출용 병합 후 시험의 코드 기준은 **`main 0fda8fd`**다. 개인 브랜치 시험과 병합 후 시험은 부록 D와 [증빙](evidence/Festival_live_2026-11-26.md)에 구분해 기록한다.
 
 ## 1. 목적과 범위
 
@@ -31,10 +31,12 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
 |---|---|---|
 | 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 학원망에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
-| 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8~A-11). 11/24 서울빛초롱축제는 학원망 맥북에서 Agent가 직접 HTTP 호출해 `is_mock:false`, 공급원 `ok`, Agent `answered`를 확인했다(A-12). | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
+| 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8~A-11). 11/26 서울빛초롱축제는 Agent 직접 HTTP 복합 호출에서 `is_mock:false`, 공급원 `ok`, Agent `answered`, 관측 시각 `2026-11-26T09:00:00+09:00`을 확인했다(A-14). 후속 A-15 재실행의 관측 시각은 `2026-11-26T10:00:00+09:00`이었다. | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
 | 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
 
 서버 응답의 `is_mock` 값을 유지해 답변에 반영한다. 시연 환경의 자료 모드는 실제 실행 직전에 다시 확인한다.
+
+**시연 요약:** 서울빛초롱축제 한 건을 선택해 실제 축제 DB 검색→상세→서울 주변 혼잡을 3회 도구 호출로 보여 준다. 11/26 재실행에서 세 단계가 `answered`였고, 혼잡 출처는 `seoul_citydata`, 관측 기준은 `2026-11-26T10:00:00+09:00`이었다. 공식 공지는 **모의 API 계약·전이 확인 범위**로만 소개한다. 상세 명령·커밋·결과는 [실조회 증빙](evidence/Festival_live_2026-11-26.md)을 따른다.
 
 ## 2. 상태·노드·전이(개념)
 
@@ -51,6 +53,7 @@ flowchart TD
     B -->|아니요| U[unavailable 또는 partial로 종료]
     B -->|예| T[축제 도구 호출]
     T -->|ok=true| V[ID·출처·시각·지원 범위 검증]
+    T -->|응답 도착 후 30초 초과| U
     T -->|ok=false, retryable=true| R{재시도 한도·시간 남음?}
     R -->|예| T
     R -->|아니요| E
@@ -100,6 +103,17 @@ flowchart TD
 
 모델 내부 추론 원문은 기록하거나 사용자에게 보여주지 않는다. 외부 API의 설명·공지·축제 소개는 비신뢰 데이터로 취급하고, 내용에 담긴 지시를 프롬프트나 도구 권한으로 실행하지 않는다.
 
+**12/4 자기 성찰 대표 시험(W28 구현·W29 측정·W30 결과서):** 동일 질문·동일 기준 시각에서 처음 고른 후보의 **축제 ID·출처·관측/갱신 시각**이 사용자 조건과 맞는지 모델이 근거를 평가한다. 예를 들어 기준일 2026-11-26에 “오늘 진행 중인 서울의 시험 축제 F01 상세를 알려줘”라는 고정 질문에 `get_festival(festival_id=F01)`이 다른 축제 F02의 상세를 반환하면, F02를 답에서 배제한다. 이어 **같은 상세 호출의 반복이 아니라** `search_festivals(q="시험 축제", region="SEOUL", date_from="2026-11-26", date_to="2026-11-26", status="ongoing")`으로 원래 조건의 후보를 재확인하고, 확인된 F01의 상세를 다시 조회한다. ID·공식 출처·시각·진행 날짜가 모두 맞을 때만 답변을 허용한다. 다시 확인해도 불일치·근거 누락·오래된 자료가 남으면 `unavailable`/`partial`로 종료한다. F01·F02는 시험용 가상 ID다. 이는 **후속 구현·시험 계획**이며 현재 규칙 기반 ID 검증이나 같은 인자의 통신 재시도를 모델 자기 성찰 성공으로 세지 않는다.
+
+| 비교 항목 | 첫 결과 | 수정 후 결과·성공 기준 |
+|---|---|---|
+| 질문·기준 시각 | 동일한 F01·“오늘 진행 중”·서울 조건을 고정 | 질문과 날짜 조건을 바꾸지 않는다. |
+| 근거 평가 | F02 ID 또는 출처·시각 오류를 찾아 사용자 답변에서 제외 | 모델이 불일치 이유와 다시 확인할 ID·근거를 제안하고 코드가 허용 도구·횟수를 검사한다. |
+| 재조회 | 단순 동일 호출 반복을 성찰로 세지 않음 | F01의 ID·공식 출처·유효 시각·진행 상태가 모두 맞을 때만 성공. 예정 축제는 “오늘 진행 중”의 성공이 아니다. |
+| 측정·종료 | 첫 후보와 잘못된 답변 위험 기록 | 수정 전후의 판정·도구 호출 수·경과 시간·최종 답변/보류를 비교하고, 4회·30초 예산을 지킨다. |
+
+**추가 사례:** 검색 0건일 때 사용자 이름·지역·날짜를 유지한 채 `status=ongoing`을 `ongoing,upcoming`으로 한 번 넓히는 규칙은 별도로 시험한다. 다만 질문이 “오늘 진행 중”이면 예정 축제는 조건 불일치로 기각한다. 이 사례의 검색 조건 변경을 모델의 근거 재평가와 혼동하지 않고, W28 대표 시험의 성공 수에도 합산하지 않는다. W29는 두 사례를 분리해 추적·호출·지연/비용을 기록한다.
+
 ## 4. CoT·ReAct 단계와 기록
 
 현재 실행은 **규칙 기반 도구 흐름**이다. `select_tool`은 구조화된 의도에서 도구를 고르고, `call_tool`이 실행하며, `validate`가 응답을 관찰·검증한다. LLM의 Thought 또는 근거 부족에 따른 재추론 고리는 없다. 따라서 현재의 `retry`는 **같은 도구 호출을 반복하는 통신 재시도**이며 자기 성찰이나 LLM 재추론 성공으로 세지 않는다.
@@ -112,6 +126,8 @@ flowchart TD
 | Check | `validate` 또는 `error` | ID 일치·근거 충족·미지원 판정과 다음 전이 |
 
 현재 `transitions`, `used_tools`, `evidence`는 결과와 함께 반환되지만 별도 JSON Lines 저장소나 `trace_id` 영속 기록은 없다. 향후 추적 로그에는 노드·도구·판정 요약만 남기고 모델의 내부 추론, 인증 정보, 외부 응답 원문은 기록하지 않는다. 이 기록 정책은 다음 자기 성찰 시험의 입력·기대 전이와 연결한다.
+
+**자기 성찰 비교 기록:** 대표 시험은 같은 질문·기준 시각을 고정하고 (1) 첫 후보의 ID·출처·시각과 오류 판정, (2) 모델이 제안한 수정 확인의 이유·도구 인자, (3) 수정 후 후보의 ID·공식 출처·유효 시각·원조건 적합성, (4) 최종 답변/보류·전체 호출 수·경과 시간·비용을 남긴다. 추가 0건 검색 사례는 별도 표로 기록한다. 단순 같은 요청 `retry`나 예정 축제를 “오늘 진행 중”의 성공으로 세지 않는다.
 
 **11/27 단독 실행 입력:** 현재 구현과 기획서 6.1절의 역할 분담에 따라 시험 하네스가 `FestivalRequest`의 구조화된 `intent`·축제 ID·검색 조건을 전달한다. 이는 Supervisor를 모의한 입력이며, 자연어 분류나 LLM 재추론의 성능을 검증하는 시험으로 해석하지 않는다. 후속 통합에서 Supervisor의 실제 출력 계약이 확정되면 같은 필드로 연결한다.
 
@@ -133,7 +149,7 @@ flowchart TD
 
 | 도구 | 입력 JSON Schema 요약 | 성공 결과에서 확인할 필드 | 오류·특수 상태 |
 |---|---|---|---|
-| `search_festivals` | 모두 선택: `region`(기본 `ALL`, 17개 시·도 코드), `date_from`·`date_to`(`YYYY-MM-DD`, 순서·최대 366일 검증), `q`(1~50자), `status`(`upcoming/ongoing/ended/cancelled`), `page_size`(1~20, 기본 10). **도구 스키마에는 `bbox`·`sort`·`page`가 없다.** | `data.items[]`의 `festival_id`, `name`, `region_code`, 날짜, `source`, `last_synced_at`; `total`·`page`·`page_size` | `items:[]`는 `ok:true`인 결과 없음. `VALIDATION_ERROR`는 되묻거나 입력 수정, `TOOL_TIMEOUT`·`RATE_LIMITED`는 제한 재시도. |
+| `search_festivals` | 모두 선택: `region`(기본 `ALL`, 17개 시·도 코드), `date_from`·`date_to`(`YYYY-MM-DD`, 순서·최대 366일 검증), `q`(1~50자), `status`(`upcoming/ongoing/ended/cancelled` 중 하나 또는 쉼표로 구분한 여러 상태, 예: `ongoing,upcoming`), `page_size`(1~20, 기본 10). **도구 스키마에는 `bbox`·`sort`·`page`가 없다.** | `data.items[]`의 `festival_id`, `name`, `region_code`, 날짜, `source`, `last_synced_at`; `total`·`page`·`page_size` | `items:[]`는 `ok:true`인 결과 없음. `VALIDATION_ERROR`는 되묻거나 입력 수정, `TOOL_TIMEOUT`·`RATE_LIMITED`는 제한 재시도. |
 | `get_festival` | 필수 `festival_id:string` 하나. 검색 결과의 ID나 선택 문맥의 ID를 그대로 사용 | `data.festival_id`, `name`, 장소·주소·좌표, 날짜, `source`, `source_ref`, `last_synced_at`. 빈값 허용 필드는 그대로 표시 | `FESTIVAL_NOT_FOUND`는 재선택 요청. ID 형식 오류는 `VALIDATION_ERROR`, 일시적 호출 오류는 `TOOL_TIMEOUT`. |
 | `get_crowd` | 필수 `festival_id:string` 하나. 지역 코드나 관측구역 코드를 인자로 보내지 않음 | 현재 Agent가 사용하는 값은 `data.festival_id`, `status`, `coverage`, `areas[]`의 `area_name`, `congest_level`, `observed_at`, `is_estimate`, `source`다. API의 `forecast[]`는 현재 답변에 사용하지 않는다. | `status:unsupported`는 정상 미지원. `status:stale`은 관측 시각을 밝히고 현재 상태로 단정하지 않음. `status:unavailable`은 정보 제공 불가. 본문 결과 코드 오류는 `SOURCE_RESULT_ERROR`. |
 | `get_official_notices` | 필수 `festival_id:string`, 선택 `type`(`operation/traffic_control/no_stop/bus_detour/road_closure`) | `data.festival_id`, `status`, `coverage`, `items[]`의 `notice_id`, `title`, `source`, `published_at`, `effective_from`, `effective_to` | `items:[]`는 정상 빈 결과. `unsupported`·`unavailable`은 공지 확인 불가, `stale`은 오래된 자료임을 표시. 현재 검증 자료는 모의 응답이다. |
@@ -156,6 +172,8 @@ flowchart TD
 | 범위 밖 도구 요청 | 도구 호출 없이 `handoff_required` | 담당 역할만 표시, 단독 그래프에서 타 Agent 호출 없음 |
 
 현재 `attempts`는 **단일 도구 단계의 호출 시도**이며, `tool_call_count`는 복합 흐름 전체 호출 수다. LLM 재추론 횟수는 별도 필드도 실행 경로도 없다. 후속 도입 시 재추론 카운터를 통신 재시도 카운터와 분리해야 한다.
+
+**시간·대기 계약:** 그래프는 30초를 호출 전후에 검사하고 도구 호출을 재시도 포함 총 4회로 제한한다. 공통 `ToolExecutor`의 HTTP 호출 제한은 1회 5초다. 별도의 대기·백오프는 없으며, `retryable:true`인 일시 오류에 한해 동일 인자로 즉시 최대 1회 재시도한다. `FESTIVAL_NOT_FOUND`·입력 오류·혼잡 본문 `unsupported/stale/unavailable`은 그대로 재호출하지 않는다. 그래프의 30초 검사는 **협력적 제한**으로, 이미 시작한 동기 호출을 중단시키지는 않는다. 혼잡 단계 전에 시간이 끝나면 검색·상세 근거를 남긴 `partial`과 혼잡 미확인 안내로 끝낸다. 이 경계의 재현 결과는 아래 시험과 별도 증빙에 기록한다. 호출 후 30초를 넘겨 도착한 성공 응답도 버리고, 앞 단계 근거가 있으면 `partial`로 혼잡 미확인을 알린다. 이미 시작된 호출의 대기 자체는 중단하지 않는다.
 
 ## 6. 메모리 및 체크포인트
 
@@ -355,7 +373,7 @@ W24 확인 순서는 다음과 같다.
 
 맥북 Safari에서 전달받은 화면으로 실제 API의 목록과 상세 응답을 **수동 대조**했다. 목록에는 `is_mock:false`, `total:869`, 축제 ID `fst_01M835BPX17Y44VEDJM1VMZ3N6`, `source:tourapi`, `last_synced_at:2026-11-23T11:57:22.397300+09:00`이 보였고, 상세 응답도 같은 축제 ID와 `is_mock:false`, `source:tourapi`, 같은 갱신 시각을 표시했다. 이로써 해당 한 건의 실제 DB 검색→상세 응답 일치는 확인했다. 화면의 `total:869`와 팀원이 안내한 적재 870건은 집계 기준이 다를 수 있으나 원인은 아직 확인하지 않았다. Safari에서 한글이 깨져 보여 축제 이름·장소 문구의 정확성은 판정하지 않았다. **Festival Agent가 집 컴퓨터에서 실제 API를 호출한 결과는 아직 아니다.**
 
-학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <공유받은 API 주소>`를 실행하면 진행·예정 상태를 **각각** 조회한 뒤 첫 축제의 상세 정보를 확인한다. 도구 JSON Schema의 `status`는 단일 값만 허용하지만 API는 쉼표로 구분한 여러 값을 받으므로, 도구 계약이 바뀌기 전에는 `ongoing,upcoming`을 Agent 인자로 보내지 않는다. 이 확인은 실제 축제 DB의 검색·상세까지만 포함하고 혼잡은 제외한다.
+학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <공유받은 API 주소>`를 실행하면 진행·예정 상태를 **각각** 조회한 뒤 첫 축제의 상세 정보를 확인한다. 도구 JSON Schema와 API 모두 쉼표로 구분한 여러 상태(예: `ongoing,upcoming`)를 허용한다. 이 확인은 실제 축제 DB의 검색·상세까지만 포함하고 혼잡은 제외한다.
 
 ### A-5. 실제 DB 형태와 혼잡 모의 응답의 혼합 시험
 
@@ -439,6 +457,23 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 이 `observed_at`은 **혼잡 자료의 관측 기준 시각**이며 명령을 실행한 시각은 출력에 없다. 확인 범위는 공개 서울빛초롱축제 1건의 실제 검색→상세→혼잡 HTTP 연속 실행이다. 미지원 지역의 현재 실호출, 공식 공지·주변 시설의 실제 공급원 응답, 팀 `main` 병합 후 통합 시험은 여기에 포함되지 않는다.
 
+### A-15. 서로 다른 축제 ID의 실DB 상세 분리 확인 (2026-11-26)
+
+`dayoung 777d743` 점검기에 `--verify-multi-festival`을 추가했다. 다영님이 변경을 받은 뒤 실제 API로 실행한 결과, 진행·예정 검색에서 선택한 서로 다른 두 축제 ID `fst_01M835BCHV21MGQF4333AAJZJ4`와 `fst_01M835BS447VDC8PVAQNM8GKHF`의 상세가 각각 `answered`였다. 점검기는 두 번째 축제의 원시 상세 `is_mock:false`·응답 ID와 Agent 상세 근거 ID를 요청 ID와 대조하며, 다르면 실패한다. 별도로 서울빛초롱축제의 상세·혼잡·복합 흐름도 다시 `answered`였고 혼잡 관측 시각은 `2026-11-26T10:00:00+09:00`, 출처는 `seoul_citydata`였다. [원출력·범위](evidence/Festival_live_2026-11-26.md)를 기록했다. 두 번째 축제의 혼잡, 공식 공지·시설의 실제 공급원 응답은 확인하지 않았다.
+
+### A-16. 시간·호출 예산 종료 재현 (2026-11-26)
+
+`dayoung 45be6ed`에서 Festival 단독 시험 **36개 통과**. 가상 시계가 상세 성공 뒤 혼잡 호출 전에 30.1초를 가리키면 도구 호출 2회로 `partial` 종료하며, 상세 장소와 혼잡 미확인 안내를 함께 반환했다. 상세 도구의 일시 오류를 한 번 재시도한 뒤 혼잡 오류를 받은 사례는 총 4회 호출에서 추가 재시도 없이 같은 부분 안내로 종료했다. 재현 실행의 실제 경과는 각각 4.982ms·4.102ms였다. 이 값은 **가상 시계·고정 응답 시험의 벽시계 시간**이며 실제 공급원 지연이나 30초 강제 중단을 뜻하지 않는다. [명령·출력](evidence/Festival_live_2026-11-26.md)을 남겼다.
+
+### A-17. 30초 제한·부분 답변 시연 순서
+
+1. 정상 검색→상세→혼잡은 도구 3회와 각 단계의 근거를 보여 준다. 다음으로 `python -m agents.check_festival_budget`을 실행해 **가상 시계 30.1초**가 혼잡 호출 전에 도달한 사례(검색·상세 2회)와 **재시도 포함 4회 상한** 사례를 보여 준다.
+2. 두 경우 모두 화면/터미널의 이미 확인한 **축제 이름·상세 장소·출처/갱신 시각**과 “조회 제한에 도달해 **혼잡 정보를 확인할 수 없습니다**”를 함께 가리킨다. 혼잡 수치나 안전한 이동 경로를 추정해 추가하지 않는다.
+3. 늦은 성공 응답 사례는 `test_late_successful_crowd_response_is_discarded`를 함께 보여 준다. 혼잡 도구가 `ok=True`로 돌아왔더라도 호출 후 시간이 만료되면 응답 내용을 쓰지 않고 상세 근거를 남긴 `partial`로 종료한다.
+4. 발표 문구: “30초는 호출 전후에 확인하는 전체 처리 예산입니다. 이 시험은 가상 시계와 고정 응답으로 종료 분기를 재현했습니다. 진행 중인 HTTP 호출은 호출 자체의 제한 시간까지 기다릴 수 있으며, 정확히 30초 시점에 연결을 끊는 구현은 아닙니다.” 실제 지연 성능 측정으로 표현하지 않는다.
+
+[재현 명령·원시 출력](evidence/Festival_live_2026-11-26.md)의 제출 코드 기준은 `main 0fda8fd`다. 시연용 화면 구성이나 실제 HTTP 지연 주입은 아직 별도 구현되지 않았다.
+
 ## 부록 B. 후속 구현에서 확인할 결정
 
 1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
@@ -453,23 +488,25 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 | 확인 지점 | 현재 근거 | 검토할 질문 |
 |---|---|---|
 | 그래프 전이·종료 | 2장·8장·9장, `backend/agents/festival_graph.py` | 모든 분기가 `END`에 도달하고, 검색→상세→혼잡의 ID가 계속 같은가? |
-| 오류·호출 예산 | 5-2절·9장, 11/24 공통 명령 기준 시험 35개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
+| 오류·호출 예산 | 5-2절·9장, 기존 35개·시간 예산 반영본 36개·늦은 성공 응답 반영본 37개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
 | 실제·모의 근거 경계 | A-7~A-10 | 실제 API 직접 조회, 실제 응답 필드 재생, Agent의 학원 서버 직접 HTTP E2E를 구분했는가? |
 | 기능 범위 | 1-1절·3장 | 현재 네 도구와 후속 시설·코스·RAG·Supervisor 계약을 구현 완료로 혼동하지 않는가? |
 
-현재 브랜치의 시험 통과와 실제 응답 재생은 **작성자 확인 결과**다. 이 표는 R04 검토를 요청할 때 사용할 점검 목록이며 검토 완료·M03 제출을 뜻하지 않는다.
+이 표는 R04 검토 지점이다. 태경님 최종 검토는 2026-11-26 완료됐고, `main 0fda8fd` 제출 기준 시험 결과는 부록 D에 기록했다. 실제 제출 여부는 별도 확인한다.
 
 ## 부록 D. 11/27 공통 시험 실행 기준
 
-- **시험 코드 기준:** `dayoung 7b8451a`(2026-11-24). W14 공통 도구 실행기를 Festival 단독 HTTP 실행기에 연결하고 실제 공급원 복합 검사도 추가한 코드다. 팀 `main` 병합 기준 커밋은 실제 병합 후 기록한다.
-- **11/26 실조회 기준:** `dayoung dc35ad5` 이후 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 사용자 제공 출력과 확인 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다. 정확한 실행 HEAD SHA는 터미널 출력에 없어 추정하지 않는다.
+- **기존 코드 기준:** `dayoung 7b8451a`(2026-11-24)에서 W14 공통 도구 실행기를 Festival 단독 HTTP 실행기에 연결하고 실제 공급원 복합 검사를 추가했다. 당시 `main 709a279`에는 Festival 코드·공통 실행기·설계서와 실조회 증빙이 있었다. 이후 `dayoung`의 두 축제 상세 ID 검사·시간 예산 시험과 최신 증빙은 `main 0fda8fd`에 병합됐다.
+- **11/26 실조회·단독 시험 기준:** `dayoung dc35ad5` 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 같은 체크아웃에서 `git rev-parse --short HEAD`로 커밋을 확인했고 Festival 단독 시험 `Ran 35 tests`, `OK`를 받았다. 실조회 출력과 시험 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
-- **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
+- **실행 결과:** 2026-11-26 `dayoung dc35ad5`, macOS·Python 3.14.7 가상환경에서 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다. 원출력은 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
-- **팀 병합 후 공통 시험:** `yubeen`의 시험 실행 기준이 `main`에 병합되면 저장소 루트에서 `python -m pytest backend/tests -q`로 백엔드 전체 시험을 실행한다. 유빈님이 `yubeen`에서 보고한 395개 통과는 이 제출본의 병합 후 재시험 결과로 대신하지 않는다.
-- **제출 링크 기준:** 현재 `main`의 설계서 제출본은 `dayoung da35812`의 실제 복합 실행 결과와 `5a60245`의 주소 가림 수정 이전 사본이다. 팀장님이 두 수정과 Festival Agent 코드를 `main`에 병합한 뒤, **설계서·Festival 코드·공통 실행기·시험 결과가 모두 들어 있는 같은 `main` 커밋**을 제출 링크와 여기에 기록한다. 병합 전에는 `dayoung 7b8451a`를 Festival 실행 코드 기준으로, 공통 실행기의 최초 연결은 `dayoung 6dc31ca`(`yubeen 00ca7dc` 반영)로 구분한다. `main` 통합 시험 결과는 병합 뒤 실제로 실행한 환경·명령·성공/실패 개수를 기록한다.
-- **11/26 로컬 시험 제약:** 이 환경에서는 `langgraph`가 설치되지 않았고 패키지 다운로드도 연결 제한으로 실패했다. 따라서 위 35개와 팀 전체 시험 수치는 11/24 기존 실행 기록이며 11/26 재실행 결과로 쓰지 않는다.
+- **최신 개인 브랜치 시험:** 11/26 `dayoung 122cb32`, macOS·Python 3.14.7에서 같은 Festival 단독 명령을 다시 실행해 `Ran 35 tests in 0.077s`, `OK`를 확인했다. 404·503 시험에서 `ResourceWarning` 두 줄이 있었으나 실패는 없었다. 이후 시간 예산 시험 코드 변경은 이 결과에 포함되지 않는다.
+- **시간 예산 반영본:** 11/26 `dayoung 45be6ed`, 같은 환경에서 Festival 단독 시험 `Ran 36 tests in 0.080s`, `OK`; `python -m agents.check_festival_budget`은 30.1초 가상 경계·4회 호출 상한 두 사례를 모두 `partial`로 확인했다. 벽시계 경과와 부분 답변은 [증빙](evidence/Festival_live_2026-11-26.md)에 있다.
+- **늦은 성공 응답 반영본:** 11/26 `dayoung f454e7e`, Windows·Python 3.12.15에서 LangGraph 설치 후 Festival 단독 시험 `Ran 37 tests`, `OK`. 혼잡 성공 응답이 30초를 넘겨 도착하면 그 내용을 버리고 상세 근거와 혼잡 미확인 안내를 포함한 `partial`로 끝나는 신규 시험을 포함한다. `check_festival_budget`의 2회·4회 호출 사례도 모두 `partial`이었다. [환경·명령·결과](evidence/Festival_live_2026-11-26.md)를 따른다.
+- **11/27 제출 시험의 코드 기준:** `main 0fda8fd`에서 다영님이 Festival 단독 **37개 통과**, 백엔드 전체 **51개 통과·하위 시험 2개 통과**, 시간 제한·4회 호출 상한 재현 사례 **각각 `partial` 종료**를 확인했다. 태경님 최종 검토도 완료됐다. 이 결과는 실행 코드 `0fda8fd`에 귀속하며 설계서·증빙 제출 커밋은 `main c3526bc`다. 두 커밋 사이에는 Markdown 문서만 바뀌었다. Windows·Python 3.12.15, `backend/`의 `uv` 단독 명령과 저장소 루트의 `PYTHONPATH=backend` 설정을 사용했다. [증빙](evidence/Festival_live_2026-11-26.md)에 정확한 명령·터미널 출력·시험 한계를 붙였다.
+- **환경 구분:** Windows 환경에도 LangGraph를 설치해 최신 37개를 실행했다. 기존 35개와 시간 예산 반영본 36개 기록은 macOS 실행 결과다. 시간 예산 시험은 가상 시계와 고정 응답을 사용하는 재현 시험이며 실제 HTTP 장애 지연을 측정한 결과로 쓰지 않는다.
 
 ## 참고 파일
 
@@ -477,4 +514,4 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - `Docs/Step 1/놀다가_기획서.md` — 서비스·5개 Agent·안전 경계
 - `Docs/Step 1/놀다가_WBS.md` — W22~W25 및 M03(11/27)
 - `Docs/Step 2/API_설계문서.md` — 도구 목록·공통 출력·실패 규칙
-- `origin/ohyun:Docs/Step 2/handoff/에이전트_도구_인계.md` — Festival Agent 작업 제안 및 모의 API 현황
+- `Docs/Step 2/handoff/에이전트_도구_인계.md` — Festival Agent 도구 계약 및 모의 API 현황
