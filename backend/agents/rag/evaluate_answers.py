@@ -22,6 +22,10 @@ from agents.rag.evaluate_sample import DOCUMENTS, QUESTIONS, eligible_documents
 
 DEFAULT_MODEL = "gpt-6.2-sol"
 OUTPUT = Path(__file__).with_name("answer_eval_results.json")
+FESTIVAL_NAMES = {
+    DOCUMENTS[0]["festival"]: "서울빛초롱축제",
+    DOCUMENTS[1]["festival"]: "청계천의 빛",
+}
 CONFLICT = {
     "id": "D1_CONFLICT_FIXTURE",
     "festival": DOCUMENTS[0]["festival"],
@@ -64,6 +68,14 @@ def case_documents(question_id: str, festival_id: str) -> list[dict]:
     return docs
 
 
+def question_festival_mismatch(question: str, selected_festival_id: str) -> bool:
+    """Catch explicit names of another known festival before model generation."""
+    return any(
+        name in question and festival_id != selected_festival_id
+        for festival_id, name in FESTIVAL_NAMES.items()
+    )
+
+
 def evaluate_case(question_id: str, result: dict, docs: list[dict]) -> tuple[bool, str]:
     expected, expected_id, patterns = CASE_EXPECTATIONS[question_id]
     decision = result.get("decision")
@@ -86,10 +98,6 @@ def evaluate_case(question_id: str, result: dict, docs: list[dict]) -> tuple[boo
 
 
 def request_answer(model: str, key: str, question: str, festival_id: str, docs: list[dict]) -> tuple[dict, dict, float]:
-    festival_names = {
-        DOCUMENTS[0]["festival"]: "서울빛초롱축제",
-        DOCUMENTS[1]["festival"]: "청계천의 빛",
-    }
     evidence = [
         {"document_id": doc["id"], "festival_id": doc["festival"],
          "source_url": doc["source_url"], "content": doc["text"]}
@@ -102,7 +110,7 @@ def request_answer(model: str, key: str, question: str, festival_id: str, docs: 
         "input": [
             {"role": "developer", "content": INSTRUCTIONS},
             {"role": "user", "content": json.dumps(
-                {"selected_festival_id": festival_id, "selected_festival_name": festival_names.get(festival_id),
+                {"selected_festival_id": festival_id, "selected_festival_name": FESTIVAL_NAMES.get(festival_id),
                  "question": question, "evidence": evidence},
                 ensure_ascii=False,
             )},
@@ -150,7 +158,13 @@ def main() -> int:
     try:
         for qid, fid, question in cases:
             docs = case_documents(qid, fid)
-            if not docs:
+            if question_festival_mismatch(question, fid):
+                answer, usage, elapsed = (
+                    {"decision": "abstain", "answer": "질문한 축제가 현재 선택한 축제와 다릅니다. 축제를 다시 선택해 주세요.",
+                     "citation_ids": [], "reason": "festival_name_mismatch"}, {}, 0.0,
+                )
+                origin = "code_fallback"
+            elif not docs:
                 answer, usage, elapsed = (
                     {"decision": "abstain", "answer": "유효한 공식 안내 근거를 찾지 못했습니다.",
                      "citation_ids": [], "reason": "no_eligible_evidence"}, {}, 0.0,
