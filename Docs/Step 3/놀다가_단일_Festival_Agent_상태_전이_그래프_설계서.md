@@ -489,7 +489,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ### A-15. 서로 다른 축제 ID의 실DB 상세 분리 확인 (2026-11-26)
 
-`dayoung 777d743` 점검기에 `--verify-multi-festival`을 추가했다. 다영님이 변경을 받은 뒤 실제 API로 실행한 결과, 진행·예정 검색에서 선택한 서로 다른 두 축제 ID `fst_01M835BCHV21MGQF4333AAJZJ4`와 `fst_01M835BS447VDC8PVAQNM8GKHF`의 상세가 각각 `answered`였다. 점검기는 두 번째 축제의 원시 상세 `is_mock:false`·응답 ID와 Agent 상세 근거 ID를 요청 ID와 대조하며, 다르면 실패한다. 별도로 서울빛초롱축제의 상세·혼잡·복합 흐름도 다시 `answered`였고 혼잡 관측 시각은 `2026-11-26T10:00:00+09:00`, 출처는 `seoul_citydata`였다. [원출력·범위](evidence/Festival_live_2026-11-26.md)를 기록했다. 두 번째 축제의 혼잡, 공식 공지·시설의 실제 공급원 응답은 확인하지 않았다.
+`dayoung 777d743` 점검기에 `--verify-multi-festival`을 추가했다. 다영님이 변경을 받은 뒤 실제 API로 실행한 결과, 진행·예정 검색에서 선택한 서로 다른 두 축제 ID `fst_01M835BCHV21MGQF4333AAJZJ4`와 `fst_01M835BS447VDC8PVAQNM8GKHF`의 상세가 각각 `answered`였다. 점검기는 두 번째 축제의 원시 상세 `is_mock:false`·응답 ID와 Agent 상세 근거 ID를 요청 ID와 대조하며, 다르면 실패한다. 별도로 서울빛초롱축제의 상세·혼잡·복합 흐름도 다시 `answered`였고 혼잡 관측 시각은 `2026-11-26T10:00:00+09:00`, 출처는 `seoul_citydata`였다. [실행 결과 요약·범위](evidence/Festival_live_2026-11-26.md)를 기록했다. 두 번째 축제의 혼잡, 공식 공지·시설의 실제 공급원 응답은 확인하지 않았다.
 
 ### A-16. 시간·호출 예산 종료 재현 (2026-11-26)
 
@@ -530,7 +530,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **11/26 실조회·단독 시험 기준:** `dayoung dc35ad5` 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 같은 체크아웃에서 `git rev-parse --short HEAD`로 커밋을 확인했고 Festival 단독 시험 `Ran 35 tests`, `OK`를 받았다. 실조회 출력과 시험 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
-- **실행 결과:** 2026-11-26 `dayoung dc35ad5`, macOS·Python 3.14.7 가상환경에서 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 Function Calling 공통 실행기(W14)의 복합 흐름·추적 ID·권한 차단을 확인한다. 원출력은 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
+- **실행 결과:** 2026-11-26 `dayoung dc35ad5`, macOS·Python 3.14.7 가상환경에서 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 Function Calling 공통 실행기(W14)의 복합 흐름·추적 ID·권한 차단을 확인한다. 시험 결과와 실행 환경은 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24(단일 Festival Agent 전국 DB·서울 혼잡 조회 구현) 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
 - **최신 개인 브랜치 시험:** 11/26 `dayoung 122cb32`, macOS·Python 3.14.7에서 같은 Festival 단독 명령을 다시 실행해 `Ran 35 tests in 0.077s`, `OK`를 확인했다. 404·503 시험에서 `ResourceWarning` 두 줄이 있었으나 실패는 없었다. 이후 시간 예산 시험 코드 변경은 이 결과에 포함되지 않는다.
 - **시간 예산 반영본:** 11/26 `dayoung 45be6ed`, 같은 환경에서 Festival 단독 시험 `Ran 36 tests in 0.080s`, `OK`; `python -m agents.check_festival_budget`은 30.1초 가상 경계·4회 호출 상한 두 사례를 모두 `partial`로 확인했다. 벽시계 경과와 부분 답변은 [증빙](evidence/Festival_live_2026-11-26.md)에 있다.
