@@ -1,6 +1,6 @@
 # 놀다가 단일 Festival Agent 상태 전이 그래프 설계서
 
-> 작성 기준: 2026-11-23, 제출본 정리: 2026-11-24. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, `origin/ohyun:Docs/Step 2/API_설계문서.md` v0.4, `origin/yubeen:Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 현재 작업 브랜치의 API 문서 사본은 v0.3.3이며, 최신 도구 계약은 오현님 브랜치를 기준으로 확인한다. 코드 기준은 `dayoung 7b8451a`다.
+> 작성 기준: 2026-11-23, 실조회·시험 기록 갱신: 2026-11-26. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, 현재 브랜치의 `Docs/Step 2/API_설계문서.md`와 `Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 실조회·Festival 단독 시험 코드 기준은 `dayoung dc35ad5`이며, 팀 `main` 병합 기준은 병합 후 기록한다.
 
 ## 1. 목적과 범위
 
@@ -31,7 +31,7 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
 |---|---|---|
 | 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 학원망에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
-| 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8~A-11). 11/24 서울빛초롱축제는 학원망 맥북에서 Agent가 직접 HTTP 호출해 `is_mock:false`, 공급원 `ok`, Agent `answered`를 확인했다(A-12). | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
+| 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8~A-11). 11/26 서울빛초롱축제는 Agent 직접 HTTP 복합 호출에서 `is_mock:false`, 공급원 `ok`, Agent `answered`, 관측 시각 `2026-11-26T09:00:00+09:00`을 확인했다(A-14). | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
 | 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
 
 서버 응답의 `is_mock` 값을 유지해 답변에 반영한다. 시연 환경의 자료 모드는 실제 실행 직전에 다시 확인한다.
@@ -465,11 +465,11 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **11/26 실조회·단독 시험 기준:** `dayoung dc35ad5` 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 같은 체크아웃에서 `git rev-parse --short HEAD`로 커밋을 확인했고 Festival 단독 시험 `Ran 35 tests`, `OK`를 받았다. 실조회 출력과 시험 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
-- **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
+- **실행 결과:** 2026-11-26 `dayoung dc35ad5`, macOS·Python 3.14.7 가상환경에서 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다. 원출력은 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
 - **팀 병합 후 공통 시험:** `yubeen`의 시험 실행 기준이 `main`에 병합되면 저장소 루트에서 `python -m pytest backend/tests -q`로 백엔드 전체 시험을 실행한다. 유빈님이 `yubeen`에서 보고한 395개 통과는 이 제출본의 병합 후 재시험 결과로 대신하지 않는다.
 - **제출 링크 기준:** 현재 `main`의 설계서 제출본은 `dayoung da35812`의 실제 복합 실행 결과와 `5a60245`의 주소 가림 수정 이전 사본이다. 팀장님이 두 수정과 Festival Agent 코드를 `main`에 병합한 뒤, **설계서·Festival 코드·공통 실행기·시험 결과가 모두 들어 있는 같은 `main` 커밋**을 제출 링크와 여기에 기록한다. 병합 전에는 `dayoung 7b8451a`를 Festival 실행 코드 기준으로, 공통 실행기의 최초 연결은 `dayoung 6dc31ca`(`yubeen 00ca7dc` 반영)로 구분한다. `main` 통합 시험 결과는 병합 뒤 실제로 실행한 환경·명령·성공/실패 개수를 기록한다.
-- **11/26 로컬 시험 제약:** 이 환경에서는 `langgraph`가 설치되지 않았고 패키지 다운로드도 연결 제한으로 실패했다. 따라서 위 35개와 팀 전체 시험 수치는 11/24 기존 실행 기록이며 11/26 재실행 결과로 쓰지 않는다.
+- **11/26 환경 구분:** Windows 작업 환경에서는 `langgraph`가 없고 패키지 다운로드도 연결 제한으로 실패했다. 위 35개는 동일 `dayoung dc35ad5`를 macOS에서 재실행한 결과다. 팀 `main` 병합 후 백엔드 전체 시험은 아직 실행하지 않았다.
 
 ## 참고 파일
 
@@ -477,4 +477,4 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - `Docs/Step 1/놀다가_기획서.md` — 서비스·5개 Agent·안전 경계
 - `Docs/Step 1/놀다가_WBS.md` — W22~W25 및 M03(11/27)
 - `Docs/Step 2/API_설계문서.md` — 도구 목록·공통 출력·실패 규칙
-- `origin/ohyun:Docs/Step 2/handoff/에이전트_도구_인계.md` — Festival Agent 작업 제안 및 모의 API 현황
+- `Docs/Step 2/handoff/에이전트_도구_인계.md` — Festival Agent 도구 계약 및 모의 API 현황
