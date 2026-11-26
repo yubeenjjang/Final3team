@@ -8,6 +8,7 @@
 
 W65의 첫 AWS 배포 구성안과 검증 체크리스트는 [W65-AWS-PLAN.md](W65-AWS-PLAN.md)에 정리했다. AWS 적용 결과가 아닌 사전 설계다.
 Redis의 로컬 컨테이너 연결·장애·복구 결과는 [W65-REDIS-VERIFY-2026-11-26.md](W65-REDIS-VERIFY-2026-11-26.md)에 기록했다.
+데이터가 적재된 별도 시험 DB의 A02 목록·A03 상세 결과는 [W65-FESTIVAL-DB-VERIFY-2026-11-26.md](W65-FESTIVAL-DB-VERIFY-2026-11-26.md)에 기록했다.
 
 | 파일 | 역할 |
 |---|---|
