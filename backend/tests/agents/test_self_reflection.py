@@ -4,6 +4,7 @@ import unittest
 from datetime import date
 
 from agents.festival_graph import build_festival_graph, run_festival_graph
+from agents.check_reflection_live import run_scenario
 from agents.roles.festival import FestivalRequest
 from agents.self_reflection import run_reflected_detail
 
@@ -123,6 +124,20 @@ class SelfReflectionTests(unittest.TestCase):
         self.assertEqual(result.outcome, "unavailable")
         self.assertEqual(record["final_reason"], "judge_unavailable")
         self.assertEqual(len(record["tool_calls"]), 1)
+
+    def test_comparison_scenarios_keep_safe_outcomes(self):
+        def judge(context):
+            return {"decision": "recheck", "reason": context["first_issue"]}
+        fixed = run_scenario("mismatch_fixed", judge)
+        persistent = run_scenario("mismatch_persistent", judge)
+        valid = run_scenario("valid_first", lambda *_: self.fail("must not judge"))
+        self.assertTrue(all(report["passed"] for report in (fixed, persistent, valid)))
+        self.assertEqual([report["outcome"] for report in (fixed, persistent, valid)],
+                         ["answered", "unavailable", "answered"])
+        self.assertEqual([len(report["tool_calls"]) for report in (fixed, persistent, valid)],
+                         [3, 3, 1])
+        self.assertFalse(valid["reflection"]["judge_used"])
+        self.assertEqual(persistent["evidence"], [])
 
 
 if __name__ == "__main__":

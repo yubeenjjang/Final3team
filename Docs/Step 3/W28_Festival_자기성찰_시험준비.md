@@ -78,3 +78,9 @@
 | 모델 사용량 | 호출 없음 | 입력 349·출력 82·합계 431토큰 |
 
 출력의 `passed=true`, `improved_valid_answer=true`는 **고정된 한 사례에서 유효 근거 답변으로 바뀌었다**는 뜻이다. B0는 잘못된 F02를 답하지 않고 안전하게 보류했으므로 이를 오류 답변으로 세지 않는다. A1은 추가 도구 호출·모델 시간·토큰을 사용했다. 이 결과만으로 응답 속도 개선, 실제 서비스 성능, 반복 성공률 또는 Auto-Healing의 장애 복구 효과를 주장하지 않는다.
+
+### 추가 고정 사례 준비
+
+비교 실행기에 `--scenario mismatch_persistent`와 `--scenario valid_first`를 추가했다. 전자는 첫 상세와 재조회 상세가 모두 F02인 경우로, 모델이 재확인을 선택해도 최종 답변이 `unavailable`·근거 0건으로 끝나야 한다. 후자는 첫 상세가 F01인 경우로, 모델 호출 없이 도구 1회만으로 `answered`여야 한다. `backend/tests/agents` **65개**가 Windows Python 3.12에서 통과했고, `valid_first`는 로컬 CLI로 `passed=true`, `judge_used=false`, 도구 1회를 확인했다. 이 결과는 모의 도구·고정 판단 함수 또는 모델 호출 없는 사례다. `mismatch_persistent`의 **실제 모델 실행은 아직 수행하지 않았다.**
+
+맥북의 최신 `dayoung`에서 `python -m agents.check_reflection_live --live --scenario mismatch_persistent`로 실제 모델 재확인 실패를 시험할 수 있다. 정상 사례는 `python -m agents.check_reflection_live --scenario valid_first`로 키 입력 없이 실행한다. 두 경우 모두 실제 축제 API는 호출하지 않는다.
