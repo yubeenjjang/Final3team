@@ -280,6 +280,7 @@ export function FestivalMapView({
             lng: selected.lng,
             title: `${selected.name} 축제장`,
             label: "🎪",
+            icon: "festival" as const,
             variant: "festival" as const,
             selected: selectedFacilityId === null,
           }]
@@ -290,6 +291,12 @@ export function FestivalMapView({
         lng: facility.lng,
         title: `${facility.name} · ${FACILITY_LABELS[facility.category]}`,
         label: FACILITY_SYMBOLS[facility.category],
+        icon:
+          facility.category === "subway_station"
+            ? "subway" as const
+            : facility.category === "toilet"
+              ? "toilet" as const
+              : undefined,
         variant: facilityGroup,
         selected: selectedFacilityId === facility.facility_id,
       })),

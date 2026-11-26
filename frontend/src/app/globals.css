@@ -171,6 +171,23 @@ select {
   filter: brightness(1.05);
   transform: scale(1.16);
 }
+.festival-map-marker__symbol {
+  display: grid;
+  place-items: center;
+}
+.festival-map-marker__symbol svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+.festival-map-marker__symbol svg.map-marker-icon--filled {
+  fill: currentColor;
+  stroke: none;
+}
 .festival-map-marker--festival {
   width: 2.5rem;
   height: 2.5rem;
@@ -178,11 +195,22 @@ select {
   background: #ff477e;
   font-size: 1rem;
 }
+.festival-map-marker--festival .festival-map-marker__symbol svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  stroke-width: 2.1;
+}
 .festival-map-marker--transport {
   background: #367bf5;
 }
+.festival-map-marker--transport .festival-map-marker__symbol {
+  filter: grayscale(1) brightness(0) invert(1);
+}
 .festival-map-marker--food {
   background: #ff8a1f;
+}
+.festival-map-marker--food .festival-map-marker__symbol {
+  filter: grayscale(1) brightness(0) invert(1);
 }
 .festival-map-marker--safety {
   background: #7548ee;

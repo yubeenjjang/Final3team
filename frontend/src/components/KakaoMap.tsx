@@ -10,6 +10,7 @@ import {
   type KakaoPolylineInstance,
 } from "@/lib/kakao";
 import { OpenStreetMap } from "./OpenStreetMap";
+import { getMapMarkerIconMarkup, type MapMarkerIcon } from "./mapMarkerIcons";
 
 export interface KakaoMapPoint {
   lat: number;
@@ -20,6 +21,7 @@ export interface KakaoMapMarker extends KakaoMapPoint {
   id?: string;
   title?: string;
   label?: string;
+  icon?: MapMarkerIcon;
   variant?: "festival" | "transport" | "food" | "safety";
   selected?: boolean;
 }
@@ -213,7 +215,13 @@ function createMarkerElement(
     `festival-map-marker--${marker.variant}`,
     marker.selected ? "festival-map-marker--selected" : "",
   ].filter(Boolean).join(" ");
-  button.textContent = marker.label ?? "●";
+  const symbol = document.createElement("span");
+  symbol.className = "festival-map-marker__symbol";
+  const iconMarkup = getMapMarkerIconMarkup(marker.icon);
+  if (iconMarkup) symbol.innerHTML = iconMarkup;
+  else symbol.textContent = marker.label ?? "●";
+  symbol.setAttribute("aria-hidden", "true");
+  button.appendChild(symbol);
   button.title = marker.title ?? "지도 위치";
   button.setAttribute("aria-label", marker.title ?? "지도 위치");
   if (onMarkerClick) button.addEventListener("click", () => onMarkerClick(marker));

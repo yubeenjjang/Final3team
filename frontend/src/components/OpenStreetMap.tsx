@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import type { KakaoMapMarker, KakaoMapPoint } from "./KakaoMap";
+import { getMapMarkerIconMarkup } from "./mapMarkerIcons";
 
 export function buildOpenStreetMapLink(point: KakaoMapPoint): string {
   return `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=14/${point.lat}/${point.lng}`;
@@ -68,9 +69,10 @@ export function OpenStreetMap({ center, title, markers = [], onMarkerClick, clas
       if (cancelled || !map) return;
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = markers.map((point) => {
+        const symbol = getMapMarkerIconMarkup(point.icon) ?? point.label;
         const icon = leaflet.divIcon({
           className: "",
-          html: `<span class="festival-map-marker festival-map-marker--${point.variant ?? "festival"}${point.selected ? " festival-map-marker--selected" : ""}" aria-hidden="true">${point.label}</span>`,
+          html: `<span class="festival-map-marker festival-map-marker--${point.variant ?? "festival"}${point.selected ? " festival-map-marker--selected" : ""}" aria-hidden="true"><span class="festival-map-marker__symbol">${symbol}</span></span>`,
           iconSize: point.variant === "festival" ? [40, 40] : [32, 32],
           iconAnchor: point.variant === "festival" ? [20, 40] : [16, 32],
         });
