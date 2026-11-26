@@ -72,6 +72,7 @@ export function getFestivalCrowd(
 ): Promise<CrowdResponse> {
   return apiGet<CrowdResponse>(`/festivals/${encodeURIComponent(festivalId)}/crowd`, {
     signal,
+    timeoutMs: 12_000,
   });
 }
 

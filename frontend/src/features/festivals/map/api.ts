@@ -37,6 +37,7 @@ export interface AvailableMapCrowd {
   observedAt?: string | null;
   isEstimate?: boolean | null;
   stale?: boolean;
+  center?: { lat: number; lng: number } | null;
   boundary: Array<Array<{ lat: number; lng: number }>>;
 }
 
@@ -111,6 +112,7 @@ export async function listMapFacilities({
         limit_per_category: 10,
       },
       signal,
+      timeoutMs: 12_000,
     },
   );
   return response.items;
@@ -134,6 +136,7 @@ export async function getMapCrowd(
       populationMax: 5600,
       observedAt: new Date().toISOString(),
       isEstimate: true,
+        center: null,
       boundary: [],
     };
   }
@@ -154,6 +157,7 @@ export async function getMapCrowd(
         observedAt: area.observed_at,
         isEstimate: nearby?.is_estimate ?? response.is_estimate,
         stale: nearby?.status === "stale" || response.status === "stale",
+        center: area.center ?? nearby?.center ?? null,
         boundary: area.boundary ?? nearby?.boundary ?? [],
       }
     : {

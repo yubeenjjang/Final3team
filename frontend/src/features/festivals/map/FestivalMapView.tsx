@@ -59,6 +59,21 @@ function estimateWalkingMinutes(distance: number): number {
   return Math.max(1, Math.ceil(distance / 80));
 }
 
+function createCrowdCircle(
+  center: { lat: number; lng: number },
+  radiusM = 420,
+): Array<{ lat: number; lng: number }> {
+  const latitudeRadius = radiusM / 111_320;
+  const longitudeRadius = radiusM / (111_320 * Math.cos((center.lat * Math.PI) / 180));
+  return Array.from({ length: 32 }, (_, index) => {
+    const angle = (index / 32) * Math.PI * 2;
+    return {
+      lat: center.lat + Math.sin(angle) * latitudeRadius,
+      lng: center.lng + Math.cos(angle) * longitudeRadius,
+    };
+  });
+}
+
 function getFacilitySourceLabel(source?: string | null): string | null {
   if (!source) return null;
   if (source === "kakao_local") return "카카오 장소 검색";
@@ -103,6 +118,7 @@ export function FestivalMapView({
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [crowd, setCrowd] = useState<MapCrowd | null>(null);
   const [crowdLoading, setCrowdLoading] = useState(true);
+  const [crowdAttempt, setCrowdAttempt] = useState(0);
   const [crowdOpen, setCrowdOpen] = useState(false);
   const [festivalMenuOpen, setFestivalMenuOpen] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
@@ -204,18 +220,26 @@ export function FestivalMapView({
   useEffect(() => {
     if (!selected) return;
     const controller = new AbortController();
+    setCrowdLoading(true);
+    setCrowd(null);
     getMapCrowd(selected.festival_id, controller.signal)
       .then((value) => {
         if (!controller.signal.aborted) setCrowd(value);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setCrowd(null);
+        if (!controller.signal.aborted) {
+          setCrowd({
+            available: false,
+            reason: "조회 지연",
+            message: "혼잡 정보를 불러오지 못했어요. 잠시 후 다시 확인해 주세요.",
+          });
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setCrowdLoading(false);
       });
     return () => controller.abort();
-  }, [selected]);
+  }, [crowdAttempt, selected]);
 
   function selectFestival(festival: LocatedFestival) {
     setPicked(festival);
@@ -364,12 +388,15 @@ export function FestivalMapView({
     red: "#ef4444",
   };
   const crowdMapAreas = useMemo<KakaoMapArea[]>(() => {
-    if (!crowd?.available || crowd.boundary.length === 0) return [];
+    if (!crowd?.available || !selected) return [];
     const color = crowdMapColor[crowd.color];
+    const paths = crowd.boundary.length > 0
+      ? crowd.boundary
+      : [createCrowdCircle(crowd.center ?? { lat: selected.lat, lng: selected.lng })];
     return [{
       id: `crowd-${selected?.festival_id ?? "festival"}`,
       label: `${crowd.areaName} · 혼잡도 ${crowd.level}`,
-      paths: crowd.boundary,
+      paths,
       fillColor: color,
       strokeColor: color,
     }];
@@ -547,11 +574,23 @@ export function FestivalMapView({
                   </div>
                 </div>
               ) : crowd ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-extrabold text-ink">{crowd.reason}</p>
-                  <p className="text-xs font-semibold leading-relaxed text-muted">
-                    {crowd.message || "이 축제 주변의 실시간 혼잡 정보를 제공하지 않아요."}
-                  </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-extrabold text-ink">{crowd.reason}</p>
+                    <p className="text-xs font-semibold leading-relaxed text-muted">
+                      {crowd.message || "이 축제 주변의 실시간 혼잡 정보를 제공하지 않아요."}
+                    </p>
+                  </div>
+                  {crowd.reason === "조회 지연" ? (
+                    <button
+                      type="button"
+                      onClick={() => setCrowdAttempt((value) => value + 1)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-chip border border-line-light bg-surface px-3 py-1.5 text-[10px] font-extrabold text-ink"
+                    >
+                      <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                      다시 확인
+                    </button>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-xs font-semibold text-muted">이 축제 주변의 혼잡 정보를 확인하지 못했어요.</p>
@@ -647,11 +686,24 @@ export function FestivalMapView({
                 ? "주변 시설 확인 중"
                 : `${FACILITY_LABELS[FACILITY_GROUPS[facilityGroup][0]]} 등 ${facilities.length}곳`}
             </span>
-            {crowd?.available ? (
+            {crowdLoading ? (
+              <span className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-chip bg-surface/95 px-3 py-1.5 text-[11px] font-extrabold text-muted shadow-card backdrop-blur-sm">
+                <span className="h-3 w-3 animate-pulse rounded-full bg-line-light" aria-hidden="true" />
+                혼잡도 확인 중
+              </span>
+            ) : crowd?.available ? (
               <span className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-chip bg-surface/95 px-3 py-1.5 text-[11px] font-extrabold text-ink shadow-card backdrop-blur-sm">
                 <span className={`h-3 w-3 rounded-full ${crowdColorClass[crowd.color].split(" ")[0]}`} aria-hidden="true" />
                 혼잡도 {crowd.level}
               </span>
+            ) : crowd ? (
+              <button
+                type="button"
+                onClick={() => setCrowdOpen(true)}
+                className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-chip bg-surface/95 px-3 py-1.5 text-[11px] font-extrabold text-muted shadow-card backdrop-blur-sm"
+              >
+                혼잡도 {crowd.reason}
+              </button>
             ) : null}
           </section>
 
