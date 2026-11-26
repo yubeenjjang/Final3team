@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FestivalCard } from "./FestivalCard";
+import { FestivalCarousel } from "./FestivalCarousel";
 import { listFestivals, type FestivalListItem } from "./api";
 
 export function FeaturedFestivals({
-  title = "지금, 여기서 열리는 축제",
+  title = "인기있는 축제",
   status = "ongoing",
   moreLabel = "전체보기",
+  moreHref = "/festivals/all?section=popular",
 }: {
   title?: string;
   status?: "ongoing" | "upcoming";
   moreLabel?: string;
+  moreHref?: string;
 } = {}) {
   const [items, setItems] = useState<FestivalListItem[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -38,7 +40,7 @@ export function FeaturedFestivals({
           <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
           {title}
         </h2>
-        <Link href="/festivals/all" className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted hover:text-brand">
+        <Link href={moreHref} className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted hover:text-brand">
           {moreLabel} <ChevronRight size={14} aria-hidden="true" />
         </Link>
       </div>
@@ -66,11 +68,7 @@ export function FeaturedFestivals({
           진행 중인 축제가 없어요.
         </div>
       ) : (
-        <div className="no-scrollbar -mx-4 flex touch-pan-x snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2">
-          {items.map((item) => (
-            <FestivalCard key={item.festival_id} item={item} className="festival-carousel-card snap-start" />
-          ))}
-        </div>
+        <FestivalCarousel items={items} ariaLabel={title} />
       )}
     </section>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, FerrisWheel, Sparkles, Tent } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo as BrandLogoImage } from "@/components/BrandLogo";
 import styles from "./AuthScreen.module.css";
@@ -51,7 +52,6 @@ export function SignupScreen({ children, footer }: { children: ReactNode; footer
         <p className="mt-2 text-center text-sm font-medium text-muted">
           간단한 정보를 입력하고 취향에 맞는 축제를 만나보세요.
         </p>
-        <FestivalIllustration compact />
       </div>
       <div className="mx-auto mt-6 max-w-[350px]">
         {children}
@@ -61,13 +61,17 @@ export function SignupScreen({ children, footer }: { children: ReactNode; footer
   );
 }
 
-function FestivalIllustration({ compact = false }: { compact?: boolean }) {
+function FestivalIllustration() {
   return (
-    <div aria-hidden="true" className={`relative mx-auto mt-6 ${compact ? "h-28 w-64" : "h-40 w-72"}`}>
-      <div className="absolute inset-x-2 bottom-0 h-16 rounded-[50%] bg-brand-soft blur-sm" />
-      <Sparkles className="absolute left-16 top-0 h-10 w-10 text-brand" strokeWidth={1.4} />
-      <FerrisWheel className="absolute bottom-2 right-4 h-24 w-24 text-ink" strokeWidth={1.35} />
-      <Tent className="absolute bottom-0 left-12 h-24 w-32 fill-brand/25 text-brand" strokeWidth={1.45} />
+    <div aria-hidden="true" className="mx-auto mt-5 w-[310px] max-w-full">
+      <Image
+        src="/brand/festival-login-hero.png"
+        alt=""
+        width={2172}
+        height={724}
+        priority
+        className="h-auto w-full object-contain"
+      />
     </div>
   );
 }

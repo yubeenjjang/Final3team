@@ -11,7 +11,15 @@ import {
   subscribeFavorites,
 } from "./favoriteStore";
 
-export function FavoriteButton({ festivalId, className = "" }: { festivalId: string; className?: string }) {
+export function FavoriteButton({
+  festivalId,
+  appearance = "button",
+  className = "",
+}: {
+  festivalId: string;
+  appearance?: "button" | "icon";
+  className?: string;
+}) {
   const user = useSyncExternalStore(subscribeAuth, getAuthUser, getAuthUserServerSnapshot);
   useSyncExternalStore(subscribeFavorites, getFavoritesVersion, () => 0);
   const favorite = isFestivalFavorite(festivalId);
@@ -48,9 +56,18 @@ export function FavoriteButton({ festivalId, className = "" }: { festivalId: str
         event.stopPropagation();
         void toggle();
       }}
-      className={`grid h-11 w-11 place-items-center rounded-chip border border-surface/80 bg-ink/45 text-surface shadow-md backdrop-blur-sm transition-transform active:scale-95 disabled:opacity-60 ${className}`}
+      className={`grid h-11 w-11 place-items-center text-surface transition-transform active:scale-95 disabled:opacity-60 ${
+        appearance === "icon"
+          ? "bg-transparent"
+          : "rounded-chip border border-surface/80 bg-ink/45 shadow-md backdrop-blur-sm"
+      } ${className}`}
     >
-      <Heart className={`h-5 w-5 ${favorite ? "fill-brand text-brand" : "text-surface"}`} aria-hidden="true" />
+      <Heart
+        className={`${appearance === "icon" ? "h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]" : "h-5 w-5"} ${
+          favorite ? "fill-brand text-brand" : "text-surface"
+        }`}
+        aria-hidden="true"
+      />
     </button>
   );
 }

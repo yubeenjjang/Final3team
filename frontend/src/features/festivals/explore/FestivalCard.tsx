@@ -34,26 +34,26 @@ export function FestivalCard({
   const showImage = Boolean(item.thumbnail_url) && failedSrc !== item.thumbnail_url;
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <Link
         href={`/festivals/${item.festival_id}`}
         data-testid={`festival-card-${item.festival_id}`}
-        className="group block overflow-hidden rounded-card-lg bg-surface shadow-card transition-shadow hover:shadow-md"
+        className="group block w-full min-w-0 overflow-hidden rounded-card-lg bg-surface shadow-card transition-shadow hover:shadow-md"
       >
-        <div className="relative aspect-[1/1.414] w-full overflow-hidden bg-surface-soft/45">
+        <div className="relative aspect-[3/2] w-full overflow-hidden bg-surface-soft/45">
           {showImage && item.thumbnail_url ? (
             <>
               <Image
                 src={item.thumbnail_url}
                 alt={item.name}
                 fill
-                sizes="(max-width: 359px) 40vw, (max-width: 767px) 29vw, 180px"
+                sizes="(max-width: 767px) 40vw, 180px"
                 unoptimized
                 onError={() => setFailedSrc(item.thumbnail_url ?? null)}
-                className="bg-ink/5 object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                className="bg-ink/5 object-cover object-center transition-transform duration-200 group-hover:scale-[1.02]"
               />
-              <span className="absolute bottom-1 right-1 rounded-chip bg-ink/55 px-1.5 py-0.5 text-[7px] font-medium text-surface/80 backdrop-blur-sm">
-                출처: 한국관광공사
+              <span className="absolute bottom-7 right-1 rounded-chip bg-ink/35 px-1.5 py-0.5 text-[6px] font-medium text-surface/90 backdrop-blur-sm">
+                출처: {item.image_credit ?? "제공 이미지"}
               </span>
             </>
           ) : (
@@ -65,18 +65,26 @@ export function FestivalCard({
               {badge}
             </span>
           ) : null}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/85 to-transparent px-2.5 pb-3 pt-12 text-surface">
-            <h2 className="line-clamp-2 text-[13px] font-black leading-tight">{item.name}</h2>
-            <div className="mt-2 flex items-center gap-1 text-[9px] font-semibold text-surface/90">
-              <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="truncate">{period}</span>
-            </div>
-            <div className="mt-0.5 flex items-center gap-1 text-[9px] font-semibold text-surface/90">
-              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="truncate">{locationText}</span>
-            </div>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/70 via-ink/25 to-transparent px-2.5 pb-2 pt-5 text-surface">
+            <h2 className="truncate text-[12px] font-black leading-tight">{item.name}</h2>
+          </div>
+        </div>
+        <div className="space-y-1 px-2.5 py-2 text-ink">
+          <div className="flex items-center gap-1 text-[9px] font-semibold">
+            <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{period}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[9px] font-semibold text-muted">
+            <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{locationText}</span>
           </div>
         </div>
       </Link>
-      <FavoriteButton festivalId={item.festival_id} className="absolute right-1.5 top-1.5 z-10" />
+      <FavoriteButton
+        festivalId={item.festival_id}
+        appearance="icon"
+        className="absolute right-0 top-0 z-10"
+      />
     </div>
   );
 }
