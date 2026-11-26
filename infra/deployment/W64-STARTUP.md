@@ -1,7 +1,7 @@
 # W64 백엔드 Docker 기동 절차 (12/04 부분 기동본)
 
 - 작성: 한태경(R04, W64 주담당) · 2026-11-26 · 검토: 신유빈(R06)
-- 기준: `yubeen` `34cab99`의 `infra/deployment/compose.yaml`(Redis·A06 워커 선택 프로필 포함)
+- 기준: `yubeen` `34cab99`의 `infra/deployment/compose.yaml`(Redis·A06 워커 선택 프로필 포함)에서 실행 확인. 2-2 표와 6-3은 `5365904`의 compose(`assistant-worker` 앱 계정 추가)를 반영했다.
 - 상태: **로컬 Docker 절차.** 아래 확인값은 11/26 로컬에서 직접 실행한 결과다. AWS 적용은 [W65-AWS-PLAN.md](W65-AWS-PLAN.md)에서 따로 다룬다.
 - 이 문서는 [README.md](README.md)를 보완한다. README에는 파일 구성과 원칙을 두고, 이 문서에는 **단계별 확인값·다시 기동·문제 해결·알려진 제한**을 둔다.
 
@@ -29,8 +29,8 @@ python3 infra/deployment/fill_env_secrets.py
 | 서비스 | 전달되는 모드·키 |
 |---|---|
 | `api` | `FESTIVAL_DATA`, `ROUTE_PROVIDER`, `ROUTE_STORE`, `CROWD_PROVIDER`, `ASSISTANT_PROVIDER`, `ASSISTANT_TOKEN_SECRET`, `REDIS_URL`, `ROUTE_KEY_SECRET`, 공급원 키 4개(`TMAP_APP_KEY`, `KAKAO_REST_API_KEY`, `SEOUL_OPEN_API_KEY`, `DATA_GO_KR_SERVICE_KEY`) |
-| `scheduler` | 서비스 계정, `DATA_GO_KR_SERVICE_KEY`, `SEOUL_CULTURE_ENABLED`, `SEOUL_OPEN_API_KEY`, `KAKAO_REST_API_KEY` |
-| `assistant-worker` | 서비스 계정, `ASSISTANT_TOKEN_SECRET`, `FESTIVAL_DATA`, `ASSISTANT_FESTIVAL_RUNNER` |
+| `scheduler` | 서비스 계정, `DATA_GO_KR_SERVICE_KEY`, `SEOUL_CULTURE_ENABLED`, `SEOUL_OPEN_API_KEY`, `KAKAO_REST_API_KEY` (앱 계정 없음, 6-3 참고) |
+| `assistant-worker` | 앱·서비스 계정, `ASSISTANT_TOKEN_SECRET`, `FESTIVAL_DATA`, `ASSISTANT_FESTIVAL_RUNNER` |
 
 - 축제 목록·상세를 DB에서 읽으려면 `FESTIVAL_DATA=db`
 - 위 표에 없는 값(예: `AUTH_PROVIDER`)은 `.env`에 써도 컨테이너에 들어가지 않는다. 6-2 참고.
@@ -99,7 +99,12 @@ docker compose --env-file .env -f infra/deployment/compose.yaml up -d --build --
 - 기타: `BUS_CROWD_PROVIDER`, `UTIC_ENABLED`, `ROUTE_PURGE_AFTER_HOURS`
 - 12/04 부분 기동본에서 어떤 기능을 실제 모드로 보일지 정한 뒤, 그 값만 `api`의 `environment`에 추가한다. `JWT_SECRET` 같은 비밀값을 추가하면 SEC-07(이미지·히스토리·로그 비밀값 0건)을 다시 확인한다.
 
-### 6-3. 그 밖의 결정 대기
+### 6-3. `scheduler`에 앱 계정 값이 없음 (코드 기준, 실행 안 함)
+- 공통 DB 설정 로더(`backend/shared/config.py`의 `load_db_settings`)는 서비스 계정으로만 연결할 때도 `DB_USER_USERNAME`·`DB_USER_PASSWORD`를 필수로 요구한다.
+- `assistant-worker`는 이 이유로 `91117d2`에서 앱 계정 값을 추가했지만, `scheduler`에는 아직 없다. 축제 수집(`service_db_session`)이 DB에 연결할 때 `필수 DB 환경변수가 없습니다` 오류가 날 것으로 보인다.
+- `scheduled` 프로필은 실제 공급원을 호출할 수 있어 직접 실행하지 않았다. `assistant-worker`와 같은 두 줄을 `scheduler`에도 추가하는 방안을 제안한다.
+
+### 6-4. 그 밖의 결정 대기
 README의 "아직 정하지 않은 것" 1~6을 따른다. 비밀값 보관과 7일 백업은 W65 구성안 2·3절에 기준안이 있다.
 
 ## 7. 12/04 부분 기동본 점검표
