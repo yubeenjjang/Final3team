@@ -23,13 +23,13 @@ from api.auth.state import enforce_login_limit
 from api.auth.tokens import uses_auth_db
 from api.providers import traffic_incidents
 from api.request_logs import (
-    ADMIN_REVIEW_PATH, REPORT_PATHS, admin_festival_endpoint, admin_notice_endpoint, assistant_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
+    ADMIN_REVIEW_PATH, REPORT_PATHS, admin_festival_endpoint, admin_notice_endpoint, admin_rag_document_endpoint, assistant_endpoint, auth_endpoint, chat_endpoint, companion_endpoint, friends_endpoint,
     me_endpoint, private_endpoint, request_logger,
 )
 from api.realtime import chat_socket, job_events
 from api.routers import health
 from api.routers.accounts import auth, favorites, users
-from api.routers.admin import festival_review, festivals as admin_festivals, notices, reports as admin_reports
+from api.routers.admin import festival_review, festivals as admin_festivals, notices, rag_documents as admin_rag_documents, reports as admin_reports
 from api.routers.assistant import agent_jobs, chatbot
 from api.routers.community import chat, companions, friends, notifications, reports
 from api.routers.festivals import catalog, info
@@ -165,7 +165,7 @@ def _auth_data_endpoint(path: str) -> str | None:
     normalized = path.rstrip("/")
     if normalized in REPORT_PATHS or normalized == ADMIN_REVIEW_PATH:
         return normalized
-    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or admin_rag_document_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 def _serves_real_data(request: Request) -> bool:
@@ -186,6 +186,6 @@ for module in (health, catalog, routes, chatbot, agent_jobs, job_events, auth):
     app.include_router(module.router, prefix="/api/v1")
 for module in (
     info, favorites, users, friends, companions, chat, notifications, chat_socket, festival_review, reports,
-    admin_reports, notices, admin_festivals,
+    admin_reports, notices, admin_festivals, admin_rag_documents,
 ):
     app.include_router(module.router, prefix="/api/v1")
