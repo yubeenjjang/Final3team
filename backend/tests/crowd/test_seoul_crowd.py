@@ -15,7 +15,7 @@ from api.mocks.store import festivals
 from api.providers import seoul_citydata
 from api.providers.seoul_citydata import SeoulCityData
 from api.schemas.festivals import FestivalDetail
-from api.services import seoul_crowd, seoul_crowd_mapping
+from api.services import mock_festival_info, seoul_crowd, seoul_crowd_mapping
 from api.services.seoul_areas import SeoulArea, SeoulAreaCatalog, load_catalog
 from api.services.seoul_crowd import SeoulCrowdService
 
@@ -501,3 +501,133 @@ def test_P5_missing_real_key_returns_unavailable_without_using_quota(monkeypatch
     assert response.is_mock is False and response.status == "unavailable"
     assert response.error.code == "SOURCE_RESULT_ERROR" and not response.error.retryable
     assert not service._quota._path.exists()
+
+
+def _assert_seoul_geo(center: dict, boundary: list) -> None:
+    assert center.keys() == {"lat", "lng"}
+    assert 37.0 <= center["lat"] <= 38.0 and 126.0 <= center["lng"] <= 128.0
+    assert isinstance(boundary, list) and len(boundary) >= 1
+    for ring in boundary:
+        assert isinstance(ring, list) and len(ring) >= 4
+        assert ring[0] == ring[-1]
+        for point in ring:
+            assert point.keys() == {"lat", "lng"}
+            assert 37.0 <= point["lat"] <= 38.0 and 126.0 <= point["lng"] <= 128.0
+
+
+def test_real_crowd_returns_official_center_and_boundary_on_areas_and_nearby(
+    monkeypatch: pytest.MonkeyPatch, write_mappings: Callable[..., None],
+) -> None:
+    official_catalog = load_catalog()
+    monkeypatch.setattr(seoul_crowd, "load_catalog", lambda: official_catalog)
+    write_mappings(_mapping(festivals[_FESTIVAL], {"POI009": True, "POI130": True}))
+
+    def send(request: httpx2.Request) -> httpx2.Response:
+        code = _request_area(request)
+        if code == "POI130":
+            return httpx2.Response(503)
+        return _observed(request)
+
+    service = _service(send)
+    monkeypatch.setattr(seoul_crowd, "get_service", lambda: service)
+    monkeypatch.setenv("CROWD_PROVIDER", "real")
+
+    with TestClient(app) as client:
+        response = client.get(_URL)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_mock"] is False and body["status"] == "ok"
+    assert len(body["areas"]) == 1
+    assert len(body["nearby_areas"]) == 2
+
+    primary = body["areas"][0]
+    poi009_nearby, poi130_nearby = body["nearby_areas"]
+
+    # 기존 필드 유지 확인
+    assert primary["area_code"] == "POI009"
+    assert primary["area_name"] == "광화문·덕수궁"
+    assert primary["relation_type"] == "contains"
+    assert primary["congest_level"] == "보통"
+    assert primary["congest_color"] == "yellow"
+    assert primary["population_min"] == 48000
+    assert primary["population_max"] == 50000
+    assert primary["observed_at"] == body["observed_at"]
+    assert primary["forecast"] == []
+
+    # areas[0], nearby_areas[0], nearby_areas[0].data 모두 공식 경계·중심 포함
+    assert primary["center"] == {"lat": 37.5709305, "lng": 126.9771863}
+    assert len(primary["boundary"]) == 1 and len(primary["boundary"][0]) == 30
+    _assert_seoul_geo(primary["center"], primary["boundary"])
+    assert poi009_nearby["data"] == primary
+    assert poi009_nearby["center"] == primary["center"]
+    assert poi009_nearby["boundary"] == primary["boundary"]
+
+    # 조회 실패(unavailable)한 인접 구역도 공식 center·boundary를 유지
+    assert poi130_nearby["area_code"] == "POI130"
+    assert poi130_nearby["status"] == "unavailable" and poi130_nearby["data"] is None
+    _assert_seoul_geo(poi130_nearby["center"], poi130_nearby["boundary"])
+
+
+def test_real_crowd_multipolygon_and_missing_geometry(monkeypatch: pytest.MonkeyPatch) -> None:
+    festival = festivals[_FESTIVAL]
+    lat, lng = festival.lat, festival.lng
+    outer = [
+        (lat - 0.001, lng - 0.001), (lat + 0.001, lng - 0.001),
+        (lat + 0.001, lng + 0.001), (lat - 0.001, lng + 0.001),
+        (lat - 0.001, lng - 0.001),
+    ]
+    hole = [
+        (lat - 0.0002, lng - 0.0002), (lat + 0.0002, lng - 0.0002),
+        (lat + 0.0002, lng + 0.0002), (lat - 0.0002, lng + 0.0002),
+        (lat - 0.0002, lng - 0.0002),
+    ]
+    second = [
+        (lat + 0.002, lng + 0.002), (lat + 0.003, lng + 0.002),
+        (lat + 0.003, lng + 0.003), (lat + 0.002, lng + 0.003),
+        (lat + 0.002, lng + 0.002),
+    ]
+    multi_area = SeoulArea("POI009", "멀티 구역", [[outer, hole], [second]], centroid=(lat, lng))
+    _set_areas(monkeypatch, (multi_area,))
+    service = _service(_observed)
+
+    response = asyncio.run(service.get_crowd(_FESTIVAL))
+    dumped = response.model_dump(mode="json")
+    assert dumped["areas"][0]["center"] == {"lat": lat, "lng": lng}
+    assert len(dumped["areas"][0]["boundary"]) == 3
+    assert dumped["areas"][0]["boundary"][0][0] == {"lat": outer[0][0], "lng": outer[0][1]}
+    assert dumped["areas"][0]["boundary"][1][0] == {"lat": hole[0][0], "lng": hole[0][1]}
+    assert dumped["areas"][0]["boundary"][2][0] == {"lat": second[0][0], "lng": second[0][1]}
+    assert dumped["nearby_areas"][0]["boundary"] == dumped["areas"][0]["boundary"]
+
+    # 도형이 없는 구역은 좌표를 만들어내지 않고 center·boundary 모두 null 반환
+    empty_area = SeoulArea("POI999", "도형 없음", [], centroid=(lat, lng))
+    empty_result = asyncio.run(service._area_result(empty_area, 0.0)).model_dump(mode="json")
+    assert empty_result["center"] is None and empty_result["boundary"] is None
+    assert empty_result["data"]["center"] is None and empty_result["data"]["boundary"] is None
+
+
+def test_mock_crowd_returns_catalog_geometry_and_null_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with TestClient(app) as client:
+        response = client.get(_URL)
+    assert response.status_code == 200
+    assert response.headers["X-Mock"] == "true"
+    body = response.json()
+    assert body.keys() == _LEGACY_KEYS
+    (area,) = body["areas"]
+    assert area["area_code"] == "POI009"
+    assert area["center"] == {"lat": 37.5709305, "lng": 126.9771863}
+    assert len(area["boundary"]) == 1 and len(area["boundary"][0]) == 30
+    _assert_seoul_geo(area["center"], area["boundary"])
+
+    # 카탈로그에 없는 구역은 null 반환(좌표 생성 금지)
+    empty_catalog = SeoulAreaCatalog((), load_catalog().source_url)
+    monkeypatch.setattr(mock_festival_info, "load_catalog", lambda: empty_catalog)
+    with TestClient(app) as client:
+        missing_geo = client.get(_URL).json()
+    (missing_area,) = missing_geo["areas"]
+    assert missing_area["area_code"] == "POI009"
+    assert missing_area["center"] is None
+    assert missing_area["boundary"] is None

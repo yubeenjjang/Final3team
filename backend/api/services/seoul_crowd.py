@@ -16,9 +16,10 @@ from api.schemas.festival_info import (
     NearbyCrowdArea,
     RealCrowdResponse,
     SourceError,
+    build_crowd_geometry,
 )
 from api.services.festival_lookup import find_festival
-from api.services.seoul_areas import SeoulArea, load_catalog, nearby_areas
+from api.services.seoul_areas import SeoulArea, area_geometry, load_catalog, nearby_areas
 from api.services.seoul_crowd_mapping import approved_area_codes
 
 _CACHE_SECONDS = 60
@@ -121,11 +122,13 @@ class SeoulCrowdService:
 
     async def _area_result(self, area: SeoulArea, distance: float) -> NearbyCrowdArea:
         distance_m = max(0.1, round(distance, 1)) if distance > 0 else 0.0
+        center, boundary = build_crowd_geometry(*area_geometry(area))
         reading = await self._reading(area.code)
         if isinstance(reading, SourceError):
             return NearbyCrowdArea(
                 area_code=area.code, area_name=area.name, distance_m=distance_m,
                 status="unavailable", error=reading,
+                center=center, boundary=boundary,
             )
         return NearbyCrowdArea(
             area_code=area.code,
@@ -133,6 +136,8 @@ class SeoulCrowdService:
             distance_m=distance_m,
             status="stale" if as_kst(self._now()) - reading.observed_at > _STALE_AFTER else "ok",
             is_estimate=reading.is_estimate,
+            center=center,
+            boundary=boundary,
             data=CrowdArea(
                 area_code=area.code,
                 area_name=area.name,
@@ -144,6 +149,8 @@ class SeoulCrowdService:
                 population_max=reading.population_max,
                 observed_at=reading.observed_at,
                 forecast=[],
+                center=center,
+                boundary=boundary,
             ),
         )
 

@@ -7,6 +7,7 @@ from api.schemas.festivals import FESTIVAL_ID_PATTERN
 ROUTE_REQUEST_ID_PATTERN = r"^rr_[0-9A-Za-z]{6,26}$"
 RouteDirection = Literal["return", "visit"]
 RouteStatus = Literal["queued", "processing", "ready", "unavailable", "timed_out", "rejected"]
+RoutePreference = Literal["fastest", "less_crowded", "accessible", "min_walk", "fewest_transfers"]
 
 
 class Place(BaseModel):
@@ -46,9 +47,7 @@ class RouteRequest(BaseModel):
     origin: Endpoint
     destination: Endpoint
     travel_mode: Literal["transit", "walk", "car", "taxi"] = "transit"
-    route_preference: Literal[
-        "fastest", "less_crowded", "accessible", "min_walk", "fewest_transfers"
-    ] = "fastest"
+    route_preference: RoutePreference = "fastest"
     user_constraints: UserConstraints = Field(default_factory=UserConstraints)
     departure: Literal["now"] = "now"
 

@@ -172,6 +172,22 @@ def test_postgres_concurrent_direct_create_send_and_block(client, database):
     assert create((a, bob)).json()["room_id"] == new_room.json()["room_id"]
 
 
+def test_postgres_direct_room_list_shows_peer_only_to_members(client, database):
+    _, (alice, bob, _, _), (a, b, _, outsider) = database
+    response = client.post(ROOMS, headers=a, json={"type": "direct", "friend_id": str(bob)})
+    assert response.status_code == 201
+    room = response.json()["room_id"]
+    for headers, peer in ((a, bob), (b, alice)):
+        response = client.get("/api/v1/me/chat-rooms", headers=headers)
+        assert response.status_code == 200
+        assert response.json()["items"] == [{
+            "room_id": room, "room_type": "direct", "name": None, "status": "active",
+            "last_message_at": None, "unread_count": 0, "my_status": "joined",
+            "peer_display_name": peer.hex[:12], "festival_name": None, "meet_at": None,
+        }]
+    assert client.get("/api/v1/me/chat-rooms", headers=outsider).json()["items"] == []
+
+
 def test_postgres_companion_helpers_share_transaction(client, database):
     _, (owner, member, _, _), (owner_auth, member_auth, _, _) = database
     post_id = f"cpo_{uuid4().hex[:20]}"

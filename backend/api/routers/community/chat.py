@@ -7,6 +7,7 @@ from api.deps import AuthenticatedSession
 from api.errors import ApiError
 from api.realtime import chat_socket as realtime
 from api.repositories import chat as repository
+from api.routers.community import companions
 from api.schemas.chat import (
     MAX_BIGINT, ROOM_ID_PATTERN, Action, EmptyBody, Invitations, ReadRoom, RenameRoom, RoomCreate, RoomFilter,
 )
@@ -31,7 +32,7 @@ async def list_rooms(user: ChatUser, auth: AuthenticatedSession, filter: RoomFil
     if auth:
         rooms = await repository.list_rooms(auth[1], user.user_id, filter)
     else:
-        rooms = mock_chat.mock_rooms.list_rooms(user.user_id, filter)
+        rooms = await run_in_threadpool(companions.memory.list_chat_rooms, user.user_id, filter)
     if not rooms:
         return {"items": [], "empty_hint": "동행을 찾거나 친구를 추가해 보세요"}
     return {"items": rooms}

@@ -7,6 +7,7 @@ from ulid import ULID
 
 from api.mocks import store
 from api.schemas import companions as schema
+from api.schemas.chat import RoomFilter
 from api.services import companion_rules as rules
 from api.services import mock_chat, mock_friends
 from api.services.friends import blocked
@@ -71,6 +72,19 @@ class MemoryCompanions:
         if post is None:
             raise rules.not_found()
         return post
+
+    def list_chat_rooms(self, user_id: UUID, selected: RoomFilter) -> list[dict]:
+        with self.lock:
+            rooms = mock_chat.mock_rooms.list_rooms(user_id, selected)
+            companion_rooms = {room["room_id"]: room for room in rooms if room["room_type"] == "companion"}
+            for post in self.posts.values():
+                room = companion_rooms.get(post.room_id)
+                if room is None or (post.hidden and post.author_id != str(user_id)):
+                    continue
+                festival = store.get_public_mock_festival(post.festival_id)
+                room["festival_name"] = festival.name if festival else None
+                room["meet_at"] = post.meet_at
+            return rooms
 
     def validate_meeting(self, festival_id: str, meet_at: datetime, now: datetime) -> None:
         festival = store.get_public_mock_festival(festival_id)

@@ -27,10 +27,16 @@ def uses_health_db() -> bool:
     )
 
 
-async def _check_db() -> None:
-    async with user_db_session(user_id=None) as db:
-        await db.execute(text(f"SET LOCAL statement_timeout = {_DB_TIMEOUT_SECONDS * 1000}"))
-        await db.execute(text("SELECT 1"))
+async def db_is_ready() -> bool:
+    try:
+        # Repeated cancellation also interrupts psycopg's query cancellation wait.
+        with fail_after(_DB_TIMEOUT_SECONDS):
+            async with user_db_session(user_id=None) as db:
+                await db.execute(text(f"SET LOCAL statement_timeout = {_DB_TIMEOUT_SECONDS * 1000}"))
+                await db.execute(text("SELECT 1"))
+    except (SQLAlchemyError, OSError, RuntimeError, ValueError):
+        return False
+    return True
 
 
 @router.get("/health", responses={503: {"model": HealthResponse}})
@@ -39,11 +45,7 @@ async def get_health(request: Request, response: Response) -> HealthResponse:
     if not uses_health_db():
         return HealthResponse(version=version)
 
-    try:
-        # Repeated cancellation also interrupts psycopg's query cancellation wait.
-        with fail_after(_DB_TIMEOUT_SECONDS):
-            await _check_db()
-    except (SQLAlchemyError, OSError, RuntimeError, ValueError):
+    if not await db_is_ready():
         response.status_code = 503
         return HealthResponse(
             status="degraded", db="unavailable", redis="not_configured",

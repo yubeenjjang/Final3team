@@ -1,3 +1,4 @@
+import os
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Path, Query, Request, Response
@@ -19,6 +20,14 @@ RouteToken = Annotated[str | None, Header(alias="X-Route-Access-Token")]
 ScenarioHeader = Annotated[str, Header(alias="X-Mock-Scenario")]
 
 
+def uses_real_route_request(request: Request) -> bool:
+    return real_routes.uses_real_routes() and not (
+        "X-Mock-Scenario" in request.headers
+        and os.environ.get("ROUTE_DEMO_SCENARIOS", "false").strip().lower() == "true"
+        and os.environ.get("APP_ENV", "").strip().lower() != "prod"
+    )
+
+
 @router.post("/routes/return", responses={
     200: {"headers": {"X-Route-Access-Token": {
         "description": "동기 완료된 경로의 후보를 선택할 때 A05에 보낼 토큰",
@@ -34,7 +43,7 @@ async def submit_return_route(
 ) -> JSONResponse:
     await run_in_threadpool(route_rate_limit.enforce, request.client.host if request.client else "unknown", authorization)
     submitted_body = await request.json()
-    if real_routes.uses_real_routes():
+    if uses_real_route_request(request):
         service = real_routes.get_service()
         status, body = await service.create_route("return", route, submitted_body)
         selection_token = service.return_selection_token
@@ -56,7 +65,7 @@ async def get_return_route(
     candidate_id: Annotated[str | None, Query(pattern=r"^c[1-9][0-9]*$", max_length=16)] = None,
 ) -> dict[str, object]:
     live_candidates = None
-    if real_routes.uses_real_routes():
+    if uses_real_route_request(request):
         service = real_routes.get_service()
         body = await service.get_route_response("return", route_request_id, token)
         if candidate_id is not None and body["route_status"] == "ready":
@@ -80,7 +89,7 @@ async def submit_visit_route(
 ) -> JSONResponse:
     await run_in_threadpool(route_rate_limit.enforce, request.client.host if request.client else "unknown", authorization)
     submitted_body = await request.json()
-    if real_routes.uses_real_routes():
+    if uses_real_route_request(request):
         status, body = await real_routes.get_service().create_route("visit", route, submitted_body)
     else:
         status, body = await create_route("visit", route, submitted_body, scenario)
@@ -93,7 +102,7 @@ async def submit_visit_route(
 async def get_visit_route(
     request: Request, route_request_id: RouteId, token: RouteToken = None,
 ) -> dict[str, object]:
-    if real_routes.uses_real_routes():
+    if uses_real_route_request(request):
         body = await real_routes.get_service().get_route_response("visit", route_request_id, token)
     else:
         body = await run_in_threadpool(get_route, "visit", route_request_id, token)

@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 
+from api.main import app
 from api.routers import health
 
 _HEALTH = "/api/v1/health"
@@ -37,6 +38,28 @@ def db_connection(monkeypatch: pytest.MonkeyPatch) -> tuple[AsyncMock, AsyncMock
 
     monkeypatch.setattr(health, "user_db_session", session)
     return connect, connection
+
+
+@pytest.mark.parametrize(("db_mode", "failures", "attempts"), [
+    (False, 0, 0), (True, 0, 1), (True, 1, 2), (True, 3, 3),
+])
+def test_lifespan_prepares_db_with_bounded_retries(monkeypatch, db_connection, db_mode, failures, attempts):
+    connect, connection = db_connection
+    if db_mode:
+        monkeypatch.setenv("AUTH_PROVIDER", "db")
+    if failures:
+        monkeypatch.setattr(health, "_DB_TIMEOUT_SECONDS", 0.05)
+        remaining = iter([True] * failures)
+
+        async def start_connection(**kwargs):
+            if next(remaining, False):
+                await asyncio.Event().wait()
+            return connection
+
+        connect.side_effect = start_connection
+
+    with TestClient(app):
+        assert connect.await_count == attempts
 
 
 def test_a01_mock_does_not_connect(

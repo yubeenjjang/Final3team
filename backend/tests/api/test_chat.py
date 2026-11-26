@@ -134,6 +134,12 @@ def test_mock_direct_room_block_and_reopen(client, mock):
     room = r.json()["room_id"]
     reverse = client.post(ROOMS, headers=b, json={"type": "direct", "friend_id": alice})
     assert reverse.status_code == 200 and reverse.json()["room_id"] == room
+    for headers, peer in ((a, "채팅사용자1"), (b, "채팅사용자0")):
+        assert client.get(f"{BASE}/me/chat-rooms", headers=headers).json()["items"] == [{
+            "room_id": room, "room_type": "direct", "name": None, "status": "active",
+            "last_message_at": None, "unread_count": 0, "my_status": "joined",
+            "peer_display_name": peer, "festival_name": None, "meet_at": None,
+        }]
 
     with client.websocket_connect(connect_url(client, a)) as ws:
         subscribe(ws, room, 0)
