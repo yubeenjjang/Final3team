@@ -1,162 +1,193 @@
-"""통합 시험 공통 도구.
+"""화면과 같은 ASGI 요청을 일회용 PostgreSQL에서 실행한다."""
 
-기능별 시험(`tests/api/`)과 달리, 여기서는 여러 API를 사용자 흐름 순서대로 이어 부른다.
-모의 서버(`api.main:app`)만 쓰고 외부 API는 부르지 않는다.
-"""
-
-import re
-import sys
+import os
 from collections.abc import Iterator
-from pathlib import Path
-from typing import Any
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from functools import partial
+from uuid import UUID, uuid4
 
+import httpx2 as httpx
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import Engine, create_engine, event, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import create_async_engine
 
-RETURN = "/api/v1/routes/return"
-VISIT = "/api/v1/routes/visit"
-ASSISTANT = "/api/v1/assistant/query"
-AUTH = "/api/v1/auth"
-FAVORITES = "/api/v1/me/favorites"
-
-ROUTE_TOKEN = "X-Route-Access-Token"
-RUN_TOKEN = "X-Run-Access-Token"
-SCENARIO = "X-Mock-Scenario"
-
-# 조회를 몇 번까지 반복할지. 모의 서버는 2회차에 최종 상태가 되므로 넉넉하게 둔다.
-MAX_POLLS = 5
-ROUTE_FINAL = {"ready", "unavailable", "timed_out", "rejected"}
-RUN_FINAL = {"succeeded", "failed"}
+from api.auth import state
+from api.ingestion.festivals.normalize import KST
+from api.main import app
+from api.realtime import chat_socket
+from api.services import assistant
+from shared.db import session as sessions
 
 
-def pytest_configure() -> None:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+@pytest.fixture(scope="session")
+def database_urls():
+    if not all(os.environ.get(key, "").strip() for key in ("TEST_DB_URL", "TEST_DB_MIGRATION_URL")):
+        pytest.skip("통합 시험에는 TEST_DB_URL과 TEST_DB_MIGRATION_URL이 모두 필요합니다.")
+    owner_url = make_url(os.environ["TEST_DB_MIGRATION_URL"]).set(drivername="postgresql+psycopg")
+    service_url = make_url(os.environ["TEST_DB_URL"]).set(drivername="postgresql+psycopg")
+    template = owner_url.database
+    if not template or template in {"postgres", "template0", "template1"} or service_url.database != template:
+        pytest.fail("두 시험 URL은 001~026을 적용한 동일한 일회용 원본 DB를 지정해야 합니다.", pytrace=False)
+
+    name = f"noldaga_itest_{uuid4().hex}"
+    admin = create_engine(owner_url.set(database="postgres"), isolation_level="AUTOCOMMIT", hide_parameters=True)
+    quote = admin.dialect.identifier_preparer.quote_identifier
+    try:
+        try:
+            with admin.connect() as db:
+                db.exec_driver_sql(f"CREATE DATABASE {quote(name)} TEMPLATE {quote(template)}")
+        except OperationalError as error:
+            state_code = getattr(error.orig, "sqlstate", None)
+            pytest.fail(f"시험 DB 복제에 실패했습니다. 연결, CREATEDB 권한과 원본 DB의 연결 상태를 확인하세요. ({state_code})",
+                        pytrace=False)
+        try:
+            yield owner_url.set(database=name), service_url.set(database=name)
+        finally:
+            with admin.connect() as db:
+                db.exec_driver_sql(f"DROP DATABASE {quote(name)}")
+    finally:
+        admin.dispose()
 
 
-@pytest.fixture(autouse=True)
-def reset_mock_state() -> Iterator[None]:
-    from api.mocks.store import reset_store
-
-    reset_store()
-    yield
-    reset_store()
-
-
-@pytest.fixture
-def client() -> Iterator[TestClient]:
-    from api.main import app
-
-    with TestClient(app) as test_client:
-        yield test_client
-
-
-class Flow:
-    """사용자 흐름 한 번을 따라가는 도우미. 단계마다 공통 약속(is_mock, 오류 형식)을 같이 확인한다."""
-
-    def __init__(self, client: TestClient) -> None:
-        self.client = client
-        self.polls: list[str] = []  # 조회할 때마다 받은 상태를 순서대로 남긴다
-
-    # ---- 공통 확인 ----
-    @staticmethod
-    def ok(response: Any, status: int = 200) -> dict[str, Any]:
-        assert response.status_code == status, response.text
-        assert response.headers["X-Mock"] == "true"
-        body = response.json()
-        assert body["is_mock"] is True
-        return body
-
-    @staticmethod
-    def error(response: Any, status: int, code: str, *, retryable: bool | None = None) -> dict[str, Any]:
-        assert response.status_code == status, response.text
-        error = response.json()["error"]
-        assert error["code"] == code
-        assert error["request_id"] == response.headers["X-Request-ID"]
-        assert re.search("[가-힣]", error["message"]), "오류 안내는 한국어여야 한다"
-        if retryable is not None:
-            assert error["retryable"] is retryable
-        return error
-
-    # ---- 축제 ----
-    def festivals(self, **params: Any) -> dict[str, Any]:
-        return self.ok(self.client.get("/api/v1/festivals", params=params))
-
-    def festival(self, festival_id: str) -> dict[str, Any]:
-        return self.ok(self.client.get(f"/api/v1/festivals/{festival_id}"))
-
-    def info(self, festival_id: str, kind: str, scenario: str | None = None) -> dict[str, Any]:
-        headers = {SCENARIO: scenario} if scenario else {}
-        return self.ok(self.client.get(f"/api/v1/festivals/{festival_id}/{kind}", headers=headers))
-
-    # ---- 경로 ----
-    def submit_route(
-        self, url: str, body: dict[str, Any], scenario: str | None = None, request_id: str | None = None
-    ) -> Any:
-        headers = {}
-        if scenario:
-            headers[SCENARIO] = scenario
-        if request_id:
-            headers["X-Request-ID"] = request_id
-        return self.client.post(url, json=body, headers=headers)
-
-    def poll_route(self, accepted: dict[str, Any]) -> dict[str, Any]:
-        """최종 상태가 나올 때까지 조회한다. 상태 주소와 토큰은 접수 응답에 있는 것만 쓴다."""
-        headers = {ROUTE_TOKEN: accepted["route_access_token"]}
-        for _ in range(MAX_POLLS):
-            body = self.ok(self.client.get(accepted["status_url"], headers=headers))
-            self.polls.append(body["route_status"])
-            if body["route_status"] in ROUTE_FINAL:
-                return body
-            assert body["completed_valid_route"] is False
-            assert body["retry_after_s"] > 0
-        raise AssertionError(f"{MAX_POLLS}번 조회해도 끝나지 않음: {self.polls}")
-
-    # ---- 챗봇 ----
-    def ask(self, request_id: str, message: str, **extra: Any) -> dict[str, Any]:
-        return self.ok(
-            self.client.post(ASSISTANT, json={"request_id": request_id, "message": message, **extra}), 202
-        )
-
-    def poll_run(self, accepted: dict[str, Any]) -> dict[str, Any]:
-        headers = {RUN_TOKEN: accepted["run_access_token"]}
-        for _ in range(MAX_POLLS):
-            body = self.ok(self.client.get(accepted["status_url"], headers=headers))
-            self.polls.append(body["run_status"])
-            if body["run_status"] in RUN_FINAL:
-                return body
-        raise AssertionError(f"{MAX_POLLS}번 조회해도 끝나지 않음: {self.polls}")
-
-    # ---- 인증 ----
-    def sign_up_and_login(self, name: str) -> dict[str, str]:
-        credentials = {"email": f"{name}@example.com", "password": "example123"}
-        self.ok(
-            self.client.post(
-                f"{AUTH}/signup",
-                json={**credentials, "display_name": name, "birth_year": 2000, "gender": "female"},
-            ),
-            201,
-        )
-        tokens = self.ok(self.client.post(f"{AUTH}/login", json=credentials))
-        return {"access": tokens["access_token"], "refresh": tokens["refresh_token"]}
+def role_engine(engine: Engine, role: str) -> None:
+    @event.listens_for(engine, "begin")
+    def set_role(connection):
+        connection.exec_driver_sql(f"SET LOCAL ROLE {role}")
 
 
 @pytest.fixture
-def flow(client: TestClient) -> Flow:
-    return Flow(client)
+def service_db(database_urls) -> Iterator[Engine]:
+    _, service_url = database_urls
+    engine = create_engine(service_url, hide_parameters=True)
+    role_engine(engine, "noldaga_service")
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 
-def assert_route_matches_festival(route: dict[str, Any], festival: dict[str, Any]) -> None:
-    """경로 결과가 고른 축제와 맞는지: 축제 번호, 지역, 축제 쪽 끝점 좌표, 경로 좌표 순서."""
-    assert route["festival_id"] == festival["festival_id"]
-    assert route["coverage"]["region_code"] == festival["region_code"]
-    festival_end = route["origin"] if route["direction"] == "return" else route["destination"]
-    assert festival_end["type"] == "festival"
-    assert festival_end["name"] == festival["venue_name"]
-    assert (festival_end["lat"], festival_end["lng"]) == (festival["lat"], festival["lng"])
-    assert route["completed_valid_route"] is True
-    assert len(route["route_candidates"]) >= 1
-    for candidate in route["route_candidates"]:
-        for leg in candidate["legs"]:
-            for lat, lng in leg["path"]:
-                # 지도에 그릴 때 [위도, 경도] 순서가 바뀌면 바다 한가운데 찍힌다
-                assert 33.0 <= lat <= 39.0 and 124.0 <= lng <= 132.0
+class Browser:
+    def __init__(self, http: httpx.AsyncClient, sockets: TestClient):
+        self.http = http
+        self.sockets = sockets
+
+    def run(self, function, *args, **kwargs):
+        return self.sockets.portal.call(partial(function, *args, **kwargs))
+
+    def request(self, method, path, **kwargs):
+        return self.run(self.http.request, method, path, **kwargs)
+
+
+@pytest.fixture
+def browser(database_urls, service_db, monkeypatch) -> Iterator[Browser]:
+    owner_url, _ = database_urls
+    user_db = create_async_engine(owner_url, hide_parameters=True)
+    role_engine(user_db.sync_engine, "noldaga_app")
+    monkeypatch.setattr(sessions, "_service_engine", lambda: service_db)
+    monkeypatch.setattr(sessions, "_user_engine", lambda: user_db)
+    for provider in ("AUTH_PROVIDER", "FESTIVAL_DATA", "ASSISTANT_PROVIDER"):
+        monkeypatch.setenv(provider, "db")
+    monkeypatch.setenv("JWT_SECRET", "offline-itest-signing-value-not-for-production")
+    monkeypatch.setenv("JWT_ISSUER", "noldaga-itest")
+    monkeypatch.setenv("ASSISTANT_TOKEN_SECRET", "offline-itest-assistant-value-not-for-production")
+    monkeypatch.setenv("AUTH_RATE_LIMIT_PER_MIN", "10")
+    monkeypatch.setenv("ASSISTANT_RATE_LIMIT_PER_MIN", "10")
+    monkeypatch.setattr(state, "_auth_state", state.MemoryAuthState())
+    monkeypatch.setattr(assistant, "rate_limit", assistant.MemoryAssistantRateLimit())
+    monkeypatch.setattr(chat_socket, "tickets", chat_socket.MemoryTickets())
+    monkeypatch.setattr(chat_socket, "bus", chat_socket.MemoryChatBus())
+    monkeypatch.setattr(chat_socket, "limits", chat_socket.MessageLimits())
+
+    def unexpected_http(*args, **kwargs):
+        pytest.fail("통합 시험 중 외부 HTTP 호출이 발생했습니다.", pytrace=False)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", unexpected_http)
+    monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", unexpected_http)
+    with TestClient(app) as sockets:
+        http = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://testserver", trust_env=False,
+        )
+        browser = Browser(http, sockets)
+        try:
+            yield browser
+        finally:
+            browser.run(http.aclose)
+            browser.run(user_db.dispose)
+
+
+def checked(response: httpx.Response, status: int, code: str | None = None):
+    assert response.status_code == status, (response.request.method, response.request.url.path,
+                                            response.status_code)
+    assert "X-Mock" not in response.headers
+    if status == 204:
+        assert response.content == b""
+        return None
+    body = response.json()
+    if code is not None:
+        assert body["error"]["code"] == code
+    return body
+
+
+def auth_header(login):
+    return {"Authorization": f"Bearer {login['access_token']}"}
+
+
+@dataclass(frozen=True, repr=False)
+class Account:
+    user_id: UUID
+    credentials: dict[str, str]
+    login: dict
+
+    @property
+    def headers(self):
+        return auth_header(self.login)
+
+
+@pytest.fixture
+def register(browser, service_db):
+    def create(*, operator: bool = False) -> Account:
+        suffix = uuid4().hex[:10]
+        credentials = {"email": f"itest-{suffix}@example.test", "password": "Fixture-Password123"}
+        signup = checked(browser.request("POST", "/api/v1/auth/signup", json={
+            **credentials, "display_name": suffix, "birth_year": 2000, "gender": "female",
+        }), 201)
+        assert signup["is_mock"] is False
+        uid = UUID(signup["user_id"])
+        if operator:
+            with service_db.begin() as db:
+                db.execute(text("UPDATE public.profiles SET role = 'operator' WHERE user_id = :uid"), {"uid": uid})
+        login = checked(browser.request("POST", "/api/v1/auth/login", json=credentials), 200)
+        assert login["user"] == {"user_id": str(uid), "display_name": suffix,
+                                 "role": "operator" if operator else "user"}
+        assert login["is_mock"] is False
+        return Account(uid, credentials, login)
+
+    return create
+
+
+@pytest.fixture
+def festivals(service_db):
+    """TourAPI 응답은 공개 축제와 공개 조건을 각각 어기는 행으로 대체한다."""
+    key = uuid4().hex[:12]
+    today = datetime.now(KST).date()
+    ids = {kind: f"fst_{key}{index}" for index, kind in enumerate(("public", "pending", "event"))}
+    rows = [
+        (ids["public"], "EV01", "approved", True),
+        (ids["pending"], "EV01", "pending", False),
+        (ids["event"], "EV03", "approved", True),
+    ]
+    with service_db.begin() as db:
+        db.execute(text("""
+            INSERT INTO public.festivals
+                (festival_id, title, region_code, category, source_class_level2, review_status,
+                 published_at, start_date, end_date, last_synced_at)
+            VALUES (:id, :title, 'SEOUL', 'festival', :source_class, :status,
+                    CASE WHEN :published THEN now() ELSE NULL END, :start, :end, now())
+        """), [{"id": fid, "title": f"통합시험 {key}", "source_class": source_class, "status": status,
+                "published": published, "start": today, "end": today + timedelta(days=3)}
+               for fid, source_class, status, published in rows])
+    return ids, key

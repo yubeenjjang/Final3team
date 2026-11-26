@@ -1,0 +1,93 @@
+{
+  "SeoulRtd.citydata_ppltn": [
+    {
+      "AREA_NM": "광화문·덕수궁",
+      "AREA_CD": "POI009",
+      "AREA_CONGEST_LVL": "보통",
+      "AREA_CONGEST_MSG": "사람이 몰려있을 수 있지만 크게 붐비지는 않아요. 도보 이동에 큰 제약이 없어요.",
+      "AREA_PPLTN_MIN": "48000",
+      "AREA_PPLTN_MAX": "50000",
+      "REPLACE_YN": "N",
+      "PPLTN_TIME": "2026-11-19 16:55",
+      "FCST_YN": "Y",
+      "FCST_PPLTN": [
+        {
+          "FCST_TIME": "2026-11-19 18:00",
+          "FCST_CONGEST_LVL": "약간 붐빔",
+          "FCST_PPLTN_MIN": "44000",
+          "FCST_PPLTN_MAX": "46000"
+        },
+        {
+          "FCST_TIME": "2026-11-19 19:00",
+          "FCST_CONGEST_LVL": "보통",
+          "FCST_PPLTN_MIN": "36000",
+          "FCST_PPLTN_MAX": "38000"
+        },
+        {
+          "FCST_TIME": "2026-11-19 20:00",
+          "FCST_CONGEST_LVL": "보통",
+          "FCST_PPLTN_MIN": "28000",
+          "FCST_PPLTN_MAX": "30000"
+        },
+        {
+          "FCST_TIME": "2026-11-19 21:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "22000",
+          "FCST_PPLTN_MAX": "24000"
+        },
+        {
+          "FCST_TIME": "2026-11-19 22:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "16000",
+          "FCST_PPLTN_MAX": "18000"
+        },
+        {
+          "FCST_TIME": "2026-11-19 23:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "12000",
+          "FCST_PPLTN_MAX": "14000"
+        },
+        {
+          "FCST_TIME": "2026-11-20 00:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "9500",
+          "FCST_PPLTN_MAX": "10000"
+        },
+        {
+          "FCST_TIME": "2026-11-20 01:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "7000",
+          "FCST_PPLTN_MAX": "7500"
+        },
+        {
+          "FCST_TIME": "2026-11-20 02:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "5500",
+          "FCST_PPLTN_MAX": "6000"
+        },
+        {
+          "FCST_TIME": "2026-11-20 03:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "5000",
+          "FCST_PPLTN_MAX": "5500"
+        },
+        {
+          "FCST_TIME": "2026-11-20 04:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "5000",
+          "FCST_PPLTN_MAX": "5500"
+        },
+        {
+          "FCST_TIME": "2026-11-20 05:00",
+          "FCST_CONGEST_LVL": "여유",
+          "FCST_PPLTN_MIN": "5500",
+          "FCST_PPLTN_MAX": "6000"
+        }
+      ]
+    }
+  ],
+  "RESULT": {
+    "RESULT.CODE": "INFO-000",
+    "RESULT.MESSAGE": "정상 처리되었습니다."
+  }
+}

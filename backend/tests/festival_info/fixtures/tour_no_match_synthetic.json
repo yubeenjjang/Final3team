@@ -1,0 +1,23 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseYmd": "20261119",
+            "areaCd": "26",
+            "areaNm": "부산광역시",
+            "signguCd": "26350",
+            "signguNm": "해운대구",
+            "tAtsNm": "다른 관광지",
+            "cnctrRate": "55.19"
+          }
+        ]
+      },
+      "totalCount": 1
+    }
+  }
+}

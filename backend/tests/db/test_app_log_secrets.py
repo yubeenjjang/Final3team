@@ -11,6 +11,7 @@
 - 오현님 API 코드(`backend/api`, DB 모드 축제 조회)가 없으면 건너뜀(main 병합 전)
 """
 
+import asyncio
 import logging
 import os
 import secrets
@@ -42,8 +43,6 @@ def _app_modules():
         from api.services import festival_store
     except Exception as exc:   # 의존성이나 API 코드가 없는 환경
         pytest.skip(f"API 코드를 불러올 수 없음: {exc}")
-    if not hasattr(festival_store, "get_festival_engine"):
-        pytest.skip("DB 모드 축제 조회가 아직 main에 없음 (오현님 브랜치 병합 전)")
     return TestClient, app, festival_store
 
 
@@ -83,16 +82,23 @@ def _set_secrets(monkeypatch, values: dict[str, str]) -> None:
 @pytest.fixture
 def db_mode(monkeypatch):
     TestClient, app, festival_store = _app_modules()
+    from shared.db import session as sessions
+
+    def close_user_engine():
+        if sessions._user_engine.cache_info().currsize:
+            try:
+                asyncio.run(sessions._user_engine().dispose())
+            finally:
+                sessions._user_engine.cache_clear()
+
     monkeypatch.setenv("FESTIVAL_DATA", "db")
     monkeypatch.setenv("APP_ENV", "test")
-    festival_store._create_engine.cache_clear()
-    yield TestClient, app, festival_store
-    # 연결을 남기면 원본 DB를 복제하는 통합 시험(test_screen_flows)이 "다른 세션이 사용 중"으로 막힌다
+    close_user_engine()
     try:
-        festival_store.get_festival_engine().dispose()
-    except Exception:
-        pass
-    festival_store._create_engine.cache_clear()
+        yield TestClient, app, festival_store
+    finally:
+        # 공통 풀의 연결을 닫아 뒤의 원본 DB 복제 시험을 막지 않는다.
+        close_user_engine()
 
 
 def test_sec05_detector_sees_app_logs_and_stdout(capture, db_mode):

@@ -11,6 +11,7 @@
 모든 비밀번호 자리에는 실행 때 무작위로 만든 표시값만 쓴다.
 """
 
+import hashlib
 import logging
 import os
 import re
@@ -67,6 +68,11 @@ PLACEHOLDER = re.compile(r"(?i)^(<.*>|\$\{?.*|\{\{.*|\{[A-Za-z_][\w.]*(?:\[[^\]]
 
 
 SELF = "backend/tests/db/test_secret_exposure.py"   # 이 파일은 규칙 확인용 가짜 예시를 일부러 담고 있음
+# 과거 시험 코드의 고정 가상 비밀번호 한 줄만 예외로 둔다. 값은 저장·출력하지 않는다.
+KNOWN_TEST_FIXTURE = (
+    "f0950e8", "backend/tests/api/test_my_account.py", "코드_비밀상수",
+    "8b1251c28edf41f29b328fbecda158e4cefa2ea1ad8fc073c252a621aaa44f85",
+)
 
 
 def find_committed_secrets(diff_text: str) -> list[str]:
@@ -85,6 +91,9 @@ def find_committed_secrets(diff_text: str) -> list[str]:
                 for m in pattern.finditer(text):
                     value = m.group(m.lastindex)
                     if len(value) >= 6 and not PLACEHOLDER.search(value):
+                        fingerprint = hashlib.sha256(value.encode()).hexdigest()
+                        if (commit, path, rule, fingerprint) == KNOWN_TEST_FIXTURE:
+                            continue
                         found.append(f"{commit} {path} [{rule}]")
     return sorted(set(found))
 
@@ -109,6 +118,14 @@ def test_sec02_detector_rules(line, path, hits):
     """검사 규칙이 실제 비밀값 형태는 잡고, 자리표시·시험값·코드 표현식은 넘기는지."""
     sample = f"@@COMMIT abc1234\n+++ b/{path}\n{line}\n"
     assert len(find_committed_secrets(sample)) == hits
+
+
+def test_sec02_historical_exception_does_not_hide_other_values():
+    sample = ("@@COMMIT f0950e8\n+++ b/backend/tests/api/test_my_account.py\n"
+              "+PASSWORD = 'anotherNeverCommitSecret123'\n")
+    assert find_committed_secrets(sample) == [
+        "f0950e8 backend/tests/api/test_my_account.py [코드_비밀상수]"
+    ]
 
 
 @needs_git

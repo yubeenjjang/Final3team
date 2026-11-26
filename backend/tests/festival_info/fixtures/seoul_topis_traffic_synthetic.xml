@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AccInfo>
+  <list_total_count>3</list_total_count>
+  <RESULT><CODE>INFO-000</CODE><MESSAGE>정상 처리되었습니다</MESSAGE></RESULT>
+  <row>
+    <acc_type>A01</acc_type>
+    <acc_info>세종대로 추돌</acc_info>
+    <link_id>1000000100</link_id>
+    <occr_date>20261119</occr_date><occr_time>1716</occr_time>
+    <exp_clr_date>20261119</exp_clr_date><exp_clr_time>173900</exp_clr_time>
+    <grs80tm_x>197977.12495093857</grs80tm_x><grs80tm_y>452994.9334457042</grs80tm_y>
+  </row>
+  <row>
+    <acc_type>A02</acc_type>
+    <acc_info>세종대로 별도 고장 차량</acc_info>
+    <link_id>1000000100</link_id>
+    <occr_date>20261119</occr_date><occr_time>180000</occr_time>
+    <exp_clr_date>20261119</exp_clr_date><exp_clr_time>1930</exp_clr_time>
+    <grs80tm_x>197977.12495093857</grs80tm_x><grs80tm_y>452994.9334457042</grs80tm_y>
+  </row>
+  <row>
+    <acc_type>A04</acc_type>
+    <acc_info>탄천나들목 및 봉은교 구조개선공사</acc_info>
+    <link_id>1220031600</link_id>
+    <occr_date>20260407</occr_date><occr_time>1000</occr_time>
+    <exp_clr_date>20270301</exp_clr_date><exp_clr_time>000000</exp_clr_time>
+    <grs80tm_x>206076.7132692197</grs80tm_x><grs80tm_y>446245.6950463236</grs80tm_y>
+  </row>
+</AccInfo>

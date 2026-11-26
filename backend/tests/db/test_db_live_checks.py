@@ -103,7 +103,7 @@ def seed():
     """가상 축제 4건(공개 2, 비공개 1, 숨김 1)과 사용자 A·B, 각자 관심 축제 1건."""
     _session_module()
     with _admin() as db:
-        # 공개 조건(018): category='festival' AND source_class_level2='EV01' AND review_status='approved' AND published_at
+        # 018 공개 조건은 EV01 축제 분류까지 필요하다.
         db.execute("""INSERT INTO festivals (festival_id, title, region_code, category, source_class_level2, review_status, published_at) VALUES
             (%s,'시험 공개 축제 1','SEOUL','festival','EV01','approved',now()), (%s,'시험 공개 축제 2','BUSAN','festival','EV01','approved',now()),
             (%s,'시험 비공개 축제','SEOUL','festival','EV01','pending',NULL), (%s,'시험 숨김 축제','SEOUL','festival','EV01','hidden',now())""",

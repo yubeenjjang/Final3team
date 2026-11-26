@@ -1,0 +1,21 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "citycode": 21,
+            "gpslati": 35.157281050303,
+            "gpslong": 129.059459807595,
+            "nodeid": "BSB164680201",
+            "nodenm": "서면역"
+          }
+        ]
+      },
+      "totalCount": 1
+    }
+  }
+}

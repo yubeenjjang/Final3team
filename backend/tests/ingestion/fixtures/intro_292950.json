@@ -1,0 +1,41 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "292950",
+      "contenttypeid": "15",
+      "sponsor1": "(사)국가무형문화재 광주칠석고싸움놀이보존회",
+      "sponsor1tel": "062-374-3839",
+      "sponsor2": "",
+      "sponsor2tel": "",
+      "eventenddate": "20260302",
+      "playtime": "10:00~20:00",
+      "eventplace": "고싸움놀이전수교육관",
+      "eventhomepage": "",
+      "agelimit": "",
+      "bookingplace": "",
+      "placeinfo": "",
+      "subevent": "",
+      "program": "메인프로그램 : 국가무형유산 고싸움놀이실연, 달집태우기, 불꽃놀이 등\n부대프로그램 : 축하공연 - 북청사자놀음, 줄타기, 남사당놀이, 무형유산이수자공연, 고싸움놀이 창작 마당극 등\n소비자 참여 프로그램 : 가족 전래놀이 대전, 릴레이새끼꼬기, 전래놀이 체험하고 선물받기, 군밤부럼, 연만들어 날리기\n기타 내용 : 키 큰 도토리, 북극곰 등 우리문화 그림책 출판사와 작가님과의 만남, 119소방 안전안전교육부스, 옻돌마을 키트 체험, 복쌈체험, 고샅고싸움놀이, 고동차 등",
+      "eventstartdate": "20260228",
+      "usetimefestival": "무료",
+      "discountinfofestival": "",
+      "spendtimefestival": "",
+      "festivalgrade": "",
+      "progresstype": "선택안함",
+      "festivaltype": ""
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}

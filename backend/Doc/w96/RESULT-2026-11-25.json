@@ -1,0 +1,159 @@
+{
+  "run_id": "w96_bd50e9fe8f894a35",
+  "measured_at": "2026-11-25T03:15:49.672194+00:00",
+  "mode": "local_real_route_api_simulated_provider",
+  "settings": {
+    "count": 8,
+    "concurrency": 4,
+    "provider_delay_s": 0.05,
+    "festival_id": "fst_000001",
+    "rate_limit_per_min": 10000
+  },
+  "limitations": "실제 API 내부 경로를 측정했지만 공급원은 시험용이며 DB 저장·외부 네트워크·운영 부하는 포함하지 않음",
+  "scenarios": [
+    {
+      "pattern": "repeat",
+      "pacing": "burst",
+      "cache_state": "cold",
+      "offered": 8,
+      "unique_destinations": 1,
+      "provider_executions": 1,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 174.98,
+      "completion_p95_ms": 175.13,
+      "elapsed_s": 0.22,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "repeat",
+      "pacing": "burst",
+      "cache_state": "warm",
+      "offered": 8,
+      "unique_destinations": 1,
+      "provider_executions": 0,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 53.23,
+      "completion_p95_ms": 53.28,
+      "elapsed_s": 0.094,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "repeat",
+      "pacing": "sustained",
+      "cache_state": "cold",
+      "offered": 8,
+      "unique_destinations": 1,
+      "provider_executions": 1,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 64.85,
+      "completion_p95_ms": 64.96,
+      "elapsed_s": 0.815,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "repeat",
+      "pacing": "sustained",
+      "cache_state": "warm",
+      "offered": 8,
+      "unique_destinations": 1,
+      "provider_executions": 0,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 28.32,
+      "completion_p95_ms": 28.41,
+      "elapsed_s": 0.814,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "unique",
+      "pacing": "burst",
+      "cache_state": "cold",
+      "offered": 8,
+      "unique_destinations": 8,
+      "provider_executions": 8,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 106.79,
+      "completion_p95_ms": 106.85,
+      "elapsed_s": 0.198,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "unique",
+      "pacing": "burst",
+      "cache_state": "warm",
+      "offered": 8,
+      "unique_destinations": 8,
+      "provider_executions": 0,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 78.24,
+      "completion_p95_ms": 78.42,
+      "elapsed_s": 0.131,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "unique",
+      "pacing": "sustained",
+      "cache_state": "cold",
+      "offered": 8,
+      "unique_destinations": 8,
+      "provider_executions": 8,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 87.79,
+      "completion_p95_ms": 87.95,
+      "elapsed_s": 0.808,
+      "statuses": {
+        "ready": 8
+      }
+    },
+    {
+      "pattern": "unique",
+      "pacing": "sustained",
+      "cache_state": "warm",
+      "offered": 8,
+      "unique_destinations": 8,
+      "provider_executions": 0,
+      "valid_completed": 8,
+      "rejected": 0,
+      "errors": 0,
+      "unfinished": 0,
+      "post_p95_ms": 26.1,
+      "completion_p95_ms": 26.27,
+      "elapsed_s": 0.807,
+      "statuses": {
+        "ready": 8
+      }
+    }
+  ]
+}

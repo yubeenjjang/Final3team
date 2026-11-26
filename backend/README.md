@@ -23,5 +23,21 @@ FastAPI 서버와 AI Agent 작업을 만드는 폴더입니다.
 | `shared/db/` | DB 연결, 작업 상태 저장, 모델과 구조 변경 파일 |
 | `tests/` | API·Agent·실시간·복구·통합·부하 시험 |
 
-`api/requirements.txt`와 `agents/requirements.txt`는 각각 필요한 Python 패키지를 기록합니다.
-현재 `.py` 파일은 용도 주석만 있는 초기 뼈대이며, 실행 방법은 구현하면서 추가합니다.
+`api/requirements.txt`와 `agents/requirements.txt`는 각각 실행에 필요한 Python 패키지를 기록합니다. `requirements-dev.txt`에는 시험에 필요한 pytest를 둡니다.
+일부 `.py` 파일은 초기 뼈대이며, 기능별 실행 방법은 구현하면서 추가합니다.
+
+## 공통 시험
+
+저장소 루트에서 `uv run --with-requirements backend/api/requirements.txt --with-requirements backend/requirements-dev.txt python -m pytest backend/tests -q`로 실행합니다. `db`가 표시된 시험은 일회용 PostgreSQL의 `TEST_DB_URL`을 설정한 경우에 실행합니다.
+
+## 로컬 DB 설정
+
+프로젝트 루트의 `.env.example`을 `.env`로 복사한 뒤 DB 접속값을 채웁니다. `.env`는 Git에 올리지 않습니다. `load_db_settings()`는 로컬 `.env`를 읽지만, 운영체제에 이미 설정된 환경변수를 우선합니다. 모의 API만 실행할 때는 DB 설정이 필요하지 않습니다.
+
+`get_db()`는 비회원 요청용입니다. 로그인 요청은 JWT 검증 후 `user_db_session(검증된_user_id)`을 사용합니다. 내부 작업과 Celery는 `service_db_session()` 또는 `get_service_db()`를 사용합니다. 이 세션 함수는 실제 DB 연결 시점에 환경변수를 읽습니다.
+
+DB 없이 `python -m unittest backend.tests.db.test_session`으로 세션 흐름을 확인할 수 있습니다. 실제 PostgreSQL에서 A→비회원→B의 연결 재사용 시험은 테스트 DB 설정 후 `DB_LIVE_TEST=1`을 지정해 같은 명령을 실행합니다.
+
+## DB 스키마 적용
+
+`DB_MIGRATION_DSN`에 스키마·역할 생성 권한이 있는 **관리자 계정**의 PostgreSQL 접속 문자열을 설정한 뒤, 프로젝트 루트에서 `python -m backend.shared.db.migrate`를 실행합니다. 실행기는 `Docs/Step 2/db/`의 적용 SQL을 번호순으로 읽고 `migration_meta.schema_migrations`에 파일 해시와 적용 시각을 기록합니다. 이미 적용한 파일은 건너뛰며 적용된 파일 내용이 달라지면 중단합니다. 현재 `ohyun`의 파일 목록에는 009가 중복되어 공통 실행기가 중단됩니다. [귀가 경로 SPEC의 마이그레이션 확인 사항](Doc/route-providers/SPEC.md#p21-마이그레이션-파일-선택과-시험)을 참고합니다. 실제 비밀번호와 관리자 접속 문자열은 Git에 올리지 않습니다.

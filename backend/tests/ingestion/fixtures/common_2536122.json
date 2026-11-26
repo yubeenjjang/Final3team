@@ -1,0 +1,47 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "2536122",
+      "contenttypeid": "15",
+      "title": "강서 낙동강30리 벚꽃축제",
+      "createdtime": "20180213231356",
+      "modifiedtime": "20260402145747",
+      "tel": "070-8893-2437",
+      "telname": "부산광역시 강서구 축제추진위원회",
+      "homepage": "http://www.bsgangseo.go.kr/visit/contents.do?mId=0302000000",
+      "firstimage": "https://tong.visitkorea.or.kr/cms/resource/77/4046477_image2_1.JPG",
+      "firstimage2": "https://tong.visitkorea.or.kr/cms/resource/77/4046477_image3_1.JPG",
+      "cpyrhtDivCd": "Type3",
+      "areacode": "",
+      "sigungucode": "",
+      "lDongRegnCd": "26",
+      "lDongSignguCd": "440",
+      "lclsSystm1": "EV",
+      "lclsSystm2": "EV01",
+      "lclsSystm3": "EV010200",
+      "cat1": "",
+      "cat2": "",
+      "cat3": "",
+      "addr1": "부산 강서구 대저1동 1-17",
+      "addr2": "대저생태공원 P3주차장",
+      "zipcode": "618803",
+      "mapx": "128.986526",
+      "mapy": "35.209324",
+      "mlevel": "6",
+      "overview": "해당 축제는 4월 3일부터 4월 5일까지 진행되는 지역 문화 행사이다. 축제는 메인무대와 보조무대를 중심으로 다양한 공연과 체험 프로그램이 시간대별로 운영되는 일정으로 구성되어 있다. 행사 기간 동안 강서 골든벨, 가족과 함께하는 벚꽃 문화공연, 청소년 핑크 K-POP 댄스, 버스킹 공연, OST 미니 라이브 등이 진행되는 공연 프로그램이 포함되어 있다. 또한 가람백일장 및 강변사생대회, 지역문화공연, 합창페스티벌 등의 문화예술 프로그램이 운영되는 행사이다. 개막 축하공연과 폐막 축하공연이 마련되어 축제의 시작과 마무리를 알리는 일정이 포함되어 있다.\n\n행사장 주변에서는 벚꽃 걷기 행사, 풍물패 퍼레이드, 식전공연 등의 참여형 프로그램이 진행되는 구성이다. 부대 프로그램으로는 인라인스케이트장, 엔달리기 프로그램, 자연놀거리 체험 등이 운영되는 체험 공간이 마련되어 있다. 또한 푸드트럭과 플리마켓이 운영되는 자유거리 공간이 조성되는 축제이다. 중앙광장에는 패밀리존과 키즈존, 벚꽃놀이터, 힐링존 등이 배치되는 행사 공간 구성이 특징인 지역 벚꽃 문화축제이다."
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}

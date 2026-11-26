@@ -6,7 +6,7 @@
 # - 비밀값은 .env(Git 제외, 권한 600)에만 두고, 서비스마다 필요한 값만 넘긴다(env_file로 통째로 넘기지 않음).
 #   api에는 관리자 비밀번호(POSTGRES_PASSWORD)를 주지 않는다.
 # - DB·API 포트는 이 컴퓨터(127.0.0.1)에만 연다.
-# - Redis·Celery 워커는 아직 코드가 비어 있어 넣지 않았다(코드가 생기면 추가).
+# - Redis와 기존 PostgreSQL A06 워커는 선택 프로필이다. Celery는 아직 사용하지 않는다.
 # - .env의 비밀번호는 fill_env_secrets.py(영문·숫자·-·_)로 만든다. 다른 문자를 쓰면 DSN에 넣을 때 URL 인코딩이 필요하다.
 name: noldaga
 
@@ -17,6 +17,17 @@ x-backend: &backend
   image: noldaga-backend:local
 
 services:
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   db:
     image: pgvector/pgvector:pg17
     environment:
@@ -81,11 +92,59 @@ services:
       SEOUL_OPEN_API_KEY: ${SEOUL_OPEN_API_KEY:-}
       DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:-}
       ROUTE_KEY_SECRET: ${ROUTE_KEY_SECRET:-}
+      REDIS_URL: ${REDIS_URL:-}
+      ASSISTANT_PROVIDER: ${ASSISTANT_PROVIDER:-mock}
+      ASSISTANT_TOKEN_SECRET: ${ASSISTANT_TOKEN_SECRET:-}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
       role-passwords:
         condition: service_completed_successfully
+
+  scheduler:
+    <<: *backend
+    profiles: ["scheduled"]
+    working_dir: /app
+    command: ["sh", "-c", "while true; do python -m api.jobs.scheduler; sleep 3600; done"]
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-noldaga}
+      DB_SERVICE_USERNAME: ${DB_SERVICE_USERNAME:-noldaga_service}
+      DB_SERVICE_PASSWORD: ${DB_SERVICE_PASSWORD:?}
+      DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:-}
+      SEOUL_CULTURE_ENABLED: ${SEOUL_CULTURE_ENABLED:-false}
+      SEOUL_OPEN_API_KEY: ${SEOUL_OPEN_API_KEY:-}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+    depends_on:
+      role-passwords:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  assistant-worker:
+    <<: *backend
+    profiles: ["assistant"]
+    working_dir: /app/backend
+    command: ["python", "-m", "api.jobs.assistant_worker"]
+    environment:
+      ASSISTANT_PROVIDER: db
+      ASSISTANT_TOKEN_SECRET: ${ASSISTANT_TOKEN_SECRET:-}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-noldaga}
+      # 공통 DBSettings 로더는 서비스 연결에도 앱 계정 설정을 요구한다.
+      DB_USER_USERNAME: ${DB_USER_USERNAME:-noldaga_app}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:?}
+      DB_SERVICE_USERNAME: ${DB_SERVICE_USERNAME:-noldaga_service}
+      DB_SERVICE_PASSWORD: ${DB_SERVICE_PASSWORD:?}
+      FESTIVAL_DATA: ${FESTIVAL_DATA:-}
+      ASSISTANT_FESTIVAL_RUNNER: ${ASSISTANT_FESTIVAL_RUNNER:-}
+    depends_on:
+      role-passwords:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    restart: unless-stopped
 
 volumes:
   noldaga-db:

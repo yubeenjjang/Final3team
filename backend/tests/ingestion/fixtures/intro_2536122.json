@@ -1,0 +1,41 @@
+{
+ "response": {
+  "header": {
+   "resultCode": "0000",
+   "resultMsg": "OK"
+  },
+  "body": {
+   "items": {
+    "item": [
+     {
+      "contentid": "2536122",
+      "contenttypeid": "15",
+      "sponsor1": "부산광역시 강서구 축제추진위원회",
+      "sponsor1tel": "070-8893-2437",
+      "sponsor2": "",
+      "sponsor2tel": "",
+      "eventenddate": "20260405",
+      "playtime": "10:00~19:00",
+      "eventplace": "대저생태공원 P3주차장",
+      "eventhomepage": "",
+      "agelimit": "",
+      "bookingplace": "",
+      "placeinfo": "",
+      "subevent": "",
+      "program": "1. 메인프로그램 : 개막식 및 축하공연, 강서 골든벨, 가람백일장 및 강변사생대회, 유스 오케스트라, 합창페스티벌, 지역문화공연, 청소년 핑크 K-POP 댄스 페스티벌 등\n\n2. 부대프로그램 : 패밀리존(쉼터 및 키즈존), 체험프로그램, 싱잉볼 with 요가 프로그램, 꽃차클래스 등\n\n3. 기타 내용 : 푸드트럭 및 플리마켓",
+      "eventstartdate": "20260403",
+      "usetimefestival": "무료 (일부 유료)",
+      "discountinfofestival": "",
+      "spendtimefestival": "",
+      "festivalgrade": "",
+      "progresstype": "선택안함",
+      "festivaltype": ""
+     }
+    ]
+   },
+   "numOfRows": 1,
+   "pageNo": 1,
+   "totalCount": 1
+  }
+ }
+}
