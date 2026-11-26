@@ -17,6 +17,10 @@ export interface KakaoMarkerInstance {
   setMap(map: KakaoMapInstance | null): void;
 }
 
+export interface KakaoCustomOverlayInstance {
+  setMap(map: KakaoMapInstance | null): void;
+}
+
 export interface KakaoPolylineInstance {
   setMap(map: KakaoMapInstance | null): void;
 }
@@ -34,6 +38,14 @@ export interface KakaoMapsNamespace {
     map?: KakaoMapInstance;
     title?: string;
   }) => KakaoMarkerInstance;
+  CustomOverlay: new (options: {
+    position: KakaoLatLng;
+    map?: KakaoMapInstance;
+    content: HTMLElement;
+    xAnchor?: number;
+    yAnchor?: number;
+    zIndex?: number;
+  }) => KakaoCustomOverlayInstance;
   Polyline: new (options: {
     path: KakaoLatLng[];
     map?: KakaoMapInstance;

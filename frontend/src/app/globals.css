@@ -161,4 +161,29 @@ select {
   font-size: 0.75rem;
   font-weight: 900;
   box-shadow: 0 4px 10px rgb(0 0 0 / 25%);
+  cursor: pointer;
+  line-height: 1;
+  transform-origin: bottom center;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+.festival-map-marker:hover,
+.festival-map-marker--selected {
+  filter: brightness(1.05);
+  transform: scale(1.16);
+}
+.festival-map-marker--festival {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 1.25rem 1.25rem 1.25rem 0.3rem;
+  background: #ff477e;
+  font-size: 1rem;
+}
+.festival-map-marker--transport {
+  background: #367bf5;
+}
+.festival-map-marker--food {
+  background: #ff8a1f;
+}
+.festival-map-marker--safety {
+  background: #7548ee;
 }

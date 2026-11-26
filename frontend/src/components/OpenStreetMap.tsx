@@ -3,16 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
-import type { KakaoMapPoint } from "./KakaoMap";
+import type { KakaoMapMarker, KakaoMapPoint } from "./KakaoMap";
 
 export function buildOpenStreetMapLink(point: KakaoMapPoint): string {
   return `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=14/${point.lat}/${point.lng}`;
 }
 
-export function OpenStreetMap({ center, title, markers = [], className = "h-80 w-full" }: {
+export function OpenStreetMap({ center, title, markers = [], onMarkerClick, className = "h-80 w-full" }: {
   center: KakaoMapPoint;
   title: string;
-  markers?: Array<KakaoMapPoint & { title: string; label: string }>;
+  markers?: Array<KakaoMapMarker & { title: string; label: string }>;
+  onMarkerClick?: (marker: KakaoMapMarker) => void;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -69,17 +70,19 @@ export function OpenStreetMap({ center, title, markers = [], className = "h-80 w
       markersRef.current = markers.map((point) => {
         const icon = leaflet.divIcon({
           className: "",
-          html: `<span class="festival-map-marker" aria-hidden="true">${point.label}</span>`,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
+          html: `<span class="festival-map-marker festival-map-marker--${point.variant ?? "festival"}${point.selected ? " festival-map-marker--selected" : ""}" aria-hidden="true">${point.label}</span>`,
+          iconSize: point.variant === "festival" ? [40, 40] : [32, 32],
+          iconAnchor: point.variant === "festival" ? [20, 40] : [16, 32],
         });
-        return leaflet.marker([point.lat, point.lng], { icon, title: point.title })
+        const marker = leaflet.marker([point.lat, point.lng], { icon, title: point.title })
           .bindTooltip(point.title, { direction: "top", offset: [0, -14] })
           .addTo(map);
+        if (onMarkerClick) marker.on("click", () => onMarkerClick(point));
+        return marker;
       });
     });
     return () => { cancelled = true; };
-  }, [mapReady, markers]);
+  }, [mapReady, markers, onMarkerClick]);
 
   return (
     <div className="overflow-hidden rounded-card-lg border border-line-light bg-surface shadow-card">

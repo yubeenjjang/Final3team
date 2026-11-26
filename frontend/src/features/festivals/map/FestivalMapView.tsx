@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -13,7 +13,7 @@ import {
   Utensils,
   Users,
 } from "lucide-react";
-import { KakaoMap } from "@/components/KakaoMap";
+import { KakaoMap, type KakaoMapMarker } from "@/components/KakaoMap";
 import { OpenStreetMap } from "@/components/OpenStreetMap";
 import { getKakaoJsKey } from "@/lib/kakao";
 import {
@@ -24,6 +24,7 @@ import {
 import { formatFestivalPeriod } from "@/features/festivals/explore/dday";
 import { getRegionLabel } from "@/features/festivals/explore/regions";
 import { getFestivalDetail } from "@/features/festivals/detail/api";
+import { formatDateTimeShort } from "@/features/festivals/live-info/liveInfoUtils";
 import {
   FACILITY_GROUPS,
   FACILITY_LABELS,
@@ -80,6 +81,7 @@ export function FestivalMapView({
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [crowd, setCrowd] = useState<MapCrowd | null>(null);
   const [crowdLoading, setCrowdLoading] = useState(true);
+  const [crowdOpen, setCrowdOpen] = useState(false);
   const [festivalMenuOpen, setFestivalMenuOpen] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
 
@@ -199,6 +201,7 @@ export function FestivalMapView({
     setFacilitiesLoading(true);
     setCrowd(null);
     setCrowdLoading(true);
+    setCrowdOpen(false);
     setFestivalMenuOpen(false);
     setSelectedFacilityId(null);
   }
@@ -268,20 +271,39 @@ export function FestivalMapView({
     [facilities, facilityCategory],
   );
   // 렌더마다 새 배열을 넘기면 지도가 매번 다시 그려지므로 묶어 둔다.
-  const kakaoMarkers = useMemo(
-    () =>
-      (selected
-        ? [{ lat: selected.lat, lng: selected.lng, title: selected.name }]
-        : [])
-        .concat(
-          visibleFacilities.map((facility) => ({
-            lat: facility.lat,
-            lng: facility.lng,
-            title: facility.name,
-          })),
-        ),
-    [selected, visibleFacilities],
+  const mapMarkers = useMemo<KakaoMapMarker[]>(
+    () => [
+      ...(selected
+        ? [{
+            id: `festival:${selected.festival_id}`,
+            lat: selected.lat,
+            lng: selected.lng,
+            title: `${selected.name} 축제장`,
+            label: "🎪",
+            variant: "festival" as const,
+            selected: selectedFacilityId === null,
+          }]
+        : []),
+      ...visibleFacilities.map((facility) => ({
+        id: `facility:${facility.facility_id}`,
+        lat: facility.lat,
+        lng: facility.lng,
+        title: `${facility.name} · ${FACILITY_LABELS[facility.category]}`,
+        label: FACILITY_SYMBOLS[facility.category],
+        variant: facilityGroup,
+        selected: selectedFacilityId === facility.facility_id,
+      })),
+    ],
+    [facilityGroup, selected, selectedFacilityId, visibleFacilities],
   );
+
+  const handleMarkerClick = useCallback((marker: KakaoMapMarker) => {
+    if (marker.id?.startsWith("facility:")) {
+      setSelectedFacilityId(marker.id.slice("facility:".length));
+      return;
+    }
+    if (marker.id?.startsWith("festival:")) setSelectedFacilityId(null);
+  }, []);
   const selectedFacility = visibleFacilities.find(
     (facility) => facility.facility_id === selectedFacilityId,
   );
@@ -403,7 +425,13 @@ export function FestivalMapView({
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
             </button>
-            <div className="flex min-w-[104px] items-center justify-center gap-1.5 rounded-input border border-brand/20 bg-surface px-2.5 shadow-card">
+            <button
+              type="button"
+              aria-expanded={crowdOpen}
+              aria-label={`현재 혼잡도 ${crowd?.level ?? "정보 없음"}`}
+              onClick={() => setCrowdOpen((open) => !open)}
+              className="flex min-w-[104px] items-center justify-center gap-1.5 rounded-input border border-brand/20 bg-surface px-2.5 shadow-card"
+            >
               <Users className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
               <span className="text-[10px] font-bold text-ink">현재 혼잡도</span>
               <span
@@ -413,7 +441,7 @@ export function FestivalMapView({
               >
                 {crowdLoading ? "확인 중" : crowd?.level ?? "정보 없음"}
               </span>
-            </div>
+            </button>
 
             {festivalMenuOpen ? (
               <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-64 overflow-y-auto rounded-card-lg border border-line-light bg-surface p-2 shadow-xl">
@@ -436,6 +464,37 @@ export function FestivalMapView({
               </div>
             ) : null}
           </section>
+
+          {crowdOpen ? (
+            <section
+              aria-label="혼잡도 상세"
+              className="rounded-card border border-line-light bg-surface-soft/70 px-4 py-3 shadow-sm"
+            >
+              {crowdLoading ? (
+                <p className="text-xs font-semibold text-muted">혼잡 정보를 확인하고 있어요.</p>
+              ) : crowd ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <strong className="truncate text-sm font-extrabold text-ink">{crowd.areaName}</strong>
+                    <span className={`shrink-0 rounded-chip px-2.5 py-1 text-[11px] font-extrabold ${crowdColorClass[crowd.color]}`}>
+                      {crowd.level}
+                    </span>
+                  </div>
+                  {crowd.message ? <p className="text-xs leading-relaxed text-ink">{crowd.message}</p> : null}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-medium text-muted">
+                    {crowd.populationMin != null && crowd.populationMax != null ? (
+                      <span>예상 인구 {crowd.populationMin.toLocaleString()}~{crowd.populationMax.toLocaleString()}명</span>
+                    ) : null}
+                    {crowd.observedAt ? <span>관측 {formatDateTimeShort(crowd.observedAt)}</span> : null}
+                    {crowd.isEstimate ? <span>추정 정보</span> : null}
+                    {crowd.stale ? <span className="font-bold text-brand">업데이트 지연</span> : null}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs font-semibold text-muted">이 축제 주변의 혼잡 정보가 아직 없어요.</p>
+              )}
+            </section>
+          ) : null}
 
           <div className="grid grid-cols-3 rounded-panel bg-surface p-1 shadow-card" role="group" aria-label="지도 정보 종류">
             {groupOptions.map(({ key, label, Icon }) => {
@@ -500,7 +559,8 @@ export function FestivalMapView({
             {kakaoKey ? (
               <KakaoMap
                 center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
-                markers={kakaoMarkers}
+                markers={mapMarkers}
+                onMarkerClick={handleMarkerClick}
                 level={4}
                 className="h-[360px] w-full"
               />
@@ -508,12 +568,12 @@ export function FestivalMapView({
               <OpenStreetMap
                 center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
                 title={selectedFacility?.name ?? selected.name}
-                markers={visibleFacilities.map((facility) => ({
-                  lat: facility.lat,
-                  lng: facility.lng,
-                  title: facility.name,
-                  label: FACILITY_SYMBOLS[facility.category],
+                markers={mapMarkers.map((marker) => ({
+                  ...marker,
+                  title: marker.title ?? "지도 위치",
+                  label: marker.label ?? "●",
                 }))}
+                onMarkerClick={handleMarkerClick}
                 className="h-[320px] w-full"
               />
             )}
@@ -523,6 +583,21 @@ export function FestivalMapView({
                 : `${FACILITY_LABELS[FACILITY_GROUPS[facilityGroup][0]]} 등 ${facilities.length}곳`}
             </span>
           </section>
+
+          <div
+            aria-label="지도 마커 범례"
+            className="no-scrollbar flex items-center gap-2 overflow-x-auto rounded-card border border-line-light bg-surface px-3 py-2 text-[10px] font-bold text-ink shadow-sm"
+          >
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full bg-brand" aria-hidden="true" /> 축제장
+            </span>
+            {Array.from(new Set(visibleFacilities.map((facility) => facility.category))).map((category) => (
+              <span key={category} className="flex shrink-0 items-center gap-1">
+                <span aria-hidden="true">{FACILITY_SYMBOLS[category]}</span>
+                {FACILITY_LABELS[category]}
+              </span>
+            ))}
+          </div>
 
           <section aria-label="주변 시설 목록" className="-mx-4 rounded-t-[28px] border-t border-line-light bg-surface px-4 pb-2 pt-3 shadow-[0_-8px_24px_rgba(52,53,54,0.08)]">
             <div className="flex items-center justify-between gap-2">

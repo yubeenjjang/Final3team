@@ -107,6 +107,12 @@ describe("FestivalMapView", () => {
     expect(await screen.findByRole("application", { name: "광화문 겨울빛 축제 지도" })).toBeInTheDocument();
     await screen.findByText("주변 지하철역");
     expect(await screen.findByText("보통")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "현재 혼잡도 보통" }));
+    expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("축제장 주변");
+    expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("보통 수준");
+    expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("1,000~2,000명");
+    expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("축제장");
+    expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("지하철역");
     fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
       target: { value: "해운대" },
     });

@@ -27,6 +27,13 @@ export interface MapFacility {
 export interface MapCrowd {
   level: "여유" | "보통" | "약간 붐빔" | "붐빔";
   color: "green" | "yellow" | "orange" | "red";
+  areaName: string;
+  message?: string | null;
+  populationMin?: number | null;
+  populationMax?: number | null;
+  observedAt?: string | null;
+  isEstimate?: boolean | null;
+  stale?: boolean;
 }
 
 interface FacilitiesResponse {
@@ -105,12 +112,34 @@ export async function getMapCrowd(
     process.env.NODE_ENV === "development" &&
     process.env.NEXT_PUBLIC_USE_MOCK_FESTIVALS === "1"
   ) {
-    return { level: "붐빔", color: "red" };
+    return {
+      level: "붐빔",
+      color: "red",
+      areaName: "축제장 주변",
+      message: "축제장 주변이 붐비고 있어요.",
+      populationMin: 4200,
+      populationMax: 5600,
+      observedAt: new Date().toISOString(),
+      isEstimate: true,
+    };
   }
   const response = await getFestivalCrowd(festivalId, signal);
-  const area = response.nearby_areas?.find((item) => item.data)?.data ?? response.areas?.[0];
+  const nearby = response.nearby_areas
+    ?.filter((item) => item.data)
+    .sort((left, right) => left.distance_m - right.distance_m)[0];
+  const area = nearby?.data ?? response.areas?.[0];
   return area
-    ? { level: area.congest_level, color: area.congest_color }
+    ? {
+        level: area.congest_level,
+        color: area.congest_color,
+        areaName: nearby?.area_name ?? area.area_name,
+        message: area.congest_message,
+        populationMin: area.population_min,
+        populationMax: area.population_max,
+        observedAt: area.observed_at,
+        isEstimate: nearby?.is_estimate ?? response.is_estimate,
+        stale: nearby?.status === "stale" || response.status === "stale",
+      }
     : null;
 }
 

@@ -5,6 +5,7 @@ import {
   getKakaoJsKey,
   loadKakaoMaps,
   type KakaoMapInstance,
+  type KakaoCustomOverlayInstance,
   type KakaoMarkerInstance,
   type KakaoPolylineInstance,
 } from "@/lib/kakao";
@@ -16,7 +17,11 @@ export interface KakaoMapPoint {
 }
 
 export interface KakaoMapMarker extends KakaoMapPoint {
+  id?: string;
   title?: string;
+  label?: string;
+  variant?: "festival" | "transport" | "food" | "safety";
+  selected?: boolean;
 }
 
 export type KakaoMapPolyline = Array<[number, number]>;
@@ -27,6 +32,7 @@ export interface KakaoMapProps {
   polylines?: KakaoMapPolyline[];
   level?: number;
   className?: string;
+  onMarkerClick?: (marker: KakaoMapMarker) => void;
 }
 
 function resolveAccentStrokeColor(): string {
@@ -46,11 +52,12 @@ export function KakaoMap({
   polylines = [],
   level = 4,
   className = "h-56 w-full",
+  onMarkerClick,
 }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<KakaoMapInstance | null>(null);
   const overlaysRef = useRef<{
-    markers: KakaoMarkerInstance[];
+    markers: Array<KakaoMarkerInstance | KakaoCustomOverlayInstance>;
     polylines: KakaoPolylineInstance[];
   }>({ markers: [], polylines: [] });
   // 마지막으로 화면 범위를 맞춘 기준(중심·확대 수준·경로). 마커만 바뀔 때는 범위를 다시 맞추지 않는다.
@@ -99,18 +106,27 @@ export function KakaoMap({
         overlaysRef.current.markers.forEach((m) => m.setMap(null));
         overlaysRef.current.polylines.forEach((p) => p.setMap(null));
 
-        const nextMarkers: KakaoMarkerInstance[] = [];
+        const nextMarkers: Array<KakaoMarkerInstance | KakaoCustomOverlayInstance> = [];
         const nextPolylines: KakaoPolylineInstance[] = [];
         const bounds = new maps.LatLngBounds();
         let pointCount = 0;
 
         for (const item of markers) {
           const position = new maps.LatLng(item.lat, item.lng);
-          const marker = new maps.Marker({
-            position,
-            map,
-            title: item.title,
-          });
+          const marker = item.variant && maps.CustomOverlay
+            ? new maps.CustomOverlay({
+                position,
+                map,
+                content: createMarkerElement(item, onMarkerClick),
+                xAnchor: 0.5,
+                yAnchor: 1,
+                zIndex: item.variant === "festival" ? 20 : item.selected ? 15 : 10,
+              })
+            : new maps.Marker({
+                position,
+                map,
+                title: item.title,
+              });
           nextMarkers.push(marker);
           bounds.extend(position);
           pointCount += 1;
@@ -159,7 +175,7 @@ export function KakaoMap({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, center.lat, center.lng, level, markers, polylines]);
+  }, [apiKey, center.lat, center.lng, level, markers, onMarkerClick, polylines]);
 
   if (loadFailed) {
     return (
@@ -169,8 +185,9 @@ export function KakaoMap({
         markers={markers.map((marker) => ({
           ...marker,
           title: marker.title ?? "축제 위치",
-          label: "📍",
+          label: marker.label ?? "📍",
         }))}
+        onMarkerClick={onMarkerClick}
         className={className}
       />
     );
@@ -183,4 +200,22 @@ export function KakaoMap({
       className={`overflow-hidden rounded-card border border-line-light bg-surface ${className}`}
     />
   );
+}
+
+function createMarkerElement(
+  marker: KakaoMapMarker,
+  onMarkerClick?: (marker: KakaoMapMarker) => void,
+): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = [
+    "festival-map-marker",
+    `festival-map-marker--${marker.variant}`,
+    marker.selected ? "festival-map-marker--selected" : "",
+  ].filter(Boolean).join(" ");
+  button.textContent = marker.label ?? "●";
+  button.title = marker.title ?? "지도 위치";
+  button.setAttribute("aria-label", marker.title ?? "지도 위치");
+  if (onMarkerClick) button.addEventListener("click", () => onMarkerClick(marker));
+  return button;
 }
