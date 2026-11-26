@@ -46,12 +46,18 @@ curl http://127.0.0.1:8000/api/v1/health
 1. **비밀번호 설정 스크립트의 저장소 위치**(절차 v2의 결정 E). 지금은 이 폴더에 둔 초안이다.
 2. **`api`에 서비스 계정을 줄지**(A05 귀가 결과 조회). 귀가 DB 저장(`ROUTE_STORE=db`)에는 필요해서 지금은 넣어 두었다.
 3. **프론트 Docker 포함 여부**: 실제 사용할 프론트 구현 기준으로 확정 예정.
-4. **Redis·Celery 워커**: 코드가 아직 비어 있어 넣지 않았다. 코드가 생기면 서비스 추가.
+4. **Redis·워커**: Redis 연결 확인과 기존 PostgreSQL A06 워커는 선택 프로필로 추가했다. Celery는 아직 사용하지 않는다. Redis를 쓰는 세션·채팅 코드 전환은 별도 작업이다.
 5. **배포 비밀값 보관 방법**(서버 권한 제한 파일 vs AWS 보관 서비스): W65에서 결정.
 6. **7일 백업**: `Docs/Step 2/db/backup_long_term.sh`(경로 본문 제외)를 언제·어디서 돌릴지 W65에서 결정.
 
 ## 참고
 - **11/25 최신 `yubeen` 재검증:** 별도 Compose 프로젝트에서 001~028 적용·재기동 시 전부 건너뜀, API healthy, `/health` 200(`db=ok`), 빈 시험 DB의 축제 목록 200(`is_mock=false`, 0건), 시험 비밀값의 이미지·히스토리·로그 노출 0건. [검증 기록](../../backend/Doc/w64/VERIFY-2026-11-25.md).
-- `/api/v1/health`는 `FESTIVAL_DATA=db` 등 DB 사용 모드에서 앱 DB에 `SELECT 1`을 실행한다. Redis는 아직 `not_configured`다.
+- `/api/v1/health`는 DB 사용 모드에서 앱 DB에 `SELECT 1`을 실행한다. `REDIS_URL`이 없으면 Redis는 `not_configured`, 있으면 1초 안에 `PING`을 검사해 `ok` 또는 `unavailable`을 반환한다.
+
+## Redis와 A06 워커 선택 기동
+
+- Redis 연결 확인: `.env`에 `REDIS_URL=redis://redis:6379/0`을 설정하고 `docker compose --env-file .env -f infra/deployment/compose.yaml --profile redis up -d --build`로 기동한다. Redis 포트는 호스트에 공개하지 않는다. `/api/v1/health`의 `redis=ok`를 확인한다. URL이 있는데 연결에 실패하면 503과 `redis=unavailable`이다. 이는 연결 시험이며 인증·채팅의 Redis 전환 완료를 뜻하지 않는다.
+- A06 DB 워커: `.env`에 `ASSISTANT_PROVIDER=db`와 API·워커가 공유할 32바이트 이상 `ASSISTANT_TOKEN_SECRET`을 설정하고 `--profile assistant`를 켠다. 기존 `assistant_runs` PostgreSQL 큐를 사용하며 Redis나 Celery가 필요하지 않다. API 접수 202 → `queued` → 워커 완료/실패 → `/api/v1/assistant/runs/{run_id}` 조회를 확인한다. 실제 Festival Agent 연결은 별도 검증이다.
+- 두 기능을 함께 켤 때는 `--profile redis --profile assistant`를 사용한다. A04·A05 귀가 경로는 기존 API 내부 실행을 유지한다.
 - 시험 도구 `pytest`는 `backend/requirements-dev.txt`에 있으며 실행 이미지에는 기본 설치되지 않는다.
 - Python 3.14에서 `langsmith`가 "Python 3.16에서 없어질 함수" 경고를 낸다. 지금 동작에는 영향이 없다.

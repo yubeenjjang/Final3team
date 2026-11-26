@@ -23,7 +23,7 @@ class HealthResponse(BaseModel):
     is_mock: bool = True
     status: Literal["ok", "degraded"] = "ok"
     db: Literal["mock", "ok", "unavailable"] = "mock"
-    redis: Literal["mock", "not_configured"] = "mock"
+    redis: Literal["mock", "not_configured", "ok", "unavailable"] = "mock"
     version: str
 
 

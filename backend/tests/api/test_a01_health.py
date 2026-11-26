@@ -104,3 +104,21 @@ def test_a01_returns_health_payload_on_db_failure(
     assert "X-Mock" not in response.headers
     if failure in ("query", "query_timeout"):
         connection.close.assert_awaited_once()
+
+
+def test_a01_checks_configured_redis(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REDIS_URL", "redis://redis:6379/0")
+    probe = AsyncMock(return_value=True)
+    monkeypatch.setattr(health.redis_connection, "ping", probe)
+
+    response = client.get(_HEALTH)
+    assert response.status_code == 200
+    assert response.json()["redis"] == "ok"
+    assert response.json()["is_mock"] is False
+    probe.assert_awaited_once()
+
+    probe.side_effect = OSError("redis unavailable")
+    response = client.get(_HEALTH)
+    assert response.status_code == 503
+    assert response.json()["redis"] == "unavailable"
+    assert response.json()["status"] == "degraded"
