@@ -12,7 +12,7 @@ from getpass import getpass
 from time import perf_counter
 from uuid import uuid4
 
-from agents.festival_graph import build_festival_graph
+from agents.festival_graph import build_festival_graph, run_festival_graph
 from agents.reflection_model import DEFAULT_MODEL, generate_reflection
 from agents.roles.festival import FestivalRequest
 
@@ -45,6 +45,10 @@ def main() -> None:
                 "is_mock": True}
 
     request = FestivalRequest("detail", festival_id=FESTIVAL_ID, q="시험 축제", region="SEOUL")
+    baseline_started = perf_counter()
+    baseline = run_festival_graph(lambda *_: {"ok": True,
+        "data": {**GOOD, "festival_id": "F02"}, "is_mock": True}, request)
+    baseline_elapsed_ms = round((perf_counter() - baseline_started) * 1000, 2)
     started = perf_counter()
     graph = build_festival_graph(tool, as_of=date(2026, 11, 26),
         reflect_judge=lambda context: generate_reflection(context, api_key=key, model=args.model))
@@ -53,13 +57,18 @@ def main() -> None:
     report = {"run_id": str(uuid4()), "executed_at": datetime.now(timezone.utc).isoformat(),
               "scenario": "W28_F02_ID_mismatch_fixed_response", "model": args.model,
               "first_response_is_mock": True, "model_hinted_issue": False,
+              "baseline": {"outcome": baseline.outcome, "answer": baseline.answer,
+                           "evidence": baseline.evidence,
+                           "tool_calls": len(baseline.used_tools), "elapsed_ms": baseline_elapsed_ms},
               "outcome": result.outcome,
               "answer": result.answer, "evidence": result.evidence,
               "tool_calls": tool_calls, "reflection": state["reflection_record"],
               "elapsed_ms": round((perf_counter() - started) * 1000, 2),
               "passed": result.outcome == "answered" and
                         state["reflection_record"]["first_issue"] == "id_mismatch" and
-                        state["reflection_record"]["final_reason"] == "revised_evidence_valid"}
+                        state["reflection_record"]["final_reason"] == "revised_evidence_valid",
+              "improved_valid_answer": baseline.outcome != "answered" and
+                                       result.outcome == "answered"}
     rendered = json.dumps(report, ensure_ascii=False, indent=2)
     print(rendered)
     if args.output:
