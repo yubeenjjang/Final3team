@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Building2, BusFront, FerrisWheel, Heart, House, LoaderCircle, MapPinned, MoonStar, Sparkles, Tent } from "lucide-react";
+import Image from "next/image";
+import { Heart, House, LoaderCircle, MapPinned } from "lucide-react";
 import { KakaoMap } from "@/components/KakaoMap";
+import { TabPageHero } from "@/components/TabPageHero";
 import { ApiError } from "@/lib/api/client";
 import { getFestivalDetail } from "@/features/festivals/detail/api";
 import { MOCK_SCENARIOS, readRouteAccess, submitReturnRoute, type MockScenario, type ReadyRoute, type RouteAccess } from "./api";
@@ -67,30 +69,28 @@ function createRouteRequestId() {
 
 function ReturnRouteHero({ ready }: { ready: boolean }) {
   return (
-    <div className="relative isolate overflow-hidden px-4 pb-3 pt-4">
-      <div aria-hidden="true" className="pointer-events-none absolute -right-2 bottom-0 -z-10 h-full w-[42%] bg-gradient-to-l from-surface-soft via-surface-soft/60 to-transparent">
-        {ready ? (
-          <>
-            <FerrisWheel className="absolute right-4 top-2 size-12 text-ink/70" strokeWidth={1.3} />
-            <Tent className="absolute bottom-1 right-14 size-11 fill-brand/20 text-brand" strokeWidth={1.5} />
-            <Sparkles className="absolute right-28 top-3 size-5 text-brand/75" />
-          </>
-        ) : (
-          <>
-            <MoonStar className="absolute right-5 top-2 size-5 text-brand/70" />
-            <Building2 className="absolute bottom-1 right-14 size-11 fill-brand/10 text-muted/65" strokeWidth={1.4} />
-            <BusFront className="absolute bottom-1 right-5 size-9 fill-surface text-brand" strokeWidth={1.6} />
-          </>
-        )}
-      </div>
-      <h1 className="flex items-center gap-2 text-[26px] font-black leading-tight tracking-tight text-ink">
-        {ready ? <House size={24} className="shrink-0 text-brand" aria-hidden="true" /> : null}
-        <span>집으로 <span className="text-brand">가는 길</span></span>
-        {ready ? null : <Heart size={20} className="shrink-0 fill-current text-brand" aria-hidden="true" />}
-      </h1>
-      <p className="mt-1 text-xs font-medium text-muted">
-        {ready ? "축제의 마지막, 안전하고 편리한 귀갓길을 찾아드려요." : "축제의 마지막 귀갓길까지 함께해요."}
-      </p>
+    <div className="px-4 pb-3 pt-4">
+      <TabPageHero
+        title={
+          <span className="flex items-center gap-2">
+            {ready ? <House size={22} className="shrink-0 text-brand" aria-hidden="true" /> : null}
+            <span>집으로 <span className="text-brand">가는 길</span></span>
+            {ready ? null : <Heart size={19} className="shrink-0 fill-current text-brand" aria-hidden="true" />}
+          </span>
+        }
+        subtitle={ready ? "축제의 마지막, 안전하고 편리한 귀갓길을 찾아드려요." : "축제의 마지막 귀갓길까지 함께해요."}
+        aside={
+          <div className="relative h-14 w-[104px]" aria-hidden="true">
+            <Image
+              src="/brand/return-hero-compact.svg"
+              alt=""
+              fill
+              sizes="104px"
+              className="object-contain object-right"
+            />
+          </div>
+        }
+      />
     </div>
   );
 }

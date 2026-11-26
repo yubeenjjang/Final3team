@@ -52,9 +52,6 @@ export function FestivalCard({
                 onError={() => setFailedSrc(item.thumbnail_url ?? null)}
                 className="bg-ink/5 object-cover object-center transition-transform duration-200 group-hover:scale-[1.02]"
               />
-              <span className="absolute bottom-7 right-1 rounded-chip bg-ink/35 px-1.5 py-0.5 text-[6px] font-medium text-surface/90 backdrop-blur-sm">
-                출처: {item.image_credit ?? "제공 이미지"}
-              </span>
             </>
           ) : (
             <FestivalImagePlaceholder />

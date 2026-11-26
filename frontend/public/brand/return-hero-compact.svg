@@ -1,0 +1,25 @@
+<svg width="104" height="56" viewBox="0 0 104 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 축제 텐트와 같은 분홍 면 분할을 사용한 집 -->
+  <path d="M6 27L28 8L50 27H45V47H11V27H6Z" fill="#FF4B83"/>
+  <path d="M28 8L39 27H45L28 8Z" fill="#FF8EB1"/>
+  <path d="M28 8L17 27H11L28 8Z" fill="#FFB4CB"/>
+  <path d="M15 27H41V47H15V27Z" fill="#FFF1F6"/>
+  <path d="M15 27H22V47H15V27ZM34 27H41V47H34V27Z" fill="#FFD5E2"/>
+  <path d="M24 34H32V47H24V34Z" fill="#FF4B83"/>
+  <circle cx="9" cy="43" r="3.5" fill="#FF4B83"/>
+  <path d="M12.5 43H17" stroke="#FF4B83" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- 관람차의 진회색 구조선과 분홍 장식을 닮은 버스 -->
+  <path d="M57 22C57 17.6 60.6 14 65 14H87C91.4 14 95 17.6 95 22V43C95 46.3 92.3 49 89 49H63C59.7 49 57 46.3 57 43V22Z" fill="#F4F4F6" stroke="#5D5E63" stroke-width="3"/>
+  <path d="M61 24C61 20.7 63.7 18 67 18H85C88.3 18 91 20.7 91 24V31H61V24Z" fill="#FF8EB1"/>
+  <path d="M64 21H74V28H64V21ZM78 21H88V28H78V21Z" fill="#FFF5F8"/>
+  <path d="M58.5 34H93.5" stroke="#FF4B83" stroke-width="3"/>
+  <circle cx="65" cy="41" r="2.5" fill="#FF4B83"/>
+  <circle cx="87" cy="41" r="2.5" fill="#FF4B83"/>
+  <path d="M63 49V52M89 49V52" stroke="#5D5E63" stroke-width="3" stroke-linecap="round"/>
+  <path d="M54 27H57M95 27H99" stroke="#5D5E63" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- 축제 아이콘의 불꽃 장식과 같은 반짝임 -->
+  <path d="M76 2L78 7L83 9L78 11L76 16L74 11L69 9L74 7L76 2Z" fill="#FF4B83"/>
+  <path d="M91 5V13M87 9H95" stroke="#FF4B83" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

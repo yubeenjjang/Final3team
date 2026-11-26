@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { LoginPromptSheet } from "@/components/LoginPromptSheet";
+import { TabPageHero } from "@/components/TabPageHero";
 import { handleAuthError, useIsSignedIn } from "@/components/RequireAuth";
 import { listFestivals, type FestivalListItem } from "@/features/festivals/explore/api";
 import { ApiError } from "@/lib/api/client";
@@ -277,16 +278,15 @@ export function CompanionsView({
   return (
     <div className="space-y-4 px-4 py-4">
       {/* 히어로 */}
-      <section className="flex items-start justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-ink">
+      <TabPageHero
+        title={
+          <>
             같이 <span className="text-brand">놀다가!</span>
-          </h1>
-          <p className="mt-1 text-xs font-medium text-muted">
-            같은 축제를 즐길 동행을 찾아보세요.
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
+          </>
+        }
+        subtitle="같은 축제를 즐길 동행을 찾아보세요."
+        aside={
+          <div className="flex items-center gap-1.5">
           <Link
             href="/chats"
             className="inline-flex items-center gap-1 rounded-chip border border-line-light bg-surface px-3 py-2 text-xs font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
@@ -311,8 +311,9 @@ export function CompanionsView({
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             <span>모집 글쓰기</span>
           </button>
-        </div>
-      </section>
+          </div>
+        }
+      />
 
       {/* 세그먼트 탭 */}
       <div

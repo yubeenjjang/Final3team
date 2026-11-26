@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   MapPinned,
   Users,
 } from "lucide-react";
-import { PageHero } from "@/components/PageHero";
+import { TabPageHero } from "@/components/TabPageHero";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
 import { FeaturedFestivals } from "@/features/festivals/explore/FeaturedFestivals";
 
@@ -15,11 +16,22 @@ export default function HomePage() {
     "grid h-[68px] grid-cols-[24px_minmax(0,1fr)_16px] items-center gap-2.5 rounded-card border border-line-light bg-surface px-3.5 text-left text-sm font-bold text-ink shadow-sm transition-colors hover:border-brand/40 hover:bg-surface-soft/40";
 
   return (
-    <div className="space-y-5 px-4 pb-4 pt-1">
+    <div className="space-y-4 px-4 py-4">
       {/* 히어로 */}
-      <PageHero
+      <TabPageHero
         title={<>오늘, 여기서 <span className="text-brand">놀다가!</span></>}
         subtitle="축제도, 즐길 거리도, 안전한 귀가까지 한 번에!"
+        aside={
+          <div className="relative h-14 w-[104px]">
+            <Image
+              src="/brand/festival-hero-compact.png"
+              alt=""
+              fill
+              sizes="104px"
+              className="object-contain object-right"
+            />
+          </div>
+        }
       />
 
       {/* AI 질문 입력 + 예시 칩 */}
