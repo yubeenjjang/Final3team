@@ -78,7 +78,9 @@ def main() -> None:
         if is_estimate and crowd.outcome == "answered" and "최근 4주 같은 요일·시간대 평균" not in crowd.answer:
             raise RuntimeError("Replacement crowd value was not labeled as an average")
         print(f"crowd: festival_id={crowd_id}, provider_status={raw_crowd['data'].get('status')}, "
-              f"agent_outcome={crowd.outcome}, is_estimate={is_estimate}")
+              f"agent_outcome={crowd.outcome}, is_estimate={is_estimate}, "
+              f"observed_at={raw_crowd['data'].get('observed_at')}, "
+              f"source={raw_crowd['data'].get('source')}")
         if args.require_crowd_answered and (raw_crowd["data"].get("status") not in {"ok", "stale"} or crowd.outcome != "answered"):
             raise RuntimeError(f"Real crowd answer was not provided: provider_status={raw_crowd['data'].get('status')}, agent_outcome={crowd.outcome}")
         if args.require_crowd_answered:

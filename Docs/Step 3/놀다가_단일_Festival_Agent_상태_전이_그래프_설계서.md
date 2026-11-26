@@ -431,6 +431,8 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 후속 코드 `dayoung 7b8451a`는 `--require-crowd-answered` 실행 시 축제 이름으로 검색→상세→혼잡을 **한 번의 그래프에서 연속 호출**하고 축제 ID·호출 순서·근거를 검사하도록 추가했다. 고정 응답 시험 35개가 다시 통과했다. 다영님이 이 코드를 받은 뒤 같은 실제 API 명령을 재실행한 터미널 출력은 `composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_calls=3, evidence=3`이었다. 따라서 **W14 공통 실행기를 통한 실제 공급원 복합 흐름도 통과**했다. 이 검사는 검색 결과로 선택된 축제 ID와 상세·혼잡 근거의 ID가 모두 같은지 확인한다. 공식 공지와 주변 시설의 실제 공급원 응답은 이 시험에 포함되지 않는다.
 
+**11/26 피드백 반영:** 같은 축제 ID로 이어진 복합 실행은 위 기록으로 확인된다. 다만 당시 출력에는 혼잡 `observed_at`이 없어 관측 시각은 미확인이다. `check_festival_live.py`의 혼잡 출력에 공급원과 `observed_at`을 추가했다. 11/27 제출 전에 같은 명령을 다시 실행해 실제 출력의 시각을 기록해야 하며, 재실행 전에는 시각을 추정해 기입하지 않는다. 미지원 처리는 A-11의 당시 실제 API `unsupported` 결과와 고정 응답 HTTP 시험으로 확인했다. 현재 공개 범위에서 부산 축제의 실호출까지 확인한 결과는 아니다.
+
 ## 부록 B. 후속 구현에서 확인할 결정
 
 1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
@@ -459,6 +461,8 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
 - **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
 - **팀 병합 후 공통 시험:** `yubeen`의 시험 실행 기준이 `main`에 병합되면 저장소 루트에서 `python -m pytest backend/tests -q`로 백엔드 전체 시험을 실행한다. 유빈님이 `yubeen`에서 보고한 395개 통과는 이 제출본의 병합 후 재시험 결과로 대신하지 않는다.
+- **제출 링크 기준:** 현재 `main`의 설계서 제출본은 `dayoung da35812`의 실제 복합 실행 결과와 `5a60245`의 주소 가림 수정 이전 사본이다. 팀장님이 두 수정과 Festival Agent 코드를 `main`에 병합한 뒤, **설계서·Festival 코드·공통 실행기·시험 결과가 모두 들어 있는 같은 `main` 커밋**을 제출 링크와 여기에 기록한다. 병합 전에는 `dayoung 7b8451a`를 Festival 실행 코드 기준으로, 공통 실행기의 최초 연결은 `dayoung 6dc31ca`(`yubeen 00ca7dc` 반영)로 구분한다. `main` 통합 시험 결과는 병합 뒤 실제로 실행한 환경·명령·성공/실패 개수를 기록한다.
+- **11/26 로컬 시험 제약:** 이 환경에서는 `langgraph`가 설치되지 않았고 패키지 다운로드도 연결 제한으로 실패했다. 따라서 위 35개와 팀 전체 시험 수치는 11/24 기존 실행 기록이며 11/26 재실행 결과로 쓰지 않는다.
 
 ## 참고 파일
 
