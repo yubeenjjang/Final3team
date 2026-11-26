@@ -34,14 +34,27 @@ export interface FestivalDetailViewProps {
   festivalId: string;
 }
 
+// 각 아이콘은 지도 탭(/map)을 이 축제·분류가 선택된 상태로 연다 (A08 주변 시설).
 const NEARBY_ITEMS = [
-  { id: "restroom", label: "화장실", icon: Users },
-  { id: "parking", label: "주차장", icon: ParkingCircle },
-  { id: "food", label: "맛집", icon: Utensils },
-  { id: "hospital", label: "병원", icon: Hospital },
-  { id: "subway", label: "지하철", icon: TrainFront },
-  { id: "bus", label: "버스", icon: Bus },
+  { id: "restroom", label: "화장실", icon: Users, group: "safety", category: "toilet" },
+  { id: "parking", label: "주차장", icon: ParkingCircle, group: "safety", category: "parking" },
+  { id: "food", label: "맛집", icon: Utensils, group: "food", category: "food" },
+  { id: "hospital", label: "병원", icon: Hospital, group: "safety", category: "hospital" },
+  { id: "subway", label: "지하철", icon: TrainFront, group: "transport", category: "subway_station" },
+  { id: "bus", label: "버스", icon: Bus, group: "transport", category: "bus_stop" },
 ] as const;
+
+export function nearbyMapHref(
+  festivalId: string,
+  item: Pick<(typeof NEARBY_ITEMS)[number], "group" | "category">,
+): string {
+  const params = new URLSearchParams({
+    festival: festivalId,
+    group: item.group,
+    category: item.category,
+  });
+  return `/map?${params.toString()}`;
+}
 
 export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [festival, setFestival] = useState<FestivalDetail | null>(null);
@@ -50,7 +63,6 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const [nearbyMessage, setNearbyMessage] = useState<string | null>(null);
   const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -262,29 +274,20 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
           {NEARBY_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <Link
                 key={item.id}
-                type="button"
-                onClick={() => setNearbyMessage(`${item.label} 정보는 준비 중이에요`)}
+                href={nearbyMapHref(festival.festival_id, item)}
+                aria-label={`주변 ${item.label} 지도에서 보기`}
                 className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface-soft/45 px-1 py-2.5 text-center shadow-sm transition-colors hover:border-brand/40 hover:bg-surface-soft"
               >
                 <Icon className="h-4 w-4 text-brand" aria-hidden="true" />
                 <span className="text-[11px] font-semibold text-ink">
                   {item.label}
                 </span>
-              </button>
+              </Link>
             );
           })}
         </div>
-
-        {nearbyMessage ? (
-          <p
-            role="status"
-            className="rounded-card bg-surface-soft px-3 py-2 text-center text-xs font-semibold text-ink"
-          >
-            {nearbyMessage}
-          </p>
-        ) : null}
 
         {hasCoordinates && festival.lat !== null && festival.lng !== null ? (
           <div className="space-y-2">

@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FestivalMapView } from "./FestivalMapView";
+import { parseMapSelection } from "./selection";
 
 vi.mock("@/lib/kakao", () => ({ getKakaoJsKey: () => "" }));
 
@@ -168,5 +169,62 @@ describe("FestivalMapView", () => {
     // 결과가 없으면 지도는 그대로 두고 안내만 보여 준다
     expect(await screen.findByText("검색 조건에 맞는 축제가 없어요.")).toBeInTheDocument();
     expect(screen.getByRole("application", { name: "지난 겨울 등불축제 지도" })).toBeInTheDocument();
+  });
+  it("opens with the festival and facility category from the detail page link", async () => {
+    const base = {
+      region_code: "SEOUL",
+      venue_name: "청계천",
+      start_date: "2025-12-01",
+      end_date: "2025-12-31",
+      thumbnail_url: null,
+      image_credit: null,
+      source: "tourapi",
+      last_synced_at: "2026-11-26T09:00:00+09:00",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname.includes("/facilities")) {
+        return Response.json({
+          items: [
+            { facility_id: "toilet_1", category: "toilet", name: "청계광장 화장실", lat: 37.569, lng: 126.978, distance_m: 82 },
+            { facility_id: "hospital_1", category: "hospital", name: "강북삼성병원", lat: 37.568, lng: 126.968, distance_m: 858 },
+          ],
+        });
+      }
+      if (url.pathname.includes("/crowd")) return Response.json({ status: "ok", areas: [] });
+      if (url.pathname.endsWith("/festivals/fst_map_ended")) {
+        return Response.json({
+          ...base, is_mock: false, festival_id: "fst_map_ended", name: "지난 겨울 등불축제",
+          lat: 37.57, lng: 126.98, event_status: "ended", address: null, overview: null,
+          fee_text: null, homepage_url: null, image_url: null, image_copyright: null, source_ref: null,
+        });
+      }
+      const items = [{ ...base, festival_id: "fst_map_now", name: "지금 축제", lat: 37.5, lng: 127.0, event_status: "ongoing" }];
+      return Response.json({ is_mock: false, total: 1, page: 1, page_size: 100, items });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<FestivalMapView initialFestivalId="fst_map_ended" initialGroup="safety" initialCategory="toilet" />);
+
+    // 기본 목록에 없는 축제는 A03으로 받아 선택한다
+    expect(await screen.findByRole("application", { name: "지난 겨울 등불축제 지도" })).toBeInTheDocument();
+    expect(await screen.findByText("청계광장 화장실")).toBeInTheDocument();
+    expect(screen.queryByText("강북삼성병원")).not.toBeInTheDocument();
+    const facilityUrl = fetchMock.mock.calls
+      .map(([input]) => new URL(String(input), "http://localhost"))
+      .find((url) => url.pathname.endsWith("/festivals/fst_map_ended/facilities"));
+    expect(facilityUrl?.searchParams.get("categories")).toBe("toilet,parking,hospital,emergency");
+  });
+
+  it("ignores invalid map query values", () => {
+    expect(parseMapSelection({ festival: "fst_1", group: "safety", category: "hospital" })).toEqual({
+      festivalId: "fst_1", group: "safety", category: "hospital",
+    });
+    expect(parseMapSelection({ group: "nope", category: "toilet" })).toEqual({
+      festivalId: null, group: "transport", category: "all",
+    });
+    expect(parseMapSelection({ festival: "  ", group: "food", category: "toilet" })).toEqual({
+      festivalId: null, group: "food", category: "all",
+    });
   });
 });

@@ -23,6 +23,7 @@ import {
 } from "@/features/festivals/explore/api";
 import { formatFestivalPeriod } from "@/features/festivals/explore/dday";
 import { getRegionLabel } from "@/features/festivals/explore/regions";
+import { getFestivalDetail } from "@/features/festivals/detail/api";
 import {
   FACILITY_GROUPS,
   FACILITY_LABELS,
@@ -52,9 +53,19 @@ function formatDistance(distance: number): string {
     : `${(distance / 1000).toFixed(1)}km`;
 }
 
-export function FestivalMapView() {
+interface FestivalMapViewProps {
+  initialFestivalId?: string | null;
+  initialGroup?: FacilityGroup;
+  initialCategory?: FacilityCategory | "all";
+}
+
+export function FestivalMapView({
+  initialFestivalId = null,
+  initialGroup = "transport",
+  initialCategory = "all",
+}: FestivalMapViewProps = {}) {
   const [festivals, setFestivals] = useState<LocatedFestival[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialFestivalId);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -62,8 +73,8 @@ export function FestivalMapView() {
   const [searchResults, setSearchResults] = useState<LocatedFestival[]>([]);
   const [searching, setSearching] = useState(false);
   const [picked, setPicked] = useState<LocatedFestival | null>(null);
-  const [facilityGroup, setFacilityGroup] = useState<FacilityGroup>("transport");
-  const [facilityCategory, setFacilityCategory] = useState<FacilityCategory | "all">("all");
+  const [facilityGroup, setFacilityGroup] = useState<FacilityGroup>(initialGroup);
+  const [facilityCategory, setFacilityCategory] = useState<FacilityCategory | "all">(initialCategory);
   const [facilities, setFacilities] = useState<MapFacility[]>([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [crowd, setCrowd] = useState<MapCrowd | null>(null);
@@ -88,6 +99,37 @@ export function FestivalMapView() {
       });
     return () => controller.abort();
   }, [attempt]);
+
+  // 상세에서 넘어온 축제가 기본 목록(진행 중·예정)에 없으면 A03으로 받아 지도에 추가한다.
+  useEffect(() => {
+    if (loading || !initialFestivalId) return;
+    if (festivals.some((festival) => festival.festival_id === initialFestivalId)) return;
+    const controller = new AbortController();
+    getFestivalDetail(initialFestivalId, controller.signal)
+      .then((detail) => {
+        if (controller.signal.aborted) return;
+        const item: FestivalListItem = {
+          festival_id: detail.festival_id,
+          name: detail.name,
+          region_code: detail.region_code,
+          venue_name: detail.venue_name,
+          lat: detail.lat,
+          lng: detail.lng,
+          start_date: detail.start_date,
+          end_date: detail.end_date,
+          event_status: detail.event_status,
+          thumbnail_url: detail.thumbnail_url,
+          image_credit: detail.image_credit,
+          source: detail.source,
+          last_synced_at: detail.last_synced_at,
+        };
+        if (hasLocation(item)) setPicked(item);
+      })
+      .catch(() => {
+        // 찾을 수 없으면 기본 목록의 첫 축제를 그대로 보여 준다.
+      });
+    return () => controller.abort();
+  }, [festivals, initialFestivalId, loading]);
 
   const trimmedQuery = query.trim().slice(0, 50);
   const visibleFestivals = trimmedQuery ? searchResults : festivals;
