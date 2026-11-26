@@ -208,6 +208,30 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertIn("budget_exceeded", result.transitions)
         self.assertLess(elapsed, 1.0)
 
+    def test_late_successful_crowd_response_is_discarded(self):
+        festival_id = "fst_000001"
+        item = {"festival_id": festival_id, "name": "시험 축제", "source": "tourapi",
+                "last_synced_at": "2026-11-26T09:00:00+09:00"}
+        ticks = iter([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 30.1])
+
+        def tool(name, args):
+            if name == "search_festivals":
+                return {"ok": True, "data": {"items": [item]}}
+            if name == "get_festival":
+                return {"ok": True, "data": {**item, "venue_name": "시험 광장"}}
+            return {"ok": True, "data": {"festival_id": festival_id, "status": "ok",
+                                        "areas": [{"area_name": "광화문", "congest_level": "보통"}]}}
+
+        result = run_festival_graph(tool, FestivalRequest("search_detail_crowd", select_first=True),
+                                    clock=lambda: next(ticks))
+        self.assertEqual(result.outcome, "partial")
+        self.assertEqual(len(result.used_tools), 3)
+        self.assertTrue(result.used_tools[-1]["ok"])
+        self.assertIn("시험 광장", result.answer)
+        self.assertIn("혼잡 정보를 확인할 수 없습니다", result.answer)
+        self.assertNotIn("광화문", result.answer)
+        self.assertIn("budget_exceeded", result.transitions)
+
 
 if __name__ == "__main__":
     unittest.main()
