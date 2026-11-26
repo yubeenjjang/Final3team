@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Camera, Check, Heart, PawPrint, RotateCcw, Sparkles, UsersRound, UserRound } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 import { handleAuthError, RequireAuth } from "@/components/RequireAuth";
@@ -179,32 +180,39 @@ export function PreferencesSection({
               dragged.current = false;
             }}
           >
-            {SCENARIO_OPTIONS.map((option, index) => {
+            {SCENARIO_OPTIONS.map((option) => {
               const active = selected.includes(option.value);
               const Icon = scenarioIcons[option.value];
-              const gradients = [
-                "from-sky-300 via-emerald-200 to-brand/60",
-                "from-amber-300 via-orange-300 to-brand/70",
-                "from-indigo-500 via-purple-500 to-brand",
-                "from-emerald-300 via-lime-200 to-amber-200",
-                "from-slate-400 via-indigo-400 to-screen-dark",
-              ];
               return (
                 <li key={option.value} className="w-[300px] shrink-0 snap-center">
                   <button
                     type="button"
                     aria-pressed={active}
+                    aria-label={`${option.tag}: ${option.title}`}
                     onClick={() => toggleScenario(option.value)}
-                    className={`relative flex h-[430px] w-full flex-col overflow-hidden rounded-[28px] border-[3px] bg-gradient-to-br ${gradients[index]} p-5 text-left shadow-xl transition-transform ${active ? "border-brand scale-[1.01]" : "border-surface"}`}
+                    className={`relative flex h-[430px] w-full flex-col overflow-hidden rounded-[28px] border-[3px] text-left shadow-xl transition-transform ${active ? "scale-[1.01] border-brand" : "border-surface"}`}
                   >
-                    <span className="inline-flex w-fit items-center gap-2 rounded-chip bg-brand px-4 py-2 text-sm font-extrabold text-surface">
+                    <Image
+                      src={option.imageSrc}
+                      alt={`${option.tag} 취향 이미지`}
+                      fill
+                      sizes="300px"
+                      priority={option.value === "family_relaxed"}
+                      draggable={false}
+                      className="object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-screen-dark via-screen-dark/10 to-screen-dark/5" aria-hidden="true" />
+                    <span className="absolute left-5 top-5 z-10 inline-flex w-fit items-center gap-2 rounded-chip bg-brand px-4 py-2 text-sm font-extrabold text-surface">
                       <Icon className="h-5 w-5" aria-hidden="true" /> {option.tag}
                     </span>
-                    <Icon className="mx-auto mt-14 h-32 w-32 text-surface/85" strokeWidth={1.1} aria-hidden="true" />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-screen-dark via-screen-dark/85 to-transparent px-5 pb-6 pt-24">
-                      <p className="max-w-[220px] text-[27px] font-black leading-tight text-surface">{option.title}</p>
+                    <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-screen-dark via-screen-dark/90 to-transparent px-5 pb-6 pt-28">
+                      <p className="max-w-[225px] text-[27px] font-black leading-tight text-surface">
+                        {option.titleLines.map((line) => (
+                          <span key={line} className="block">{line}</span>
+                        ))}
+                      </p>
                     </div>
-                    <span className={`absolute bottom-5 right-5 grid h-16 w-16 place-items-center rounded-chip border-[3px] border-surface ${active ? "bg-brand" : "bg-screen-dark/35"}`}>
+                    <span className={`absolute bottom-5 right-5 z-20 grid h-16 w-16 place-items-center rounded-chip border-[3px] border-surface ${active ? "bg-brand" : "bg-screen-dark/35"}`}>
                       {active ? <Check className="h-8 w-8" aria-hidden="true" /> : <Heart className="h-8 w-8" aria-hidden="true" />}
                     </span>
                   </button>
