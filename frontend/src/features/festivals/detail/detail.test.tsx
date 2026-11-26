@@ -104,6 +104,25 @@ describe("F7 festival detail", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
+      if (url.includes("/festivals/fst_000001/facilities")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                facility_id: "food_1",
+                category: "food",
+                name: "테스트 맛집",
+                lat: 37.5762,
+                lng: 126.9771,
+                distance_m: 240,
+                address: "서울특별시 종로구 맛집로 2",
+                source: "kakao_local",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
         JSON.stringify({
           is_mock: true,
@@ -139,19 +158,19 @@ describe("F7 festival detail", () => {
     expect(screen.getByText("무료")).toBeInTheDocument();
     expect(screen.getByText("서울")).toBeInTheDocument();
 
-    // 주변 정보 아이콘은 지도 탭을 이 축제·분류가 선택된 상태로 연다 (A08)
-    expect(screen.getByRole("link", { name: "주변 화장실 지도에서 보기" })).toHaveAttribute(
-      "href",
-      "/map?festival=fst_000001&group=safety&category=toilet",
+    // 주변 정보는 지도 탭으로 이동하지 않고 상세페이지 안에서 목록·상세를 연다 (A08)
+    const foodButton = screen.getByRole("button", { name: "주변 맛집 정보 보기" });
+    expect(foodButton).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(foodButton);
+    expect(foodButton).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => {
+      expect(screen.getByText("테스트 맛집")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "테스트 맛집 상세 정보 보기" }));
+    expect(screen.getByRole("article", { name: "테스트 맛집 상세 정보" })).toHaveTextContent(
+      "서울특별시 종로구 맛집로 2",
     );
-    expect(screen.getByRole("link", { name: "주변 지하철 지도에서 보기" })).toHaveAttribute(
-      "href",
-      "/map?festival=fst_000001&group=transport&category=subway_station",
-    );
-    expect(screen.getByRole("link", { name: "주변 맛집 지도에서 보기" })).toHaveAttribute(
-      "href",
-      "/map?festival=fst_000001&group=food&category=food",
-    );
+    expect(screen.queryByRole("link", { name: /주변 맛집/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/정보는 준비 중이에요/)).not.toBeInTheDocument();
 
     const returnLink = screen.getByRole("link", { name: /귀가 경로 보기/ });

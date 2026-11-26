@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Bus,
@@ -22,6 +22,14 @@ import { KakaoMap } from "@/components/KakaoMap";
 import { SafeReturnBanner } from "@/components/SafeReturnBanner";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { ApiError } from "@/lib/api/client";
+import {
+  FACILITY_LABELS,
+  FACILITY_SYMBOLS,
+  listMapFacilities,
+  type FacilityCategory,
+  type FacilityGroup,
+  type MapFacility,
+} from "../map/api";
 import { dday, formatFestivalPeriod } from "../explore/dday";
 import { getRegionLabel } from "../explore/regions";
 import { LiveInfoSection } from "../live-info/LiveInfoSection";
@@ -32,7 +40,6 @@ export interface FestivalDetailViewProps {
   festivalId: string;
 }
 
-// 각 아이콘은 지도 탭(/map)을 이 축제·분류가 선택된 상태로 연다 (A08 주변 시설).
 const NEARBY_ITEMS = [
   { id: "restroom", label: "화장실", icon: Users, group: "safety", category: "toilet" },
   { id: "parking", label: "주차장", icon: ParkingCircle, group: "safety", category: "parking" },
@@ -42,16 +49,14 @@ const NEARBY_ITEMS = [
   { id: "bus", label: "버스", icon: Bus, group: "transport", category: "bus_stop" },
 ] as const;
 
-export function nearbyMapHref(
-  festivalId: string,
-  item: Pick<(typeof NEARBY_ITEMS)[number], "group" | "category">,
-): string {
-  const params = new URLSearchParams({
-    festival: festivalId,
-    group: item.group,
-    category: item.category,
-  });
-  return `/map?${params.toString()}`;
+function formatDistance(distance: number): string {
+  return distance < 1000
+    ? `${Math.round(distance)}m`
+    : `${(distance / 1000).toFixed(1)}km`;
+}
+
+function estimateWalkingMinutes(distance: number): number {
+  return Math.max(1, Math.ceil(distance / 80));
 }
 
 export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
@@ -62,6 +67,14 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [reloadTick, setReloadTick] = useState(0);
 
   const [failedHeroSrc, setFailedHeroSrc] = useState<string | null>(null);
+  const [nearbyItemId, setNearbyItemId] = useState<string | null>(null);
+  const [nearbyFacilities, setNearbyFacilities] = useState<MapFacility[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState(false);
+  const [nearbyReloadTick, setNearbyReloadTick] = useState(0);
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+
+  const activeNearbyItem = NEARBY_ITEMS.find((item) => item.id === nearbyItemId) ?? null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -104,6 +117,60 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       controller.abort();
     };
   }, [festivalId, reloadTick]);
+
+  useEffect(() => {
+    if (
+      !activeNearbyItem ||
+      !festival ||
+      festival.lat === null ||
+      festival.lng === null
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setNearbyLoading(true);
+    setNearbyError(false);
+
+    listMapFacilities({
+      festivalId: festival.festival_id,
+      lat: festival.lat,
+      lng: festival.lng,
+      group: activeNearbyItem.group as FacilityGroup,
+      signal: controller.signal,
+    })
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setNearbyFacilities(items);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setNearbyFacilities([]);
+          setNearbyError(true);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setNearbyLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [activeNearbyItem?.group, festival, nearbyReloadTick]);
+
+  const visibleNearbyFacilities = useMemo(
+    () =>
+      activeNearbyItem
+        ? nearbyFacilities.filter(
+            (facility) => facility.category === activeNearbyItem.category,
+          )
+        : [],
+    [activeNearbyItem, nearbyFacilities],
+  );
+  const selectedFacility = visibleNearbyFacilities.find(
+    (facility) => facility.facility_id === selectedFacilityId,
+  );
 
   if (loading) {
     return (
@@ -263,18 +330,33 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         <div className="grid grid-cols-6 gap-1.5">
           {NEARBY_ITEMS.map((item) => {
             const Icon = item.icon;
+            const active = activeNearbyItem?.id === item.id;
             return (
-              <Link
+              <button
+                type="button"
                 key={item.id}
-                href={nearbyMapHref(festival.festival_id, item)}
-                aria-label={`주변 ${item.label} 지도에서 보기`}
-                className="flex flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface-soft/45 px-1 py-2.5 text-center shadow-sm transition-colors hover:border-brand/40 hover:bg-surface-soft"
+                aria-label={`주변 ${item.label} 정보 보기`}
+                aria-pressed={active}
+                aria-controls="festival-nearby-results"
+                disabled={!hasCoordinates}
+                onClick={() => {
+                  setNearbyItemId(item.id);
+                  setSelectedFacilityId(null);
+                }}
+                className={`flex flex-col items-center justify-center gap-1 rounded-card border px-1 py-2.5 text-center shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                  active
+                    ? "border-brand bg-brand text-surface"
+                    : "border-line-light bg-surface-soft/45 text-ink hover:border-brand/40 hover:bg-surface-soft"
+                }`}
               >
-                <Icon className="h-4 w-4 text-brand" aria-hidden="true" />
-                <span className="text-[11px] font-semibold text-ink">
+                <Icon
+                  className={`h-4 w-4 ${active ? "text-surface" : "text-brand"}`}
+                  aria-hidden="true"
+                />
+                <span className="text-[11px] font-semibold">
                   {item.label}
                 </span>
-              </Link>
+              </button>
             );
           })}
         </div>
@@ -282,14 +364,45 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         {hasCoordinates && festival.lat !== null && festival.lng !== null ? (
           <div className="space-y-2">
             <KakaoMap
-              center={{ lat: festival.lat, lng: festival.lng }}
+              center={
+                selectedFacility
+                  ? { lat: selectedFacility.lat, lng: selectedFacility.lng }
+                  : { lat: festival.lat, lng: festival.lng }
+              }
               markers={[
                 {
+                  id: `festival:${festival.festival_id}`,
                   lat: festival.lat,
                   lng: festival.lng,
                   title: festival.name,
+                  label: "축제장",
+                  icon: "festival",
+                  variant: "festival",
+                  selected: selectedFacilityId === null,
                 },
+                ...visibleNearbyFacilities.map((facility) => ({
+                  id: `facility:${facility.facility_id}`,
+                  lat: facility.lat,
+                  lng: facility.lng,
+                  title: `${facility.name} · ${FACILITY_LABELS[facility.category]}`,
+                  label: FACILITY_SYMBOLS[facility.category],
+                  icon:
+                    facility.category === "subway_station"
+                      ? ("subway" as const)
+                      : facility.category === "toilet"
+                        ? ("toilet" as const)
+                        : undefined,
+                  variant: activeNearbyItem?.group,
+                  selected: selectedFacilityId === facility.facility_id,
+                })),
               ]}
+              onMarkerClick={(marker) => {
+                if (marker.id?.startsWith("facility:")) {
+                  setSelectedFacilityId(marker.id.slice("facility:".length));
+                } else if (marker.id?.startsWith("festival:")) {
+                  setSelectedFacilityId(null);
+                }
+              }}
               className="h-44 w-full shadow-sm"
             />
             {festival.venue_name || festival.address ? (
@@ -307,6 +420,113 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
                 </div>
               </div>
             ) : null}
+
+            <div id="festival-nearby-results" aria-live="polite">
+              {activeNearbyItem ? (
+                <div className="space-y-2 rounded-card-lg border border-line-light bg-surface-soft/35 p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-extrabold text-ink">
+                      주변 {activeNearbyItem.label}
+                      <span className="ml-1.5 text-xs font-semibold text-muted">
+                        ({nearbyLoading ? "…" : `${visibleNearbyFacilities.length}곳`})
+                      </span>
+                    </p>
+                    <span className="rounded-chip border border-line-light bg-surface px-2.5 py-1 text-[10px] font-bold text-muted">
+                      거리순
+                    </span>
+                  </div>
+
+                  {selectedFacility ? (
+                    <article
+                      aria-label={`${selectedFacility.name} 상세 정보`}
+                      className="rounded-card border border-brand/35 bg-brand-soft/40 p-3"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-card bg-surface font-black text-brand shadow-sm" aria-hidden="true">
+                          {FACILITY_SYMBOLS[selectedFacility.category]}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="text-sm font-black text-ink">{selectedFacility.name}</h3>
+                            <span className="rounded-chip bg-brand px-2 py-0.5 text-[9px] font-extrabold text-surface">
+                              {FACILITY_LABELS[selectedFacility.category]}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                            {selectedFacility.address || "주소 정보가 제공되지 않았어요."}
+                          </p>
+                          <p className="mt-1 text-[11px] font-bold text-ink">
+                            축제장에서 {formatDistance(selectedFacility.distance_m)} · 도보 약 {estimateWalkingMinutes(selectedFacility.distance_m)}분
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  ) : null}
+
+                  {nearbyLoading ? (
+                    <div role="status" className="space-y-2">
+                      {[0, 1].map((item) => (
+                        <div key={item} className="h-14 animate-pulse rounded-card bg-surface-muted" />
+                      ))}
+                    </div>
+                  ) : nearbyError ? (
+                    <div className="flex items-center justify-between gap-3 rounded-card bg-surface px-3 py-3 text-xs text-muted">
+                      <span>주변 정보를 불러오지 못했어요.</span>
+                      <button
+                        type="button"
+                        onClick={() => setNearbyReloadTick((value) => value + 1)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-chip border border-line-light px-2.5 py-1.5 font-bold text-ink"
+                      >
+                        <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                        다시 시도
+                      </button>
+                    </div>
+                  ) : visibleNearbyFacilities.length === 0 ? (
+                    <p className="rounded-card bg-surface px-3 py-5 text-center text-xs font-semibold text-muted">
+                      주변 {activeNearbyItem.label} 정보가 없어요.
+                    </p>
+                  ) : (
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {visibleNearbyFacilities
+                        .slice()
+                        .sort((left, right) => left.distance_m - right.distance_m)
+                        .map((facility) => {
+                          const selected = selectedFacilityId === facility.facility_id;
+                          return (
+                            <li key={facility.facility_id}>
+                              <button
+                                type="button"
+                                aria-label={`${facility.name} 상세 정보 보기`}
+                                aria-pressed={selected}
+                                onClick={() => setSelectedFacilityId(facility.facility_id)}
+                                className={`flex w-full items-center gap-2.5 rounded-card border px-3 py-2.5 text-left transition-colors ${
+                                  selected
+                                    ? "border-brand bg-brand-soft/45"
+                                    : "border-line-light bg-surface hover:border-brand/40"
+                                }`}
+                              >
+                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-card bg-brand-soft text-xs font-black text-brand" aria-hidden="true">
+                                  {FACILITY_SYMBOLS[facility.category]}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <strong className="block truncate text-xs font-extrabold text-ink">{facility.name}</strong>
+                                  <span className="mt-0.5 block text-[10px] font-medium text-muted">
+                                    {formatDistance(facility.distance_m)} · 도보 약 {estimateWalkingMinutes(facility.distance_m)}분
+                                  </span>
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <p className="rounded-card border border-dashed border-line-light bg-surface-soft/35 px-3 py-3 text-center text-xs font-semibold text-muted">
+                  위 버튼을 누르면 주변 시설을 이 지도에서 바로 확인할 수 있어요.
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex h-28 items-center justify-center rounded-card border border-line-light bg-surface-muted/60 text-xs font-medium text-muted">
