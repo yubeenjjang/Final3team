@@ -183,9 +183,11 @@ def test_db_companion_room_list_respects_post_and_festival_publication(client, c
     meeting = datetime.fromisoformat(client.get(detail, headers=owner).json()["meet_at"])
     room, = client.get(path, headers=member).json()["items"]
     assert datetime.fromisoformat(room["meet_at"]) == meeting
-    assert room == {
+    # 승인 시 동행방에 안내 메시지가 하나 생기므로 last_message_at·unread_count는 값만 확인한다.
+    assert room["last_message_at"] is not None and room["unread_count"] >= 0
+    assert {key: value for key, value in room.items() if key not in ("last_message_at", "unread_count")} == {
         "room_id": created["room_id"], "room_type": "companion", "name": None, "status": "active",
-        "last_message_at": None, "unread_count": 0, "my_status": "joined",
+        "my_status": "joined",
         "peer_display_name": None, "festival_name": "시험 축제", "meet_at": room["meet_at"],
     }
 
