@@ -19,6 +19,7 @@ def main() -> None:
     parser.add_argument("--base-url", required=True, help="Festival API root ending in /api/v1")
     parser.add_argument("--crowd-festival-id", help="Optional Seoul festival ID for real crowd check")
     parser.add_argument("--require-crowd-answered", action="store_true", help="Fail unless the selected public festival returns a real crowd answer")
+    parser.add_argument("--verify-multi-festival", action="store_true", help="Verify detail for two distinct public festivals")
     args = parser.parse_args()
     if args.require_crowd_answered and not args.crowd_festival_id:
         parser.error("--require-crowd-answered requires --crowd-festival-id")
@@ -37,6 +38,7 @@ def main() -> None:
         )
 
     chosen_id = None
+    searched_ids = []
     for status in ("ongoing", "upcoming"):
         raw = raw_tool("search_festivals", {"status": status, "page_size": 10})
         if not raw.get("ok") or raw.get("is_mock") or raw.get("data", {}).get("is_mock") is not False:
@@ -45,6 +47,7 @@ def main() -> None:
         if result.outcome != "answered":
             raise RuntimeError(f"{status} agent search failed: {result.answer}")
         print(f"{status}: total={raw['data'].get('total')}, agent_evidence={len(result.evidence)}")
+        searched_ids.extend(item["festival_id"] for item in result.evidence if item.get("festival_id"))
         if chosen_id is None and result.evidence:
             chosen_id = result.evidence[0]["festival_id"]
 
@@ -58,6 +61,21 @@ def main() -> None:
         raise RuntimeError(f"Agent detail failed for {chosen_id}: {detail.answer}")
     print(f"detail: festival_id={chosen_id}, outcome={detail.outcome}, source={detail.evidence[0]['source']}")
     print("Real DB search/detail check passed.")
+
+    if args.verify_multi_festival:
+        second_id = next((festival_id for festival_id in searched_ids if festival_id != chosen_id), None)
+        if second_id is None:
+            raise RuntimeError("Two distinct ongoing or upcoming festivals were not found")
+        second_raw = raw_tool("get_festival", {"festival_id": second_id})
+        if (not second_raw.get("ok") or second_raw.get("is_mock")
+                or second_raw.get("data", {}).get("is_mock") is not False
+                or second_raw["data"].get("festival_id") != second_id):
+            raise RuntimeError(f"Second festival detail did not match real DB ID {second_id}")
+        second_detail = run_agent(FestivalRequest("detail", festival_id=second_id))
+        if (second_detail.outcome != "answered" or len(second_detail.evidence) != 1
+                or second_detail.evidence[0].get("festival_id") != second_id):
+            raise RuntimeError(f"Agent detail did not match second festival ID {second_id}")
+        print(f"multi_festival: first_id={chosen_id}, second_id={second_id}, outcome=answered")
 
     if args.crowd_festival_id:
         crowd_id = args.crowd_festival_id
