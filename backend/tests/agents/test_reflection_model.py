@@ -30,6 +30,8 @@ class ReflectionModelTests(unittest.TestCase):
         self.assertFalse(seen["payload"]["store"])
         self.assertTrue(seen["payload"]["text"]["format"]["strict"])
         self.assertEqual(seen["timeout"], 20)
+        self.assertNotIn("first_issue", seen["payload"]["input"][1]["content"])
+        self.assertIn("F01", seen["payload"]["input"][1]["content"])
 
     def test_invalid_reason_is_rejected(self):
         class Response(io.BytesIO):

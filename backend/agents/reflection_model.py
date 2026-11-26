@@ -30,13 +30,15 @@ def generate_reflection(context: dict, *, api_key: str, model: str = DEFAULT_MOD
     """Return one model decision; the caller validates it before any tool call."""
     if not api_key or not model:
         raise ValueError("api_key and model are required")
+    # Keep the code's diagnosis for validation, but do not tell the model the answer.
+    model_context = {key: value for key, value in context.items() if key != "first_issue"}
     payload = {
         "model": model,
         "store": False,
         "max_output_tokens": 300,
         "input": [
             {"role": "developer", "content": INSTRUCTIONS},
-            {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
+            {"role": "user", "content": json.dumps(model_context, ensure_ascii=False)},
         ],
         "text": {"format": {"type": "json_schema", "name": "festival_evidence_judgment",
                              "strict": True, "schema": JUDGMENT_SCHEMA}},

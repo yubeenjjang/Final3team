@@ -52,7 +52,8 @@ def main() -> None:
     result = state["result"]
     report = {"run_id": str(uuid4()), "executed_at": datetime.now(timezone.utc).isoformat(),
               "scenario": "W28_F02_ID_mismatch_fixed_response", "model": args.model,
-              "first_response_is_mock": True, "outcome": result.outcome,
+              "first_response_is_mock": True, "model_hinted_issue": False,
+              "outcome": result.outcome,
               "answer": result.answer, "evidence": result.evidence,
               "tool_calls": tool_calls, "reflection": state["reflection_record"],
               "elapsed_ms": round((perf_counter() - started) * 1000, 2),

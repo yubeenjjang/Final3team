@@ -50,3 +50,9 @@
 **실제 모델 시험 실행기 준비(11/26):** `backend/agents/reflection_model.py`에 [OpenAI Responses API의 구조화 출력](https://developers.openai.com/api/docs/guides/structured-outputs) 요청을 연결하고, `backend/agents/check_reflection_live.py`에 F02→F01 고정 응답 시나리오를 넣었다. API 키는 실행할 때 숨김 입력으로만 받고 요청에는 `store:false`를 사용한다. 결과 JSON에는 첫 오류·모델 판단·토큰 사용량·도구 호출·최종 근거·경과 시간을 담는다. Windows Python 3.12에서 **에이전트 단위 시험 64개 통과**는 모의 HTTP 응답 기준이며, 실제 모델 API 호출이나 성찰 성공률 측정 결과가 아니다.
 
 실제 모델을 실행할 환경에서는 저장소 `backend` 폴더에서 `python -m agents.check_reflection_live --live`를 실행한다. 필요하면 `--model`로 정확한 모델 ID를 지정하고, `--output`으로 결과 파일을 지정한다. **실행자는 출력의 모델 ID·실행 시각·첫 판단·재확인 결과·토큰·지연을 확인하고, 같은 입력의 B0와 A1을 비교해야 한다.** 이 시나리오는 시험용 F01/F02와 모의 도구만 사용하므로 실제 축제 API E2E로 표기하지 않는다.
+
+### 11/26 첫 실제 모델 실행 기록 — 힌트 제공 버전
+
+다영님이 `python -m agents.check_reflection_live --live` 출력 전체를 공유했다. 실행 시각은 `2026-11-26T07:16:48.696962+00:00`(16:16:48 KST), `run_id=24bfb197-100b-49d2-8fef-50d8ebfb0f2f`, 모델은 `gpt-6.2-sol`이었다. 모의 첫 `get_festival(F01)`은 F02를 반환했고, 모델은 `recheck`/`id_mismatch`를 선택했다. 원조건 `search_festivals`→`get_festival(F01)` 뒤 최종 `answered`, 근거 ID F01, 도구 호출 3회, `passed=true`였다. 사용량은 입력 358·출력 92·합계 450토큰, 전체 경과 4325.72ms였다. 공유 출력에는 `git rev-parse` 값이 없으므로 실행 코드 HEAD는 미확정이다.
+
+**해석 제한:** 이 실행 버전에서는 코드가 계산한 `first_issue=id_mismatch`가 모델 입력에도 들어갔다. 따라서 모델이 오류를 독립적으로 발견했다는 근거로 사용하지 않고, **알려준 오류를 재검토하고 재확인을 선택한 시험**으로 기록한다. 후속 버전은 모델 입력에서 `first_issue`를 제외하고 원질문·첫 응답만 제시한다. 코드의 ID 검증은 남겨 모델의 판단이 잘못돼도 F02를 답변에 쓰지 않게 한다. 수정 버전의 실제 모델 재실행과 B0/A1 비교는 별도로 남긴다.
