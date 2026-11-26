@@ -26,6 +26,22 @@ CELERY_TASK = re.compile(r"@(?:shared_task|\w+\.task)\b|\bCelery\(")
 USER_SESSION = re.compile(r"\b(user_db_session|get_db|create_user_engine|_user_engine)\b")
 APP_ACCOUNT = re.compile(r"""["'](DB_USER_PASSWORD|DB_USER_USERNAME)["']""")
 
+# 서비스 DB가 아닌 일회용 점검 DB에만 접속하는 개발 스크립트(11/26 팀 확인).
+# 파일 → 그 파일이 접속하는 유일한 DB 이름. 이 DB 이름이 파일에서 빠지거나 다른 DB에 접속하면 예외가 풀린다.
+SCRATCH_DB_ONLY = {
+    "agents/rag/check_pgvector_sample.py": "rag_scratch",  # 다영 RAG 필터·코사인 검색 점검, 비밀번호는 실행 때 입력
+}
+DBNAME_ARG = re.compile(r"""\bdbname\s*=\s*["']([^"']+)["']""")
+
+
+def scratch_db_only(path: Path, text: str) -> bool:
+    expected = SCRATCH_DB_ONLY.get(path.relative_to(BACKEND).as_posix())
+    if expected is None:
+        return False
+    names = set(DBNAME_ARG.findall(text))
+    uses_service_db = re.search(r"\bDB_(HOST|NAME|SERVICE_\w+|MIGRATION_DSN)\b|_db_session\b", text)
+    return names == {expected} and not uses_service_db
+
 
 def violations(source: str) -> list[str]:
     found = [f"사용자 세션 사용: {m.group(1)}" for m in USER_SESSION.finditer(source)]
@@ -72,7 +88,8 @@ def test_db20_jobs_that_touch_db_use_service_account():
     db_touching = []
     for p in worker_files():
         text = p.read_text(encoding="utf-8", errors="replace")
-        if re.search(r"\bcreate_engine\(|\bpsycopg\.connect\(|\bservice_db_session\b|\bSession\(", text):
+        if re.search(r"\bcreate_engine\(|\bpsycopg\.connect\(|\bservice_db_session\b|\bSession\(", text) \
+                and not scratch_db_only(p, text):
             db_touching.append((p, text))
     if not db_touching:
         pytest.skip("DB에 접속하는 내부 작업 코드가 아직 없음")
@@ -80,3 +97,19 @@ def test_db20_jobs_that_touch_db_use_service_account():
                if not re.search(r"\bservice_db_session\b|\bget_service_db\b|DB_SERVICE_PASSWORD|create_service_engine|"
                                 r"create_ingestion_engine", text)]
     assert not unclear, f"DB 접속 계정을 확인할 수 없는 내부 작업 파일: {unclear}"
+
+
+SCRATCH = BACKEND / "agents/rag/check_pgvector_sample.py"
+
+
+@pytest.mark.parametrize(("path", "source", "exempt"), [
+    (SCRATCH, 'psycopg.connect(host=h, dbname="rag_scratch", user=u)', True),
+    (SCRATCH, 'psycopg.connect(host=h, dbname="noldaga", user=u)', False),          # 서비스 DB로 바뀜
+    (SCRATCH, 'psycopg.connect(dbname="rag_scratch")\npsycopg.connect(dbname="noldaga")', False),
+    (SCRATCH, 'psycopg.connect(dbname="rag_scratch", password=os.environ["DB_SERVICE_PASSWORD"])', False),
+    (SCRATCH, "with service_db_session() as s: pass", False),                          # DB 이름 없음
+    (BACKEND / "agents/other.py", 'psycopg.connect(dbname="rag_scratch")', False),   # 목록에 없는 파일
+])
+def test_db20_scratch_exemption_is_narrow(path, source, exempt):
+    """일회용 점검 DB 예외는 목록의 파일이 그 DB에만 접속할 때만 적용된다."""
+    assert scratch_db_only(path, source) is exempt
