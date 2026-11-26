@@ -125,6 +125,7 @@
 
 11/24 SQL·DB 시험 기준 커밋은 `ohyun` `719484d`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~028를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 265줄(개별 시험 PASS 260건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 490개 통과·25개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](../db/results_2026-11-24.log)
 | 11/26 | A83~A85 RAG 공식 문서 검토 API(W27, 마이그레이션 029) 구현 — 1-3절 | 권오현 |
+| 11/26 | A10 혼잡 구역(`areas[]`, `nearby_areas[]`·`data`)에 위치 `center`·경계 `boundary` 추가(모의·실제 공통, 출처: 서울시 주요 121장소 영역 OA-21778, 미수록 시 `null`) | 권오현 |
 
 ## 6. 결정 기록
 
