@@ -10,6 +10,9 @@ export interface ChatRoomItem {
   room_id: string;
   room_type: RoomType;
   name: string | null;
+  peer_display_name?: string | null;
+  festival_name?: string | null;
+  meet_at?: string | null;
   status: RoomStatus;
   last_message_at: string | null;
   unread_count: number;

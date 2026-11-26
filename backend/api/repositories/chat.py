@@ -374,12 +374,24 @@ async def messages(
 async def list_rooms(db: AsyncSession, user_id: UUID, selected: RoomFilter) -> list[dict]:
     rows = (await db.execute(text("""
         SELECT r.room_id, r.room_type, r.name, r.status, stats.last_message_at,
-               stats.unread_count, m.status AS my_status
+               stats.unread_count, m.status AS my_status,
+               peer.peer_display_name, f.title AS festival_name, cp.meet_at
         FROM public.chat_rooms r JOIN public.chat_members m USING (room_id)
         CROSS JOIN LATERAL (
             SELECT max(c.created_at) AS last_message_at, count(*) FILTER (WHERE c.seq > m.last_read_seq AND c.sender_id IS DISTINCT FROM :uid) AS unread_count
             FROM public.chat_messages c WHERE c.room_id = r.room_id
         ) stats
+        LEFT JOIN LATERAL (
+            SELECT public.app_public_display_name(pm.user_id) AS peer_display_name
+            FROM public.chat_members pm
+            WHERE pm.room_id = r.room_id AND pm.user_id <> :uid
+              AND pm.status IN ('invited','joined')
+            ORDER BY pm.joined_at NULLS LAST, pm.user_id
+            LIMIT 1
+        ) peer ON r.room_type = 'direct'
+        LEFT JOIN public.companion_posts cp
+          ON r.room_type = 'companion' AND cp.room_id = r.room_id
+        LEFT JOIN public.festivals f ON f.festival_id = cp.festival_id
         WHERE m.user_id = :uid AND m.status IN ('invited','joined') AND CASE :selected
             WHEN 'all' THEN true WHEN 'past' THEN r.status <> 'active'
             WHEN 'companion' THEN r.room_type = 'companion' ELSE r.room_type <> 'companion'

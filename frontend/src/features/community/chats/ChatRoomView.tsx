@@ -40,6 +40,7 @@ import {
   type ChatRoomItem,
   type RoomStatus,
 } from "./api";
+import { getChatRoomTitle } from "./roomDisplay";
 import { CLOSED_DIRECT_HINT } from "./ChatListView";
 
 type ConnectionState = "connecting" | "connected" | "reconnecting" | "closed";
@@ -651,12 +652,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
           </Link>
           <div className="min-w-0">
             <h1 className="truncate text-sm font-black text-ink">
-              {room?.name ||
-                (room?.room_type === "direct"
-                  ? "1:1 대화"
-                  : room?.room_type === "companion"
-                    ? "동행 채팅방"
-                    : "채팅방")}
+              {getChatRoomTitle(room)}
             </h1>
             <p className="text-[11px] text-muted">
               {connState === "connected"

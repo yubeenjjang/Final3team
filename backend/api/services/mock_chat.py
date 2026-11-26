@@ -31,6 +31,8 @@ class Room:
     room_type: str
     owner: UUID | None = None
     name: str | None = None
+    festival_name: str | None = None
+    meet_at: datetime | None = None
     status: str = "active"
     closed_by_block: bool = False
     read_only_at: datetime | None = None
@@ -145,7 +147,13 @@ class MockChatRooms:
                 raise forbidden()
             room.name = name
 
-    def create_companion_room(self, post_id: str, owner_id: UUID) -> str:
+    def create_companion_room(
+        self,
+        post_id: str,
+        owner_id: UUID,
+        festival_name: str | None = None,
+        meet_at: datetime | None = None,
+    ) -> str:
         room_id = companion_room_id(post_id)
         with self.lock:
             room = self.rooms.setdefault(room_id, Room("companion", owner_id))
@@ -153,6 +161,10 @@ class MockChatRooms:
                 raise invalid_state()
             if room.status == "active":
                 room.members.setdefault(owner_id, Member("joined", joined_at=now()))
+            if festival_name:
+                room.festival_name = festival_name
+            if meet_at:
+                room.meet_at = meet_at
         return room_id
 
     def add_member(self, room_id: str, user_id: UUID) -> None:
@@ -250,6 +262,8 @@ class MockChatRooms:
         return [dict(m, sender_display_name=names.get(m["sender_id"])) for m in page], len(candidates) > limit
 
     def list_rooms(self, user_id: UUID, selected: RoomFilter) -> list[dict]:
+        with auth_lock:
+            names = {UUID(user.user_id): user.display_name for user in users_by_email.values()}
         with self.lock:
             items = []
             for room_id, room in reversed(self.rooms.items()):
@@ -261,8 +275,12 @@ class MockChatRooms:
                 if selected in ("companion", "friend") and (selected == "companion") != (room.room_type == "companion"):
                     continue
                 visible = self._visible(room_id, user_id)
+                peer_id = next((member_id for member_id in room.members if member_id != user_id), None)
                 items.append({
                     "room_id": room_id, "room_type": room.room_type, "name": room.name, "status": room.status,
+                    "peer_display_name": names.get(peer_id) if room.room_type == "direct" else None,
+                    "festival_name": room.festival_name if room.room_type == "companion" else None,
+                    "meet_at": room.meet_at if room.room_type == "companion" else None,
                     "last_message_at": visible[-1]["created_at"] if visible else None,
                     "unread_count": sum(m["seq"] > member.last_read_seq and m["sender_id"] != user_id for m in visible), "my_status": member.status,
                 })

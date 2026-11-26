@@ -22,6 +22,7 @@ import {
   type ChatRoomItem,
   type RoomFilter,
 } from "./api";
+import { getChatRoomTitle } from "./roomDisplay";
 
 const FILTER_OPTIONS: { value: RoomFilter; label: string }[] = [
   { value: "all", label: "전체" },
@@ -33,16 +34,9 @@ const FILTER_OPTIONS: { value: RoomFilter; label: string }[] = [
 export const CLOSED_DIRECT_HINT =
   "닫힌 대화예요. 새로 대화를 시작할 수 있어요";
 
-function roomTitle(room: ChatRoomItem): string {
-  if (room.name && room.name.trim()) return room.name;
-  if (room.room_type === "direct") return "1:1 대화";
-  if (room.room_type === "companion") return "동행 채팅방";
-  return "단체 채팅방";
-}
-
 function roomTypeLabel(type: ChatRoomItem["room_type"]): string {
   if (type === "companion") return "동행";
-  if (type === "direct") return "1:1";
+  if (type === "direct") return "친구";
   return "단체";
 }
 
@@ -338,7 +332,7 @@ function ChatListContent() {
                       ) : null}
                     </div>
                     <p className="truncate text-sm font-extrabold text-ink">
-                      {roomTitle(room)}
+                      {getChatRoomTitle(room)}
                     </p>
                     {isClosedDirect ? (
                       <p className="text-xs font-medium text-muted">

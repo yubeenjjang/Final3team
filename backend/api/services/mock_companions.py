@@ -130,7 +130,13 @@ class MockCompanions:
         assert self.actor_id is not None
         self.memory.validate_meeting(request.festival_id, request.meet_at, rules.now_utc())
         post_id = "cpo_" + str(ULID())
-        room_id = mock_chat.mock_rooms.create_companion_room(post_id, UUID(self.actor_id))
+        festival = store.get_public_mock_festival(request.festival_id)
+        room_id = mock_chat.mock_rooms.create_companion_room(
+            post_id,
+            UUID(self.actor_id),
+            festival_name=festival.name if festival else None,
+            meet_at=request.meet_at,
+        )
         self.memory.posts[post_id] = Post(
             **request.model_dump(), post_id=post_id, room_id=room_id, author_id=self.actor_id,
             members={self.actor_id},
