@@ -182,3 +182,9 @@ Windows Python 3.12에서 내부 연결·임베딩 어댑터 시험 6개와 기�
 일회용 `rag_scratch` 실행기에 `question_bridge` 검사를 추가했다. 기존 시험과 같은 숨김 API 키 입력을 재사용해 **질문 한 건을 새로 임베딩하고** `retrieve_festival_question`으로 승인된 D1의 문서 ID·공식 출처 URL을 조회한다. 새 질문 임베딩 호출 1회가 추가되므로 출력 사용량은 초기 13개 텍스트 임베딩과 `question_bridge` 호출로 나누어 본다. 실행 결과는 아래에 기록한다.
 
 **질문 검색 연결 실행 결과(사용자 제공 출력, 2026-11-26):** 일회용 `rag_scratch`에서 `pending_ingestion: first_insert=True, duplicate_insert=False`, Q01~Q10 검색·필터 **10/10**, 승인 상태 `pending=hidden, approved=visible, rejected=hidden`이 다시 확인됐다. 새 질문 임베딩을 호출한 `question_bridge`는 `status=candidates`, `document_ids=['D1']`, 공식 출처 `https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=983`을 반환했고 해당 호출은 입력 22토큰이었다. 기존 문서·질문 묶음 임베딩은 1.599초·입력 509토큰, 검색 질의 10건 합계는 0.033초였다. 이 실행은 `dayoung cdd629c`에 추가한 코드의 출력과 일치하지만 공유된 터미널에 `git rev-parse` 값이 없어 **실행 HEAD는 별도로 확인되지 않았다**. 서비스 DB·관리자 승인 API·답변 생성까지 이어진 결과는 아니다.
+
+### 검색 근거→답변 결정 내부 연결
+
+`backend/agents/rag/answer_question.py`에 검색 후보를 답변 생성 함수로 전달하고 결과를 검증하는 경계를 추가했다. 검색된 문서 ID만 인용할 수 있고, 답변의 문서 ID에서 공식 출처 URL을 다시 찾아 반환한다. 근거가 없거나 질문에 명시된 다른 축제 이름이 확인되면 생성 함수를 호출하지 않고 안내한다. 생성 함수가 답변 보류를 반환하면 인용 없이 종료한다. Windows Python 3.12에서 이 경계와 질문 검색의 단위 시험 **11개**가 통과했다.
+
+이는 **내부 연결·고정 응답 시험**이다. 실제 챗봇의 LLM 호출, 날짜가 충돌하는 실제 문서에 대한 판단, 서비스 DB의 승인 API와 연속 호출은 아직 확인하지 않았다. 오현님이 관리자 승인 기능의 주소·필드를 공유하면 승인 시각·개정판 교체 기준을 검색 조건에 맞춰 대조하고, 실제 공식 문서의 출처가 사용자 답변에 표시되는지 별도 시험한다.
