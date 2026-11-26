@@ -82,11 +82,11 @@ function ReturnRouteHero({ ready }: { ready: boolean }) {
         aside={
           <div className="relative h-14 w-[104px]" aria-hidden="true">
             <Image
-              src="/brand/return-hero-compact.svg"
+              src="/brand/return-hero-compact.png"
               alt=""
               fill
               sizes="104px"
-              className="object-contain object-right"
+              className="object-cover object-center"
             />
           </div>
         }

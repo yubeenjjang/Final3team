@@ -13,6 +13,7 @@ let mockPathname = "/";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
+  useRouter: () => ({ replace: vi.fn() }),
 }));
 
 describe("F3 AppShell & F5 MockBadge", () => {
@@ -95,8 +96,9 @@ describe("F3 AppShell & F5 MockBadge", () => {
       });
     });
 
-    const accountLink = screen.getByRole("link", { name: /내 계정/ });
-    expect(accountLink.textContent).toBe(initial);
+    const accountButton = screen.getByRole("button", { name: /계정 메뉴/ });
+    expect(accountButton.textContent).toBe(initial);
+    expect(accountButton).toHaveAttribute("aria-expanded", "false");
   });
 
   it("F5 displays mock badge once mock response is observed", () => {

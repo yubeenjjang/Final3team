@@ -77,6 +77,9 @@ describe("F10 auth flow", () => {
         expect(JSON.parse(String(init?.body))).toEqual({ email: fixture.email, password: fixture.password });
         return Response.json(tokens);
       }
+      if (path.endsWith("/me/festival-preferences")) {
+        return Response.json({ scenarios: [], onboarding_status: "pending", updated_at: null });
+      }
       if (path.endsWith("/festivals")) {
         return Response.json({ items: [festival] });
       }
@@ -99,7 +102,7 @@ describe("F10 auth flow", () => {
     expect(screen.getByRole("textbox", { name: "이메일" })).toHaveValue(fixture.email);
     change("비밀번호", fixture.password);
     fireEvent.click(screen.getByRole("button", { name: "로그인" }));
-    await waitFor(() => expect(replace).toHaveBeenLastCalledWith("/"));
+    await waitFor(() => expect(replace).toHaveBeenLastCalledWith("/onboarding"));
     expect(sessionStorage.getItem("noldaga.access_token")).toBe(tokens.access_token);
     expect(sessionStorage.getItem("noldaga.refresh_token")).toBe(tokens.refresh_token);
 
@@ -124,6 +127,11 @@ describe("F10 auth flow", () => {
   it("shows the 401 login message, then takes the user to the requested festival after success", async () => {
     fetchApi.mockResolvedValueOnce(apiError(401, "INVALID_CREDENTIALS"));
     fetchApi.mockResolvedValueOnce(Response.json(tokens));
+    fetchApi.mockResolvedValueOnce(Response.json({
+      scenarios: ["family_relaxed"],
+      onboarding_status: "completed",
+      updated_at: "2026-11-26T10:00:00+09:00",
+    }));
     const next = "/festivals/fst_test01";
     render(await LoginPage({ searchParams: Promise.resolve({ next }) }));
     change("이메일", fixture.email);

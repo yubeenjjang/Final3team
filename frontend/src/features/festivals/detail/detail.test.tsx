@@ -63,7 +63,7 @@ describe("F7 festival detail", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("F7 renders detail image with object-contain, chips, nearby icons, map fallback, and return route banner", async () => {
+  it("F7 renders a landscape detail image, chips, nearby icons, map fallback, and return route banner", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith("/festivals/fst_000001")) {
@@ -127,10 +127,10 @@ describe("F7 festival detail", () => {
     });
 
     const heroImage = screen.getByAltText("테스트 문화 축제");
-    expect(heroImage.className).toContain(
-      "object-contain",
-    );
-    expect(heroImage.parentElement).toHaveClass("aspect-[1/1.414]");
+    expect(heroImage.className).toContain("object-cover");
+    expect(heroImage.parentElement).toHaveClass("aspect-[3/1]");
+    expect(screen.queryByLabelText("축제 목록으로")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("공유하기")).not.toBeInTheDocument();
     expect(screen.getByText("테스트 한 줄 소개입니다.")).toBeInTheDocument();
     expect(screen.getByText("무료")).toBeInTheDocument();
     expect(screen.getByText("서울")).toBeInTheDocument();
@@ -228,7 +228,7 @@ describe("F7 festival detail", () => {
     expect(periodEl.className).not.toContain("truncate");
 
     const heroImg = screen.getByAltText("테스트 문화 축제");
-    expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
+    expect(screen.queryByText("출처: 한국관광공사")).not.toBeInTheDocument();
 
     fireEvent.error(heroImg);
 

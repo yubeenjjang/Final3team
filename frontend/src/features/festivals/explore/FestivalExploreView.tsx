@@ -10,6 +10,8 @@ import { listFestivals, type FestivalListItem } from "./api";
 import { FestivalCarousel } from "./FestivalCarousel";
 import { FestivalCard } from "./FestivalCard";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
+import { PreferenceSetupCta } from "@/features/accounts/profile/PreferenceSetupCta";
+import { useFestivalPreferenceStatus } from "@/features/accounts/profile/useFestivalPreferenceStatus";
 import {
   FESTIVAL_SECTION_CONFIG,
   FESTIVAL_SECTION_ORDER,
@@ -40,6 +42,8 @@ export function FestivalExploreView({
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const preferenceStatus = useFestivalPreferenceStatus();
+  const hasPersonalRecommendations = preferenceStatus === "completed";
 
   const moreRequest = useRef<AbortController | null>(null);
 
@@ -144,10 +148,11 @@ export function FestivalExploreView({
         ? items.slice(0, 4)
         : items.slice(index * 4, index * 4 + 4),
     }))
-    .filter((section) => section.items.length > 0);
+    .filter((section) => section.items.length > 0)
+    .filter((section) => hasPersonalRecommendations || section.key !== "personal");
 
   return (
-    <div className="space-y-4 px-4 py-4">
+    <div className="space-y-4 px-4 py-4 md:space-y-7 md:px-8 md:py-8">
       <TabPageHero
         title={
           mode === "list" ? (
@@ -268,7 +273,7 @@ export function FestivalExploreView({
       ) : (
         <div className="space-y-8">
           {mode === "list" ? (
-            <section aria-label={`${listTitle} 목록`} className="grid grid-cols-2 gap-x-2 gap-y-4">
+            <section aria-label={`${listTitle} 목록`} className="grid grid-cols-2 gap-x-2 gap-y-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
               {items.map((item) => (
                 <FestivalCard key={item.festival_id} item={item} />
               ))}
@@ -318,6 +323,10 @@ export function FestivalExploreView({
           ) : null}
         </div>
       )}
+
+      {mode === "sections" && preferenceStatus !== "completed" && preferenceStatus !== "loading" ? (
+        <PreferenceSetupCta />
+      ) : null}
 
     </div>
   );
