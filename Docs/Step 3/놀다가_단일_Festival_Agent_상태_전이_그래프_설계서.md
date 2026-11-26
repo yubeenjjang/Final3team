@@ -1,28 +1,58 @@
 # 놀다가 단일 Festival Agent 상태 전이 그래프 설계서
 
-> 작성 기준: 2026-11-23, 실조회·시험 기록 갱신: 2026-11-26. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, 현재 브랜치의 `Docs/Step 2/API_설계문서.md`와 `Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 실조회 기준은 `dayoung dc35ad5`이며, 11/27 제출용 병합 후 시험의 코드 기준은 **`main 0fda8fd`**다. 개인 브랜치 시험과 병합 후 시험은 부록 D와 [증빙](evidence/Festival_live_2026-11-26.md)에 구분해 기록한다.
+놀다가(NOLDAGA) / 3팀 수다수다
+
+## 문서 개요
+
+이 문서는 11/27 M03 제출을 위한 **단일 Festival Agent의 상태 전이 그래프**를 설계한다. 강사님 Step3 가이드의 9개 항목에 따라 담당 범위, 상태·노드·전이, 도구와 오류 처리, 종료 조건을 정리했다. 구현·실조회·시험 근거와 후속 계획은 각 절과 부록에서 구분한다.
+
+### 목차
+
+1. 목적과 범위 — 담당 질문, 다른 Agent와의 경계, 실제·모의 자료 구분
+2. 상태·노드·전이(개념) — 개념 그래프와 LangGraph 노드 대응
+3. LLM 및 프롬프트 정책 — 현재 구현과 후속 연결 설계
+4. CoT·ReAct 단계와 기록 — 도구 실행·검증 기록 범위
+5. 도구 선택 및 재추론 — 허용 도구, 입력·결과, 재시도 구분
+6. 메모리 및 체크포인트
+7. State 정의
+8. 구현 노드 및 전이표 — 코드 전이와 API 오류 계약
+9. 종료 조건 — 결과 유형과 부분 답변 기준
+
+부록 A부터 D에는 설계 검토·실행 근거, 후속 결정, 제출 시험 기준을 둔다.
+
+### 문서 정보
+
+| 항목 | 내용 |
+|---|---|
+| 작성·갱신 | 작성 기준 2026-11-23 · 실조회·시험 기록 갱신 2026-11-26 |
+| 제출 범위 | 11/27 M03의 Festival Agent 단독 설계. Supervisor·Route·Diagnosis·Recovery와의 실제 협업은 후속 범위 |
+| 기준 자료 | [기획서](../Step%201/놀다가_기획서.md), [WBS](../Step%201/놀다가_WBS.md) W22 축제 질의·도구·상태 정의, W23 상태 전이 설계, W24 DB·혼잡 조회 구현, W25 설계서 검토·제출, [API 설계문서](../Step%202/API_설계문서.md), [에이전트 도구 인계](../Step%202/handoff/에이전트_도구_인계.md) W14(Function Calling 도구 명세·실행기 연결) |
+| 실행 기준 | 실조회 `dayoung dc35ad5` · 11/27 제출용 병합 후 시험의 **코드 기준 `main 0fda8fd`** |
+| 시험 증빙 | 개인 브랜치 시험과 병합 후 시험을 [실조회·시험 증빙](evidence/Festival_live_2026-11-26.md) 및 부록 D에 구분해 기록 |
+
+---
 
 ## 1. 목적과 범위
 
-전체 서비스의 에이전트는 Supervisor·Festival·Route·Diagnosis·Recovery **5개**다. 이번 문서는 그중 Festival Agent **한 개의 내부 상태 전이**를 설계한다. 기획서 6.1·6.2절에 따라 **Supervisor가 사용자 의도·축제 선택·조건을 파악하고 필요한 경우 Festival을 호출**한다. Festival은 전달받은 축제 ID·조건을 검증하고 축제 도구를 사용한다. 현재 단독 실행기와 시험 하네스는 Supervisor 대신 구조화된 요청을 넘기고 결과를 받는다. Supervisor와의 실제 연결은 W44~W47의 별도 설계 대상이다.
+전체 서비스의 에이전트는 Supervisor·Festival·Route·Diagnosis·Recovery **5개**다. 이번 문서는 그중 Festival Agent **한 개의 내부 상태 전이**를 설계한다. 기획서 6.1·6.2절에 따라 **Supervisor가 사용자 의도·축제 선택·조건을 파악하고 필요한 경우 Festival을 호출**한다. Festival은 전달받은 축제 ID·조건을 검증하고 축제 도구를 사용한다. 현재 단독 실행기와 시험 하네스는 Supervisor 대신 구조화된 요청을 넘기고 결과를 받는다. Supervisor와의 실제 연결은 W44(5개 에이전트 역할·도구·상태 설계)부터 W47(협업 아키텍처 설계서 검토·제출)까지의 별도 설계 대상이다.
 
-이번 필수 흐름은 **전국 축제 검색, 선택된 축제 상세, 서울에서 매핑이 검증된 축제 주변 지역 혼잡 조회**다. 공식 공지 조회도 단독 흐름으로 연결했으며 현재는 모의 API의 계약과 전이만 검증했다. 실제 공식 자료 공급원이 준비되기 전에는 현장 공지로 제공하지 않는다. 시설은 자료 공급원이 확인될 때 확장한다. 날씨는 서비스 필수 기능이지만 현재 13개 도구에 없으므로 이번 단일 그래프의 실행 대상으로 두지 않는다. 코스 추천·RAG는 W27·W37과 연결되는 후속 흐름이다. **관심 저장은 팀 합의에 따라 Supervisor가 처리하며, 단일 Festival Agent는 `save_favorite`를 호출하지 않는다.**
+이번 필수 흐름은 **전국 축제 검색, 선택된 축제 상세, 서울에서 매핑이 검증된 축제 주변 지역 혼잡 조회**다. 공식 공지 조회도 단독 흐름으로 연결했으며 현재는 모의 API의 계약과 전이만 검증했다. 실제 공식 자료 공급원이 준비되기 전에는 현장 공지로 제공하지 않는다. 시설은 자료 공급원이 확인될 때 확장한다. 날씨는 서비스 필수 기능이지만 현재 13개 도구에 없으므로 이번 단일 그래프의 실행 대상으로 두지 않는다. 코스 추천·RAG는 공식 안내문 수집·RAG 검색(W27) 및 개인 맞춤 코스 추천(W37)과 연결되는 후속 흐름이다. **관심 저장은 팀 합의에 따라 Supervisor가 처리하며, 단일 Festival Agent는 `save_favorite`를 호출하지 않는다.**
 
 Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 조치를 실행하지 않는다. 그런 질문은 `handoff_required` 결과로 끝내고, 나중에 Supervisor가 담당 에이전트로 전달한다. 단독 시험에서는 '이 단독 범위에서 처리하지 않음'으로 표시한다.
 
-### 1-1. W22 질문 범위와 후속 연결 경계
+### 1-1. Festival Agent 축제 질의·도구·상태 범위(W22)와 후속 연결 경계
 
 | 질문 유형 | 현재 단일 Agent 동작 | 후속 연결·근거 |
 |---|---|---|
-| 축제 검색·일정·장소 | `search_festivals`, `get_festival`로 실존 ID·출처·갱신 시각을 확인한다. | 자연어 의도 분류와 선택 축제 문맥 유지(FR-C01/C04)는 Supervisor 및 W26·W44 이후 연결한다. |
+| 축제 검색·일정·장소 | `search_festivals`, `get_festival`로 실존 ID·출처·갱신 시각을 확인한다. | 자연어 의도 분류와 선택 축제 문맥 유지(FR-C01/C04)는 Supervisor 및 W26(세션·Redis 대화 상태 및 기억 보존)·W44(5개 에이전트 역할·도구·상태 설계) 이후 연결한다. |
 | 축제 주변 혼잡 | `get_crowd`의 서울 지원 구역·관측 시각·대체값 여부를 검증한다. | 행사장 내부나 개별 귀가 길의 혼잡으로 확대하지 않는다(FR-F02/F03/F18). |
-| 공식 운영·교통 공지 | `get_official_notices` 단독 조회를 연결했으나 현재 공급 응답은 모의 자료다. | 실제 공식 원본·효력 확인은 FR-F05와 W27의 자료 준비 뒤 검증한다. |
-| 화장실·주차장·응급시설 등 현장 정보 | `get_facilities`가 현재 그래프에 없어 도구를 호출하지 않는다. | W90의 검증된 공급원·지원 범위를 받은 뒤 연결한다(FR-F04/F11). |
+| 공식 운영·교통 공지 | `get_official_notices` 단독 조회를 연결했으나 현재 공급 응답은 모의 자료다. | 실제 공식 원본·효력 확인은 FR-F05와 W27(축제 공식 안내문 수집·RAG 검색)의 자료 준비 뒤 검증한다. |
+| 화장실·주차장·응급시설 등 현장 정보 | `get_facilities`가 현재 그래프에 없어 도구를 호출하지 않는다. | W90(주변 시설 조회 API)의 검증된 공급원·지원 범위를 받은 뒤 연결한다(FR-F04/F11). |
 | 날씨·실시간 도착·상권 | 이번 단일 그래프에 도구가 없으므로 수치를 만들어 답하지 않는다. | 각 API·도구 계약 및 공급원 확인 뒤 별도 연결한다(FR-F09/F12/F16). |
-| 방문 코스 추천·공식 안내 RAG | 현재 실행하지 않는다. | W27·W37의 공식 문서와 실존 장소·조건 검증 이후 연결한다(FR-P01/P03, FR-C05/C07). |
-| 가는 길·귀가·장애 진단·복구 | `handoff_required`로 종료한다. | Route·Diagnosis·Recovery와의 협업은 W44 이후 Supervisor 계약에서 설계한다. |
+| 방문 코스 추천·공식 안내 RAG | 현재 실행하지 않는다. | 공식 안내문 수집·RAG 검색(W27)과 개인 맞춤 코스 추천(W37)에 필요한 공식 문서·실존 장소·조건 검증 이후 연결한다(FR-P01/P03, FR-C05/C07). |
+| 가는 길·귀가·장애 진단·복구 | `handoff_required`로 종료한다. | Route·Diagnosis·Recovery와의 협업은 W44(5개 에이전트 역할·도구·상태 설계) 이후 Supervisor 계약에서 설계한다. |
 
-현재 단독 입력 계약은 `FestivalRequest(intent, festival_id, 검색 조건, notice_type)`이고, 최종 출력은 `FestivalResult(outcome, answer, evidence, transitions, used_tools, handoff_target)`이다. `tool_results`는 그래프의 한 실행 동안 `response`에 보관하며 별도 영속 상태가 아니다. **Supervisor가 이 입력을 실제로 생성하는 세부 형식은 아직 확정되지 않았다.** 이 표는 W22의 확장 계약 초안이며 후속 기능을 현재 구현 완료로 세지 않는다.
+현재 단독 입력 계약은 `FestivalRequest(intent, festival_id, 검색 조건, notice_type)`이고, 최종 출력은 `FestivalResult(outcome, answer, evidence, transitions, used_tools, handoff_target)`이다. `tool_results`는 그래프의 한 실행 동안 `response`에 보관하며 별도 영속 상태가 아니다. **Supervisor가 이 입력을 실제로 생성하는 세부 형식은 아직 확정되지 않았다.** 이 표는 W22(단일 Festival Agent 축제 질의·도구·상태 정의)의 확장 계약 초안이며 후속 기능을 현재 구현 완료로 세지 않는다.
 
 **최신 기획서 범위 확인(2026-11-24):** 추천 상황 카드 5종(가족·친구·연인·반려견·혼자)은 후속 취향·코스 연결 범위다. A42 `지금 핫한 축제`의 외부 순위 사전 수집은 추천 목록용이며, 이 단일 Festival Agent의 도구나 공식 안내 RAG 입력으로 추가하지 않는다. 상황 카드의 반려견 동반 가능 여부도 검증된 공식 정보가 있을 때만 확정한다.
 
@@ -31,7 +61,7 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
 |---|---|---|
 | 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 학원망에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
-| 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8~A-11). 11/26 서울빛초롱축제는 Agent 직접 HTTP 복합 호출에서 `is_mock:false`, 공급원 `ok`, Agent `answered`, 관측 시각 `2026-11-26T09:00:00+09:00`을 확인했다(A-14). 후속 A-15 재실행의 관측 시각은 `2026-11-26T10:00:00+09:00`이었다. | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
+| 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8부터 A-11까지). 11/26 서울빛초롱축제는 Agent 직접 HTTP 복합 호출에서 `is_mock:false`, 공급원 `ok`, Agent `answered`, 관측 시각 `2026-11-26T09:00:00+09:00`을 확인했다(A-14). 후속 A-15 재실행의 관측 시각은 `2026-11-26T10:00:00+09:00`이었다. | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
 | 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
 
 서버 응답의 `is_mock` 값을 유지해 답변에 반영한다. 시연 환경의 자료 모드는 실제 실행 직전에 다시 확인한다.
@@ -89,7 +119,7 @@ flowchart TD
 
 **현재 구현:** LLM 호출과 프롬프트는 없다. 호출자가 이미 분류한 `FestivalRequest`를 넘기며, `interpret` 노드는 자연어 추론 대신 `intent`의 담당 범위만 검사한다. 따라서 모델명·프롬프트 버전·JSON 파싱 성공률을 현재 실행 결과로 기재하지 않는다.
 
-**문서에 정해진 역할:** 기획서 6.1절은 Supervisor가 축제 선택·의도를 파악하고 필요한 경우 Festival을 호출하도록 정한다. API 설계서 3절은 사용자 챗봇 요청의 `message`, `context.festival_id`, `reference_date`를 정의한다. WBS W22~W25와 M03은 단일 Festival Agent의 상태·전이·종료·단독 실행을 11/27 범위로 두고, 5개 Agent의 상세 협업 계약은 W44 이후로 배치한다. 따라서 **이번 단독 시험은 현재 구현된 구조화 `FestivalRequest`로 재현**하며, 아직 연결되지 않은 자연어 분류나 모델 성능을 시험 결과로 기록하지 않는다.
+**문서에 정해진 역할:** 기획서 6.1절은 Supervisor가 축제 선택·의도를 파악하고 필요한 경우 Festival을 호출하도록 정한다. API 설계서 3절은 사용자 챗봇 요청의 `message`, `context.festival_id`, `reference_date`를 정의한다. WBS W22 축제 질의·도구·상태 정의, W23 상태 전이 설계, W24 DB·혼잡 조회 구현, W25 설계서 검토·제출와 M03은 단일 Festival Agent의 상태·전이·종료·단독 실행을 11/27 범위로 두고, 5개 Agent의 상세 협업 계약은 W44(5개 에이전트 역할·도구·상태 설계) 이후로 배치한다. 따라서 **이번 단독 시험은 현재 구현된 구조화 `FestivalRequest`로 재현**하며, 아직 연결되지 않은 자연어 분류나 모델 성능을 시험 결과로 기록하지 않는다.
 
 **후속 연결 설계안:** 실제 협업에서는 Supervisor가 사용자 질문의 의도·선택 축제·조건을 구조화해 Festival에 전달하고, Festival이 누락값·축제 ID·출처를 재검증한다. 아래 표는 후속 자연어/LLM 연결을 위한 설계안이며, 현재 실행 계약이나 11/27 제출 선결 조건이 아니다. 모델·프롬프트와 Supervisor→Festival 세부 필드는 팀의 해당 구현 단계에서 확정한다.
 
@@ -103,7 +133,7 @@ flowchart TD
 
 모델 내부 추론 원문은 기록하거나 사용자에게 보여주지 않는다. 외부 API의 설명·공지·축제 소개는 비신뢰 데이터로 취급하고, 내용에 담긴 지시를 프롬프트나 도구 권한으로 실행하지 않는다.
 
-**12/4 자기 성찰 대표 시험(W28 구현·W29 측정·W30 결과서):** 동일 질문·동일 기준 시각에서 처음 고른 후보의 **축제 ID·출처·관측/갱신 시각**이 사용자 조건과 맞는지 모델이 근거를 평가한다. 예를 들어 기준일 2026-11-26에 “오늘 진행 중인 서울의 시험 축제 F01 상세를 알려줘”라는 고정 질문에 `get_festival(festival_id=F01)`이 다른 축제 F02의 상세를 반환하면, F02를 답에서 배제한다. 이어 **같은 상세 호출의 반복이 아니라** `search_festivals(q="시험 축제", region="SEOUL", date_from="2026-11-26", date_to="2026-11-26", status="ongoing")`으로 원래 조건의 후보를 재확인하고, 확인된 F01의 상세를 다시 조회한다. ID·공식 출처·시각·진행 날짜가 모두 맞을 때만 답변을 허용한다. 다시 확인해도 불일치·근거 누락·오래된 자료가 남으면 `unavailable`/`partial`로 종료한다. F01·F02는 시험용 가상 ID다. 이는 **후속 구현·시험 계획**이며 현재 규칙 기반 ID 검증이나 같은 인자의 통신 재시도를 모델 자기 성찰 성공으로 세지 않는다.
+**12/4 자기 성찰 대표 시험:** 도구 오류·근거 누락 자기 성찰 구현(W28), 추적·호출·지연·비용 측정(W29), 결과서 제출(W30)을 위한 사례다. 동일 질문·동일 기준 시각에서 처음 고른 후보의 **축제 ID·출처·관측/갱신 시각**이 사용자 조건과 맞는지 모델이 근거를 평가한다. 예를 들어 기준일 2026-11-26에 “오늘 진행 중인 서울의 시험 축제 F01 상세를 알려줘”라는 고정 질문에 `get_festival(festival_id=F01)`이 다른 축제 F02의 상세를 반환하면, F02를 답에서 배제한다. 이어 **같은 상세 호출의 반복이 아니라** `search_festivals(q="시험 축제", region="SEOUL", date_from="2026-11-26", date_to="2026-11-26", status="ongoing")`으로 원래 조건의 후보를 재확인하고, 확인된 F01의 상세를 다시 조회한다. ID·공식 출처·시각·진행 날짜가 모두 맞을 때만 답변을 허용한다. 다시 확인해도 불일치·근거 누락·오래된 자료가 남으면 `unavailable`/`partial`로 종료한다. F01·F02는 시험용 가상 ID다. 이는 **후속 구현·시험 계획**이며 현재 규칙 기반 ID 검증이나 같은 인자의 통신 재시도를 모델 자기 성찰 성공으로 세지 않는다.
 
 | 비교 항목 | 첫 결과 | 수정 후 결과·성공 기준 |
 |---|---|---|
@@ -112,7 +142,7 @@ flowchart TD
 | 재조회 | 단순 동일 호출 반복을 성찰로 세지 않음 | F01의 ID·공식 출처·유효 시각·진행 상태가 모두 맞을 때만 성공. 예정 축제는 “오늘 진행 중”의 성공이 아니다. |
 | 측정·종료 | 첫 후보와 잘못된 답변 위험 기록 | 수정 전후의 판정·도구 호출 수·경과 시간·최종 답변/보류를 비교하고, 4회·30초 예산을 지킨다. |
 
-**추가 사례:** 검색 0건일 때 사용자 이름·지역·날짜를 유지한 채 `status=ongoing`을 `ongoing,upcoming`으로 한 번 넓히는 규칙은 별도로 시험한다. 다만 질문이 “오늘 진행 중”이면 예정 축제는 조건 불일치로 기각한다. 이 사례의 검색 조건 변경을 모델의 근거 재평가와 혼동하지 않고, W28 대표 시험의 성공 수에도 합산하지 않는다. W29는 두 사례를 분리해 추적·호출·지연/비용을 기록한다.
+**추가 사례:** 검색 0건일 때 사용자 이름·지역·날짜를 유지한 채 `status=ongoing`을 `ongoing,upcoming`으로 한 번 넓히는 규칙은 별도로 시험한다. 다만 질문이 “오늘 진행 중”이면 예정 축제는 조건 불일치로 기각한다. 이 사례의 검색 조건 변경을 모델의 근거 재평가와 혼동하지 않고, 자기 성찰 구현(W28)의 대표 시험의 성공 수에도 합산하지 않는다. 추적·호출·지연·비용 측정(W29)은 두 사례를 분리해 추적·호출·지연/비용을 기록한다.
 
 ## 4. CoT·ReAct 단계와 기록
 
@@ -149,14 +179,14 @@ flowchart TD
 
 | 도구 | 입력 JSON Schema 요약 | 성공 결과에서 확인할 필드 | 오류·특수 상태 |
 |---|---|---|---|
-| `search_festivals` | 모두 선택: `region`(기본 `ALL`, 17개 시·도 코드), `date_from`·`date_to`(`YYYY-MM-DD`, 순서·최대 366일 검증), `q`(1~50자), `status`(`upcoming/ongoing/ended/cancelled` 중 하나 또는 쉼표로 구분한 여러 상태, 예: `ongoing,upcoming`), `page_size`(1~20, 기본 10). **도구 스키마에는 `bbox`·`sort`·`page`가 없다.** | `data.items[]`의 `festival_id`, `name`, `region_code`, 날짜, `source`, `last_synced_at`; `total`·`page`·`page_size` | `items:[]`는 `ok:true`인 결과 없음. `VALIDATION_ERROR`는 되묻거나 입력 수정, `TOOL_TIMEOUT`·`RATE_LIMITED`는 제한 재시도. |
+| `search_festivals` | 모두 선택: `region`(기본 `ALL`, 17개 시·도 코드), `date_from`·`date_to`(`YYYY-MM-DD`, 순서·최대 366일 검증), `q`(1자부터 50자까지), `status`(`upcoming/ongoing/ended/cancelled` 중 하나 또는 쉼표로 구분한 여러 상태, 예: `ongoing,upcoming`), `page_size`(1부터 20까지, 기본 10). **도구 스키마에는 `bbox`·`sort`·`page`가 없다.** | `data.items[]`의 `festival_id`, `name`, `region_code`, 날짜, `source`, `last_synced_at`; `total`·`page`·`page_size` | `items:[]`는 `ok:true`인 결과 없음. `VALIDATION_ERROR`는 되묻거나 입력 수정, `TOOL_TIMEOUT`·`RATE_LIMITED`는 제한 재시도. |
 | `get_festival` | 필수 `festival_id:string` 하나. 검색 결과의 ID나 선택 문맥의 ID를 그대로 사용 | `data.festival_id`, `name`, 장소·주소·좌표, 날짜, `source`, `source_ref`, `last_synced_at`. 빈값 허용 필드는 그대로 표시 | `FESTIVAL_NOT_FOUND`는 재선택 요청. ID 형식 오류는 `VALIDATION_ERROR`, 일시적 호출 오류는 `TOOL_TIMEOUT`. |
 | `get_crowd` | 필수 `festival_id:string` 하나. 지역 코드나 관측구역 코드를 인자로 보내지 않음 | 현재 Agent가 사용하는 값은 `data.festival_id`, `status`, `coverage`, `areas[]`의 `area_name`, `congest_level`, `observed_at`, `is_estimate`, `source`다. API의 `forecast[]`는 현재 답변에 사용하지 않는다. | `status:unsupported`는 정상 미지원. `status:stale`은 관측 시각을 밝히고 현재 상태로 단정하지 않음. `status:unavailable`은 정보 제공 불가. 본문 결과 코드 오류는 `SOURCE_RESULT_ERROR`. |
 | `get_official_notices` | 필수 `festival_id:string`, 선택 `type`(`operation/traffic_control/no_stop/bus_detour/road_closure`) | `data.festival_id`, `status`, `coverage`, `items[]`의 `notice_id`, `title`, `source`, `published_at`, `effective_from`, `effective_to` | `items:[]`는 정상 빈 결과. `unsupported`·`unavailable`은 공지 확인 불가, `stale`은 오래된 자료임을 표시. 현재 검증 자료는 모의 응답이다. |
 
 `search_festivals` 도구의 기본 `page_size`는 10이지만 공개 축제 목록 API의 기본값은 20이다. 연결 어댑터는 도구 호출에서 값이 생략되면 API 요청에 `page_size=10`을 명시한다.
 
-**W14 연결 확인(2026-11-24):** `yubeen 00ca7dc`의 공통 `ToolExecutor`를 `dayoung`에 반영했다. Festival 단독 HTTP 실행기에서는 Agent 실행마다 `FESTIVAL_TOOLS` 권한의 실행기를 새로 만들고, 실행별 `trace_id`를 모든 도구 호출에 전달한다. 모의 전송 시험에서 검색→상세→혼잡 3회 호출, 같은 추적 ID 전달, 범위 밖 귀가 도구의 HTTP 호출 전 차단을 확인했다. 실제 DB 검색·상세와 서울 혼잡 공급원에 대한 단독 실행도 통과했다(A-13). 기존 Festival 그래프가 실제로 선택하는 도구는 검색·상세·혼잡·공식 공지 4개다. `get_facilities`는 공통 실행기의 허용 목록과 인자 검증에만 포함되며, A08 API와 Festival 그래프의 시설 흐름은 아직 구현 전이다.
+**Function Calling 공통 도구 실행기 연결 확인(W14, 2026-11-24):** `yubeen 00ca7dc`의 공통 `ToolExecutor`를 `dayoung`에 반영했다. Festival 단독 HTTP 실행기에서는 Agent 실행마다 `FESTIVAL_TOOLS` 권한의 실행기를 새로 만들고, 실행별 `trace_id`를 모든 도구 호출에 전달한다. 모의 전송 시험에서 검색→상세→혼잡 3회 호출, 같은 추적 ID 전달, 범위 밖 귀가 도구의 HTTP 호출 전 차단을 확인했다. 실제 DB 검색·상세와 서울 혼잡 공급원에 대한 단독 실행도 통과했다(A-13). 기존 Festival 그래프가 실제로 선택하는 도구는 검색·상세·혼잡·공식 공지 4개다. `get_facilities`는 공통 실행기의 허용 목록과 인자 검증에만 포함되며, A08 API와 Festival 그래프의 시설 흐름은 아직 구현 전이다.
 
 도구 래퍼의 공통 출력은 `{ok, data, request_id, is_mock}` 또는 `{ok:false, error:{code,message,retryable}, request_id}`다. **`ok`는 도구 호출의 성공 여부이고, `data.status`는 데이터 이용 가능 상태**이므로 두 값을 순서대로 판정한다. API가 `forecast[]`를 보내더라도 현재 Agent는 이를 답변·근거에 넣지 않는다. 후속 연결 시에는 예측 정보로 별도 표시하고 현재 관측값처럼 표현하지 않는다.
 
@@ -180,9 +210,9 @@ flowchart TD
 | 종류 | 현재 상태 | 보관·재개 규칙 |
 |---|---|---|
 | 실행 중 단기 상태 | `FestivalGraphState`의 `request`, `stage`, 선택 축제 ID, 호출 수, `parts`, `evidence`, `trace` | 한 번의 `.invoke()` 동안 사용한다. 실행 종료 후에는 `FestivalResult`만 호출자에게 반환한다. |
-| 대화 문맥 | `FestivalRequest.festival_id` 등 호출자가 전달한 값만 사용 | 세션 기억·Redis 연결은 아직 없다. 축제 변경 시 문맥 초기화 규칙은 W26에서 정한다. |
-| 장기 지식 | 현재 네 도구 흐름에는 없음 | 공식 안내 RAG·벡터 저장은 W27 이후 별도 계약으로 연결한다. 현재 혼잡을 정적 문서로 대체하지 않는다. |
-| 체크포인트 | `graph.compile()`에 checkpointer가 없음 | 중단된 노드부터 자동 재개하지 못한다. 재호출은 새로운 실행이며, 읽기 전용 도구를 처음부터 다시 부를 수 있다. `thread_id`와 저장 기간은 W26에서 결정한다. |
+| 대화 문맥 | `FestivalRequest.festival_id` 등 호출자가 전달한 값만 사용 | 세션 기억·Redis 연결은 아직 없다. 축제 변경 시 문맥 초기화 규칙은 W26(세션·Redis 대화 상태 및 기억 보존)에서 정한다. |
+| 장기 지식 | 현재 네 도구 흐름에는 없음 | 공식 안내 RAG·벡터 저장은 W27(축제 공식 안내문 수집·RAG 검색) 이후 별도 계약으로 연결한다. 현재 혼잡을 정적 문서로 대체하지 않는다. |
+| 체크포인트 | `graph.compile()`에 checkpointer가 없음 | 중단된 노드부터 자동 재개하지 못한다. 재호출은 새로운 실행이며, 읽기 전용 도구를 처음부터 다시 부를 수 있다. `thread_id`와 저장 기간은 W26(세션·Redis 대화 상태 및 기억 보존)에서 결정한다. |
 
 API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별개다. 체크포인트가 없는 현재 구현을 장애 후 재개 기능으로 설명하지 않는다. 세션 식별자·보존 기간을 확정할 때 API·DB 문서와 이름을 맞춘다.
 현재 `deadline_at`은 프로세스의 단조 시계 값이므로, 후속 체크포인트를 도입할 때 이 값을 그대로 저장·복원하지 않고 재개 시점의 시간 예산을 새로 계산해야 한다.
@@ -199,7 +229,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 검증 | `evidence`, 도구 응답의 `coverage`·`status` | 축제 ID·출처·시각·지역 지원 여부를 확인한다. `unsupported`는 호출 실패와 구별한다. 별도 `validation_errors` 상태 필드는 아직 없다. |
 | 출력 | `answer`, `outcome`, `handoff_target` | `outcome`은 `answered`, `partial`, `clarification_needed`, `unsupported`, `unavailable`, `handoff_required` 중 하나. 복합 요청 중간 실패·미지원은 앞서 확인한 정보를 보존해 `partial`로 끝낸다. |
 
-상태에는 인증 토큰·외부 API 키·경로 본문을 넣지 않는다. 대화 기억의 보존 방식은 W26에서 정하고, 현재 설계는 필요한 최소 문맥만 다음 노드에 전달한다.
+상태에는 인증 토큰·외부 API 키·경로 본문을 넣지 않는다. 대화 기억의 보존 방식은 W26(세션·Redis 대화 상태 및 기억 보존)에서 정하고, 현재 설계는 필요한 최소 문맥만 다음 노드에 전달한다.
 
 
 ### 7-1. 실제 `FestivalGraphState` 필드와 작성 노드
@@ -292,7 +322,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 | 출처·시각·지원 범위 검증 실패 | 확인 불가를 명시하고 종료. 혼잡 `ok`·`stale`에는 `coverage.supported=true`가 필요하다. 모의 결과는 실제 현장 정보로 표시하지 않음. |
 | Festival 범위 밖 질문 | `handoff_required`. 단독 실행에서 다른 에이전트를 직접 호출하지 않음. |
 
-**현재 코드 예산:** 정상 복합 흐름은 도구 3회, 전체 상한은 **4회(재시도 포함)**, 동일 호출 재시도 최대 1회, 전체 실행 시간 기본 30초다. 따라서 검색·상세·혼잡 중 한 번의 일시 오류는 재시도 후에도 다음 단계로 진행할 수 있다. 노드에서 호출 전후 시간을 확인하고 초과 시 `unavailable` 또는 앞서 확인한 정보가 있으면 `partial`로 종료한다. 이는 **협력적 시간 제한**이며 진행 중인 동기 HTTP 호출을 30초 시점에 강제로 중단하지는 않는다. HTTP 래퍼의 호출별 기본 타임아웃은 5초다. 실제 한도는 W23/W24에서 다시 확정한다.
+**현재 코드 예산:** 정상 복합 흐름은 도구 3회, 전체 상한은 **4회(재시도 포함)**, 동일 호출 재시도 최대 1회, 전체 실행 시간 기본 30초다. 따라서 검색·상세·혼잡 중 한 번의 일시 오류는 재시도 후에도 다음 단계로 진행할 수 있다. 노드에서 호출 전후 시간을 확인하고 초과 시 `unavailable` 또는 앞서 확인한 정보가 있으면 `partial`로 종료한다. 이는 **협력적 시간 제한**이며 진행 중인 동기 HTTP 호출을 30초 시점에 강제로 중단하지는 않는다. HTTP 래퍼의 호출별 기본 타임아웃은 5초다. 실제 한도는 상태 전이 설계(W23)와 전국 DB·서울 혼잡 조회 구현(W24)에서 다시 확정한다.
 
 
 ### 9-1. 최종 결과의 세 범주
@@ -353,18 +383,18 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 `origin/ohyun`의 `5838bfa`를 별도 작업 폴더에서 실행하고 현재 Festival Agent를 연결했다. 전체 축제 검색의 첫 결과 `fst_000004`는 상세 조회가 `answered`, 주변 혼잡이 `unsupported`였다. 같은 축제를 대상으로 한 복합 요청은 도구를 검색→상세→혼잡 순서로 3회 호출하고, 확인된 정보와 미지원 안내를 함께 담아 `partial`로 끝났다. 없는 축제 ID는 `clarification_needed`로 끝났다. 서울 검색의 첫 결과 `fst_000001`은 혼잡 조회가 `answered`였고, 지원 범위 검사도 통과했다. 이 검증은 모의 데이터에 대한 연결 시험이며 실제 DB·현장 혼잡 검증은 아니다.
 
-**이 단계 시험의 한계:** 자연어 질문에서 `intent`·`select_first`·검색 조건을 추출하는 모델 연결, 실제 DB 연동, BFCL 채점은 이 시험에 포함되지 않았다. 실제 DB·혼잡 직접 연결은 후속 A-11~A-12에서 별도로 확인했다. 30초 예산은 호출 전후 검사이며 실행 중인 동기 HTTP 호출을 강제로 끊는 방식은 아니다. 이 시험만으로 W24 전체 완료나 11/27 제출 완료로 기록하지 않는다.
+**이 단계 시험의 한계:** 자연어 질문에서 `intent`·`select_first`·검색 조건을 추출하는 모델 연결, 실제 DB 연동, BFCL 채점은 이 시험에 포함되지 않았다. 실제 DB·혼잡 직접 연결은 후속 A-11부터 A-12까지에서 별도로 확인했다. 30초 예산은 호출 전후 검사이며 실행 중인 동기 HTTP 호출을 강제로 끊는 방식은 아니다. 이 시험만으로 W24(단일 Festival Agent 전국 DB·서울 혼잡 조회 구현) 전체 완료나 11/27 제출 완료로 기록하지 않는다.
 
-### A-3. W24 실제 데이터 연결 준비 상태
+### A-3. Festival Agent 전국 DB·서울 혼잡 조회 준비 상태(W24)
 
-11/23 당시 `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣었다. **이 절을 처음 작성할 때 혼잡 API는 모의 응답이었으며, 이후 W89 실제 모드가 추가됐다(A-7~A-10 참조).** DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
+11/23 당시 `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣었다. **이 절을 처음 작성할 때 혼잡 API는 모의 응답이었으며, 이후 W89(축제·서울 지원 장소 검증 매핑·혼잡/전망 API) 실제 모드가 추가됐다(A-7부터 A-10까지 참조).** DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
 
-W24 확인 순서는 다음과 같다.
+전국 DB·서울 혼잡 조회 구현(W24)의 확인 순서는 다음과 같다.
 
-1. W100에서 승인·게시된 실제 축제 데이터를 복수 지역으로 적재하고, 별도 시험 DB 접속 정보가 준비됐는지 확인한다. 접속 정보는 문서나 로그에 남기지 않는다.
+1. W100(축제 DB 업서트·정기 수집)에서 승인·게시된 실제 축제 데이터를 복수 지역으로 적재하고, 별도 시험 DB 접속 정보가 준비됐는지 확인한다. 접속 정보는 문서나 로그에 남기지 않는다.
 2. DB 모드에서 `search_festivals`로 서울 및 다른 지역 축제를 조회하고 `is_mock:false`, 출처, 갱신 시각, 선택 ID를 대조한다.
 3. 같은 ID로 `get_festival`을 호출해 목록과 상세의 축제 ID·출처가 일치하는지 확인한다.
-4. W89의 검증된 서울 축제↔관측구역 매핑과 혼잡 API가 준비된 뒤 `get_crowd`를 연결한다. 실제 관측 시각·`coverage.supported`·미지원 상태를 확인하고 모의 응답과 구분한다.
+4. 서울 축제·지원 장소 검증 매핑 및 혼잡/전망 API(W89)가 준비된 뒤 `get_crowd`를 연결한다. 실제 관측 시각·`coverage.supported`·미지원 상태를 확인하고 모의 응답과 구분한다.
 5. 검색→상세→혼잡 단독 실행의 도구 순서, 종료 상태, `used_tools`·`evidence`를 남긴다. 어느 단계라도 모의 응답이면 실제 DB 전체 E2E 완료로 표시하지 않는다.
 
 ### A-4. 축제 DB 준비 안내 반영
@@ -387,7 +417,7 @@ W24 확인 순서는 다음과 같다.
 
 현재 `origin/ohyun` 브랜치의 **공지 라우터만** 별도 로컬 앱에 연결해 HTTP로 확인했다. 모의 축제 `fst_000001`에서 유효한 공지 2건, `type=traffic_control`에서 1건을 받았다. `fst_000002`의 빈 목록은 `answered`로 끝났고, 효력 기간이 지난 공지는 API에서 제외됐다. 에이전트 단독·그래프 시험은 기존 23개에 공지 사례 3개를 더해 **26개 통과**했다. 현재 환경에서 `backend/` 기준 `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`로 재실행했다. 전체 오현님 서버를 Windows에서 실행하거나 실제 공식 공지 공급원과 연결한 검증은 아니다.
 
-### A-7. W89 서울 혼잡 API 계약 대조
+### A-7. 축제·서울 지원 장소 검증 매핑과 혼잡 API 계약 대조
 
 `origin/ohyun`의 `380d178`에 서울 공식 관측구역 121곳을 이용한 혼잡 API 구현이 올라왔다. `CROWD_PROVIDER=real`일 때 응답은 `is_mock:false`, `nearby_areas`에 1km 내 최대 3곳, 기존 `areas[0]`에 대표 구역을 제공한다. 따라서 Festival Agent의 현재 `areas[0]` 읽기 방식은 유지할 수 있다. 다만 실시간 관측이 없는 경우 `is_estimate=true`로 최근 4주 같은 요일·시간대 평균값이 반환되므로, 이 값을 실시간으로 오해하지 않도록 답변·근거에 구분 표시를 추가했다.
 
@@ -409,7 +439,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 사용자가 학원망 맥북 Safari에서 `fst_01M835BYKKNJ8CZP9RP09ST18D`의 `/crowd` 응답 화면을 제공했다. 화면에 `is_mock:false`, `festival_id` 일치, `status:"ok"`, `coverage.scope:"seoul_only"`, `coverage.region_code:"SEOUL"`, `coverage.supported:true`, `source:"seoul_citydata"`, `observed_at:"2026-11-23T16:40:00+09:00"`이 보인다. 대표 `areas[0]`은 숭례문 구역의 혼잡 `보통`이며, `nearby_areas`에는 최대 세 구역이 표시되고 최상위 `is_estimate:false`다. 따라서 **해당 시점의 실제 혼잡 API 응답**은 확인했다.
 
-이 증거는 Safari에서 받은 **API 직접 조회 화면**이다. Festival Agent가 같은 응답을 받아 `answered`와 근거를 반환한 실행 로그는 아직 없으므로 W24 단독 E2E 완료로 기록하지 않는다. 관측 시각은 응답에 적힌 자료 기준 시각이며 현재 시각의 혼잡을 보장하는 표현으로 사용하지 않는다.
+이 증거는 Safari에서 받은 **API 직접 조회 화면**이다. Festival Agent가 같은 응답을 받아 `answered`와 근거를 반환한 실행 로그는 아직 없으므로 W24(단일 Festival Agent 전국 DB·서울 혼잡 조회 구현) 단독 E2E 완료로 기록하지 않는다. 관측 시각은 응답에 적힌 자료 기준 시각이며 현재 시각의 혼잡을 보장하는 표현으로 사용하지 않는다.
 
 집 Windows에서 실제 응답 본문을 재생할 수 있도록 `backend/agents/check_festival_capture.py`를 추가했다. 학원망 맥북 Safari의 `/crowd` 응답 화면에서 JSON 전체를 복사해 채팅에 붙이거나 `.json` 파일로 전달받은 뒤, Windows `backend/`에서 `uv run --with-requirements agents/requirements.txt python -m agents.check_festival_capture <응답 파일.json>`을 실행한다. `is_mock:false`와 축제 ID를 확인하고 **저장된 실제 응답을 Festival Agent 그래프의 `get_crowd` 결과로 한 번 주입**한다. 이 방식은 Agent의 검증·답변 호환성을 확인하지만, Agent가 학원 서버에 직접 HTTP 요청을 보낸 단독 E2E는 아니다.
 
@@ -423,33 +453,33 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 사용자가 `q=숭례문` 검색 결과도 제공했고, 첫 결과 ID `fst_01M835BYKKNJ8CZP9RP09ST18D`가 앞서 받은 상세·혼잡 응답과 일치했다. 세 응답 모두 `is_mock:false`였다. 복사된 URL 문자열의 잘못된 이스케이프와 Agent가 사용하지 않는 필드를 제외하고 **검색·상세·혼잡 응답에서 Agent가 소비하는 원문 값을 추출**해 `search_detail_crowd` 그래프에 순서대로 주입했다. `search_festivals(region=SEOUL, q=숭례문, page_size=1) → get_festival(같은 ID) → get_crowd(같은 ID)`로 3회 호출했고, `outcome=answered`, 근거 3건으로 종료했다. 축제 출처·갱신 시각과 숭례문 구역 혼잡·관측 시각·적용 범위가 답변에 포함됐다.
 
-이는 **실제 API에서 받은 세 응답의 핵심 필드와 복합 상태 전이의 호환 검증**이다. Agent가 학원 서버를 직접 호출한 실행은 아니므로 W24의 직접 HTTP 단독 E2E 완료로 기록하지 않는다.
+이는 **실제 API에서 받은 세 응답의 핵심 필드와 복합 상태 전이의 호환 검증**이다. Agent가 학원 서버를 직접 호출한 실행은 아니므로 W24(단일 Festival Agent 전국 DB·서울 혼잡 조회 구현)의 직접 HTTP 단독 E2E 완료로 기록하지 않는다.
 
-### A-11. 학원망 맥북에서 Festival Agent 직접 HTTP 실행 (2026-11-24)
+### A-11. 학원 네트워크의 macOS 환경에서 Festival Agent 직접 HTTP 실행 (2026-11-24)
 
 사용자가 맥북의 임시 폴더에 `dayoung` 브랜치를 받아 `python -m agents.check_festival_live --base-url '<학원 API 주소>' --crowd-festival-id fst_01M835BYKKNJ8CZP9RP09ST18D`를 직접 실행한 터미널 기록을 제공했다. 실행기는 각 API 응답의 `is_mock:false`를 검사한 뒤 Agent를 실행한다. 출력은 `ongoing: total=28, agent_evidence=10`, `upcoming: total=31, agent_evidence=10`, `detail: festival_id=fst_01M835BPX17Y44VEDJM1VMZ3N6, outcome=answered, source=tourapi`, `Real DB search/detail check passed.`였다. 따라서 **실제 축제 DB 검색·상세에 대한 Agent 직접 HTTP 연결은 통과**했다.
 
 같은 실행의 혼잡 출력은 `festival_id=fst_01M835BYKKNJ8CZP9RP09ST18D, provider_status=unsupported, agent_outcome=unsupported, is_estimate=False`였다. 실행기는 혼잡 응답도 `is_mock:false`인지 검사했으므로 이는 모의 값이 아닌 **실제 API의 미지원 판정**이다. 당시에는 Agent가 이를 `unsupported`로 안내하는 분기만 확인했다. 이후 서울빛초롱축제에서 실제 혼잡 `answered`를 확인했다(A-12). 기존 `check_festival_live.py`는 `unsupported`에서도 정상 종료하므로 이 실행의 프로세스 종료만으로 혼잡값 제공 성공이라 판단하지 않는다.
 
-`origin/ohyun`의 `61301f9` 기준 `backend/api/data/seoul_crowd_mapping.json`에는 승인된 후보 연결이 0개였다. 이후 오현님이 당시 승인 0건이 `unsupported` 원인이었다고 확인했고, 공개 범위를 축제(EV01)로 바꾸며 숭례문 매핑을 취소했다(A-12). 따라서 A-8~A-10의 숭례문 결과는 **11/23 당시 기록**이며 현재 공개 축제의 혼잡 근거로 사용하지 않는다.
+`origin/ohyun`의 `61301f9` 기준 `backend/api/data/seoul_crowd_mapping.json`에는 승인된 후보 연결이 0개였다. 이후 오현님이 당시 승인 0건이 `unsupported` 원인이었다고 확인했고, 공개 범위를 축제(EV01)로 바꾸며 숭례문 매핑을 취소했다(A-12). 따라서 A-8부터 A-10까지의 숭례문 결과는 **11/23 당시 기록**이며 현재 공개 축제의 혼잡 근거로 사용하지 않는다.
 
 ### A-12. EV01 공개 범위 변경과 재시험 대상 (2026-11-24)
 
-오현님 보고에 따르면 W89는 승인된 매핑만 실제 혼잡을 제공하며, 기존 실행 당시 승인 0건이 숭례문 `unsupported`의 원인이었다. 이어서 공개 범위를 축제(EV01)로 바꾸면서 숭례문 파수의식(EV03)과 페인터즈(공연)는 공개 목록에서 제외됐다. 오현님은 학원 서버 `ohyun-web aa9036e`에서 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 `is_mock:false`, `status:ok`, 주변 구역 응답을 확인했다고 전달했다. 이 보고는 API 직접 조회이며 아래의 Agent 직접 실행 결과와 구분한다.
+오현님 보고에 따르면 W89(축제·서울 지원 장소 검증 매핑·혼잡/전망 API)는 승인된 매핑만 실제 혼잡을 제공하며, 기존 실행 당시 승인 0건이 숭례문 `unsupported`의 원인이었다. 이어서 공개 범위를 축제(EV01)로 바꾸면서 숭례문 파수의식(EV03)과 페인터즈(공연)는 공개 목록에서 제외됐다. 오현님은 학원 서버 `ohyun-web aa9036e`에서 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 `is_mock:false`, `status:ok`, 주변 구역 응답을 확인했다고 전달했다. 이 보고는 API 직접 조회이며 아래의 Agent 직접 실행 결과와 구분한다.
 
-따라서 A-7의 재시험 명령을 새 ID와 `--require-crowd-answered`로 갱신했다. **다영님이 학원망 맥북에서 `dayoung f242684`를 임시 폴더에 받아 직접 실행한 결과**, 진행 축제 검색 `total=1`, 예정 축제 검색 `total=12`, 첫 검색 결과 상세 `answered`·`source=tourapi`였다. 이어 서울빛초롱축제의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 검색·상세·혼잡 응답의 `is_mock:false`를 요구하며, 새 옵션은 실제 혼잡 `answered`가 아니면 오류로 종료한다. 이번 실행은 오류 없이 끝났으므로 **서울빛초롱축제 1건의 실제 DB·혼잡 API와 Festival Agent 직접 HTTP 연결을 확인**했다. 다만 터미널 출력에는 혼잡 관측 시각·구역 이름이 없어 그 값은 이번 증빙으로 확정하지 않는다. A-8~A-11의 과거 실행 기록은 당시 결과로 유지한다.
+따라서 A-7의 재시험 명령을 새 ID와 `--require-crowd-answered`로 갱신했다. **다영님이 학원망 맥북에서 `dayoung f242684`를 임시 폴더에 받아 직접 실행한 결과**, 진행 축제 검색 `total=1`, 예정 축제 검색 `total=12`, 첫 검색 결과 상세 `answered`·`source=tourapi`였다. 이어 서울빛초롱축제의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 검색·상세·혼잡 응답의 `is_mock:false`를 요구하며, 새 옵션은 실제 혼잡 `answered`가 아니면 오류로 종료한다. 이번 실행은 오류 없이 끝났으므로 **서울빛초롱축제 1건의 실제 DB·혼잡 API와 Festival Agent 직접 HTTP 연결을 확인**했다. 다만 터미널 출력에는 혼잡 관측 시각·구역 이름이 없어 그 값은 이번 증빙으로 확정하지 않는다. A-8부터 A-11까지의 과거 실행 기록은 당시 결과로 유지한다.
 
 별도 접속 환경에서의 재시도는 첫 `ongoing` 검색이 `TOOL_TIMEOUT`으로 종료되어 실자료 검증 근거로 사용하지 않는다. 앞 문단의 직접 HTTP 성공 기록은 이와 구분한다.
 
-### A-13. W14 공통 실행기 연결 후 재시험 (2026-11-24)
+### A-13. Function Calling 공통 도구 실행기 연결 후 재시험 (2026-11-24)
 
 `dayoung 6dc31ca`에서 Festival 단독 실행기의 도구 호출을 `ToolExecutor.execute`로 바꾸고, 실행별 추적 ID를 전달했다. 공통 명령으로 모의 전송·그래프 시험 **35개가 통과**했다. 한 접속 환경에서는 첫 진행 축제 검색이 `TOOL_TIMEOUT`으로 끝나 실자료 검증 근거로 사용하지 않았다.
 
-이후 다영님이 `dayoung` 브랜치를 받아 A-7의 실제 API 명령을 실행한 터미널 출력을 제공했다. 진행 검색은 `total=1`, `agent_evidence=1`, 예정 검색은 `total=12`, `agent_evidence=10`이었다. 검색 결과의 상세는 `festival_id=fst_01M835BCHV21MGQF4333AAJZJ4`, `outcome=answered`, `source=tourapi`였고 실행기가 `Real DB search/detail check passed.`를 출력했다. 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 각각의 원시 응답에서 `is_mock:false`를 요구하고 `--require-crowd-answered`로 혼잡 결과를 검사하므로, **W14 공통 실행기를 통한 실제 DB·서울 혼잡 공급원 직접 HTTP 단독 실행이 통과**했다. 첫 실행 출력은 검색·상세·혼잡의 단독 실행을 확인한 것이며, 복합 호출은 아래의 후속 실행으로 따로 확인했다. 공식 공지·주변 시설 응답은 확인하지 않았다. 혼잡 관측 시각과 구역 이름도 터미널 출력에 없어 이번 증빙으로 확정하지 않는다.
+이후 다영님이 `dayoung` 브랜치를 받아 A-7의 실제 API 명령을 실행한 터미널 출력을 제공했다. 진행 검색은 `total=1`, `agent_evidence=1`, 예정 검색은 `total=12`, `agent_evidence=10`이었다. 검색 결과의 상세는 `festival_id=fst_01M835BCHV21MGQF4333AAJZJ4`, `outcome=answered`, `source=tourapi`였고 실행기가 `Real DB search/detail check passed.`를 출력했다. 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 각각의 원시 응답에서 `is_mock:false`를 요구하고 `--require-crowd-answered`로 혼잡 결과를 검사하므로, **Function Calling 공통 실행기(W14)를 통한 실제 DB·서울 혼잡 공급원 직접 HTTP 단독 실행이 통과**했다. 첫 실행 출력은 검색·상세·혼잡의 단독 실행을 확인한 것이며, 복합 호출은 아래의 후속 실행으로 따로 확인했다. 공식 공지·주변 시설 응답은 확인하지 않았다. 혼잡 관측 시각과 구역 이름도 터미널 출력에 없어 이번 증빙으로 확정하지 않는다.
 
-후속 코드 `dayoung 7b8451a`는 `--require-crowd-answered` 실행 시 축제 이름으로 검색→상세→혼잡을 **한 번의 그래프에서 연속 호출**하고 축제 ID·호출 순서·근거를 검사하도록 추가했다. 고정 응답 시험 35개가 다시 통과했다. 다영님이 이 코드를 받은 뒤 같은 실제 API 명령을 재실행한 터미널 출력은 `composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_calls=3, evidence=3`이었다. 따라서 **W14 공통 실행기를 통한 실제 공급원 복합 흐름도 통과**했다. 이 검사는 검색 결과로 선택된 축제 ID와 상세·혼잡 근거의 ID가 모두 같은지 확인한다. 공식 공지와 주변 시설의 실제 공급원 응답은 이 시험에 포함되지 않는다.
+후속 코드 `dayoung 7b8451a`는 `--require-crowd-answered` 실행 시 축제 이름으로 검색→상세→혼잡을 **한 번의 그래프에서 연속 호출**하고 축제 ID·호출 순서·근거를 검사하도록 추가했다. 고정 응답 시험 35개가 다시 통과했다. 다영님이 이 코드를 받은 뒤 같은 실제 API 명령을 재실행한 터미널 출력은 `composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_calls=3, evidence=3`이었다. 따라서 **Function Calling 공통 실행기(W14)를 통한 실제 공급원 복합 흐름도 통과**했다. 이 검사는 검색 결과로 선택된 축제 ID와 상세·혼잡 근거의 ID가 모두 같은지 확인한다. 공식 공지와 주변 시설의 실제 공급원 응답은 이 시험에 포함되지 않는다.
 
-**11/26 피드백 반영:** 같은 축제 ID로 이어진 복합 실행은 위 기록으로 확인된다. 당시 출력에는 혼잡 `observed_at`이 없었으므로 점검기에 공급원과 관측 시각 출력을 추가했고, A-14에서 재실행해 값을 기록했다. 미지원 처리는 A-11의 당시 실제 API `unsupported` 결과와 고정 응답 HTTP 시험으로 확인했다. 현재 공개 범위에서 부산 축제의 실호출까지 확인한 결과는 아니다.
+같은 축제 ID로 이어진 복합 실행은 위 기록으로 확인된다. 당시 출력에는 혼잡 `observed_at`이 없었으므로 점검기에 공급원과 관측 시각 출력을 추가했고, A-14에서 재실행해 값을 기록했다. 미지원 처리는 A-11의 당시 실제 API `unsupported` 결과와 고정 응답 HTTP 시험으로 확인했다. 현재 공개 범위에서 부산 축제의 실호출까지 확인한 결과는 아니다.
 
 ### A-14. 서울빛초롱축제 실제 조회와 혼잡 관측 시각 재확인 (2026-11-26)
 
@@ -459,7 +489,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ### A-15. 서로 다른 축제 ID의 실DB 상세 분리 확인 (2026-11-26)
 
-`dayoung 777d743` 점검기에 `--verify-multi-festival`을 추가했다. 다영님이 변경을 받은 뒤 실제 API로 실행한 결과, 진행·예정 검색에서 선택한 서로 다른 두 축제 ID `fst_01M835BCHV21MGQF4333AAJZJ4`와 `fst_01M835BS447VDC8PVAQNM8GKHF`의 상세가 각각 `answered`였다. 점검기는 두 번째 축제의 원시 상세 `is_mock:false`·응답 ID와 Agent 상세 근거 ID를 요청 ID와 대조하며, 다르면 실패한다. 별도로 서울빛초롱축제의 상세·혼잡·복합 흐름도 다시 `answered`였고 혼잡 관측 시각은 `2026-11-26T10:00:00+09:00`, 출처는 `seoul_citydata`였다. [원출력·범위](evidence/Festival_live_2026-11-26.md)를 기록했다. 두 번째 축제의 혼잡, 공식 공지·시설의 실제 공급원 응답은 확인하지 않았다.
+`dayoung 777d743` 점검기에 `--verify-multi-festival`을 추가했다. 다영님이 변경을 받은 뒤 실제 API로 실행한 결과, 진행·예정 검색에서 선택한 서로 다른 두 축제 ID `fst_01M835BCHV21MGQF4333AAJZJ4`와 `fst_01M835BS447VDC8PVAQNM8GKHF`의 상세가 각각 `answered`였다. 점검기는 두 번째 축제의 원시 상세 `is_mock:false`·응답 ID와 Agent 상세 근거 ID를 요청 ID와 대조하며, 다르면 실패한다. 별도로 서울빛초롱축제의 상세·혼잡·복합 흐름도 다시 `answered`였고 혼잡 관측 시각은 `2026-11-26T10:00:00+09:00`, 출처는 `seoul_citydata`였다. [실행 결과 요약·범위](evidence/Festival_live_2026-11-26.md)를 기록했다. 두 번째 축제의 혼잡, 공식 공지·시설의 실제 공급원 응답은 확인하지 않았다.
 
 ### A-16. 시간·호출 예산 종료 재현 (2026-11-26)
 
@@ -476,32 +506,32 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ## 부록 B. 후속 구현에서 확인할 결정
 
-1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
-2. 세션·체크포인트를 도입할 시점에 `thread_id`, 보존 기간, 중단 후 재개 규칙을 W26 및 DB 문서와 맞춘다.
+1. **11/27 제출 선결 사항 아님:** 단독 시험은 현재 구조화된 `FestivalRequest`로 재현한다. 모델·프롬프트와 Supervisor→Festival 세부 입력 계약은 W44(5개 에이전트 역할·도구·상태 설계) 이후 연결 단계에서 확정하고, 그때 자연어 입력 시험과 JSON 실패 처리 규칙을 추가한다. 모델 실행 전에는 CoT·ReAct 성능을 검증했다고 쓰지 않는다.
+2. 세션·체크포인트를 도입할 시점에 `thread_id`, 보존 기간, 중단 후 재개 규칙을 W26(세션·Redis 대화 상태 및 기억 보존) 및 DB 문서와 맞춘다.
 3. 날씨 답변: Festival Agent의 최종 범위에 둘지, `get_weather` 도구를 언제 추가할지, BFCL 문항에 어떤 영향을 주는지 결정한다.
 4. 공식 공지의 실제 공급원과 시설 자료의 준비 상태를 확인한다. 현재 공지는 모의 API와의 계약만 검증했다.
 5. 현재 코드의 단계별 재시도 1회·전체 도구 호출 4회·30초 제한을 후속 협업 흐름에도 적용할지 구현 담당자와 확인한다.
 6. 도구 계약은 `origin/ohyun` 최신 브랜치를 기준으로 유지한다. 인계 문서의 Festival Agent 도구 목록에서 `save_favorite`가 제외된 상태도 확인했다.
 
-## 부록 C. W23 검토자가 확인할 지점 (2026-11-24)
+## 부록 C. 단일 Festival Agent LangGraph 상태 전이 설계 검토 항목 (2026-11-24)
 
 | 확인 지점 | 현재 근거 | 검토할 질문 |
 |---|---|---|
 | 그래프 전이·종료 | 2장·8장·9장, `backend/agents/festival_graph.py` | 모든 분기가 `END`에 도달하고, 검색→상세→혼잡의 ID가 계속 같은가? |
 | 오류·호출 예산 | 5-2절·9장, 기존 35개·시간 예산 반영본 36개·늦은 성공 응답 반영본 37개 통과 | 일시 오류만 단계별 최대 1회 재시도, 전체 4회·30초 제한, 앞 단계 성공 후 실패 시 `partial` 처리가 맞는가? |
-| 실제·모의 근거 경계 | A-7~A-10 | 실제 API 직접 조회, 실제 응답 필드 재생, Agent의 학원 서버 직접 HTTP E2E를 구분했는가? |
+| 실제·모의 근거 경계 | A-7부터 A-10까지 | 실제 API 직접 조회, 실제 응답 필드 재생, Agent의 학원 서버 직접 HTTP E2E를 구분했는가? |
 | 기능 범위 | 1-1절·3장 | 현재 네 도구와 후속 시설·코스·RAG·Supervisor 계약을 구현 완료로 혼동하지 않는가? |
 
 이 표는 R04 검토 지점이다. 태경님 최종 검토는 2026-11-26 완료됐고, `main 0fda8fd` 제출 기준 시험 결과는 부록 D에 기록했다. 실제 제출 여부는 별도 확인한다.
 
 ## 부록 D. 11/27 공통 시험 실행 기준
 
-- **기존 코드 기준:** `dayoung 7b8451a`(2026-11-24)에서 W14 공통 도구 실행기를 Festival 단독 HTTP 실행기에 연결하고 실제 공급원 복합 검사를 추가했다. 당시 `main 709a279`에는 Festival 코드·공통 실행기·설계서와 실조회 증빙이 있었다. 이후 `dayoung`의 두 축제 상세 ID 검사·시간 예산 시험과 최신 증빙은 `main 0fda8fd`에 병합됐다.
+- **기존 코드 기준:** `dayoung 7b8451a`(2026-11-24)에서 Function Calling 공통 도구 실행기(W14)를 Festival 단독 HTTP 실행기에 연결하고 실제 공급원 복합 검사를 추가했다. 당시 `main 709a279`에는 Festival 코드·공통 실행기·설계서와 실조회 증빙이 있었다. 이후 `dayoung`의 두 축제 상세 ID 검사·시간 예산 시험과 최신 증빙은 `main 0fda8fd`에 병합됐다.
 - **11/26 실조회·단독 시험 기준:** `dayoung dc35ad5` 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 같은 체크아웃에서 `git rev-parse --short HEAD`로 커밋을 확인했고 Festival 단독 시험 `Ran 35 tests`, `OK`를 받았다. 실조회 출력과 시험 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
-- **실행 결과:** 2026-11-26 `dayoung dc35ad5`, macOS·Python 3.14.7 가상환경에서 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다. 원출력은 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
-- **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
+- **실행 결과:** 2026-11-26 `dayoung dc35ad5`, macOS·Python 3.14.7 가상환경에서 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 Function Calling 공통 실행기(W14)의 복합 흐름·추적 ID·권한 차단을 확인한다. 시험 결과와 실행 환경은 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
+- **범위:** 이 명령은 고정 응답·모의 HTTP를 이용한 재현 시험이다. 실제 학원 API 직접 호출이나 W24(단일 Festival Agent 전국 DB·서울 혼잡 조회 구현) 단독 E2E를 통과했다고 뜻하지 않는다. 실패 시 실행 환경·커밋·문항·오류를 같이 기록한다.
 - **최신 개인 브랜치 시험:** 11/26 `dayoung 122cb32`, macOS·Python 3.14.7에서 같은 Festival 단독 명령을 다시 실행해 `Ran 35 tests in 0.077s`, `OK`를 확인했다. 404·503 시험에서 `ResourceWarning` 두 줄이 있었으나 실패는 없었다. 이후 시간 예산 시험 코드 변경은 이 결과에 포함되지 않는다.
 - **시간 예산 반영본:** 11/26 `dayoung 45be6ed`, 같은 환경에서 Festival 단독 시험 `Ran 36 tests in 0.080s`, `OK`; `python -m agents.check_festival_budget`은 30.1초 가상 경계·4회 호출 상한 두 사례를 모두 `partial`로 확인했다. 벽시계 경과와 부분 답변은 [증빙](evidence/Festival_live_2026-11-26.md)에 있다.
 - **늦은 성공 응답 반영본:** 11/26 `dayoung f454e7e`, Windows·Python 3.12.15에서 LangGraph 설치 후 Festival 단독 시험 `Ran 37 tests`, `OK`. 혼잡 성공 응답이 30초를 넘겨 도착하면 그 내용을 버리고 상세 근거와 혼잡 미확인 안내를 포함한 `partial`로 끝나는 신규 시험을 포함한다. `check_festival_budget`의 2회·4회 호출 사례도 모두 `partial`이었다. [환경·명령·결과](evidence/Festival_live_2026-11-26.md)를 따른다.
@@ -512,6 +542,6 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 - [강사님 Step3 단일 에이전트 상태 전이 그래프 설계서 가이드](https://github.com/jbbdyee/ai-engineering-lab/blob/main/Lecture/FinalProject/Doc/Step3/%EB%8B%A8%EC%9D%BC%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8_%EC%83%81%ED%83%9C%EC%A0%84%EC%9D%B4%EA%B7%B8%EB%9E%98%ED%94%84_%EC%84%A4%EA%B3%84%EC%84%9C_%EA%B0%80%EC%9D%B4%EB%93%9C.html) — 9개 항목과 전이표·State·종료 조건 작성 기준
 - `Docs/Step 1/놀다가_기획서.md` — 서비스·5개 Agent·안전 경계
-- `Docs/Step 1/놀다가_WBS.md` — W22~W25 및 M03(11/27)
+- `Docs/Step 1/놀다가_WBS.md` — W22 축제 질의·도구·상태 정의, W23 상태 전이 설계, W24 DB·혼잡 조회 구현, W25 설계서 검토·제출 및 M03(11/27)
 - `Docs/Step 2/API_설계문서.md` — 도구 목록·공통 출력·실패 규칙
 - `Docs/Step 2/handoff/에이전트_도구_인계.md` — Festival Agent 도구 계약 및 모의 API 현황
