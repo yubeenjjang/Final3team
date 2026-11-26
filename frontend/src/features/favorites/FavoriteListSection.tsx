@@ -26,7 +26,7 @@ export function FavoriteListSection() {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-xl font-black"><Heart className="h-5 w-5 fill-brand text-brand" aria-hidden="true" />찜한 축제</h2><Link href="/festivals" className="text-sm font-bold text-brand">전체보기 ›</Link></div>
+      <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-xl font-black"><Heart className="h-5 w-5 fill-brand text-brand" aria-hidden="true" />찜한 축제</h2><Link href="/festivals/favorites" className="text-sm font-bold text-brand">전체보기 ›</Link></div>
       {failed ? <button type="button" onClick={() => { setFailed(false); setAttempt((value) => value + 1); }} className="flex w-full items-center justify-center gap-2 rounded-card-lg border border-line-light py-5 text-sm font-bold"><RotateCcw className="h-4 w-4" /> 다시 불러오기</button>
       : !items ? <div className="h-24 animate-pulse rounded-card-lg bg-surface-muted" />
       : items.length === 0 ? <div className="rounded-card-lg bg-surface-soft px-4 py-6 text-center text-sm text-muted">아직 찜한 축제가 없어요.</div>

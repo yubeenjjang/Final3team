@@ -40,6 +40,10 @@ describe("FavoriteListSection", () => {
     );
 
     expect(await screen.findByText("찜한 등불축제")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /전체보기/ })).toHaveAttribute(
+      "href",
+      "/festivals/favorites",
+    );
     expect(screen.queryByRole("button", { name: /다시 불러오기/ })).not.toBeInTheDocument();
   });
 

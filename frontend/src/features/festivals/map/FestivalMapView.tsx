@@ -270,8 +270,9 @@ export function FestivalMapView({
   // 렌더마다 새 배열을 넘기면 지도가 매번 다시 그려지므로 묶어 둔다.
   const kakaoMarkers = useMemo(
     () =>
-      mapFestivals
-        .map((festival) => ({ lat: festival.lat, lng: festival.lng, title: festival.name }))
+      (selected
+        ? [{ lat: selected.lat, lng: selected.lng, title: selected.name }]
+        : [])
         .concat(
           visibleFacilities.map((facility) => ({
             lat: facility.lat,
@@ -279,7 +280,7 @@ export function FestivalMapView({
             title: facility.name,
           })),
         ),
-    [mapFestivals, visibleFacilities],
+    [selected, visibleFacilities],
   );
   const selectedFacility = visibleFacilities.find(
     (facility) => facility.facility_id === selectedFacilityId,
@@ -500,7 +501,7 @@ export function FestivalMapView({
               <KakaoMap
                 center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
                 markers={kakaoMarkers}
-                level={12}
+                level={4}
                 className="h-[360px] w-full"
               />
             ) : (
