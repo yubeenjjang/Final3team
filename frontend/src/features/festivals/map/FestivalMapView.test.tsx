@@ -170,6 +170,41 @@ describe("FestivalMapView", () => {
     expect(await screen.findByText("검색 조건에 맞는 축제가 없어요.")).toBeInTheDocument();
     expect(screen.getByRole("application", { name: "지난 겨울 등불축제 지도" })).toBeInTheDocument();
   });
+  it("shows a search error instead of 'no results' when the search API fails", async () => {
+    const located = {
+      region_code: "SEOUL",
+      venue_name: "청계천",
+      start_date: "2026-12-01",
+      end_date: "2026-12-31",
+      thumbnail_url: null,
+      image_credit: null,
+      source: "mock",
+      last_synced_at: "2026-11-26T09:00:00+09:00",
+    };
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/facilities")) return Response.json({ items: [] });
+      if (url.pathname.endsWith("/crowd")) return Response.json({ status: "ok", areas: [] });
+      if (url.searchParams.get("q")) return new Response("boom", { status: 500 });
+      return Response.json({
+        is_mock: false,
+        total: 1,
+        page: 1,
+        page_size: 100,
+        items: [{ ...located, festival_id: "fst_map_now", name: "지금 축제", lat: 37.5, lng: 127.0, event_status: "ongoing" }],
+      });
+    }) as unknown as typeof fetch;
+
+    render(<FestivalMapView />);
+    expect(await screen.findByRole("application", { name: "지금 축제 지도" })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
+      target: { value: "등불" },
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("검색 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.");
+    expect(screen.queryByText("검색 조건에 맞는 축제가 없어요.")).not.toBeInTheDocument();
+    expect(screen.getByRole("application", { name: "지금 축제 지도" })).toBeInTheDocument();
+  });
   it("opens with the festival and facility category from the detail page link", async () => {
     const base = {
       region_code: "SEOUL",

@@ -14,8 +14,13 @@ export function FavoriteListSection() {
   useEffect(() => {
     const controller = new AbortController();
     listFavorites(controller.signal)
-      .then((result) => setItems(result.items))
-      .catch(() => setFailed(true));
+      .then((result) => {
+        if (!controller.signal.aborted) setItems(result.items);
+      })
+      .catch(() => {
+        // 화면을 떠나거나 개발 모드(StrictMode)에서 요청을 취소한 것은 오류로 보지 않는다.
+        if (!controller.signal.aborted) setFailed(true);
+      });
     return () => controller.abort();
   }, [attempt]);
 

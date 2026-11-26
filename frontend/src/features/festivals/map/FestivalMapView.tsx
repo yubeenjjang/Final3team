@@ -72,6 +72,7 @@ export function FestivalMapView({
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LocatedFestival[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [picked, setPicked] = useState<LocatedFestival | null>(null);
   const [facilityGroup, setFacilityGroup] = useState<FacilityGroup>(initialGroup);
   const [facilityCategory, setFacilityCategory] = useState<FacilityCategory | "all">(initialCategory);
@@ -213,6 +214,7 @@ export function FestivalMapView({
   function changeQuery(value: string) {
     setQuery(value);
     setSearching(Boolean(value.trim()));
+    setSearchFailed(false);
   }
 
   useEffect(() => {
@@ -226,12 +228,16 @@ export function FestivalMapView({
         .then((result) => {
           if (controller.signal.aborted) return;
           const located = result.items.filter(hasLocation);
+          setSearchFailed(false);
           setSearchResults(located);
           const first = located[0];
           if (first && first.festival_id !== selectedIdRef.current) selectFestival(first);
         })
         .catch(() => {
-          if (!controller.signal.aborted) setSearchResults([]);
+          // 서버 오류를 '결과 없음'으로 보이지 않게 따로 표시한다 (취소된 요청은 무시).
+          if (controller.signal.aborted) return;
+          setSearchResults([]);
+          setSearchFailed(true);
         })
         .finally(() => {
           if (!controller.signal.aborted) setSearching(false);
@@ -317,10 +323,12 @@ export function FestivalMapView({
         </label>
         {trimmedQuery && !searching && visibleFestivals.length === 0 ? (
           <p
-            role="status"
+            role={searchFailed ? "alert" : "status"}
             className="absolute inset-x-0 top-14 z-30 rounded-card-lg border border-line-light bg-surface px-4 py-3 text-xs font-semibold text-muted shadow-xl"
           >
-            검색 조건에 맞는 축제가 없어요.
+            {searchFailed
+              ? "검색 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요."
+              : "검색 조건에 맞는 축제가 없어요."}
           </p>
         ) : null}
         {trimmedQuery && visibleFestivals.length > 0 ? (

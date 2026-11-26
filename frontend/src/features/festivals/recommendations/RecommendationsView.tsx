@@ -29,14 +29,18 @@ export function RecommendationsView() {
       getFestivalPreferences(controller.signal),
     ])
       .then(([result, preferences]) => {
+        if (controller.signal.aborted) return;
         setItems(result.items.slice(0, 5));
         setScenarios(preferences.scenarios);
       })
       .catch(() => {
+        if (controller.signal.aborted) return;
         setItems([]);
         setScenarios([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     return () => controller.abort();
   }, []);
 

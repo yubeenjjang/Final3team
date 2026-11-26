@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { StrictMode } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAuthStateForTest, setAuthSession } from "@/lib/api/auth";
@@ -62,5 +63,14 @@ describe("RecommendationsView", () => {
     }
     expect(screen.getByText("추천 축제").closest("div.no-scrollbar")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /메인페이지로 가기/ })).toHaveAttribute("href", "/");
+  });
+  it("keeps the loaded recommendations in StrictMode (the cancelled first request does not end loading empty)", async () => {
+    render(
+      <StrictMode>
+        <RecommendationsView />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("추천 축제")).toBeInTheDocument();
   });
 });
