@@ -164,6 +164,18 @@ describe("FestivalMapView", () => {
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("약간 붐빔");
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("축제장");
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("지하철역");
+    const festivalMarker = document.querySelector<HTMLElement>(
+      '[title="광화문 겨울빛 축제 축제장"]',
+    );
+    expect(festivalMarker).not.toBeNull();
+    fireEvent.click(festivalMarker!);
+    expect(await screen.findByLabelText("광화문 겨울빛 축제 축제 정보")).toHaveTextContent(
+      "2026.11.20 ~ 2026.12.31",
+    );
+    expect(screen.getByRole("link", { name: "축제 상세보기" })).toHaveAttribute(
+      "href",
+      "/festivals/fst_map_001",
+    );
     fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
       target: { value: "해운대" },
     });

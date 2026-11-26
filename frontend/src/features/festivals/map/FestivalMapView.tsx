@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -149,7 +150,9 @@ export function FestivalMapView({
   const [crowdAttempt, setCrowdAttempt] = useState(0);
   const [crowdOpen, setCrowdOpen] = useState(false);
   const [festivalMenuOpen, setFestivalMenuOpen] = useState(false);
+  const [festivalMarkerSelected, setFestivalMarkerSelected] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+  const festivalInfoRef = useRef<HTMLElement | null>(null);
   const facilityListRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -278,6 +281,7 @@ export function FestivalMapView({
     setCrowdLoading(true);
     setCrowdOpen(false);
     setFestivalMenuOpen(false);
+    setFestivalMarkerSelected(false);
     setSelectedFacilityId(null);
   }
 
@@ -357,7 +361,7 @@ export function FestivalMapView({
             label: "🎪",
             icon: "festival" as const,
             variant: "festival" as const,
-            selected: selectedFacilityId === null,
+            selected: festivalMarkerSelected,
           }]
         : []),
       ...visibleFacilities.map((facility) => ({
@@ -376,18 +380,25 @@ export function FestivalMapView({
         selected: selectedFacilityId === facility.facility_id,
       })),
     ],
-    [facilityGroup, selected, selectedFacilityId, visibleFacilities],
+    [facilityGroup, festivalMarkerSelected, selected, selectedFacilityId, visibleFacilities],
   );
 
   const handleMarkerClick = useCallback((marker: KakaoMapMarker) => {
     if (marker.id?.startsWith("facility:")) {
+      setFestivalMarkerSelected(false);
       setSelectedFacilityId(marker.id.slice("facility:".length));
       window.requestAnimationFrame(() => {
         facilityListRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
       });
       return;
     }
-    if (marker.id?.startsWith("festival:")) setSelectedFacilityId(null);
+    if (marker.id?.startsWith("festival:")) {
+      setFestivalMarkerSelected(true);
+      setSelectedFacilityId(null);
+      window.requestAnimationFrame(() => {
+        festivalInfoRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      });
+    }
   }, []);
   const selectedFacility = visibleFacilities.find(
     (facility) => facility.facility_id === selectedFacilityId,
@@ -800,6 +811,42 @@ export function FestivalMapView({
             ))}
           </div>
 
+          {festivalMarkerSelected ? (
+            <section
+              ref={festivalInfoRef}
+              aria-label={`${selected.name} 축제 정보`}
+              className="scroll-mt-24 rounded-card-lg border border-brand/35 bg-brand-soft/35 p-4 shadow-sm"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-chip bg-brand px-2.5 py-1 text-[10px] font-extrabold text-surface">
+                      축제장
+                    </span>
+                    <h2 className="truncate text-lg font-black text-ink">{selected.name}</h2>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-muted">
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+                      {formatFestivalPeriod(selected.start_date, selected.end_date)}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+                      {getRegionLabel(selected.region_code)} · {selected.venue_name ?? "장소 미정"}
+                    </span>
+                  </div>
+                </div>
+                <Link
+                  href={`/festivals/${encodeURIComponent(selected.festival_id)}`}
+                  className="inline-flex shrink-0 items-center justify-center gap-1 rounded-chip bg-brand px-4 py-2.5 text-xs font-extrabold text-surface shadow-sm"
+                >
+                  축제 상세보기
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+            </section>
+          ) : null}
+
           <section ref={facilityListRef} aria-label="주변 시설 목록" className="-mx-4 scroll-mt-24 rounded-t-[28px] border-t border-line-light bg-surface px-4 pb-2 pt-3 shadow-[0_-8px_24px_rgba(52,53,54,0.08)]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
@@ -884,7 +931,10 @@ export function FestivalMapView({
                         type="button"
                         aria-label={`${facility.name} 지도에서 보기`}
                         aria-pressed={selectedFacilityId === facility.facility_id}
-                        onClick={() => setSelectedFacilityId(facility.facility_id)}
+                        onClick={() => {
+                          setFestivalMarkerSelected(false);
+                          setSelectedFacilityId(facility.facility_id);
+                        }}
                         className={`flex w-full items-center gap-3 rounded-card border px-3 py-3 text-left shadow-sm transition-colors ${
                           selectedFacilityId === facility.facility_id
                             ? "border-brand bg-brand-soft/40"
