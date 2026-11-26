@@ -56,3 +56,10 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - **4회 상한:** 실제 벽시계 4.102ms, 도구 호출 4회(검색, 상세 실패, 상세 재시도 성공, 혼잡 실패), `partial`. 추가 호출 없이 같은 상세 근거와 혼잡 미확인 안내로 종료했다.
 
 가상 시계의 30.1초는 **실제 30초를 기다린 측정값이 아니다.** 벽시계 수치는 고정 응답을 쓴 로컬 재현 실행의 경과 시간이다. 이 시험은 30초 호출 전 검사와 4회 상한·부분 답변을 검증하며, 실제 외부 HTTP 호출이 30초에서 강제 중단되는지 검증하지 않는다.
+
+## 최신 코드의 Windows 재시험 (2026-11-26)
+
+- 코드 기준: `dayoung f454e7e`, Windows·Python 3.12.15. `backend/`에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m unittest discover -s tests/agents -p 'test_festival_*.py' -q` 실행: **37개, OK**.
+- 같은 환경에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget` 실행: 호출 전 30.1초 가상 경계는 2회 호출·`partial`·벽시계 7.264ms, 4회 상한은 4회 호출·`partial`·벽시계 4.244ms였다.
+- 신규 37번째 시험은 검색·상세 성공 후 혼잡 도구가 성공 응답을 **30초가 지난 뒤** 반환한 고정 응답이다. 응답은 답변에 사용되지 않았고, 도구 기록에는 `ok=True`가 남았으며, 최종 결과는 상세 근거와 혼잡 미확인 안내를 포함한 `partial`이었다. 실제 공급원에서 30초 대기를 재현한 시험은 아니다.
+- 위 결과는 개인 브랜치 시험이다. 제출 `main` 한 커밋에서의 Festival·백엔드 전체 시험 결과는 별도로 기록해야 한다.
