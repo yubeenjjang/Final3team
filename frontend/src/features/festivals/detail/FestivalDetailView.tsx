@@ -12,7 +12,6 @@ import {
   MapPin,
   ParkingCircle,
   RotateCcw,
-  ShieldCheck,
   Ticket,
   TrainFront,
   Utensils,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import { KakaoMap } from "@/components/KakaoMap";
+import { SafeReturnBanner } from "@/components/SafeReturnBanner";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { ApiError } from "@/lib/api/client";
 import { dday, formatFestivalPeriod } from "../explore/dday";
@@ -315,31 +315,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
         )}
       </section>
 
-      {/* AI 안심 귀가 진한 회색 배너 */}
-      <section className="rounded-[20px] bg-banner-dark p-4 text-surface shadow-md">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand/20 ring-1 ring-brand/40">
-              <ShieldCheck className="h-6 w-6 fill-brand text-surface" aria-hidden="true" />
-            </div>
-            <div className="space-y-0.5">
-              <h2 className="text-sm font-black">AI 안심 귀가</h2>
-              <p className="text-[11px] leading-snug text-surface/80">
-                혼잡도와 동선을 고려한 안전한 귀갓길을 안내해요
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href={`/routes/return?festivalId=${encodeURIComponent(
-              festival.festival_id,
-            )}`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-chip bg-brand px-3.5 py-2 text-xs font-extrabold text-surface shadow-sm transition-opacity hover:opacity-90"
-          >
-            귀가 경로 보기 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
+      <SafeReturnBanner festivalId={festival.festival_id} />
 
       <section className="space-y-3">
         <div className="flex items-end justify-between"><div><h2 className="flex items-center gap-2 text-xl font-black"><span className="h-5 w-1.5 rounded-chip bg-brand" />동행 모집</h2><p className="ml-3.5 mt-1 text-xs text-muted">함께 축제를 즐길 동행을 찾아보세요!</p></div><Link href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}`} className="text-sm font-extrabold text-brand">전체보기 ›</Link></div>

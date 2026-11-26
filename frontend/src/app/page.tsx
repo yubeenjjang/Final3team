@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { TabPageHero } from "@/components/TabPageHero";
+import { SafeReturnBanner } from "@/components/SafeReturnBanner";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
 import { FeaturedFestivals } from "@/features/festivals/explore/FeaturedFestivals";
 import { PreferenceSetupCta } from "@/features/accounts/profile/PreferenceSetupCta";
@@ -60,24 +61,7 @@ export default function HomePage() {
         />
       </div>
 
-      {/* AI 안심 귀가 진한 회색 배너 */}
-      <section className="relative flex min-h-[94px] items-center gap-3 overflow-hidden rounded-[20px] border border-brand/10 bg-gradient-to-r from-banner-dark to-ink px-4 py-3.5 text-surface shadow-md md:col-start-2 md:row-span-2 md:row-start-1 md:min-h-0 md:px-6">
-        <span className="absolute bottom-3 left-0 top-3 w-1 rounded-r-chip bg-brand" aria-hidden="true" />
-        <div className="min-w-0 flex-1 pl-1">
-          <h2 className="text-base font-black tracking-tight text-surface">AI 안심 귀가</h2>
-          <p className="mt-1 text-[11px] font-medium leading-[1.45] text-surface/80">
-            혼잡한 동선을 고려한
-            <br />
-            안전한 귀갓길을 안내해요!
-          </p>
-        </div>
-        <Link
-          href="/routes/return"
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-chip bg-brand px-3.5 py-2 text-[11px] font-extrabold text-surface shadow-sm transition-opacity hover:opacity-90"
-        >
-          경로 확인하기 <ArrowRight size={13} aria-hidden="true" />
-        </Link>
-      </section>
+      <SafeReturnBanner className="md:col-start-2 md:row-span-2 md:row-start-1 md:self-center" />
 
       {/* 하단 바로가기 버튼 2개 */}
       <div className="grid grid-cols-2 gap-2.5 md:col-span-2 md:row-start-5 md:max-w-xl">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HeartHandshake, Home, Sparkles } from "lucide-react";
+import { Home, Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { RequireAuth } from "@/components/RequireAuth";
 import { getFestivalPreferences, SCENARIO_OPTIONS, type Scenario } from "./api";
@@ -26,9 +26,6 @@ export function OnboardingCompleteView() {
     <RequireAuth nextPath="/onboarding/complete">
       <main className="min-h-dvh bg-surface px-6 pb-12 pt-16 text-ink">
         <BrandLogo priority className="mx-auto h-auto w-[285px]" />
-        <div className="mx-auto mt-16 grid h-36 w-36 place-items-center rounded-chip bg-surface-soft text-brand">
-          <HeartHandshake className="h-20 w-20" strokeWidth={1.7} aria-hidden="true" />
-        </div>
         <h1 className="mt-7 text-center text-[32px] font-black tracking-tight">취향 선택 <span className="text-brand">완료!</span></h1>
         <p className="mt-4 text-center text-lg text-muted">좋아하는 축제 스타일을 확인했어요.</p>
         <h2 className="mt-10 text-center text-[26px] font-extrabold">이제 어디로 가볼까요?</h2>

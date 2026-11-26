@@ -57,6 +57,10 @@ export function Header() {
     <header className="app-header sticky top-0 z-30 flex items-center justify-between bg-surface/95 backdrop-blur-md">
       <Link
         href="/"
+        onClick={(event) => {
+          event.preventDefault();
+          router.push("/");
+        }}
         className="flex items-center self-stretch"
         aria-label="놀다가 홈"
       >

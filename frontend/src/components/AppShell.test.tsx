@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAuthStateForTest, setAuthSession } from "@/lib/api/auth";
 import {
@@ -10,10 +10,11 @@ import { AppShell } from "./AppShell";
 import { ComingSoon } from "./ComingSoon";
 
 let mockPathname = "/";
+const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: pushMock }),
 }));
 
 describe("F3 AppShell & F5 MockBadge", () => {
@@ -21,6 +22,19 @@ describe("F3 AppShell & F5 MockBadge", () => {
     mockPathname = "/";
     resetAuthStateForTest();
     resetMockDataDetected();
+    pushMock.mockReset();
+  });
+
+  it("moves to the home page when the header logo is clicked", () => {
+    mockPathname = "/festivals/fst_000001";
+    render(
+      <AppShell>
+        <div>축제 상세</div>
+      </AppShell>,
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "놀다가 홈" }));
+    expect(pushMock).toHaveBeenCalledWith("/");
   });
 
   afterEach(() => {
