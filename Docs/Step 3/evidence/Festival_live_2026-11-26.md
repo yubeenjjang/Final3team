@@ -46,3 +46,13 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - macOS·Python 3.14.7, `backend/`에서 `"$test_dir/venv/bin/python" -m unittest discover -s tests/agents -p 'test_festival_*.py' -q` 실행.
 - 결과: `Ran 35 tests in 0.077s`, `OK`. 404·503 응답 시험에서 `ResourceWarning` 두 줄이 출력됐으나 실패는 없었다.
 - 이는 새 시간 예산 시험 코드 및 최종 제출 `main` 커밋 이전 결과다. 해당 결과와 팀 전체 시험은 이후 같은 제출 커밋에서 다시 기록한다.
+
+## 시간·호출 예산 재현 시험 (2026-11-26)
+
+- 실행 전 `git pull origin dayoung`은 `122cb32..45be6ed` 빠른 전진이었고, `git rev-parse --short HEAD` 출력은 `45be6ed`였다.
+- macOS·Python 3.14.7, `backend/`에서 Festival 단독 명령 결과 `Ran 36 tests in 0.080s`, `OK`. 404·503 사례의 `ResourceWarning` 두 줄은 있었으나 실패는 없었다.
+- 같은 체크아웃에서 `"$test_dir/venv/bin/python" -m agents.check_festival_budget` 실행.
+- **시간 경계:** 가상 시계 30.1초, 실제 벽시계 4.982ms, 도구 호출 2회(검색·상세), `partial`. 혼잡 도구는 호출하지 않았고 답변에 `시험 광장` 상세와 `조회 제한에 도달해 혼잡 정보를 확인할 수 없습니다` 안내가 함께 있었다.
+- **4회 상한:** 실제 벽시계 4.102ms, 도구 호출 4회(검색, 상세 실패, 상세 재시도 성공, 혼잡 실패), `partial`. 추가 호출 없이 같은 상세 근거와 혼잡 미확인 안내로 종료했다.
+
+가상 시계의 30.1초는 **실제 30초를 기다린 측정값이 아니다.** 벽시계 수치는 고정 응답을 쓴 로컬 재현 실행의 경과 시간이다. 이 시험은 30초 호출 전 검사와 4회 상한·부분 답변을 검증하며, 실제 외부 HTTP 호출이 30초에서 강제 중단되는지 검증하지 않는다.
