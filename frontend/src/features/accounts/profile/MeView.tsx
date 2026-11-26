@@ -320,16 +320,16 @@ function MeContent() {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href="/chats"
-          className="flex min-h-20 items-center justify-center gap-2.5 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
+          className="flex min-h-16 items-center justify-center gap-2 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
         >
-          <MessageCircle className="h-6 w-6 text-brand" aria-hidden="true" />
+          <MessageCircle className="h-5 w-5 text-brand" aria-hidden="true" />
           <span>채팅방</span>
         </Link>
         <Link
           href="/friends"
-          className="flex min-h-20 items-center justify-center gap-2.5 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
+          className="flex min-h-16 items-center justify-center gap-2 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
         >
-          <UsersRound className="h-6 w-6 text-brand" aria-hidden="true" />
+          <UsersRound className="h-5 w-5 text-brand" aria-hidden="true" />
           <span>내 친구</span>
         </Link>
       </div>

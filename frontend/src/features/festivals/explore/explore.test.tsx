@@ -202,9 +202,10 @@ describe("F6 festival explore", () => {
     });
     expect(screen.getByRole("heading", { name: "인기있는 축제" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "나만을 위한 축제" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("축제 검색")).not.toBeInTheDocument();
+    expect(screen.getByRole("search", { name: "축제 검색" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" })).toBeInTheDocument();
     expect(screen.getByLabelText("축제 필터").className).not.toContain("bg-surface-muted");
-    expect(screen.getByLabelText("인기있는 축제 목록").className).toContain("grid-cols-2");
+    expect(screen.getByLabelText("인기있는 축제 목록").querySelector(".grid-cols-2")).not.toBeNull();
 
     const image = screen.getAllByAltText("첫 번째 축제")[0];
     expect(image.className).toContain("object-cover");
@@ -234,6 +235,49 @@ describe("F6 festival explore", () => {
       );
       expect(lastUrl).toContain("status=ongoing");
     });
+  });
+
+  it("searches festivals by name or venue through the q query and shows a two-column result", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const query = url.searchParams.get("q");
+      return Response.json({
+        items: query === "빛초롱"
+          ? [{
+              festival_id: "fst_search01",
+              name: "서울빛초롱축제",
+              region_code: "SEOUL",
+              venue_name: "광화문광장",
+              lat: 37.575,
+              lng: 126.976,
+              start_date: "2026-12-01",
+              end_date: "2026-12-14",
+              event_status: "upcoming",
+              thumbnail_url: null,
+              image_credit: null,
+              source: "tourapi",
+              last_synced_at: "2026-11-26T00:00:00Z",
+            }]
+          : [],
+        total: query === "빛초롱" ? 1 : 0,
+        page: 1,
+        page_size: 20,
+      });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<FestivalExploreView />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
+      target: { value: "빛초롱" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "검색" }));
+
+    await screen.findByText("서울빛초롱축제");
+    const requestUrl = new URL(String(fetchMock.mock.calls.at(-1)?.[0]));
+    expect(requestUrl.searchParams.get("q")).toBe("빛초롱");
+    expect(screen.getByLabelText("축제 검색 결과").querySelector(".grid-cols-2")).not.toBeNull();
   });
 
   it("F6 image error fallback", () => {

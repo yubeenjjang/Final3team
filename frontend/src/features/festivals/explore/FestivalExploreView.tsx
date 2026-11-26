@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Search, X } from "lucide-react";
 import Image from "next/image";
 import { TabPageHero } from "@/components/TabPageHero";
 import { ApiError } from "@/lib/api/client";
@@ -34,6 +34,8 @@ export function FestivalExploreView({
 } = {}) {
   const [region, setRegion] = useState<RegionFilter>("ALL");
   const [status, setStatus] = useState<StatusFilter>("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [items, setItems] = useState<FestivalListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -58,6 +60,7 @@ export function FestivalExploreView({
         const res = await listFestivals(
           {
             region,
+            q: searchQuery || undefined,
             status: status || undefined,
             page: 1,
             page_size: PAGE_SIZE,
@@ -96,7 +99,7 @@ export function FestivalExploreView({
       moreRequest.current?.abort();
       moreRequest.current = null;
     };
-  }, [region, status, reloadTick]);
+  }, [region, status, searchQuery, reloadTick]);
 
   const cancelLoadMore = useCallback(() => {
     moreRequest.current?.abort();
@@ -116,6 +119,7 @@ export function FestivalExploreView({
     try {
       const res = await listFestivals({
         region,
+        q: searchQuery || undefined,
         status: status || undefined,
         page: nextPage,
         page_size: PAGE_SIZE,
@@ -137,7 +141,20 @@ export function FestivalExploreView({
         setLoadingMore(false);
       }
     }
-  }, [page, region, status]);
+  }, [page, region, searchQuery, status]);
+
+  const handleSearch = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextQuery = searchInput.trim();
+    cancelLoadMore();
+    setSearchQuery(nextQuery);
+  }, [cancelLoadMore, searchInput]);
+
+  const clearSearch = useCallback(() => {
+    cancelLoadMore();
+    setSearchInput("");
+    setSearchQuery("");
+  }, [cancelLoadMore]);
 
   const hasMore = items.length < total;
   const festivalSections = FESTIVAL_SECTION_ORDER
@@ -182,6 +199,45 @@ export function FestivalExploreView({
       />
 
       <AssistantPrompt />
+
+      <form
+        role="search"
+        aria-label="축제 검색"
+        onSubmit={handleSearch}
+        className="flex items-center gap-2"
+      >
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">축제명 또는 장소 검색</span>
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="축제명·장소 검색"
+            aria-label="축제명 또는 장소 검색"
+            className="h-11 w-full rounded-input border border-line-light bg-surface pl-10 pr-9 text-sm text-ink shadow-sm outline-none placeholder:text-muted focus:border-brand"
+          />
+          {searchInput ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label="검색어 지우기"
+              className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-surface-soft hover:text-ink"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
+        </label>
+        <button
+          type="submit"
+          className="h-11 shrink-0 rounded-chip bg-brand px-4 text-sm font-extrabold text-surface shadow-sm"
+        >
+          검색
+        </button>
+      </form>
 
       {mode === "list" ? (
         <section aria-label="축제 필터" className="flex items-center gap-2">
@@ -267,16 +323,29 @@ export function FestivalExploreView({
       ) : items.length === 0 ? (
         <div className="rounded-card border border-line-light bg-surface px-4 py-12 text-center">
           <p className="text-sm font-semibold text-muted">
-            조건에 맞는 축제가 없어요
+            {searchQuery ? `‘${searchQuery}’ 검색 결과가 없어요` : "조건에 맞는 축제가 없어요"}
           </p>
         </div>
       ) : (
         <div className="space-y-8">
-          {mode === "list" ? (
-            <section aria-label={`${listTitle} 목록`} className="grid grid-cols-2 gap-x-2 gap-y-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
+          {mode === "list" || searchQuery ? (
+            <section
+              aria-label={searchQuery ? "축제 검색 결과" : `${listTitle} 목록`}
+              className="space-y-3"
+            >
+              {searchQuery ? (
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-extrabold text-ink">
+                    ‘{searchQuery}’ 검색 결과
+                  </h2>
+                  <span className="text-xs font-semibold text-muted">총 {total}개</span>
+                </div>
+              ) : null}
+              <div className="grid grid-cols-2 gap-x-2 gap-y-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
               {items.map((item) => (
                 <FestivalCard key={item.festival_id} item={item} />
               ))}
+              </div>
             </section>
           ) : (
             festivalSections.map((section) => (

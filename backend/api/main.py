@@ -43,6 +43,18 @@ from ulid import ULID
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[dict[str, traffic_incidents.UticSnapshotStore] | None]:
+    # 시연 첫 화면의 여러 API가 동시에 열리기 전에 DB 연결 풀을 준비한다.
+    # 일시적인 DB 기동 지연은 짧게 재시도하되, health가 실제 상태를 계속 보고하도록
+    # 준비 실패만으로 API 프로세스 전체를 종료하지는 않는다.
+    if health.uses_health_db():
+        for attempt in range(3):
+            try:
+                await asyncio.wait_for(health._check_db(), timeout=2)
+                break
+            except Exception:
+                if attempt < 2:
+                    await asyncio.sleep(0.5)
+
     if not traffic_incidents.utic_enabled():
         yield
         return

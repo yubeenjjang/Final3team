@@ -50,6 +50,20 @@ npm run dev
 
 브라우저에서 `http://localhost:3000`으로 접속합니다.
 
+### 시연용 프로덕션 서버
+
+개발 서버의 중복 렌더링과 파일 재컴파일 영향을 피하려면 백엔드가 준비된 뒤 프론트엔드를
+프로덕션 모드로 실행합니다. 먼저 `http://localhost:8000/api/v1/health`가 200인지 확인한 후
+다음 명령을 실행하세요.
+
+```sh
+cd frontend
+npm run demo
+```
+
+귀가 화면의 모의 시나리오 선택기는 `NEXT_PUBLIC_SHOW_MOCK_TOOLS=1`일 때만 표시됩니다.
+일반 시연에서는 `.env.local` 값을 `0`으로 유지하세요.
+
 ### 3. API 타입 생성·확인·빌드 명령
 
 ```sh
