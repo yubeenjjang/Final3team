@@ -84,3 +84,16 @@
 비교 실행기에 `--scenario mismatch_persistent`와 `--scenario valid_first`를 추가했다. 전자는 첫 상세와 재조회 상세가 모두 F02인 경우로, 모델이 재확인을 선택해도 최종 답변이 `unavailable`·근거 0건으로 끝나야 한다. 후자는 첫 상세가 F01인 경우로, 모델 호출 없이 도구 1회만으로 `answered`여야 한다. `backend/tests/agents` **65개**가 Windows Python 3.12에서 통과했고, `valid_first`는 로컬 CLI로 `passed=true`, `judge_used=false`, 도구 1회를 확인했다. 이 결과는 모의 도구·고정 판단 함수 또는 모델 호출 없는 사례다. `mismatch_persistent`의 **실제 모델 실행은 아직 수행하지 않았다.**
 
 맥북의 최신 `dayoung`에서 `python -m agents.check_reflection_live --live --scenario mismatch_persistent`로 실제 모델 재확인 실패를 시험할 수 있다. 정상 사례는 `python -m agents.check_reflection_live --scenario valid_first`로 키 입력 없이 실행한다. 두 경우 모두 실제 축제 API는 호출하지 않는다.
+
+### 11/26 추가 두 사례 실행 결과
+
+다영님이 `dayoung 3c306b3`로 fast-forward한 뒤 두 명령의 터미널 출력을 공유했다. 모두 고정 모의 축제 응답이다.
+
+| 사례 | B0 | A1 | 판정 |
+|---|---|---|---|
+| `mismatch_persistent` | F02 기각, `unavailable`, 호출 1회·25.49ms | 모델이 힌트 없이 `id_mismatch` 판단, 검색 후에도 F02가 와서 `unavailable`·근거 0건, 호출 3회·4620.35ms·426토큰 | `passed=true`; 잘못된 답변 방지. 유효 답변 개선은 없음 |
+| `valid_first` | F01 근거로 `answered`, 호출 1회·4.76ms | 동일하게 `answered`, 모델 호출 없음(`judge_used=false`, `model=null`), 호출 1회·3.33ms | `passed=true`; 불필요한 재확인 없음 |
+
+`mismatch_persistent` 실행은 `2026-11-26T07:51:29.979577+00:00`(16:51:29 KST), `run_id=62c77bd3-8bd9-4c77-8d78-839453249661`, 모델 `gpt-6.2-sol`, 입력 349·출력 77토큰이었다. `valid_first` 실행은 `2026-11-26T07:51:30.614748+00:00`, `run_id=43be6de7-8c6c-4885-80ce-69b1a5fea090`이며 모델 API를 호출하지 않았다. 정상 사례의 밀리초 차이는 모의 호출의 단발 측정치라 성능 우열을 뜻하지 않는다.
+
+현재 실제 모델로 확인한 고정 오류 사례는 **수정 성공 1종·재확인 실패 1종**이다. 정상 근거 사례는 모델 판단 시험이 아니라 불필요한 호출 방지 시험이다. 세 사례 모두 실제 서비스 API·사용자 질문 분류·팀 공통 도구 실행기 연속 검증은 아니다.
