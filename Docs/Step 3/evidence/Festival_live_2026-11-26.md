@@ -39,3 +39,10 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 상세·혼잡·복합 조회도 `answered`였다. 혼잡 공급원은 `seoul_citydata`, `is_estimate=False`, `observed_at=2026-11-26T10:00:00+09:00`이며 복합 그래프는 도구 호출 3회·근거 3건이었다.
 
 이는 실제 DB의 **서로 다른 두 축제 상세 ID 분리**와 서울빛초롱축제의 별도 연속 조회를 확인한 결과다. 두 번째 축제의 혼잡 조회, 공식 공지·시설 공급원, 팀 `main` 병합 후 전체 시험은 이 실행에 포함되지 않는다.
+
+## 최신 개인 브랜치 단독 시험 (2026-11-26)
+
+- `git pull origin dayoung`의 `777d743..122cb32` 빠른 전진 후 `git rev-parse --short HEAD` → `122cb32`.
+- macOS·Python 3.14.7, `backend/`에서 `"$test_dir/venv/bin/python" -m unittest discover -s tests/agents -p 'test_festival_*.py' -q` 실행.
+- 결과: `Ran 35 tests in 0.077s`, `OK`. 404·503 응답 시험에서 `ResourceWarning` 두 줄이 출력됐으나 실패는 없었다.
+- 이는 새 시간 예산 시험 코드 및 최종 제출 `main` 커밋 이전 결과다. 해당 결과와 팀 전체 시험은 이후 같은 제출 커밋에서 다시 기록한다.

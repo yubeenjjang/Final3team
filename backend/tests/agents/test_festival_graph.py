@@ -1,6 +1,7 @@
 """Exercise real LangGraph branches, not only the direct Festival flow."""
 
 import unittest
+from time import perf_counter
 
 from agents.festival_graph import run_festival_graph
 from agents.roles.festival import FestivalRequest
@@ -180,6 +181,32 @@ class FestivalGraphTests(unittest.TestCase):
         self.assertEqual(result.outcome, "unavailable")
         self.assertEqual(result.used_tools, [])
         self.assertIn("budget_exceeded", result.transitions)
+
+    def test_deadline_after_detail_returns_partial_without_crowd_call(self):
+        festival_id = "fst_000001"
+        item = {"festival_id": festival_id, "name": "시험 축제", "source": "tourapi",
+                "last_synced_at": "2026-11-26T09:00:00+09:00"}
+        calls = []
+        ticks = iter([0.0, 0.1, 0.2, 0.3, 0.4, 30.1])
+
+        def tool(name, args):
+            calls.append(name)
+            if name == "search_festivals":
+                return {"ok": True, "data": {"items": [item]}}
+            if name == "get_festival":
+                return {"ok": True, "data": {**item, "venue_name": "시험 광장"}}
+            self.fail("deadline must stop before crowd call")
+
+        started = perf_counter()
+        result = run_festival_graph(tool, FestivalRequest("search_detail_crowd", select_first=True),
+                                    clock=lambda: next(ticks))
+        elapsed = perf_counter() - started
+        self.assertEqual(calls, ["search_festivals", "get_festival"])
+        self.assertEqual(result.outcome, "partial")
+        self.assertIn("시험 광장", result.answer)
+        self.assertIn("혼잡 정보를 확인할 수 없습니다", result.answer)
+        self.assertIn("budget_exceeded", result.transitions)
+        self.assertLess(elapsed, 1.0)
 
 
 if __name__ == "__main__":

@@ -144,7 +144,8 @@ def build_festival_graph(call_tool: ToolCall, *, timeout_s: float = 30.0, clock:
 
     def _budget_result(state: FestivalGraphState, trace: list[str]) -> FestivalResult:
         parts = state.get("parts") or []
-        answer = " ".join(parts + ["조회 제한에 도달해 나머지 정보를 확인할 수 없습니다."])
+        missing = "혼잡 정보를" if state.get("stage") == "crowd" else "나머지 정보를"
+        answer = " ".join(parts + [f"조회 제한에 도달해 {missing} 확인할 수 없습니다."])
         return FestivalResult("partial" if parts else "unavailable", answer,
                               state.get("evidence") or [], trace + ["budget_exceeded", "END"],
                               state.get("used_tools") or [])
