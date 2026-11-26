@@ -103,6 +103,32 @@ describe("F7 live info", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
+      if (url.includes("/transit?")) {
+        return new Response(
+          JSON.stringify({
+            is_mock: false,
+            festival_id: "fst_000001",
+            status: "ok",
+            coverage: { scope: "national", region_code: "SEOUL", supported: true },
+            source: "seoul_bus_arrival",
+            stations: [
+              {
+                type: "bus",
+                station_id: "st_700",
+                name: "광화문역 6번 출구",
+                lat: 37.57,
+                lng: 126.98,
+                distance_m: 120,
+                status: "ok",
+                arrivals: [
+                  { line: "700번", direction: "서울역 방면", eta_s: 240 },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
         JSON.stringify({
           is_mock: true,
@@ -147,6 +173,9 @@ describe("F7 live info", () => {
       expect(screen.getByText("강수 없음")).toBeInTheDocument();
       expect(screen.getByText("차량 통제 안내")).toBeInTheDocument();
       expect(screen.getByText("야간 연장 운영")).toBeInTheDocument();
+      expect(screen.getByText("광화문역 6번 출구")).toBeInTheDocument();
+      expect(screen.getByText(/700번/)).toBeInTheDocument();
+      expect(screen.getByText("4분 후")).toBeInTheDocument();
     });
   });
 

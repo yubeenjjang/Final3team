@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadKakaoMaps, resetKakaoLoaderForTest } from "@/lib/kakao";
 import { KakaoMap } from "./KakaoMap";
 
+vi.mock("./OpenStreetMap", () => ({
+  OpenStreetMap: () => <div data-testid="openstreet-map-fallback">OpenStreetMap 지도</div>,
+}));
+
 describe("F11 KakaoMap", () => {
   const originalKakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
@@ -25,14 +29,12 @@ describe("F11 KakaoMap", () => {
     }
   });
 
-  it("F11 shows fallback message when NEXT_PUBLIC_KAKAO_JS_KEY is empty", () => {
+  it("F11 shows OpenStreetMap when NEXT_PUBLIC_KAKAO_JS_KEY is empty", () => {
     process.env.NEXT_PUBLIC_KAKAO_JS_KEY = "";
 
     render(<KakaoMap center={{ lat: 37.5759, lng: 126.9768 }} />);
 
-    expect(
-      screen.getByText("지도를 불러올 수 없어요(지도 키 확인)"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("openstreet-map-fallback")).toBeInTheDocument();
   });
 
   it("F11 removes an invalid SDK script and allows the next load to succeed", async () => {
@@ -62,7 +64,7 @@ describe("F11 KakaoMap", () => {
     expect(load).toHaveBeenCalledOnce();
 
     await act(async () => vi.advanceTimersByTimeAsync(10_000));
-    expect(screen.getByText("지도를 불러올 수 없어요(지도 키 확인)")).toBeInTheDocument();
+    expect(screen.getByTestId("openstreet-map-fallback")).toBeInTheDocument();
     expect(script).not.toBeInTheDocument();
   });
 
@@ -93,9 +95,7 @@ describe("F11 KakaoMap", () => {
     injected?.onerror?.(new Event("error"));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("지도를 불러올 수 없어요(지도 키 확인)"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("openstreet-map-fallback")).toBeInTheDocument();
     });
   });
 });

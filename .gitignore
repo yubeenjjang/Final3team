@@ -18,6 +18,8 @@ __pycache__/
 node_modules/
 .next/
 out/
+frontend/.next-dev.stdout.log
+frontend/.next-dev.stderr.log
 
 # Build and editor files
 dist/

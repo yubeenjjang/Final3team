@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPinOff } from "lucide-react";
 import {
   getKakaoJsKey,
   loadKakaoMaps,
@@ -9,6 +8,7 @@ import {
   type KakaoMarkerInstance,
   type KakaoPolylineInstance,
 } from "@/lib/kakao";
+import { OpenStreetMap } from "./OpenStreetMap";
 
 export interface KakaoMapPoint {
   lat: number;
@@ -28,8 +28,6 @@ export interface KakaoMapProps {
   level?: number;
   className?: string;
 }
-
-const FALLBACK_MESSAGE = "지도를 불러올 수 없어요(지도 키 확인)";
 
 function resolveAccentStrokeColor(): string {
   if (typeof window === "undefined") {
@@ -150,14 +148,16 @@ export function KakaoMap({
 
   if (loadFailed) {
     return (
-      <div
-        role="img"
-        aria-label={FALLBACK_MESSAGE}
-        className={`flex flex-col items-center justify-center gap-2 rounded-card border border-line-light bg-muted/15 px-4 text-center text-sm font-medium text-muted ${className}`}
-      >
-        <MapPinOff className="h-5 w-5 text-muted" aria-hidden="true" />
-        <span>{FALLBACK_MESSAGE}</span>
-      </div>
+      <OpenStreetMap
+        center={center}
+        title="축제 위치"
+        markers={markers.map((marker) => ({
+          ...marker,
+          title: marker.title ?? "축제 위치",
+          label: "📍",
+        }))}
+        className={className}
+      />
     );
   }
 

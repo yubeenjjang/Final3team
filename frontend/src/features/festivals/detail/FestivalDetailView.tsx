@@ -161,6 +161,8 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
 
   return (
     <div className="space-y-6 px-4 py-3 pb-6">
+      <FestivalAiPrompt festivalId={festival.festival_id} />
+
       <section className="space-y-4">
         <div className="relative aspect-[3/1] w-full overflow-hidden rounded-card-lg border border-line-light bg-surface-soft/45 shadow-card">
           {showHeroImage && heroImage ? (
@@ -182,7 +184,11 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
               {badge}
             </span>
           ) : null}
-          <FavoriteButton festivalId={festival.festival_id} className="absolute right-2 top-2 z-10" />
+          <FavoriteButton
+            festivalId={festival.festival_id}
+            appearance="icon"
+            className="absolute right-2 top-0.5 z-10"
+          />
         </div>
 
         <div className="min-w-0 space-y-2">
@@ -193,8 +199,6 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
           {festival.overview ? <p className="text-sm leading-relaxed text-muted">{festival.overview}</p> : null}
         </div>
       </section>
-
-      <FestivalAiPrompt festivalId={festival.festival_id} />
 
       <div aria-label="기본 정보" className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2.5 text-[11px]"><CalendarDays className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="font-semibold">{periodText}</span></div>

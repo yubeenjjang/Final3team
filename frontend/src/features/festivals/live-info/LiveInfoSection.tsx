@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloudSun, Megaphone, Users } from "lucide-react";
+import { BusFront, CloudSun, Megaphone, TrainFront, Users } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import {
   getFestivalCrowd,
   getFestivalNotices,
+  getFestivalTransit,
   getFestivalWeather,
   type CrowdResponse,
   type NoticeResponse,
+  type TransitResponse,
   type WeatherResponse,
 } from "./api";
 import {
@@ -35,6 +37,14 @@ function formatAreaDistance(distanceM: number): string {
   return `${Math.round(distanceM)}m`;
 }
 
+function formatArrivalTime(etaSeconds?: number | null, message?: string | null) {
+  if (etaSeconds === 0) return "곧 도착";
+  if (typeof etaSeconds === "number" && etaSeconds > 0) {
+    return `${Math.max(1, Math.ceil(etaSeconds / 60))}분 후`;
+  }
+  return message || "도착 정보 확인 중";
+}
+
 export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
   const [crowdState, setCrowdState] = useState<AsyncCardState<CrowdResponse>>({
     resolvedId: null,
@@ -49,6 +59,12 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
     });
   const [noticesState, setNoticesState] =
     useState<AsyncCardState<NoticeResponse>>({
+      resolvedId: null,
+      data: null,
+      error: null,
+    });
+  const [transitState, setTransitState] =
+    useState<AsyncCardState<TransitResponse>>({
       resolvedId: null,
       data: null,
       error: null,
@@ -118,6 +134,26 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
         });
       });
 
+    getFestivalTransit(festivalId, controller.signal)
+      .then((data) => {
+        if (active) {
+          setTransitState({ resolvedId: festivalId, data, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!active || (error instanceof Error && error.name === "AbortError")) {
+          return;
+        }
+        setTransitState({
+          resolvedId: festivalId,
+          data: null,
+          error:
+            error instanceof ApiError
+              ? error.message
+              : "실시간 교통 정보를 불러오지 못했어요",
+        });
+      });
+
     return () => {
       active = false;
       controller.abort();
@@ -127,6 +163,7 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
   const crowdLoading = crowdState.resolvedId !== festivalId;
   const weatherLoading = weatherState.resolvedId !== festivalId;
   const noticesLoading = noticesState.resolvedId !== festivalId;
+  const transitLoading = transitState.resolvedId !== festivalId;
   const nearbyAreas = crowdState.data?.nearby_areas ?? [];
   const fallbackAreas = crowdState.data?.areas ?? [];
 
@@ -300,6 +337,72 @@ export function LiveInfoSection({ festivalId }: LiveInfoSectionProps) {
           )}
         </article>
       </div>
+
+      <article
+        data-testid="live-info-transit"
+        className="rounded-card border border-line-light bg-surface p-3.5 shadow-sm"
+      >
+        <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-ink">
+          <BusFront className="h-4 w-4 text-brand" aria-hidden="true" />
+          <span>실시간 버스 · 지하철 도착</span>
+        </div>
+
+        {transitLoading ? (
+          <p className="text-xs text-muted">불러오는 중…</p>
+        ) : transitState.error ? (
+          <p className="text-xs font-medium text-brand">{transitState.error}</p>
+        ) : transitState.data?.status === "unsupported" ? (
+          <p className="text-xs text-muted">이 지역은 아직 지원하지 않아요</p>
+        ) : transitState.data?.status === "unavailable" ? (
+          <p className="text-xs font-medium text-brand">
+            {transitState.data.error?.message ?? "도착 정보를 불러올 수 없어요"}
+          </p>
+        ) : !transitState.data?.stations?.length ? (
+          <p className="text-xs text-muted">주변 도착 정보가 없어요</p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {transitState.data.stations.map((station) => {
+              const StationIcon = station.type === "subway" ? TrainFront : BusFront;
+              return (
+                <li
+                  key={`${station.type}-${station.station_id}`}
+                  className="rounded-xl bg-surface-soft/55 px-3 py-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-ink">
+                      <StationIcon className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+                      <span className="truncate">{station.name}</span>
+                    </span>
+                    <span className="shrink-0 text-[10px] text-muted">
+                      {Math.round(station.distance_m)}m
+                    </span>
+                  </div>
+                  {station.arrivals.length ? (
+                    <ul className="mt-2 space-y-1.5">
+                      {station.arrivals.slice(0, 2).map((arrival, index) => (
+                        <li
+                          key={`${arrival.line}-${arrival.direction ?? ""}-${index}`}
+                          className="flex items-center justify-between gap-2 text-[11px]"
+                        >
+                          <span className="min-w-0 truncate font-semibold text-ink">
+                            {arrival.line}
+                            {arrival.direction ? ` · ${arrival.direction}` : ""}
+                          </span>
+                          <span className="shrink-0 font-extrabold text-brand">
+                            {formatArrivalTime(arrival.eta_s, arrival.message)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-muted">현재 도착 예정 정보가 없어요</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </article>
 
       {/* 공지 카드 (A07) */}
       <article

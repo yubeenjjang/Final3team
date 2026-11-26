@@ -127,6 +127,10 @@ describe("F7 festival detail", () => {
     });
 
     const heroImage = screen.getByAltText("테스트 문화 축제");
+    const assistantInput = screen.getByRole("textbox");
+    expect(
+      assistantInput.compareDocumentPosition(heroImage) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(heroImage.className).toContain("object-cover");
     expect(heroImage.parentElement).toHaveClass("aspect-[3/1]");
     expect(screen.queryByLabelText("축제 목록으로")).not.toBeInTheDocument();
@@ -144,7 +148,9 @@ describe("F7 festival detail", () => {
       "/routes/return?festivalId=fst_000001",
     );
 
-    expect(screen.getByRole("button", { name: "찜하기" })).toBeInTheDocument();
+    const favoriteButton = screen.getByRole("button", { name: "찜하기" });
+    expect(favoriteButton).toHaveClass("bg-transparent");
+    expect(favoriteButton).not.toHaveClass("rounded-chip");
   });
 
   it("F7 shows not found message and link to list on 404", async () => {

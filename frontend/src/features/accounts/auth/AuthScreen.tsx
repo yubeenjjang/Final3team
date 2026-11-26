@@ -25,7 +25,7 @@ export function LoginScreen({ children }: { children: ReactNode }) {
         <h1 className="mt-10 text-[30px] font-black leading-tight tracking-tight">
           <span className="text-brand">놀다가</span>에 오신 것을 환영해요!
         </h1>
-        <p className="mt-3 text-base font-semibold text-ink">축제도, 즐길도, 안전한 귀가까지 한 번에!</p>
+        <p className="mt-3 text-base font-semibold text-ink">축제도, 즐길 거리도, 안전한 귀가까지 한 번에!</p>
         <FestivalIllustration />
       </div>
       <div className="mx-auto mt-8 max-w-[350px]">
