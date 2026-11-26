@@ -30,9 +30,9 @@ CONFLICT = {
 }
 CASE_EXPECTATIONS = {
     "Q01": ("answer", "D1", (r"12월\s*11일|2026[-.]12[-.]11",)),
-    "Q02": ("answer", "D1", (r"청계광장", r"23시|23:00")),
+    "Q02": ("answer", "D1", (r"청계광장", r"23시|23:00|밤\s*11시|오후\s*11시")),
     "Q03": ("answer", "D2", (r"청계광장",)),
-    "Q04": ("answer", "D2", (r"22시|22:00",)),
+    "Q04": ("answer", "D2", (r"22시|22:00|밤\s*10시|오후\s*10시",)),
     **{f"Q{i:02d}": ("abstain", None, ()) for i in range(5, 12)},
 }
 
@@ -49,7 +49,7 @@ SCHEMA = {
 }
 
 INSTRUCTIONS = """선택한 축제의 공식 안내 근거만 사용해 한국어로 답하세요.
-질문이 다른 축제를 가리키면 선택 축제의 문서로 답하지 말고 abstain 하세요.
+selected_festival_id와 selected_festival_name은 같은 축제를 가리킵니다. 질문에 다른 축제 이름이 명시되어 있으면 장소나 행사 유형이 비슷해도 선택 축제의 문서로 답하지 말고 abstain 하세요. 선택 축제의 관람 시간을 다른 축제의 시간으로 바꾸어 답하면 안 됩니다.
 정적 일정 문서만으로 당일 취소, 현재 혼잡, 예약 가능 여부를 단정하지 마세요.
 같은 축제의 근거끼리 날짜가 다르고 신뢰할 정정 순서가 없으면 abstain 하세요.
 답할 때는 근거 문서 ID를 citation_ids에 넣고, 근거 없는 문장은 쓰지 마세요.
@@ -86,6 +86,10 @@ def evaluate_case(question_id: str, result: dict, docs: list[dict]) -> tuple[boo
 
 
 def request_answer(model: str, key: str, question: str, festival_id: str, docs: list[dict]) -> tuple[dict, dict, float]:
+    festival_names = {
+        DOCUMENTS[0]["festival"]: "서울빛초롱축제",
+        DOCUMENTS[1]["festival"]: "청계천의 빛",
+    }
     evidence = [
         {"document_id": doc["id"], "festival_id": doc["festival"],
          "source_url": doc["source_url"], "content": doc["text"]}
@@ -98,7 +102,8 @@ def request_answer(model: str, key: str, question: str, festival_id: str, docs: 
         "input": [
             {"role": "developer", "content": INSTRUCTIONS},
             {"role": "user", "content": json.dumps(
-                {"selected_festival_id": festival_id, "question": question, "evidence": evidence},
+                {"selected_festival_id": festival_id, "selected_festival_name": festival_names.get(festival_id),
+                 "question": question, "evidence": evidence},
                 ensure_ascii=False,
             )},
         ],
