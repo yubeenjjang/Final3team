@@ -62,7 +62,7 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - 코드 기준: `dayoung f454e7e`, Windows·Python 3.12.15. `backend/`에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m unittest discover -s tests/agents -p 'test_festival_*.py' -q` 실행: **37개, OK**.
 - 같은 환경에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget` 실행: 호출 전 30.1초 가상 경계는 2회 호출·`partial`·벽시계 7.264ms, 4회 상한은 4회 호출·`partial`·벽시계 4.244ms였다.
 - 신규 37번째 시험은 검색·상세 성공 후 혼잡 도구가 성공 응답을 **30초가 지난 뒤** 반환한 고정 응답이다. 응답은 답변에 사용되지 않았고, 도구 기록에는 `ok=True`가 남았으며, 최종 결과는 상세 근거와 혼잡 미확인 안내를 포함한 `partial`이었다. 실제 공급원에서 30초 대기를 재현한 시험은 아니다.
-- 위 결과는 개인 브랜치 시험이다. 제출 `main` 한 커밋에서의 Festival·백엔드 전체 시험 결과는 별도로 기록해야 한다.
+- 위 결과는 개인 브랜치 시험이다. 제출 기준 `main`의 Festival·백엔드 전체 시험 결과는 아래 병합 후 시험 절에 별도로 기록했다.
 
 ## 팀원 독립 재검토 (2026-11-26)
 
@@ -73,3 +73,13 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 
 - 코드 기준: `dayoung 0b2369a`, Windows·Python 3.12.15. 저장소 루트에서 `PYTHONPATH=backend`를 지정하고 LangGraph·pytest를 제공한 환경으로 `python -B -m pytest backend/tests -q` 실행: **51 passed, 2 subtests passed in 0.73s**.
 - `dayoung` 단독 체크아웃에서 루트 명령을 경로 지정 없이 실행하면 `agents` 모듈을 찾지 못해 시험 수집 단계에서 실패한다. 위 결과는 실행 환경의 모듈 경로를 보완한 **병합 전 사전 점검**이며, 팀 `main`의 최종 시험으로 기록하지 않는다.
+
+## 제출 기준 `main` 병합 후 시험 확인 (2026-11-26)
+
+- 다영님이 팀에 전달한 시험 확인의 **코드 기준 커밋은 `main 0fda8fd`**다. 이 커밋은 `dayoung 699c214`를 병합한 커밋이다.
+- Festival 단독 시험: **37개 통과**.
+- 백엔드 전체 시험: **51개 통과, 하위 시험 2개 통과**.
+- 시간 제한과 4회 도구 호출 상한의 재현 사례: **두 사례 모두 `partial`로 종료**. 가상 시계·고정 응답으로 확인한 예산 처리이며 실제 외부 HTTP 호출을 30초에 강제 중단한 증거는 아니다.
+- 태경님 최종 설계 검토 완료. 앞 절의 개인 브랜치 시험·실조회와 이 병합 후 시험 결과는 기준 커밋이 다르다.
+
+이 절은 다영님이 전달한 결과 요약을 제출 기준으로 기록한다. 병합 후 실행의 원시 터미널 출력, 정확한 실행 명령·Python 버전·경과 시간은 이 메시지에 포함되지 않아 임의로 채우지 않았다. 이 문서 갱신 커밋에서 시험을 재실행한 결과로 표시하지 않는다.
