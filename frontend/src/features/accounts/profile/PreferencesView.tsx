@@ -146,10 +146,10 @@ export function PreferencesSection({
     } as const;
 
     return (
-      <section className="min-h-dvh bg-screen-dark px-0 pb-10 pt-8 text-surface">
+      <section className="min-h-dvh bg-screen-dark px-0 pb-10 pt-5 text-surface md:pt-7">
         <div className="px-6">
           <BrandLogo priority className="h-9 w-auto brightness-0 invert" />
-          <h1 className="mt-14 text-center text-[32px] font-black leading-tight tracking-tight">
+          <h1 className="mt-8 text-center text-[32px] font-black leading-tight tracking-tight md:mt-10">
             어떤 <span className="text-brand">축제</span>를 좋아하시나요?
           </h1>
           <p className="mt-4 text-center text-base text-surface/80">마음에 드는 축제 스타일을 선택해 주세요.</p>
