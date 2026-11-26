@@ -97,3 +97,7 @@
 `mismatch_persistent` 실행은 `2026-11-26T07:51:29.979577+00:00`(16:51:29 KST), `run_id=62c77bd3-8bd9-4c77-8d78-839453249661`, 모델 `gpt-6.2-sol`, 입력 349·출력 77토큰이었다. `valid_first` 실행은 `2026-11-26T07:51:30.614748+00:00`, `run_id=43be6de7-8c6c-4885-80ce-69b1a5fea090`이며 모델 API를 호출하지 않았다. 정상 사례의 밀리초 차이는 모의 호출의 단발 측정치라 성능 우열을 뜻하지 않는다.
 
 현재 실제 모델로 확인한 고정 오류 사례는 **수정 성공 1종·재확인 실패 1종**이다. 정상 근거 사례는 모델 판단 시험이 아니라 불필요한 호출 방지 시험이다. 세 사례 모두 실제 서비스 API·사용자 질문 분류·팀 공통 도구 실행기 연속 검증은 아니다.
+
+### 팀 공통 도구 실행기 연결 확인(11/26)
+
+`backend/tests/agents/test_festival_shared_executor.py`에서 `ToolExecutor(FESTIVAL_TOOLS)`를 W28 LangGraph 재확인 경로에 연결했다. 고정 HTTP 응답으로 `get_festival(F01)`→`search_festivals(q="시험 축제", region="SEOUL", date_from/to="2026-11-26", status="ongoing")`→`get_festival(F01)` 순서와 공통 `X-Request-ID`, 최종 근거 F01을 검사했다. Windows Python 3.12에서 에이전트 시험 **66개 통과**. 시험의 HTTP transport는 모의 함수이며 **실제 API 서버 연속 호출·실제 모델 판단을 동시에 검증한 결과는 아니다.**
