@@ -24,6 +24,7 @@ _COMPANION_PATH = re.compile(
 )
 
 _ADMIN_NOTICE_PATH = re.compile(r"/api/v1/admin/notices(?:/[^/]+(?:/(review|end))?)?/?")
+_ADMIN_RAG_PATH = re.compile(r"/api/v1/admin/rag-documents(?:/[^/]+(?:/(review))?)?/?")
 
 ADMIN_FESTIVALS_PATH = "/api/v1/admin/festivals"
 ADMIN_REVIEW_PATH = ADMIN_FESTIVALS_PATH + "/review-queue"
@@ -102,6 +103,16 @@ def admin_notice_endpoint(path: str) -> str | None:
     return base + "/{notice_id}" + ("/" + match[1] if match[1] else "")
 
 
+def admin_rag_document_endpoint(path: str) -> str | None:
+    match = _ADMIN_RAG_PATH.fullmatch(path)
+    if not match:
+        return None
+    base = "/api/v1/admin/rag-documents"
+    if path.rstrip("/") == base:
+        return base
+    return base + "/{document_id}" + ("/" + match[1] if match[1] else "")
+
+
 def admin_festival_endpoint(path: str) -> str | None:
     path = path.rstrip("/")
     if path in (ADMIN_FESTIVALS_PATH, ADMIN_REVIEW_PATH):
@@ -121,7 +132,7 @@ def private_endpoint(path: str) -> str | None:
     normalized = path.rstrip("/")
     if normalized in REPORT_PATHS or normalized == ADMIN_REVIEW_PATH:
         return normalized
-    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or assistant_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
+    return admin_festival_endpoint(path) or admin_notice_endpoint(path) or admin_rag_document_endpoint(path) or assistant_endpoint(path) or auth_endpoint(path) or me_endpoint(path) or friends_endpoint(path) or companion_endpoint(path) or chat_endpoint(path)
 
 
 class _PrivateRequestFilter(logging.Filter):

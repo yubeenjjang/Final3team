@@ -300,6 +300,14 @@ echo "## 5-15. 028_review-fix 경로 캐시 메타 보존 적용·되돌리기·
 "${PSQL_TX[@]}" -q < 028_review-fix.sql
 "${PSQL[@]}" -q -v applied=true -f - < tests_028_review-fix.sql
 
+echo "## 5-16. 029_rag-review RAG 공식 문서 승인 이력 적용·되돌리기·재적용"
+"${PSQL_TX[@]}" -q < 029_rag-review.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_029_rag-review.sql
+"${PSQL_TX[@]}" -q < 029_rag-review_down.sql
+"${PSQL[@]}" -q -v applied=false -f - < tests_029_rag-review.sql
+"${PSQL_TX[@]}" -q < 029_rag-review.sql
+"${PSQL[@]}" -q -v applied=true -f - < tests_029_rag-review.sql
+
 archive=/tmp/noldaga_long_term.dump
 restore_db=noldaga_backup_restore
 tr -d '\r' < backup_long_term.sh | docker exec -i "$NAME" bash -s -- -U postgres -d noldaga --file="$archive"

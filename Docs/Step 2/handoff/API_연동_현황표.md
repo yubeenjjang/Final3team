@@ -23,6 +23,7 @@
 | A32~A35 가입·로그인 | `/auth/*` | 모의(메모리) | 11/26 목표, **시연 흐름 뒤로 밀릴 수 있음** | DB `users` | W18 | — |
 | A11~A13 관심 축제 | `/me/favorites` | 모의 | 12/02 | DB `favorites` | W41 | ❌ 로그인 |
 | A82 비밀번호 변경 | `POST /me/password` | **구현 ✅ 11/25** (모의·`AUTH_PROVIDER=db` 둘 다) | — | DB `users.password_hash`, 성공 시 모든 기기 Refresh 폐기 | FR-COM22 | ❌ 로그인 |
+| A83~A85 RAG 공식 문서 검토(운영자) | `GET /admin/rag-documents` · `GET /admin/rag-documents/{document_id}` · `POST /admin/rag-documents/{document_id}/review` | **구현 ✅ 11/26** (모의 메모리·`AUTH_PROVIDER=db` 둘 다, 마이그레이션 029) | — (설계서 반영은 기준 시점에 묶어서) | DB `rag_documents`·`rag_chunks`·`rag_document_events` | W27 · [1-3절](#1-3-a83a85-rag-공식-문서-검토-w27) | ❌ operator·admin |
 | A06 AI 질문 | `POST /assistant/query` → `GET /assistant/runs/{id}` | 모의(키워드로 흉내) | 12월(에이전트 연결) | LangGraph | W24·W45 | ✅ |
 
 - 날짜는 **목표일**입니다. 늦어지면 이 표를 먼저 고치고 디스코드에 알립니다(실제 전환 = 이 표의 '지금' 칸이 '실제'로 바뀜).
@@ -49,6 +50,22 @@
 
 - A42는 서버가 계산한 `score` 순서로 표시합니다. `sources`는 해당 점수에 반영된 출처이며, `signal: no_signal`은 네이버 점수가 없는 상태로 구석구석 점수는 표시할 수 있습니다. 응답 또는 항목이 `partial_sources: true`이면 해당 위치에 '일부 출처만 반영'을 표시합니다. `status: stale`이면 마지막 성공 목록과 기준 시각(`crawled_at`)을 표시합니다. 시작 전 축제에는 '곧 시작'을 표시할 수 있습니다.
 - A81은 축제 상세에 최신 글을 기본 5건까지 보여 줍니다. 글마다 출처를 표시합니다. 블로그·뉴스는 축제 시작 30일 전 이후의 글을 선별하고, 카페는 제목 정확 일치 조건만 적용합니다. 카페 글의 `published_date`는 `null`이며 원문 링크로 제공합니다. `status: ok`의 빈 목록은 표시할 글이 없는 경우입니다. `status: unavailable`의 빈 목록은 조회 실패이며 `retryable: true`일 때 다시 시도할 수 있습니다. [API 설계문서 7-15](../API_설계문서.md)
+
+### 1-3. A83~A85 RAG 공식 문서 검토 (W27)
+
+다영님 [W27 승인·검색 계약 초안](RAG_공식문서_승인_검색_계약.md)(`dayoung` d2a2a74, main 병합 전) 2·3절에 맞춘 운영자 API입니다. 공개 챗봇·수집기는 승인 상태를 바꾸지 않고, 이 API(운영자 인증) 뒤 `noldaga_service`만 씁니다. `noldaga_app`에는 문서·이력 권한이 없습니다. 권한은 토큰이 아니라 DB `profiles.role`(operator·admin)로 판정합니다.
+
+| API | 요청 | 응답(200) |
+|---|---|---|
+| A83 목록 | 쿼리 `approval_status`(pending·approved·rejected) · `festival_id` · `page`(1~) · `page_size`(1~100, 기본 20). 최신 등록순 | `{items:[{document_id, festival_id, title, category, authored_by, source_url, publisher, published_at, effective_from, effective_to, collected_at, approval_status, approved_by, approved_at, checksum, chunk_count, created_at}], page, page_size, total}` |
+| A84 상세 | 경로 `document_id`(UUID) | A83 항목 + `chunks:[{chunk_index, preview(앞 200자), embedding_model, embedding_version}]`(최대 50, **임베딩 벡터는 보내지 않음**) + `events:[{action(approve·reject·supersede), actor, reason, created_at}]` |
+| A85 승인·반려 | 본문 `{decision: "approve"\|"reject", checksum: 검토한 문서 checksum, reason?: 300자 이하(반려는 필수)}` | `{document_id, approval_status, approved_by, approved_at, effective_from, effective_to, superseded_document_ids:[...]}` |
+
+- **승인 기록**: 한 트랜잭션에서 문서 행을 잠그고 `approval_status='approved'`, `approved_by`=로그인한 운영자, `approved_at`=DB 서버 시각을 기록합니다. 승인·반려·대체는 `rag_document_events`(추가만 가능)에 남습니다.
+- **개정본 대체**: 같은 `festival_id`·같은 `source_url`의 기존 승인본 중 아직 효력이 남은 문서의 `effective_to`를 새 문서 `effective_from`(없으면 승인 시각)으로 닫습니다. 그래서 두 승인본이 같은 시각에 검색되지 않습니다(`search.py` 조건 `effective_to > as_of`). 대체된 문서 ID는 응답 `superseded_document_ids`와 이력 `supersede`에 남습니다.
+- **오류 코드**: 401 로그인 없음 · 403 `FORBIDDEN`(operator·admin 아님, 상태 불변) · 404 `RAG_DOCUMENT_NOT_FOUND` · 409 `RAG_DOCUMENT_ALREADY_REVIEWED`(pending 아님) · 409 `RAG_DOCUMENT_CHANGED`(checksum 불일치 = 검토 중 내용 바뀜) · 409 `RAG_DOCUMENT_EMPTY`(본문 조각 0개는 승인 불가) · 409 `RAG_FESTIVAL_NOT_PUBLIC`(공개되지 않은 축제 문서) · 422 입력 오류(반려 사유 없음 등) · 503 `RAG_DOCUMENT_STORE_UNAVAILABLE`(재시도 가능).
+- **모의 모드**(`AUTH_PROVIDER=mock`): 메모리 저장소, 운영자 토큰은 공지와 같은 `MOCK_ADMIN_REVIEW_TOKEN`, 응답 헤더 `X-Mock: true`.
+- 시험: `backend/tests/api/test_rag_documents.py`(모의 5개) · `test_rag_documents_postgres.py`(실제 DB: 승인 전 비노출→승인 후 노출, 반려, 동시 승인 200/409, checksum 409, 권한 없음 불변, 개정본 효력 닫힘) · SQL `Docs/Step 2/db/tests_029_rag-review.sql`(T029a~d).
 
 ## 2. 귀가 조회 상태값 — 화면이 구분해야 할 것
 
@@ -102,6 +119,7 @@
 | 11/24 | v0.5 A42 점수는 신유빈 11/24 B안(두 출처 합산)을 따르고, 네이버는 데이터랩 검색어 트렌드를 사용합니다. 약관상 네이버 검색 결과는 A81 표시에만 사용합니다. 권오현 확정 및 한태경 16:09 NAVER API HUB 명세 반영 | 권오현 |
 
 11/24 SQL·DB 시험 기준 커밋은 `ohyun` `719484d`입니다. 이 커밋 이후 집 PC 일회용 `pgvector/pgvector:pg17` 컨테이너에서 `run_tests.sh`로 001~028를 적용하고 010~015 되돌리기·재적용과 T25a~c 백업 복원을 확인했습니다. 실행기 출력 PASS 표기 265줄(개별 시험 PASS 260건 + 요약 5줄), FAIL 0입니다. 001~014 적용 후 저장소 루트에서 `python -m pytest backend/tests -m db -q`는 16개 통과, 오프라인 `python -m pytest backend/tests -q`는 490개 통과·25개 건너뜀입니다. AWS 검증은 W65 AWS 구성 뒤 같은 실행기로 다시 실행합니다(AWS 환경 신유빈 관리). [11/24 SQL 로그](../db/results_2026-11-24.log)
+| 11/26 | A83~A85 RAG 공식 문서 검토 API(W27, 마이그레이션 029) 구현 — 1-3절 | 권오현 |
 
 ## 6. 결정 기록
 
