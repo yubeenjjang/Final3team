@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Camera, Check, Heart, PawPrint, RotateCcw, Sparkles, UsersRound, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -28,6 +28,11 @@ export function PreferencesSection({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const carouselRef = useRef<HTMLUListElement>(null);
+  const dragStartX = useRef(0);
+  const dragStartScrollLeft = useRef(0);
+  const dragged = useRef(false);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,6 +72,33 @@ export function PreferencesSection({
       if (prev.length >= 5) return prev;
       return [...prev, value];
     });
+  }
+
+  function startDrag(event: ReactPointerEvent<HTMLUListElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+    dragStartX.current = event.clientX;
+    dragStartScrollLeft.current = carousel.scrollLeft;
+    dragged.current = false;
+    setDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function moveDrag(event: ReactPointerEvent<HTMLUListElement>) {
+    if (!dragging || event.pointerType !== "mouse") return;
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+    const distance = event.clientX - dragStartX.current;
+    if (Math.abs(distance) > 4) dragged.current = true;
+    carousel.scrollLeft = dragStartScrollLeft.current - distance;
+    event.preventDefault();
+  }
+
+  function finishDrag(event: ReactPointerEvent<HTMLUListElement>) {
+    if (!dragging) return;
+    setDragging(false);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
   }
 
   async function submitPreferences(skip: boolean) {
@@ -127,7 +159,21 @@ export function PreferencesSection({
         {loading ? (
           <div role="status" className="mx-6 mt-8 h-[430px] animate-pulse rounded-panel bg-surface/10" />
         ) : (
-          <ul className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[42px] pb-4">
+          <ul
+            ref={carouselRef}
+            className={`no-scrollbar mt-8 flex touch-pan-x gap-4 overflow-x-auto px-[42px] pb-4 select-none ${dragging ? "cursor-grabbing snap-none" : "cursor-grab snap-x snap-mandatory"}`}
+            onPointerDown={startDrag}
+            onPointerMove={moveDrag}
+            onPointerUp={finishDrag}
+            onPointerCancel={finishDrag}
+            onDragStart={(event) => event.preventDefault()}
+            onClickCapture={(event) => {
+              if (!dragged.current) return;
+              event.preventDefault();
+              event.stopPropagation();
+              dragged.current = false;
+            }}
+          >
             {SCENARIO_OPTIONS.map((option, index) => {
               const active = selected.includes(option.value);
               const Icon = scenarioIcons[option.value];
@@ -170,7 +216,7 @@ export function PreferencesSection({
           <button type="button" disabled={saving} onClick={() => void submitPreferences(true)} className="min-h-11 px-3 text-base font-bold">건너뛰기 ›</button>
         </div>
         <div className="px-6 pt-5">
-          <button type="button" disabled={saving || selected.length !== 5} onClick={() => void submitPreferences(false)} className="min-h-14 w-full rounded-card-lg bg-brand text-base font-extrabold disabled:opacity-40">
+          <button type="button" disabled={saving || selected.length === 0} onClick={() => void submitPreferences(false)} className="min-h-14 w-full rounded-card-lg bg-brand text-base font-extrabold disabled:opacity-40">
             {saving ? "저장 중…" : `${selected.length}개 취향 선택 완료`}
           </button>
         </div>

@@ -476,3 +476,8 @@
  GET /companions 200 in 25ms (next.js: 2ms, application-code: 23ms)
  GET /routes/return 200 in 26ms (next.js: 3ms, application-code: 23ms)
  GET /map 200 in 23ms (next.js: 5ms, application-code: 19ms)
+ GET /auth/login 200 in 69ms (next.js: 25ms, application-code: 44ms)
+ GET /auth/signup 200 in 117ms (next.js: 32ms, application-code: 85ms)
+✓ Compiled in 485ms
+✓ Compiled in 148ms
+✓ Compiled in 122ms

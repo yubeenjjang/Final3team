@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Bus,
   CalendarDays,
@@ -13,7 +12,6 @@ import {
   MapPin,
   ParkingCircle,
   RotateCcw,
-  Share2,
   ShieldCheck,
   Ticket,
   TrainFront,
@@ -163,37 +161,18 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
 
   return (
     <div className="space-y-6 px-4 py-3 pb-6">
-      {/* 상단 내비게이션 줄 */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/festivals"
-          aria-label="축제 목록으로"
-          className="grid h-11 w-11 place-items-center rounded-chip text-ink transition-colors hover:bg-surface-soft hover:text-brand"
-        >
-          <ArrowLeft className="h-6 w-6" aria-hidden="true" />
-        </Link>
-        <button type="button" aria-label="공유하기" className="grid h-11 w-11 place-items-center rounded-chip text-ink hover:bg-surface-soft"><Share2 className="h-6 w-6" aria-hidden="true" /></button>
-      </div>
-
-      <FestivalAiPrompt festivalId={festival.festival_id} />
-
-      <section className="grid grid-cols-[44%_1fr] gap-3">
-        <div className="relative aspect-[1/1.414] w-full overflow-hidden rounded-card-lg border border-line-light bg-surface-soft/45 shadow-card">
+      <section className="space-y-4">
+        <div className="relative aspect-[3/1] w-full overflow-hidden rounded-card-lg border border-line-light bg-surface-soft/45 shadow-card">
           {showHeroImage && heroImage ? (
-            <>
-              <Image
-                src={heroImage}
-                alt={festival.name}
-                fill
-                sizes="180px"
-                unoptimized
-                onError={() => setFailedHeroSrc(heroImage)}
-                className="bg-ink/5 object-contain"
-              />
-              <span className="absolute bottom-2.5 right-2.5 rounded-chip bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-surface backdrop-blur-sm">
-                출처: 한국관광공사
-              </span>
-            </>
+            <Image
+              src={heroImage}
+              alt={festival.name}
+              fill
+              sizes="(max-width: 767px) 100vw, 1100px"
+              unoptimized
+              onError={() => setFailedHeroSrc(heroImage)}
+              className="bg-ink/5 object-cover object-center"
+            />
           ) : (
             <FestivalImagePlaceholder />
           )}
@@ -205,17 +184,24 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
           ) : null}
           <FavoriteButton festivalId={festival.festival_id} className="absolute right-2 top-2 z-10" />
         </div>
+
         <div className="min-w-0 space-y-2">
-          <div className="flex items-start gap-2"><span className="mt-1 h-6 w-1.5 shrink-0 rounded-chip bg-brand" /><h1 className="text-[24px] font-black leading-tight tracking-tight text-ink">{festival.name}</h1></div>
-          {festival.overview ? <p className="line-clamp-3 text-xs leading-relaxed text-muted">{festival.overview}</p> : null}
-          <div aria-label="기본 정보" className="space-y-1.5 pt-1">
-            <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><CalendarDays className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="font-semibold">{periodText}</span></div>
-            <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><MapPin className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{festival.venue_name ?? festival.address ?? "장소 미정"}</span></div>
-            {festival.fee_text ? <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><Ticket className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{festival.fee_text}</span></div> : null}
-            <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2 text-[11px]"><Compass className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{regionLabel}</span></div>
+          <div className="flex items-start gap-2">
+            <span className="mt-1 h-6 w-1.5 shrink-0 rounded-chip bg-brand" />
+            <h1 className="text-[24px] font-black leading-tight tracking-tight text-ink">{festival.name}</h1>
           </div>
+          {festival.overview ? <p className="text-sm leading-relaxed text-muted">{festival.overview}</p> : null}
         </div>
       </section>
+
+      <FestivalAiPrompt festivalId={festival.festival_id} />
+
+      <div aria-label="기본 정보" className="grid grid-cols-2 gap-2">
+        <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2.5 text-[11px]"><CalendarDays className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="font-semibold">{periodText}</span></div>
+        <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2.5 text-[11px]"><MapPin className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{festival.venue_name ?? festival.address ?? "장소 미정"}</span></div>
+        {festival.fee_text ? <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2.5 text-[11px]"><Ticket className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{festival.fee_text}</span></div> : null}
+        <div className="flex items-center gap-2 rounded-chip bg-surface-muted px-3 py-2.5 text-[11px]"><Compass className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" /><span className="truncate font-semibold">{regionLabel}</span></div>
+      </div>
 
       {/* 축제 정보 박스 */}
       {festival.address || festival.homepage_url ? (
