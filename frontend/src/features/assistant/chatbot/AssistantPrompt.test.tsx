@@ -45,7 +45,7 @@ describe("F9 assistant flow", () => {
     render(<HomePage />);
     await advance(0);
     const festivalQuery = new URL(String(fetchApi.mock.calls[0][0]));
-    expect(festivalQuery.searchParams.get("status")).toBe("ongoing");
+    expect(festivalQuery.searchParams.get("status")).toBe("ongoing,upcoming");
     expect(festivalQuery.searchParams.get("page_size")).toBe("4");
 
     reply(run, 202);
@@ -62,7 +62,10 @@ describe("F9 assistant flow", () => {
 
     await advance(1000);
     expect(screen.getByText("경로를 찾았어요.")).toBeInTheDocument();
-    const href = screen.getByRole("link", { name: "귀가 경로 보기" }).getAttribute("href")!;
+    const href = screen
+      .getAllByRole("link", { name: "귀가 경로 보기" })
+      .map((link) => link.getAttribute("href"))
+      .find((value) => value?.includes("?id="))!;
     const url = new URL(href, "http://localhost");
     expect(url.pathname).toBe("/routes/return");
     expect(Object.fromEntries(url.searchParams)).toEqual({ id: route.route_request_id });

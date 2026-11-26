@@ -4,17 +4,24 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FestivalCarousel } from "./FestivalCarousel";
-import { listFestivals, type FestivalListItem, type ListFestivalsQuery } from "./api";
+import {
+  DEFAULT_STATUSES,
+  listFestivals,
+  type FestivalListItem,
+  type ListFestivalsQuery,
+} from "./api";
+
+const POPULAR_STATUSES = DEFAULT_STATUSES as ListFestivalsQuery["status"];
 
 export function FeaturedFestivals({
   title = "인기있는 축제",
-  status = "ongoing",
+  status = POPULAR_STATUSES,
   moreLabel = "전체보기",
   moreHref = "/festivals/all?section=popular",
   sort,
 }: {
   title?: string;
-  status?: "ongoing" | "upcoming";
+  status?: ListFestivalsQuery["status"];
   moreLabel?: string;
   moreHref?: string;
   sort?: ListFestivalsQuery["sort"];
