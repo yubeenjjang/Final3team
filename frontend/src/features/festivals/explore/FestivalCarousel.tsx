@@ -51,7 +51,6 @@ export function FestivalCarousel({
     dragStartScrollLeft.current = scroller.scrollLeft;
     dragged.current = false;
     setDragging(true);
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function moveMouseDrag(event: ReactPointerEvent<HTMLDivElement>) {
@@ -59,7 +58,11 @@ export function FestivalCarousel({
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const distance = event.clientX - dragStartX.current;
-    if (Math.abs(distance) > 3) dragged.current = true;
+    if (Math.abs(distance) > 3 && !dragged.current) {
+      dragged.current = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    if (!dragged.current) return;
     scroller.scrollLeft = dragStartScrollLeft.current - distance;
     event.preventDefault();
     updateActivePage();
@@ -68,7 +71,9 @@ export function FestivalCarousel({
   function finishMouseDrag(event: ReactPointerEvent<HTMLDivElement>) {
     if (!dragging) return;
     setDragging(false);
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (dragged.current) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
     updateActivePage();
   }
 

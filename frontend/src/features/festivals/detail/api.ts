@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
+import { MOCK_FESTIVALS } from "../explore/mockFestivals";
 
 export type FestivalDetail = components["schemas"]["FestivalDetail"];
 export type AssistantRequest = components["schemas"]["AssistantRequest"];
@@ -23,6 +24,26 @@ export interface AssistantRunStatusResult {
   } | null;
 }
 
+function getMockFestivalDetail(festivalId: string): FestivalDetail | null {
+  const festival = MOCK_FESTIVALS.find(
+    (item) => item.festival_id === festivalId,
+  );
+
+  if (!festival) return null;
+
+  return {
+    ...festival,
+    is_mock: true,
+    address: festival.venue_name,
+    overview: `${festival.name}에서 즐거운 축제의 순간을 만나보세요. 다채로운 볼거리와 즐길 거리가 준비되어 있습니다.`,
+    fee_text: "무료",
+    homepage_url: null,
+    image_url: festival.thumbnail_url,
+    image_copyright: null,
+    source_ref: festival.festival_id,
+  };
+}
+
 /**
  * Fetch single festival detail (A03).
  */
@@ -30,6 +51,11 @@ export function getFestivalDetail(
   festivalId: string,
   signal?: AbortSignal,
 ): Promise<FestivalDetail> {
+  if (process.env.NEXT_PUBLIC_USE_MOCK_FESTIVALS === "1") {
+    const mockFestival = getMockFestivalDetail(festivalId);
+    if (mockFestival) return Promise.resolve(mockFestival);
+  }
+
   return apiGet<FestivalDetail>(`/festivals/${encodeURIComponent(festivalId)}`, {
     signal,
   });

@@ -43,4 +43,32 @@ describe("FestivalCarousel", () => {
 
     expect(scroller.scrollLeft).toBe(260);
   });
+
+  it("does not capture a simple card click", () => {
+    render(<FestivalCarousel items={MOCK_FESTIVALS.slice(0, 4)} ariaLabel="인기있는 축제" />);
+    const scroller = screen.getByRole("region", { name: "인기있는 축제 카드 목록" });
+    const setPointerCapture = vi.fn();
+    Object.defineProperty(scroller, "setPointerCapture", {
+      configurable: true,
+      value: setPointerCapture,
+    });
+
+    fireEvent.pointerDown(scroller, {
+      pointerType: "mouse",
+      pointerId: 1,
+      button: 0,
+      clientX: 200,
+    });
+    fireEvent.pointerUp(scroller, {
+      pointerType: "mouse",
+      pointerId: 1,
+      clientX: 200,
+    });
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(screen.getByTestId("festival-card-fst_design_001")).toHaveAttribute(
+      "href",
+      "/festivals/fst_design_001",
+    );
+  });
 });

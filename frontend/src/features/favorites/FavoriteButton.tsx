@@ -64,7 +64,9 @@ export function FavoriteButton({
     >
       <Heart
         className={`${appearance === "icon" ? "h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]" : "h-5 w-5"} ${
-          favorite ? "fill-brand text-brand" : "text-surface"
+          favorite
+            ? "fill-brand text-brand drop-shadow-[0_1px_3px_rgba(255,75,134,0.65)]"
+            : "fill-transparent text-surface"
         }`}
         aria-hidden="true"
       />

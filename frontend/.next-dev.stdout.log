@@ -489,3 +489,14 @@
  GET /companions 200 in 39ms (next.js: 6ms, application-code: 33ms)
  GET /festivals 200 in 37ms (next.js: 14ms, application-code: 23ms)
  GET / 200 in 41ms (next.js: 6ms, application-code: 35ms)
+ GET /festivals 200 in 41ms (next.js: 5ms, application-code: 36ms)
+ GET / 200 in 30ms (next.js: 5ms, application-code: 24ms)
+✓ Compiled in 138ms
+ GET / 200 in 184ms (next.js: 5ms, application-code: 178ms)
+ GET /festivals/fst_design_001 200 in 1564ms (next.js: 1387ms, application-code: 177ms)
+ GET / 200 in 219ms (next.js: 5ms, application-code: 215ms)
+ GET /festivals 200 in 31ms (next.js: 4ms, application-code: 27ms)
+✓ Compiled in 88ms
+✓ Compiled in 160ms
+✓ Compiled in 128ms
+ GET /festivals/fst_design_001 200 in 87ms (next.js: 34ms, application-code: 53ms)
