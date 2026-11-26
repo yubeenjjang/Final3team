@@ -174,6 +174,53 @@ describe("F8 return route flow", () => {
     expect(screen.getByRole("button", { name: /38분/ })).toBeInTheDocument();
   });
 
+  it.each(["unavailable", "timed_out", "rejected"] as const)(
+    "does not poll when submission immediately returns %s",
+    async (status) => {
+      await openWithFestival();
+      const message = `${status} 즉시 실패`;
+      reply({
+        route_request_id: ACCESS.id,
+        route_status: status,
+        error: { message },
+        notices: [NOTICE],
+      });
+
+      findRoute();
+      await flush();
+
+      expect(fetchApi).toHaveBeenCalledTimes(2);
+      expect(fetchApi.mock.calls[1][1]?.method).toBe("POST");
+      expect(screen.getByRole("alert")).toHaveTextContent(message);
+      expect(screen.getByRole("list", { name: "경로 안내" })).toHaveTextContent(NOTICE);
+    },
+  );
+
+  it("renders a Kakao result when optional numeric fields are null", async () => {
+    await openWithFestival();
+    reply({
+      ...ROUTE,
+      provider: "kakao",
+      route_candidates: [{
+        ...ROUTE.route_candidates[0],
+        duration_min: null,
+        walk_m: null,
+        transfers: null,
+        fare_krw: null,
+        legs: [{ mode: "transit", duration_min: null, line: null }],
+      }],
+    });
+
+    findRoute();
+    await flush();
+
+    expect(screen.getByText("도보 정보 없음")).toBeInTheDocument();
+    expect(screen.getByText("환승 정보 없음")).toBeInTheDocument();
+    const card = screen.getByRole("button", { name: /시간 정보 없음/ });
+    expect(card).toHaveTextContent("시간 정보 없음");
+    expect(card).toHaveTextContent("대중교통 시간 정보 없음");
+  });
+
   it.each([400, 404, 422, 503])("keeps the inputs and shows the error on HTTP %s", async (status) => {
     await openWithFestival();
     const code = status === 503 ? "ROUTE_OVERLOADED" : "INVALID";

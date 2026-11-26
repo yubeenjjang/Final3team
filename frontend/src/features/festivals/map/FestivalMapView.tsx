@@ -54,6 +54,27 @@ function formatDistance(distance: number): string {
     : `${(distance / 1000).toFixed(1)}km`;
 }
 
+function estimateWalkingMinutes(distance: number): number {
+  return Math.max(1, Math.ceil(distance / 80));
+}
+
+function getFacilitySourceLabel(source?: string | null): string | null {
+  if (!source) return null;
+  if (source === "kakao_local") return "카카오 장소 검색";
+  if (source.startsWith("seoul_")) return "서울 공공데이터";
+  return "공공·제휴 데이터";
+}
+
+const FACILITY_EXTRA_LABELS: Record<string, string> = {
+  phone: "전화번호",
+  telephone: "전화번호",
+  tel: "전화번호",
+  opening_hours: "운영시간",
+  operating_hours: "운영시간",
+  line: "노선",
+  capacity: "수용 정보",
+};
+
 interface FestivalMapViewProps {
   initialFestivalId?: string | null;
   initialGroup?: FacilityGroup;
@@ -84,6 +105,7 @@ export function FestivalMapView({
   const [crowdOpen, setCrowdOpen] = useState(false);
   const [festivalMenuOpen, setFestivalMenuOpen] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+  const facilityListRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -307,6 +329,9 @@ export function FestivalMapView({
   const handleMarkerClick = useCallback((marker: KakaoMapMarker) => {
     if (marker.id?.startsWith("facility:")) {
       setSelectedFacilityId(marker.id.slice("facility:".length));
+      window.requestAnimationFrame(() => {
+        facilityListRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      });
       return;
     }
     if (marker.id?.startsWith("festival:")) setSelectedFacilityId(null);
@@ -314,6 +339,11 @@ export function FestivalMapView({
   const selectedFacility = visibleFacilities.find(
     (facility) => facility.facility_id === selectedFacilityId,
   );
+  const selectedFacilityExtras = selectedFacility?.extra
+    ? Object.entries(selectedFacility.extra)
+        .filter(([key, value]) => FACILITY_EXTRA_LABELS[key] && value != null && value !== "")
+        .map(([key, value]) => ({ label: FACILITY_EXTRA_LABELS[key], value: String(value) }))
+    : [];
   const mapCenter = selectedFacility
     ? { lat: selectedFacility.lat, lng: selectedFacility.lng }
     : selected
@@ -606,7 +636,7 @@ export function FestivalMapView({
             ))}
           </div>
 
-          <section aria-label="주변 시설 목록" className="-mx-4 rounded-t-[28px] border-t border-line-light bg-surface px-4 pb-2 pt-3 shadow-[0_-8px_24px_rgba(52,53,54,0.08)]">
+          <section ref={facilityListRef} aria-label="주변 시설 목록" className="-mx-4 scroll-mt-24 rounded-t-[28px] border-t border-line-light bg-surface px-4 pb-2 pt-3 shadow-[0_-8px_24px_rgba(52,53,54,0.08)]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-6 w-1.5 shrink-0 rounded-chip bg-brand" aria-hidden="true" />
@@ -617,6 +647,55 @@ export function FestivalMapView({
               </div>
               <span className="shrink-0 rounded-chip border border-line-light px-3 py-1.5 text-[10px] font-bold text-muted">거리순</span>
             </div>
+
+            {selectedFacility ? (
+              <article
+                aria-label={`${selectedFacility.name} 상세 정보`}
+                className="mt-3 rounded-card-lg border border-brand/35 bg-brand-soft/35 p-4 shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-card bg-surface text-lg font-black text-brand shadow-sm" aria-hidden="true">
+                    {FACILITY_SYMBOLS[selectedFacility.category]}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-black text-ink">{selectedFacility.name}</h3>
+                      <span className="rounded-chip bg-brand px-2 py-1 text-[10px] font-extrabold text-surface">
+                        {FACILITY_LABELS[selectedFacility.category]}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] font-semibold text-muted">선택한 지도 위치의 상세 정보예요.</p>
+                  </div>
+                </div>
+
+                <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <div className="rounded-card bg-surface px-3 py-2.5">
+                    <dt className="font-bold text-muted">주소</dt>
+                    <dd className="mt-1 font-semibold leading-relaxed text-ink">
+                      {selectedFacility.address || "주소 정보가 제공되지 않았어요."}
+                    </dd>
+                  </div>
+                  <div className="rounded-card bg-surface px-3 py-2.5">
+                    <dt className="font-bold text-muted">축제장에서</dt>
+                    <dd className="mt-1 font-semibold text-ink">
+                      {formatDistance(selectedFacility.distance_m)} · 도보 약 {estimateWalkingMinutes(selectedFacility.distance_m)}분
+                    </dd>
+                  </div>
+                  {selectedFacilityExtras.map((item) => (
+                    <div key={`${item.label}-${item.value}`} className="rounded-card bg-surface px-3 py-2.5">
+                      <dt className="font-bold text-muted">{item.label}</dt>
+                      <dd className="mt-1 font-semibold text-ink">{item.value}</dd>
+                    </div>
+                  ))}
+                  {getFacilitySourceLabel(selectedFacility.source) ? (
+                    <div className="rounded-card bg-surface px-3 py-2.5">
+                      <dt className="font-bold text-muted">정보 출처</dt>
+                      <dd className="mt-1 font-semibold text-ink">{getFacilitySourceLabel(selectedFacility.source)}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </article>
+            ) : null}
 
             {facilitiesLoading ? (
               <div role="status" className="mt-3 space-y-2">
@@ -630,7 +709,11 @@ export function FestivalMapView({
               <ul className="mt-3 space-y-2">
                 {visibleFacilities
                   .slice()
-                  .sort((left, right) => left.distance_m - right.distance_m)
+                  .sort((left, right) => {
+                    if (left.facility_id === selectedFacilityId) return -1;
+                    if (right.facility_id === selectedFacilityId) return 1;
+                    return left.distance_m - right.distance_m;
+                  })
                   .map((facility) => (
                     <li key={facility.facility_id}>
                       <button
@@ -654,7 +737,9 @@ export function FestivalMapView({
                             축제장에서 {formatDistance(facility.distance_m)} · {FACILITY_LABELS[facility.category]}
                           </span>
                         </span>
-                        {facilityGroup === "safety" ? (
+                        {selectedFacilityId === facility.facility_id ? (
+                          <span className="shrink-0 rounded-chip bg-brand px-2 py-1 text-[10px] font-extrabold text-surface">선택한 위치</span>
+                        ) : facilityGroup === "safety" ? (
                           <span className="shrink-0 rounded-chip bg-crowd-green/30 px-2 py-1 text-[10px] font-bold text-ink">운영 중</span>
                         ) : null}
                         <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />

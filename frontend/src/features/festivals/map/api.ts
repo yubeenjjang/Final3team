@@ -21,6 +21,8 @@ export interface MapFacility {
   lng: number;
   distance_m: number;
   address?: string | null;
+  source?: string | null;
+  ref_code?: string | null;
   extra?: Record<string, string | number | boolean | null>;
 }
 

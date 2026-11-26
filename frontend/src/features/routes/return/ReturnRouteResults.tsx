@@ -157,12 +157,20 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
                           ) : null}
                         </span>
                         <span className="mt-1 flex flex-wrap gap-x-2.5 gap-y-1 text-xs text-muted">
-                          <span className="inline-flex items-center gap-1"><Footprints size={13} aria-hidden="true" /> 도보 {candidate.walk_m.toLocaleString("ko-KR")}m</span>
-                          <span className="inline-flex items-center gap-1"><BusFront size={13} aria-hidden="true" /> 환승 {candidate.transfers}회</span>
+                          <span className="inline-flex items-center gap-1">
+                            <Footprints size={13} aria-hidden="true" />
+                            {candidate.walk_m != null
+                              ? `도보 ${candidate.walk_m.toLocaleString("ko-KR")}m`
+                              : "도보 정보 없음"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <BusFront size={13} aria-hidden="true" />
+                            {candidate.transfers != null ? `환승 ${candidate.transfers}회` : "환승 정보 없음"}
+                          </span>
                         </span>
                       </span>
                       <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap font-display text-2xl font-black tracking-tight text-brand">
-                        {candidate.duration_min}분
+                        {candidate.duration_min != null ? `${candidate.duration_min}분` : "시간 정보 없음"}
                         <ChevronRight size={17} className="text-brand/75" aria-hidden="true" />
                       </span>
                     </span>
@@ -179,7 +187,12 @@ export function ReturnRouteResults({ route, onEdit, fromLink }: {
                                   : "bg-surface-soft text-brand"
                               }`}
                             >
-                              <Icon size={12} aria-hidden="true" /> {label}{leg.line ? ` ${leg.line}` : ` ${leg.duration_min}분`}
+                              <Icon size={12} aria-hidden="true" /> {label}
+                              {leg.line
+                                ? ` ${leg.line}`
+                                : leg.duration_min != null
+                                  ? ` ${leg.duration_min}분`
+                                  : " 시간 정보 없음"}
                             </span>
                           </span>
                         );

@@ -54,7 +54,7 @@ export type RoutePoint = [lat: number, lng: number];
 
 export interface RouteLeg {
   mode: string;
-  duration_min: number;
+  duration_min: number | null;
   line?: string | null;
   path?: RoutePoint[] | null;
 }
@@ -62,9 +62,10 @@ export interface RouteLeg {
 export interface RouteCandidate {
   candidate_id: string;
   summary: string;
-  duration_min: number;
-  walk_m: number;
-  transfers: number;
+  duration_min: number | null;
+  walk_m: number | null;
+  transfers: number | null;
+  fare_krw?: number | null;
   legs: RouteLeg[];
 }
 
@@ -98,13 +99,13 @@ interface PendingRoute extends RouteResponse {
   retry_after_s?: number;
 }
 
-interface FailedRoute extends RouteResponse {
+export interface FailedRoute extends RouteResponse {
   route_status: "unavailable" | "timed_out" | "rejected";
   error?: { message: string } | null;
 }
 
 export type RouteStatus = PendingRoute | ReadyRoute | FailedRoute;
-type RouteSubmission = ReadyRoute | (PendingRoute & { route_access_token: string });
+type RouteSubmission = ReadyRoute | FailedRoute | (PendingRoute & { route_access_token: string });
 
 export function submitReturnRoute(
   body: ReturnRouteRequest,

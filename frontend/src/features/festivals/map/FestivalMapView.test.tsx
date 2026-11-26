@@ -28,6 +28,8 @@ describe("FestivalMapView", () => {
               lat: 37.57,
               lng: 126.97,
               distance_m: 320,
+              address: food ? "서울 영등포구 여의도동" : "서울 종로구 세종대로",
+              source: food ? "kakao_local" : "seoul_subway_station",
             },
           ],
         });
@@ -131,6 +133,9 @@ describe("FestivalMapView", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "한강뷰 카페 지도에서 보기" }));
     expect(screen.getByRole("application", { name: "한강뷰 카페 지도" })).toBeInTheDocument();
+    expect(screen.getByLabelText("한강뷰 카페 상세 정보")).toHaveTextContent("서울 영등포구 여의도동");
+    expect(screen.getByLabelText("한강뷰 카페 상세 정보")).toHaveTextContent("320m · 도보 약 4분");
+    expect(screen.getByLabelText("한강뷰 카페 상세 정보")).toHaveTextContent("카카오 장소 검색");
     expect(screen.getByRole("button", { name: "한강뷰 카페 지도에서 보기" })).toHaveAttribute(
       "aria-pressed",
       "true",

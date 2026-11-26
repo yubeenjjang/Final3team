@@ -7,7 +7,7 @@ import { KakaoMap } from "@/components/KakaoMap";
 import { TabPageHero } from "@/components/TabPageHero";
 import { ApiError } from "@/lib/api/client";
 import { getFestivalDetail } from "@/features/festivals/detail/api";
-import { MOCK_SCENARIOS, readRouteAccess, submitReturnRoute, type MockScenario, type ReadyRoute, type RouteAccess } from "./api";
+import { MOCK_SCENARIOS, readRouteAccess, submitReturnRoute, type FailedRoute, type MockScenario, type ReadyRoute, type RouteAccess, type RouteStatus } from "./api";
 import type { SelectedFestival } from "./FestivalPicker";
 import { pollRoute } from "./pollRoute";
 import { RETURN_FORM_ID, ReturnRouteForm, type RouteInputs } from "./ReturnRouteForm";
@@ -19,6 +19,31 @@ type ViewState =
   | { kind: "ready"; route: ReadyRoute; fromLink: boolean }
   | { kind: "failed"; message: string; notices?: string[]; retry?: "submit" | "input" | RouteAccess };
 
+function isFailedRoute(response: RouteStatus): response is FailedRoute {
+  return (
+    response.route_status === "unavailable" ||
+    response.route_status === "timed_out" ||
+    response.route_status === "rejected"
+  );
+}
+
+function failedRouteState(
+  response: FailedRoute,
+  retry: "submit" | "input" | RouteAccess,
+): ViewState {
+  const fallback = response.route_status === "timed_out"
+    ? "경로를 찾는 시간이 초과됐어요."
+    : response.route_status === "rejected"
+      ? "경로 요청을 처리할 수 없어요."
+      : "경로 정보를 가져오지 못했어요.";
+  return {
+    kind: "failed",
+    message: response.error?.message || fallback,
+    notices: response.notices,
+    retry,
+  };
+}
+
 function outcome(result: Awaited<ReturnType<typeof pollRoute>>, fromLink: boolean, access: RouteAccess): ViewState {
   if (result.type === "unconfirmed") {
     return { kind: "failed", message: "지금은 확인할 수 없어요", notices: result.notices, retry: access };
@@ -27,12 +52,14 @@ function outcome(result: Awaited<ReturnType<typeof pollRoute>>, fromLink: boolea
   const { response } = result;
   if (response.route_status === "ready") return { kind: "ready", route: response, fromLink };
 
-  const message = response.route_status === "timed_out" ? "경로를 찾는 시간이 초과됐어요." : "경로 정보를 가져오지 못했어요.";
+  if (isFailedRoute(response)) {
+    return failedRouteState(response, fromLink ? "input" : "submit");
+  }
   return {
     kind: "failed",
-    message: ("error" in response && response.error?.message) || message,
+    message: "경로 상태를 아직 확인하지 못했어요.",
     notices: response.notices,
-    retry: fromLink ? "input" : "submit",
+    retry: access,
   };
 }
 
@@ -215,6 +242,11 @@ export function ReturnRouteView({ festivalId, routeId }: { festivalId?: string; 
       if (signal.aborted) return;
       if (submitted.route_status === "ready") {
         setState({ kind: "ready", route: submitted, fromLink: false });
+        return;
+      }
+
+      if (isFailedRoute(submitted)) {
+        setState(failedRouteState(submitted, "submit"));
         return;
       }
 
