@@ -1,0 +1,17 @@
+{
+  "name": "list_allowed_actions",
+  "description": "(운영자 맥락) 이 사건에서 지금 허용된 복구 조치와 상한을 본다. 복구 결정 전에 반드시 쓴다. 여기 없는 조치는 제안하지 않는다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "incident_id": {
+        "type": "string",
+        "description": "사건 ID (대화·운영 맥락에 주어진 incident_id 그대로)"
+      }
+    },
+    "required": [
+      "incident_id"
+    ],
+    "additionalProperties": false
+  }
+}

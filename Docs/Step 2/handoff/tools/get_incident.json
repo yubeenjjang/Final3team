@@ -1,0 +1,17 @@
+{
+  "name": "get_incident",
+  "description": "(운영자 맥락) 사건 하나의 감지 근거·상태·지표 요약을 본다. 진단의 첫 단계에서 쓴다. 사건 ID가 없으면 쓰지 않는다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "incident_id": {
+        "type": "string",
+        "description": "사건 ID (대화·운영 맥락에 주어진 incident_id 그대로)"
+      }
+    },
+    "required": [
+      "incident_id"
+    ],
+    "additionalProperties": false
+  }
+}

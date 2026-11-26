@@ -1,0 +1,17 @@
+{
+  "name": "get_route_request_status",
+  "description": "이미 요청한 귀가 경로의 처리 상태를 확인한다. queued·processing은 성공이 아니다. ready이고 completed_valid_route가 true일 때만 경로를 안내한다.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "route_request_id": {
+        "type": "string",
+        "description": "경로 요청 ID (request_return_route 결과의 route_request_id 그대로)"
+      }
+    },
+    "required": [
+      "route_request_id"
+    ],
+    "additionalProperties": false
+  }
+}

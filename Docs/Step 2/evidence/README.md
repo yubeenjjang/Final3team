@@ -16,6 +16,7 @@
 | `usage/서울정류장파일_확인_20261120.md` | 서울시 버스정류소 위치정보 파일(OA-15067, 2026-09-02 기준 11,236건)의 좌표계·정류장 번호 형식 확인과 서울 버스도착 API 번호 대조 결과 |
 | `scripts/noldaga_api_test.py` | 호출에 쓴 테스트 도구(Python 3 표준 라이브러리만 사용) |
 | `scripts/API테스트_실행.command` | macOS에서 더블클릭으로 도구 실행 |
+| [`first_flow_2026-11-23/festival_db_responses.json`](first_flow_2026-11-23/festival_db_responses.json) | 학원 노트북 DB로 조회한 A02·A03 실제 응답 발췌. [같은 실행의 기록](first_flow_2026-11-23/result.json)에서 서울 진행·예정 22건 중 선택한 DDP 건축투어 1건과 같은 ID의 상세를 옮겼습니다. 공개 행사 필드만 담아 개인 정보·인증값이 없습니다. 전체 응답 원본 캡처는 필요합니다. |
 
 ## 원본을 넣지 않은 것
 
