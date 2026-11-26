@@ -46,3 +46,7 @@
 **11/26 선행 구현:** `backend/agents/self_reflection.py`에 상세 결과 검토→모델 판단 주입→원조건 검색→선택 ID 상세 재조회 흐름을 별도 실행기로 구현했다. `backend/tests/agents/test_self_reflection.py`는 고정 응답으로 ID 오류 수정, 반복 오류 보류, 예정 축제 기각, 정상 결과의 불필요한 재조회 방지, 호출 상한, 잘못된 모델 승인 기각을 검사한다. Windows Python 3.12에서 에이전트 시험 **58개 통과**는 모델 판단을 고정 함수로 대체한 단위 시험 결과다. **실제 LLM 판단, 기존 LangGraph 노드 연결, W29 지연·토큰 측정은 아직 남아 있다.** 따라서 이 결과를 12/4 자기 성찰 시험 완료로 집계하지 않는다.
 
 **추가 선행 연결(11/26):** `build_festival_graph(..., reflect_judge=..., as_of=...)`를 명시적으로 사용할 때만 상세 요청이 `reflect_detail` 노드로 간다. 기존 호출은 변하지 않는다. 고정 판단 함수를 넣은 LangGraph 흐름에서 F02를 기각하고 원조건 검색→F01 재조회가 이어졌으며, 입력 조건 누락·판단 실패는 안전 종료했다. Windows Python 3.12 에이전트 시험 **62개 통과**. 현재 `reflect_detail`은 내부 재확인 과정을 한 노드에서 수행하므로, W29에서 단계별 추적과 실제 모델 지연·비용을 기록할 때 노드 분리 또는 명시적 실행 기록이 더 필요하다. **실제 LLM 판단과 팀 공통 실행기·운영 API 연속 시험은 아직 수행하지 않았다.**
+
+**실제 모델 시험 실행기 준비(11/26):** `backend/agents/reflection_model.py`에 [OpenAI Responses API의 구조화 출력](https://developers.openai.com/api/docs/guides/structured-outputs) 요청을 연결하고, `backend/agents/check_reflection_live.py`에 F02→F01 고정 응답 시나리오를 넣었다. API 키는 실행할 때 숨김 입력으로만 받고 요청에는 `store:false`를 사용한다. 결과 JSON에는 첫 오류·모델 판단·토큰 사용량·도구 호출·최종 근거·경과 시간을 담는다. Windows Python 3.12에서 **에이전트 단위 시험 64개 통과**는 모의 HTTP 응답 기준이며, 실제 모델 API 호출이나 성찰 성공률 측정 결과가 아니다.
+
+실제 모델을 실행할 환경에서는 저장소 `backend` 폴더에서 `python -m agents.check_reflection_live --live`를 실행한다. 필요하면 `--model`로 정확한 모델 ID를 지정하고, `--output`으로 결과 파일을 지정한다. **실행자는 출력의 모델 ID·실행 시각·첫 판단·재확인 결과·토큰·지연을 확인하고, 같은 입력의 B0와 A1을 비교해야 한다.** 이 시나리오는 시험용 F01/F02와 모의 도구만 사용하므로 실제 축제 API E2E로 표기하지 않는다.
