@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta
 from functools import lru_cache
+from math import inf
 from typing import Protocol
 
 from sqlalchemy import RowMapping
@@ -29,7 +30,7 @@ from api.providers.route_base import (
 from api.providers.tmap import SERVICE_ENDED_NOTICE, TmapClient
 from api.repositories.route_store import TOKEN_TTL, RouteStore, stored_candidates, token_hash
 from api.schemas.festivals import FestivalDetail
-from api.schemas.routes import Endpoint, FestivalEndpoint, RouteDirection, RouteRequest, RouteStatus
+from api.schemas.routes import Endpoint, FestivalEndpoint, RouteDirection, RoutePreference, RouteRequest, RouteStatus
 from api.services.festival_lookup import find_festival
 from api.services.notice_lookup import control_reader
 from api.services.notices import (
@@ -48,6 +49,24 @@ _REQUEST_LIMIT_S = 10
 _FLIGHT_LIMIT_S = 12
 _CACHE_TTL_S = 60
 _STARTUP_SECRET = secrets.token_bytes(32)
+_FASTEST_FIELDS = ("duration_min", "transfers", "walk_m")
+_PREFERENCE_FIELDS = {
+    "fewest_transfers": ("transfers", "duration_min", "walk_m"),
+    "min_walk": ("walk_m", "duration_min", "transfers"),
+}
+
+
+def _rank_candidates(
+    candidates: list[dict[str, object]], preference: RoutePreference,
+) -> list[dict[str, object]]:
+    # 초기 후보에는 혼잡·접근성 근거가 없다. 비교할 수 있는 소요 시간부터 적용한다.
+    fields = _PREFERENCE_FIELDS.get(preference, _FASTEST_FIELDS)
+
+    def key(candidate: dict[str, object]) -> tuple[float, ...]:
+        values = (candidate.get(field) for field in fields)
+        return tuple(value if isinstance(value, (int, float)) else inf for value in values)
+
+    return sorted(candidates, key=key)
 
 
 @dataclass(frozen=True)
@@ -668,7 +687,8 @@ class RealRouteService:
                 "origin": self._stored_endpoint(request["origin_type"], request),
                 "destination": self._stored_endpoint(request["destination_type"], request),
                 "travel_mode": request["travel_mode"], "route_preference": request["route_preference"],
-                "route_candidates": result["candidates"], "provider": "tmap", "provider_tier": "primary",
+                "route_candidates": _rank_candidates(result["candidates"], request["route_preference"]),
+                "provider": "tmap", "provider_tier": "primary",
                 "queried_at": as_kst(result["queried_at"]).isoformat(),
                 "verification_status": "control_unverified",
                 "constraint_status": self._constraint_status(request["constraints"]),
@@ -738,7 +758,7 @@ class RealRouteService:
             "destination": _format_endpoint(request.destination, festival),
             "travel_mode": request.travel_mode,
             "route_preference": request.route_preference,
-            "route_candidates": result.candidates,
+            "route_candidates": _rank_candidates(result.candidates, request.route_preference),
             "provider": result.provider,
             "provider_tier": result.provider_tier,
             "queried_at": result.queried_at,

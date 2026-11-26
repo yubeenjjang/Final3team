@@ -381,14 +381,15 @@ async def list_rooms(db: AsyncSession, user_id: UUID, selected: RoomFilter) -> l
             SELECT max(c.created_at) AS last_message_at, count(*) FILTER (WHERE c.seq > m.last_read_seq AND c.sender_id IS DISTINCT FROM :uid) AS unread_count
             FROM public.chat_messages c WHERE c.room_id = r.room_id
         ) stats
+        -- chat_members_same_room permits this lookup for invited/joined members.
         LEFT JOIN LATERAL (
             SELECT public.app_public_display_name(pm.user_id) AS peer_display_name
             FROM public.chat_members pm
-            WHERE pm.room_id = r.room_id AND pm.user_id <> :uid
+            WHERE r.room_type = 'direct' AND pm.room_id = r.room_id AND pm.user_id <> :uid
               AND pm.status IN ('invited','joined')
             ORDER BY pm.joined_at NULLS LAST, pm.user_id
             LIMIT 1
-        ) peer ON r.room_type = 'direct'
+        ) peer ON true
         LEFT JOIN public.companion_posts cp
           ON r.room_type = 'companion' AND cp.room_id = r.room_id
         LEFT JOIN public.festivals f ON f.festival_id = cp.festival_id

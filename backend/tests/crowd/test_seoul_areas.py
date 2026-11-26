@@ -1,6 +1,6 @@
 import pytest
 
-from api.services.seoul_areas import SeoulArea, load_catalog, nearby_areas
+from api.services.seoul_areas import SeoulArea, area_geometry, load_catalog, nearby_areas
 
 
 def _box(code: str, south: float, north: float) -> SeoulArea:
@@ -60,3 +60,34 @@ def test_P1_polygon_hole_and_disconnected_polygon() -> None:
     ((_, distance),) = nearby_areas(0, 0, (area,))
     assert distance == pytest.approx(221.14855)
     assert nearby_areas(0.15, 0, (area,)) == [(area, 0)]
+
+
+def test_P1_catalog_geometry_and_missing_cases() -> None:
+    catalog = load_catalog()
+    assert catalog.get("POI999") is None
+    for area in catalog.areas:
+        center, rings = area_geometry(area)
+        assert center is not None and rings is not None and len(rings) >= 1
+        assert 37.0 <= center[0] <= 38.0 and 126.0 <= center[1] <= 128.0
+        for ring in rings:
+            assert len(ring) >= 4
+            for lat, lng in ring:
+                assert 37.0 <= lat <= 38.0 and 126.0 <= lng <= 128.0
+
+    # 내부 구멍이 있는 공식 Polygon(외곽 링 우선)
+    dream_forest = catalog.get("POI096")
+    _, df_rings = area_geometry(dream_forest)
+    assert df_rings is not None and len(df_rings) == 2
+
+    # MultiPolygon은 모든 폴리곤의 링을 외곽 우선으로 평탄화해 포함
+    outer = _box("outer", 37.50, 37.52).polygons[0][0]
+    hole = _box("hole", 37.505, 37.515).polygons[0][0]
+    second = _box("second", 37.55, 37.56).polygons[0][0]
+    multi = SeoulArea("MULTI", "멀티", [[outer, hole], [second]], centroid=(37.51, 126.98))
+    center, multi_rings = area_geometry(multi)
+    assert center == (37.51, 126.98)
+    assert multi_rings == [outer, hole, second]
+
+    # 카탈로그에 없거나 도형이 없으면 (None, None)
+    assert area_geometry(None) == (None, None)
+    assert area_geometry(SeoulArea("EMPTY", "빈구역", [], centroid=(37.5, 127.0))) == (None, None)

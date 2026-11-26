@@ -8,6 +8,8 @@ from api.schemas.festival_info import FacilityCategory, FacilityItem
 
 _URL = "https://dapi.kakao.com/v2/local/search/category.json"
 _CODES = {"food": "FD6", "attraction": "AT4"}
+# 공공데이터(DB)에 없는 지역에서만 쓰는 보충 분류. 버스정류장·화장실·응급실·택시는 카카오 분류가 없다.
+FALLBACK_CODES = {"subway_station": "SW8", "parking": "PK6", "hospital": "HP8"}
 
 
 async def nearby_places(
@@ -21,7 +23,7 @@ async def nearby_places(
         async with asyncio.timeout(3.0), httpx2.AsyncClient(timeout=3.0) as client:
             for page in range(1, min(4, (limit + 14) // 15) + 1):
                 response = await client.get(_URL, headers={"Authorization": f"KakaoAK {key}"}, params={
-                    "category_group_code": _CODES[category], "x": lng, "y": lat,
+                    "category_group_code": _CODES.get(category) or FALLBACK_CODES[category], "x": lng, "y": lat,
                     "radius": radius_m, "sort": "distance", "size": 15, "page": page,
                 })
                 response.raise_for_status()

@@ -18,12 +18,59 @@ class SeoulArea:
     code: str
     name: str
     polygons: list[Polygon]
+    centroid: Point | None = None
 
 
 @dataclass(frozen=True)
 class SeoulAreaCatalog:
     areas: tuple[SeoulArea, ...]
     source_url: str
+
+    def get(self, code: str) -> SeoulArea | None:
+        return next((area for area in self.areas if area.code == code), None)
+
+
+def _parse_centroid(value: object) -> Point | None:
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        lat, lng = value
+        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
+            return (float(lat), float(lng))
+    return None
+
+
+def _parse_polygons(geometry: object) -> list[Polygon]:
+    if not isinstance(geometry, dict):
+        return []
+    geom_type = geometry.get("type")
+    coords = geometry.get("coordinates")
+    if not coords:
+        return []
+    if geom_type == "Polygon":
+        return [coords]
+    if geom_type == "MultiPolygon":
+        return list(coords)
+    return []
+
+
+def area_geometry(area: SeoulArea | None) -> tuple[Point | None, list[Ring] | None]:
+    """구역의 중심 좌표와 경계 링 목록을 (lat, lng) 순서로 반환한다.
+
+    Polygon은 [외곽 링, 내부 구멍 링, ...] 순서이며,
+    MultiPolygon은 포함된 모든 폴리곤의 링(각 폴리곤 외곽 링 우선)을 평탄화해 반환한다.
+    카탈로그에 구역이나 도형이 없으면 (None, None)을 반환한다.
+    """
+    if area is None or not area.polygons:
+        return None, None
+    rings = [
+        [(float(lat), float(lng)) for lat, lng in ring]
+        for polygon in area.polygons
+        for ring in polygon
+        if ring
+    ]
+    if not rings:
+        return None, None
+    center = (float(area.centroid[0]), float(area.centroid[1])) if area.centroid is not None else None
+    return center, rings
 
 
 @lru_cache(maxsize=1)
@@ -35,9 +82,8 @@ def load_catalog() -> SeoulAreaCatalog:
         SeoulArea(
             code=area["area_code"],
             name=area["area_name"],
-            polygons=[area["geometry"]["coordinates"]]
-            if area["geometry"]["type"] == "Polygon"
-            else area["geometry"]["coordinates"],
+            polygons=_parse_polygons(area.get("geometry")),
+            centroid=_parse_centroid(area.get("centroid")),
         )
         for area in data["areas"]
     )
@@ -57,6 +103,8 @@ def nearby_areas(
 
     matches = []
     for area in areas:
+        if not area.polygons:
+            continue
         measured = [_polygon_distance(polygon, lat, lng, lat_scale, lng_scale) for polygon in area.polygons]
         distance = min(d for d, _ in measured)
         depth = max(depth for _, depth in measured)

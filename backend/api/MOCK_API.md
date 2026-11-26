@@ -68,6 +68,53 @@ uv run --with-requirements backend/api/requirements.txt --with-requirements back
 
 `GET /api/v1/festivals/{festival_id}/crowd`는 서울의 검증된 혼잡 구역과 예보 3건을 반환합니다. 서울 밖이거나 검증된 구역이 연결되지 않은 축제는 `unsupported`이며, 축제 좌표가 없으면 `unavailable`입니다.
 
+각 구역 객체(`areas[]` 및 실제 모드의 `nearby_areas[]`·`nearby_areas[].data`)에는 서울시 공식 주요 121장소 영역(OA-21778) 기준의 위치 필드가 함께 포함됩니다. 카탈로그에 도형이 없으면 둘 다 `null`입니다.
+
+- `center`: `{"lat": float, "lng": float}` (구역 중심 좌표, WGS84 위도·경도)
+- `boundary`: `list[list[{"lat": float, "lng": float}]]` (닫힌 경계 링 배열. `Polygon`은 외곽 링 우선·내부 구멍 링 순, `MultiPolygon`은 포함된 모든 폴리곤의 링을 각 외곽 링 우선으로 평탄화해 포함)
+
+응답 예시(`fst_000001`, 모의 모드, `boundary[0]` 꼭짓점 일부 생략):
+
+```json
+{
+  "is_mock": true,
+  "festival_id": "fst_000001",
+  "status": "ok",
+  "coverage": {"scope": "seoul_only", "region_code": "SEOUL", "supported": true},
+  "source": "seoul_citydata",
+  "observed_at": "2026-11-22T11:55:00+09:00",
+  "notices": [
+    "주변 지역 혼잡(모의 데이터) · 광화문·덕수궁",
+    "행사장 안 혼잡과 다를 수 있어요"
+  ],
+  "error": null,
+  "areas": [
+    {
+      "area_code": "POI009",
+      "area_name": "광화문·덕수궁",
+      "relation_type": "contains",
+      "congest_level": "보통",
+      "congest_color": "yellow",
+      "congest_message": "사람이 몰려 있을 수 있지만 크게 붐비지는 않아요.(모의)",
+      "population_min": 48000,
+      "population_max": 50000,
+      "observed_at": "2026-11-22T11:55:00+09:00",
+      "forecast": [
+        {"time": "2026-11-22T13:00:00+09:00", "congest_level": "보통", "population_min": 48000, "population_max": 50000}
+      ],
+      "center": {"lat": 37.5709305, "lng": 126.9771863},
+      "boundary": [
+        [
+          {"lat": 37.5775077, "lng": 126.9739639},
+          {"lat": 37.5775066, "lng": 126.9824442},
+          {"lat": 37.5775077, "lng": 126.9739639}
+        ]
+      ]
+    }
+  ]
+}
+```
+
 ## A11 관심 축제 목록
 
 `GET /api/v1/me/favorites`는 `Authorization: Bearer <access_token>`에 해당하는 사용자의 관심 축제를 반환합니다. 기본값은 최근에 저장한 순서로 첫 페이지 20건입니다. `sort=start_date`로 축제 시작일 순으로 정렬하고 `page`와 `page_size`로 페이지를 선택할 수 있습니다.

@@ -194,7 +194,20 @@ def test_R21_verified_crowd_area_and_forecast(client: TestClient) -> None:
         "population_max": 50000,
         "observed_at": body["observed_at"],
         "forecast": area["forecast"],
+        "center": area["center"],
+        "boundary": area["boundary"],
     }
+    assert area["center"] == {"lat": 37.5709305, "lng": 126.9771863}
+    assert isinstance(area["boundary"], list) and len(area["boundary"]) == 1
+    ring = area["boundary"][0]
+    assert len(ring) == 30
+    assert ring[0] == ring[-1] == {"lat": 37.5775077, "lng": 126.9739639}
+    assert all(
+        point.keys() == {"lat", "lng"}
+        and 37.0 <= point["lat"] <= 38.0
+        and 126.0 <= point["lng"] <= 128.0
+        for point in ring
+    )
     assert len(area["forecast"]) == 3
     for forecast in area["forecast"]:
         assert forecast.keys() == {"time", "congest_level", "population_min", "population_max"}

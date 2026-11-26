@@ -118,6 +118,32 @@ def test_mock_edit_close_end_and_retention(client, clock):
     assert client.get(detail).json()["memo"] is None
 
 
+def test_mock_companion_room_list_uses_current_post_details(client, clock):
+    owner, _, _ = register_and_login(client, "Owner")
+    member, _, _ = register_and_login(client, "Member")
+    created = client.post(POSTS, headers=owner, json=post_body()).json()
+    detail = f"{POSTS}/{created['post_id']}"
+    application = client.post(f"{detail}/applications", headers=member).json()["application_id"]
+    assert client.post(f"{APPLICATIONS}/{application}/approve", headers=owner).status_code == 200
+    path = "/api/v1/me/chat-rooms?filter=companion"
+    festival_name = client.get(f"/api/v1/festivals/{FESTIVAL}").json()["name"]
+
+    room, = client.get(path, headers=member).json()["items"]
+    assert room == {
+        "room_id": created["room_id"], "room_type": "companion", "name": None, "status": "active",
+        "last_message_at": None, "unread_count": 0, "my_status": "joined",
+        "peer_display_name": None, "festival_name": festival_name, "meet_at": MEET_AT,
+    }
+
+    changed = (datetime.fromisoformat(MEET_AT) + timedelta(minutes=30)).isoformat()
+    assert client.patch(detail, headers=owner, json={"meet_at": changed}).status_code == 200
+    assert client.get(path, headers=member).json()["items"][0]["meet_at"] == changed
+    with companions.memory.lock:
+        companions.memory.posts[created["post_id"]].hidden = True
+    assert client.get(path, headers=member).json()["items"] == [{**room, "festival_name": None, "meet_at": None}]
+    assert client.get(path, headers=owner).json()["items"] == [{**room, "meet_at": changed}]
+
+
 def test_mock_validates_kst_schedule_and_auto_ends(client, clock):
     owner, _, _ = register_and_login(client, "Owner")
     assert_error(client.post(POSTS, json=post_body()), 401, "UNAUTHORIZED")

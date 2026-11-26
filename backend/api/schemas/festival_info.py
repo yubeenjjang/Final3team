@@ -194,6 +194,22 @@ class VisitForecastResponse(InfoResponse):
     region_demand: RegionDemand | None = None
 
 
+class GeoPoint(BaseModel):
+    lat: float
+    lng: float
+
+
+def build_crowd_geometry(
+    centroid: tuple[float, float] | None,
+    rings: list[list[tuple[float, float]]] | None,
+) -> tuple[GeoPoint | None, list[list[GeoPoint]] | None]:
+    if rings is None:
+        return None, None
+    center = GeoPoint(lat=centroid[0], lng=centroid[1]) if centroid is not None else None
+    boundary = [[GeoPoint(lat=lat, lng=lng) for lat, lng in ring] for ring in rings]
+    return center, boundary
+
+
 class CrowdForecast(BaseModel):
     time: datetime
     congest_level: CongestLevel
@@ -212,6 +228,8 @@ class CrowdArea(BaseModel):
     population_max: int
     observed_at: datetime
     forecast: list[CrowdForecast]
+    center: GeoPoint | None = None
+    boundary: list[list[GeoPoint]] | None = None
 
 
 class CrowdResponse(InfoResponse):
@@ -227,6 +245,8 @@ class NearbyCrowdArea(BaseModel):
     data: CrowdArea | None = None
     is_estimate: bool | None = None
     error: SourceError | None = None
+    center: GeoPoint | None = None
+    boundary: list[list[GeoPoint]] | None = None
 
 
 class RealCrowdResponse(CrowdResponse):

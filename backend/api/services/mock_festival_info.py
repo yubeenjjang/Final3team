@@ -30,10 +30,12 @@ from api.schemas.festival_info import (
     WeatherData,
     WeatherGrid,
     WeatherResponse,
+    build_crowd_geometry,
 )
 from api.schemas.festivals import FestivalDetail, RegionCode
 from api.providers.transit_arrivals import distance_m
 from api.services.festival_lookup import find_festival
+from api.services.seoul_areas import area_geometry, load_catalog
 
 _WEATHER_OBSERVED_AT = datetime.fromisoformat("2026-11-22T11:00:00+09:00")
 _WEATHER: dict[RegionCode, WeatherData] = {
@@ -210,6 +212,12 @@ async def get_traffic_incidents(
     return response
 
 
+def _with_catalog_geometry(area: CrowdArea) -> CrowdArea:
+    catalog_area = load_catalog().get(area.area_code)
+    center, boundary = build_crowd_geometry(*area_geometry(catalog_area))
+    return area.model_copy(update={"center": center, "boundary": boundary})
+
+
 async def get_crowd(festival_id: str, scenario: str | None) -> CrowdResponse:
     festival = await _find_festival(festival_id)
     is_seoul = festival.region_code == "SEOUL"
@@ -231,7 +239,7 @@ async def get_crowd(festival_id: str, scenario: str | None) -> CrowdResponse:
         has_location=festival.lat is not None and festival.lng is not None,
         unsupported_notice=unsupported_notice,
     ) and area is not None:
-        response.areas = [area]
+        response.areas = [_with_catalog_geometry(area)]
         response.observed_at = area.observed_at
         response.notices.extend([
             f"주변 지역 혼잡(모의 데이터) · {area.area_name}",
