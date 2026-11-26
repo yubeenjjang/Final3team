@@ -287,4 +287,9 @@ describe("F10 auth flow", () => {
     expect(JSON.parse(String(options?.body))).toEqual({ refresh_token: tokens.refresh_token });
     expect(getRefreshToken()).toBeNull();
   });
+
+  it("A82 shows a re-login notice after a password change redirect", async () => {
+    render(await LoginPage({ searchParams: Promise.resolve({ reason: "password_changed" }) }));
+    expect(screen.getByRole("status")).toHaveTextContent("새 비밀번호로 다시 로그인해 주세요");
+  });
 });
