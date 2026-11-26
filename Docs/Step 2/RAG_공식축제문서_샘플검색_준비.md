@@ -170,3 +170,5 @@ cd "$test_dir/Final3team/backend"
 별도 `rag_scratch` 시험에는 같은 문서를 `pending → approved → rejected`로 바꿔 **검색 비노출 → 노출 → 비노출**을 확인하는 단계를 추가했다. 이는 DB 필터의 상태 전이 재현이며 관리자 인증·승인 API, 운영 DB 권한, 실제 수집 자동화 검증은 아니다. 실행 결과는 아래에 기록한다.
 
 **승인 상태 재현 실행 결과(사용자 제공 출력, 2026-11-26):** `pending_ingestion: first_insert=True, duplicate_insert=False`; Q01~Q10 검색·필터 **10/10 통과**; `approval_gate: pending=hidden, approved=visible, rejected=hidden`. 모델은 `text-embedding-3-small`, 차원은 1024, 임베딩 호출 1.089초, 질의 10건 합계 0.033초, 입력 509토큰이었다. 시험 코드는 `dayoung 4b0996c`에 추가됐지만 공유된 터미널 출력에 `git rev-parse` 결과가 없어 **실제 실행 HEAD는 확인되지 않았다**. 문서·청크 행은 `rag_scratch`의 임시 테이블에만 있었고 서비스 RAG 테이블에는 쓰지 않았다. 이 실행은 관리자 승인 권한과 답변 생성 시험이 아니다.
+
+운영 수집·관리자 검토·승인·검색을 연결할 때 필요한 계약과 미확정 결정은 [W27 승인·검색 인계 초안](handoff/RAG_공식문서_승인_검색_계약.md)에 정리했다.
