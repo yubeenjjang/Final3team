@@ -167,4 +167,6 @@ cd "$test_dir/Final3team/backend"
 3. 승인 담당자는 원문 출처·축제 ID·내용·효력기간·기존 승인본과 충돌 여부를 검토한다. 승인자와 승인 시각을 DB의 `approved_by`·`approved_at`에 남기는 관리자 계약은 R03의 권한·API 설계와 함께 확정해야 한다. 새 개정본이 이전 승인본을 대체한다면 이전본의 유효기간 종료 또는 승인 상태 변경을 먼저 정의해 모순된 두 버전을 동시에 답변 근거로 쓰지 않는다.
 4. 검색은 `approved`이면서 선택 축제 ID·기준 시각의 효력기간·임베딩 모델/버전이 모두 맞는 청크만 반환한다. `pending`·`rejected`·만료·다른 축제 문서는 검색 결과에 포함하지 않는다. 검색 결과가 없으면 근거 없는 답변을 만들지 않는다.
 
-별도 `rag_scratch` 시험에는 같은 문서를 `pending → approved → rejected`로 바꿔 **검색 비노출 → 노출 → 비노출**을 확인하는 단계를 추가했다. 이는 DB 필터의 상태 전이 재현이며 관리자 인증·승인 API, 운영 DB 권한, 실제 수집 자동화 검증은 아니다. 실제 시험 출력은 실행 후 기록한다.
+별도 `rag_scratch` 시험에는 같은 문서를 `pending → approved → rejected`로 바꿔 **검색 비노출 → 노출 → 비노출**을 확인하는 단계를 추가했다. 이는 DB 필터의 상태 전이 재현이며 관리자 인증·승인 API, 운영 DB 권한, 실제 수집 자동화 검증은 아니다. 실행 결과는 아래에 기록한다.
+
+**승인 상태 재현 실행 결과(사용자 제공 출력, 2026-11-26):** `pending_ingestion: first_insert=True, duplicate_insert=False`; Q01~Q10 검색·필터 **10/10 통과**; `approval_gate: pending=hidden, approved=visible, rejected=hidden`. 모델은 `text-embedding-3-small`, 차원은 1024, 임베딩 호출 1.089초, 질의 10건 합계 0.033초, 입력 509토큰이었다. 시험 코드는 `dayoung 4b0996c`에 추가됐지만 공유된 터미널 출력에 `git rev-parse` 결과가 없어 **실제 실행 HEAD는 확인되지 않았다**. 문서·청크 행은 `rag_scratch`의 임시 테이블에만 있었고 서비스 RAG 테이블에는 쓰지 않았다. 이 실행은 관리자 승인 권한과 답변 생성 시험이 아니다.
