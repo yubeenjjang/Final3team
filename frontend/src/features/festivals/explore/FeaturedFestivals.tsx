@@ -4,18 +4,20 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FestivalCarousel } from "./FestivalCarousel";
-import { listFestivals, type FestivalListItem } from "./api";
+import { listFestivals, type FestivalListItem, type ListFestivalsQuery } from "./api";
 
 export function FeaturedFestivals({
   title = "인기있는 축제",
   status = "ongoing",
   moreLabel = "전체보기",
   moreHref = "/festivals/all?section=popular",
+  sort,
 }: {
   title?: string;
   status?: "ongoing" | "upcoming";
   moreLabel?: string;
   moreHref?: string;
+  sort?: ListFestivalsQuery["sort"];
 } = {}) {
   const [items, setItems] = useState<FestivalListItem[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -23,7 +25,7 @@ export function FeaturedFestivals({
 
   useEffect(() => {
     const controller = new AbortController();
-    listFestivals({ status, page: 1, page_size: 4 }, controller.signal)
+    listFestivals({ status, sort, page: 1, page_size: 4 }, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) setItems(result.items.slice(0, 4));
       })
@@ -31,7 +33,7 @@ export function FeaturedFestivals({
         if (!controller.signal.aborted) setFailed(true);
       });
     return () => controller.abort();
-  }, [attempt, status]);
+  }, [attempt, sort, status]);
 
   return (
     <section aria-labelledby="featured-title">

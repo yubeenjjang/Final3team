@@ -10,8 +10,12 @@ import {
 import { TabPageHero } from "@/components/TabPageHero";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
 import { FeaturedFestivals } from "@/features/festivals/explore/FeaturedFestivals";
+import { PreferenceSetupCta } from "@/features/accounts/profile/PreferenceSetupCta";
+import { useFestivalPreferenceStatus } from "@/features/accounts/profile/useFestivalPreferenceStatus";
 
 export default function HomePage() {
+  const preferenceStatus = useFestivalPreferenceStatus();
+  const hasPersonalRecommendations = preferenceStatus === "completed";
   const shortcutClass =
     "grid h-[68px] grid-cols-[24px_minmax(0,1fr)_16px] items-center gap-2.5 rounded-card border border-line-light bg-surface px-3.5 text-left text-sm font-bold text-ink shadow-sm transition-colors hover:border-brand/40 hover:bg-surface-soft/40";
 
@@ -48,10 +52,11 @@ export default function HomePage() {
 
       <div className="md:col-span-2 md:row-start-4">
         <FeaturedFestivals
-          title="나만을 위한 축제"
+          title={hasPersonalRecommendations ? "나만을 위한 축제" : "새로 올라온 축제"}
           status="upcoming"
           moreLabel="더보기"
-          moreHref="/festivals/all?section=personal"
+          moreHref={hasPersonalRecommendations ? "/festivals/all?section=personal" : "/festivals/all?section=new"}
+          sort={hasPersonalRecommendations ? undefined : "-start_date"}
         />
       </div>
 
@@ -87,6 +92,11 @@ export default function HomePage() {
           <ArrowRight size={15} className="shrink-0 text-ink/70" aria-hidden="true" />
         </Link>
       </div>
+      {preferenceStatus !== "completed" && preferenceStatus !== "loading" ? (
+        <div className="md:col-span-2 md:row-start-6">
+          <PreferenceSetupCta />
+        </div>
+      ) : null}
     </div>
   );
 }
