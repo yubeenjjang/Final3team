@@ -63,3 +63,8 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 - 같은 환경에서 `uv run --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget` 실행: 호출 전 30.1초 가상 경계는 2회 호출·`partial`·벽시계 7.264ms, 4회 상한은 4회 호출·`partial`·벽시계 4.244ms였다.
 - 신규 37번째 시험은 검색·상세 성공 후 혼잡 도구가 성공 응답을 **30초가 지난 뒤** 반환한 고정 응답이다. 응답은 답변에 사용되지 않았고, 도구 기록에는 `ok=True`가 남았으며, 최종 결과는 상세 근거와 혼잡 미확인 안내를 포함한 `partial`이었다. 실제 공급원에서 30초 대기를 재현한 시험은 아니다.
 - 위 결과는 개인 브랜치 시험이다. 제출 `main` 한 커밋에서의 Festival·백엔드 전체 시험 결과는 별도로 기록해야 한다.
+
+## 팀원 독립 재검토 (2026-11-26)
+
+- 태경님이 `dayoung f249f6e` 기준 macOS·Python 3.14.8에서 Festival 단독 `Ran 37 tests`, `OK`, `check_festival_budget` 2회·4회 호출 모두 `partial`을 확인했다.
+- 같은 기준에서 `tests/agents` 전체(RAG 포함)는 `Ran 48 tests`, `OK`였다. 이는 태경님이 공유한 시험 출력 요약이며, 팀 `main` 병합 후 전체 백엔드 시험 기록은 아니다.

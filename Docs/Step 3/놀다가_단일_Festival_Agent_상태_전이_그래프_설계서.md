@@ -364,7 +364,7 @@ W24 확인 순서는 다음과 같다.
 
 맥북 Safari에서 전달받은 화면으로 실제 API의 목록과 상세 응답을 **수동 대조**했다. 목록에는 `is_mock:false`, `total:869`, 축제 ID `fst_01M835BPX17Y44VEDJM1VMZ3N6`, `source:tourapi`, `last_synced_at:2026-11-23T11:57:22.397300+09:00`이 보였고, 상세 응답도 같은 축제 ID와 `is_mock:false`, `source:tourapi`, 같은 갱신 시각을 표시했다. 이로써 해당 한 건의 실제 DB 검색→상세 응답 일치는 확인했다. 화면의 `total:869`와 팀원이 안내한 적재 870건은 집계 기준이 다를 수 있으나 원인은 아직 확인하지 않았다. Safari에서 한글이 깨져 보여 축제 이름·장소 문구의 정확성은 판정하지 않았다. **Festival Agent가 집 컴퓨터에서 실제 API를 호출한 결과는 아직 아니다.**
 
-학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <공유받은 API 주소>`를 실행하면 진행·예정 상태를 **각각** 조회한 뒤 첫 축제의 상세 정보를 확인한다. 도구 JSON Schema의 `status`는 단일 값만 허용하지만 API는 쉼표로 구분한 여러 값을 받으므로, 현 도구 계약은 `ongoing,upcoming`처럼 여러 상태를 허용한다. 이 확인은 실제 축제 DB의 검색·상세까지만 포함하고 혼잡은 제외한다.
+학원 네트워크에서 `backend/agents/check_festival_live.py --base-url <공유받은 API 주소>`를 실행하면 진행·예정 상태를 **각각** 조회한 뒤 첫 축제의 상세 정보를 확인한다. 도구 JSON Schema와 API 모두 쉼표로 구분한 여러 상태(예: `ongoing,upcoming`)를 허용한다. 이 확인은 실제 축제 DB의 검색·상세까지만 포함하고 혼잡은 제외한다.
 
 ### A-5. 실제 DB 형태와 혼잡 모의 응답의 혼합 시험
 
