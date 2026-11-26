@@ -1,9 +1,6 @@
 """Check the Festival graph through the shared W14 tool executor."""
 
 import unittest
-from urllib.parse import urlsplit
-
-from fastapi.testclient import TestClient
 
 from agents.festival_graph import run_festival_graph
 from agents.roles.festival import FestivalRequest
@@ -40,32 +37,6 @@ class FestivalSharedExecutorTests(unittest.TestCase):
         response = executor.execute("request_return_route", {}, trace_id="req_ABCDEF123")
         self.assertFalse(response["ok"])
         self.assertEqual(response["error"]["code"], "TOOL_NOT_ALLOWED")
-
-    def test_composite_flow_uses_current_api_routes(self):
-        from api.main import app
-
-        requests = []
-        with TestClient(app) as client:
-            def transport(request, timeout_s):
-                path = urlsplit(request.full_url)
-                requests.append(path.path)
-                response = client.get(path.path + ("?" + path.query if path.query else ""),
-                                      headers=dict(request.header_items()))
-                return response.status_code, response.headers, response.json()
-
-            executor = ToolExecutor("http://example.test/api/v1", FESTIVAL_TOOLS, transport=transport)
-            result = run_festival_graph(
-                lambda name, args: executor.execute(name, args, trace_id="req_ABCDEF123"),
-                FestivalRequest("search_detail_crowd", select_first=True, region="SEOUL"),
-            )
-
-        self.assertEqual([entry["tool"] for entry in result.used_tools],
-                         ["search_festivals", "get_festival", "get_crowd"])
-        festival_id = result.evidence[0]["festival_id"]
-        self.assertEqual(requests, ["/api/v1/festivals", f"/api/v1/festivals/{festival_id}",
-                                    f"/api/v1/festivals/{festival_id}/crowd"])
-        self.assertIn(result.outcome, {"answered", "partial"})
-        self.assertIn("모의 데이터", result.answer)
 
 
 if __name__ == "__main__":

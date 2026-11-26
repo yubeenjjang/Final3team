@@ -18,7 +18,7 @@
 | A07 공지·통제 | `GET /festivals/{id}/notices` | 기본 모의 · 승인 공지 조회 구현 및 SQL 시험 | 승인 자료 적재 후 | `official_notices` 승인 공지 | 유빈 11/23 일정 | ✅ |
 | A26 대중교통 실시간 도착 | `GET /festivals/{id}/transit` | 기본 모의 · 실제 모드 구현 및 fixture 검증 | 시설 적재·키 확인 후 | 서울 지하철·서울시 버스·서울 밖 TAGO | 6-2 A26 | ✅ |
 | A29 방문 집중 예측 | `GET /festivals/{id}/visit-forecast` | 기본 모의 · 실제 모드 구현 및 fixture 검증 | 관광지 매핑·키 확인 후 | 관광공사 관광지 집중률·지역 수요 | 6-2 A29 | ✅ |
-| A08 주변 시설 | `GET /festivals/{id}/facilities` | **없음** | 12/09 | 주차는 주차장 위치만 | 유빈 11/23 일정 | — |
+| A08 주변 시설 | `GET /festivals/{id}/facilities` | **구현 ✅ 11/26** (API W90 유빈 4504dd7 · 정적 시설 적재 366f52e, `FACILITIES_PROVIDER=real`) · 학원 노트북 실데이터 | — | 서울 열린데이터광장 6종(버스 정류장·지하철역·따릉이·공중화장실·좌표 있는 공영주차장·병원/응급실) + 맛집·관광은 카카오 로컬 요청 때만(저장 안 함). 택시 승강장·서울 밖 시설은 `unverified`(전국 표준데이터 활용 신청 필요), 주차는 위치만 | W90 · `backend/Doc/w90/VERIFY.md` | ✅ |
 | A27 실시간 주차 빈자리 | — | **채택 안 함(11/24)** | — | — | 11/24 팀 결정 | — |
 | A32~A35 가입·로그인 | `/auth/*` | 모의(메모리) | 11/26 목표, **시연 흐름 뒤로 밀릴 수 있음** | DB `users` | W18 | — |
 | A11~A13 관심 축제 | `/me/favorites` | 모의 | 12/02 | DB `favorites` | W41 | ❌ 로그인 |
