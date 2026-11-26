@@ -101,3 +101,15 @@
 ### 팀 공통 도구 실행기 연결 확인(11/26)
 
 `backend/tests/agents/test_festival_shared_executor.py`에서 `ToolExecutor(FESTIVAL_TOOLS)`를 W28 LangGraph 재확인 경로에 연결했다. 고정 HTTP 응답으로 `get_festival(F01)`→`search_festivals(q="시험 축제", region="SEOUL", date_from/to="2026-11-26", status="ongoing")`→`get_festival(F01)` 순서와 공통 `X-Request-ID`, 최종 근거 F01을 검사했다. Windows Python 3.12에서 에이전트 시험 **66개 통과**. 시험의 HTTP transport는 모의 함수이며 **실제 API 서버 연속 호출·실제 모델 판단을 동시에 검증한 결과는 아니다.**
+
+### 실제 API 연속 실행 준비(11/26)
+
+`backend/agents/check_reflection_api_live.py`는 실제 서울 진행 축제 목록에서 축제 ID·이름을 고르고, 실제 상세 응답을 사전 확인한다. 그 다음 그래프의 **첫 상세 응답 ID만 `F02_INJECTED`로 바꿔** 오류를 재현한다. 재확인 검색과 마지막 상세는 `ToolExecutor`를 통해 실제 API를 다시 호출한다. B0도 같은 첫 오류 응답을 받는다. 보고서에는 주입 여부·실제 HTTP 호출의 모의 표시·모델 판단·최종 근거·시간을 구분한다. 축제 API에 오류를 만들어 넣거나 운영 DB를 변경하지 않는다.
+
+Windows Python 3.12 에이전트 시험 **68개 통과**에는 시험용 HTTP transport로 이 호출 순서·모의 목록 거절을 확인한 결과가 포함된다. 실제 API 서버와 모델을 동시에 호출한 결과는 아직 없다. 접근 가능한 환경에서 저장소 `backend` 폴더의 최신 `dayoung`으로 다음 명령을 실행한다. API 주소는 팀 실행 환경의 값을 사용하고, 키는 숨김 입력으로만 받는다.
+
+```bash
+python -m agents.check_reflection_api_live --base-url <API 주소>/api/v1
+```
+
+실제 조회 가능한 진행 축제가 없거나 상세가 모의 자료이면 시험은 모델 호출 전에 중단한다. 이 실행이 성공해도 **첫 ID 오류는 주입한 것**이므로 실제 서비스에서 같은 오류가 발생했다는 증거는 아니다.
