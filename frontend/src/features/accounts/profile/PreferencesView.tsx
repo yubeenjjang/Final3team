@@ -82,7 +82,6 @@ export function PreferencesSection({
     dragStartScrollLeft.current = carousel.scrollLeft;
     dragged.current = false;
     setDragging(true);
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function moveDrag(event: ReactPointerEvent<HTMLUListElement>) {
@@ -90,7 +89,11 @@ export function PreferencesSection({
     const carousel = carouselRef.current;
     if (!carousel) return;
     const distance = event.clientX - dragStartX.current;
-    if (Math.abs(distance) > 4) dragged.current = true;
+    if (Math.abs(distance) > 4 && !dragged.current) {
+      dragged.current = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    if (!dragged.current) return;
     carousel.scrollLeft = dragStartScrollLeft.current - distance;
     event.preventDefault();
   }
@@ -98,7 +101,9 @@ export function PreferencesSection({
   function finishDrag(event: ReactPointerEvent<HTMLUListElement>) {
     if (!dragging) return;
     setDragging(false);
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (dragged.current) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
   }
 
   async function submitPreferences(skip: boolean) {
@@ -144,10 +149,10 @@ export function PreferencesSection({
       <section className="min-h-dvh bg-screen-dark px-0 pb-10 pt-8 text-surface">
         <div className="px-6">
           <BrandLogo priority className="h-9 w-auto brightness-0 invert" />
-          <h1 className="mt-14 text-[32px] font-black leading-tight tracking-tight">
+          <h1 className="mt-14 text-center text-[32px] font-black leading-tight tracking-tight">
             어떤 <span className="text-brand">축제</span>를 좋아하시나요?
           </h1>
-          <p className="mt-4 text-base text-surface/80">마음에 드는 축제 스타일을 5개 선택해 주세요.</p>
+          <p className="mt-4 text-center text-base text-surface/80">마음에 드는 축제 스타일을 선택해 주세요.</p>
           <p className="mt-5 rounded-chip border-2 border-brand px-5 py-3 text-center text-sm font-semibold text-surface/90">
             ♡ 하트를 눌러 선택하면, 나만의 축제를 추천해드려요!
           </p>
