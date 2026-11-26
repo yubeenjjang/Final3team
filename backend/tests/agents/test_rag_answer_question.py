@@ -1,6 +1,10 @@
+import json
 import unittest
+from datetime import datetime
+from io import BytesIO
+from unittest.mock import patch
 
-from agents.rag.answer_question import answer_from_retrieval
+from agents.rag.answer_question import answer_from_retrieval, answer_festival_question, generate_openai_answer
 
 
 class AnswerFromRetrievalTests(unittest.TestCase):
@@ -35,6 +39,51 @@ class AnswerFromRetrievalTests(unittest.TestCase):
         result = answer_from_retrieval(self.retrieval, **self.kwargs,
             generate=lambda *_: {"decision": "abstain", "answer": "시작일 자료가 충돌해 확인할 수 없습니다.", "citation_ids": []})
         self.assertEqual(result["source_urls"], [])
+
+    @patch("agents.rag.answer_question.retrieve_festival_question")
+    def test_search_to_answer_preserves_source(self, retrieve):
+        retrieve.return_value = {**self.retrieval, "embedding_model": "text-embedding-3-small",
+                                 "embedding_version": "v1"}
+        result = answer_festival_question(None, festival_id="F01", **self.kwargs,
+            as_of=datetime.fromisoformat("2026-11-26T12:00:00+09:00"), embedding_version="v1",
+            api_key="test-only", generate=lambda *_: {"decision": "answer", "answer": "12월 11일입니다.",
+                                                       "citation_ids": ["D1"]})
+        self.assertEqual(result["source_urls"], ["https://official.example/f01"])
+        self.assertEqual(result["festival_id"], "F01")
+
+    @patch("agents.rag.answer_question.retrieve_festival_question")
+    def test_search_to_answer_no_evidence_skips_generator(self, retrieve):
+        retrieve.return_value = {"status": "no_evidence", "festival_id": "F01", "candidates": [],
+                                 "embedding_model": "text-embedding-3-small", "embedding_version": "v1"}
+        result = answer_festival_question(None, festival_id="F01", **self.kwargs,
+            as_of=datetime.fromisoformat("2026-11-26T12:00:00+09:00"), embedding_version="v1",
+            api_key="test-only", generate=lambda *_: self.fail("must not generate"))
+        self.assertEqual(result["decision"], "abstain")
+
+    def test_openai_adapter_sends_only_supplied_evidence(self):
+        captured = {}
+
+        class Response(BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                self.close()
+
+        def fake_open(req, timeout):
+            captured["payload"] = json.loads(req.data)
+            captured["timeout"] = timeout
+            result = {"decision": "answer", "answer": "12월 11일입니다.",
+                      "citation_ids": ["D1"], "reason": "official"}
+            body = {"status": "completed", "output": [{"type": "message", "content": [
+                {"type": "output_text", "text": json.dumps(result)}]}]}
+            return Response(json.dumps(body).encode())
+
+        result = generate_openai_answer("언제 시작해요?", "서울빛초롱축제",
+            self.retrieval["candidates"], api_key="test-only", festival_id="F01", urlopen=fake_open)
+        self.assertEqual(result["citation_ids"], ["D1"])
+        self.assertFalse(captured["payload"]["store"])
+        self.assertEqual(captured["timeout"], 60)
 
 
 if __name__ == "__main__":

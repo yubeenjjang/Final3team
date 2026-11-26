@@ -14,6 +14,7 @@ import sys
 import time
 from datetime import datetime
 
+from agents.rag.answer_question import answer_from_retrieval, generate_openai_answer
 from agents.rag.evaluate_sample import AS_OF, DIMENSIONS, DOCUMENTS, MODEL, QUESTIONS, embed
 from agents.rag.ingest_pending import store_pending_document
 from agents.rag.retrieve_question import retrieve_festival_question
@@ -29,6 +30,8 @@ def main() -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=55432)
     parser.add_argument("--user", default="postgres")
+    parser.add_argument("--live-answers", action="store_true",
+                        help="Also call the answer model for one approved sample question")
     args = parser.parse_args()
 
     try:
@@ -187,6 +190,20 @@ def main() -> int:
                     embedding_version="sample-v1",
                     api_key=api_key,
                 )
+                if args.live_answers:
+                    decision = answer_from_retrieval(
+                        bridge, selected_festival_name="서울빛초롱축제",
+                        question=QUESTIONS[0][2],
+                        generate=lambda question, name, candidates: generate_openai_answer(
+                            question, name, candidates, api_key=api_key,
+                            festival_id=DOCUMENTS[0]["festival"]),
+                    )
+                    if (decision["decision"] != "answer" or decision["citation_ids"] != ["D1"]
+                            or decision["source_urls"] != [DOCUMENTS[0]["source_url"]]):
+                        raise RuntimeError("Live answer did not cite the selected official sample")
+                    print(f"answer_bridge: decision={decision['decision']}, "
+                          f"citation_ids={decision['citation_ids']}, "
+                          f"source_urls={decision['source_urls']}, answer={decision['answer']}")
             finally:
                 api_key = ""
             bridge_ids = [row["document_id"] for row in bridge["candidates"]]
@@ -198,7 +215,10 @@ def main() -> int:
                   f"usage={bridge['embedding_usage']}")
             print(f"pgvector filters/retrieval: {passed}/{len(QUESTIONS)}; model={MODEL}; dimensions={DIMENSIONS}")
             print(f"embedding_seconds={embedding_seconds}, query_seconds={round(query_seconds, 3)}, usage={usage}")
-            print("Temporary rows only; no service RAG tables were written. Answer generation was not tested.")
+            if args.live_answers:
+                print("Temporary sample rows only; answer model tested on one approved sample, not service RAG.")
+            else:
+                print("Temporary rows only; no service RAG tables were written. Answer generation was not tested.")
             return 0 if passed == len(QUESTIONS) else 1
 
 
