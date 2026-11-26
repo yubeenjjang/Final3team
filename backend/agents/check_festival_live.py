@@ -84,6 +84,10 @@ def main() -> None:
         if args.require_crowd_answered and (raw_crowd["data"].get("status") not in {"ok", "stale"} or crowd.outcome != "answered"):
             raise RuntimeError(f"Real crowd answer was not provided: provider_status={raw_crowd['data'].get('status')}, agent_outcome={crowd.outcome}")
         if args.require_crowd_answered:
+            if raw_crowd["data"].get("festival_id") != crowd_id:
+                raise RuntimeError("Crowd response festival ID does not match the selected festival")
+            if not raw_crowd["data"].get("observed_at") or not raw_crowd["data"].get("source"):
+                raise RuntimeError("Real crowd response is missing observation time or source")
             festival_name = raw_crowd_detail["data"].get("name")
             if not isinstance(festival_name, str) or not festival_name:
                 raise RuntimeError("Crowd festival has no searchable name for composite check")
