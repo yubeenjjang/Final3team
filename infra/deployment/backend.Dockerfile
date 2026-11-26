@@ -26,7 +26,8 @@ COPY ["Docs/Step 2/db", "/app/Docs/Step 2/db"]
 COPY infra/deployment/set_role_passwords.py /app/infra/deployment/set_role_passwords.py
 
 # root가 아닌 계정으로 실행
-RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin noldaga
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin noldaga \
+ && install -d -o noldaga -g noldaga -m 700 /var/lib/noldaga/quota
 USER noldaga
 
 WORKDIR /app/backend

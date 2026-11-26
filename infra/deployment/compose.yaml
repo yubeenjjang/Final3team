@@ -14,7 +14,7 @@ x-backend: &backend
   build:
     context: ../..
     dockerfile: infra/deployment/backend.Dockerfile
-  image: noldaga-backend:local
+  image: noldaga-backend:${BACKEND_IMAGE_TAG:-local}
 
 services:
   redis:
@@ -92,11 +92,18 @@ services:
       SEOUL_OPEN_API_KEY: ${SEOUL_OPEN_API_KEY:-}
       DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:-}
       ROUTE_KEY_SECRET: ${ROUTE_KEY_SECRET:-}
+      ROUTE_QUOTA_FILE: /var/lib/noldaga/quota/route.json
+      CROWD_QUOTA_FILE: /var/lib/noldaga/quota/crowd.json
+      FESTIVAL_INFO_QUOTA_FILE: /var/lib/noldaga/quota/festival_info.json
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-mock}
+      JWT_SECRET: ${JWT_SECRET:-}
       REDIS_URL: ${REDIS_URL:-}
       ASSISTANT_PROVIDER: ${ASSISTANT_PROVIDER:-mock}
       ASSISTANT_TOKEN_SECRET: ${ASSISTANT_TOKEN_SECRET:-}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - noldaga-quota:/var/lib/noldaga/quota
     depends_on:
       role-passwords:
         condition: service_completed_successfully
@@ -110,6 +117,8 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME:-noldaga}
+      DB_USER_USERNAME: ${DB_USER_USERNAME:-noldaga_app}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:?}
       DB_SERVICE_USERNAME: ${DB_SERVICE_USERNAME:-noldaga_service}
       DB_SERVICE_PASSWORD: ${DB_SERVICE_PASSWORD:?}
       DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:-}
@@ -148,3 +157,4 @@ services:
 
 volumes:
   noldaga-db:
+  noldaga-quota:

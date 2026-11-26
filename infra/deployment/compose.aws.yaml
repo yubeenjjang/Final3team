@@ -1,16 +1,40 @@
 # W65 공개 IP HTTP 시험 배포용 오버레이. 로컬 compose.yaml과 함께 사용한다.
 # 도메인/인증서가 없으므로 이 구성은 HTTPS가 아니다.
+x-aws-logging: &aws-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     ports: !reset []
+    logging: *aws-logging
+
+  redis:
+    logging: *aws-logging
+
+  migrate:
+    logging: *aws-logging
+
+  role-passwords:
+    logging: *aws-logging
 
   api:
     ports: !reset []
+    logging: *aws-logging
     environment:
       APP_ENV: production
 
+  scheduler:
+    logging: *aws-logging
+
+  assistant-worker:
+    logging: *aws-logging
+
   proxy:
     image: caddy:2-alpine
+    logging: *aws-logging
     ports:
       - "80:80"
     volumes:
