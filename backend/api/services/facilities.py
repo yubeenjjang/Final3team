@@ -48,6 +48,7 @@ async def get_facilities(
         for category in categories
     }
     db_categories = [category for category in categories if category in _DB_CATEGORIES]
+    kakao_used = False
     if not real:
         response.notices.append("시설 위치 DB 조회가 비활성화되어 있어요.")
         response.status = "unverified"
@@ -72,6 +73,16 @@ async def get_facilities(
             items.sort(key=lambda item: (item.distance_m, item.facility_id))
             response.items.extend(items[:limit_per_category])
             response.categories_status[category] = "ok" if items else "unverified"
+        # 시설 DB(서울 공공데이터)가 비어 있는 지역은 지하철역·주차장·병원만 카카오로 보충한다.
+        # 보충 실패는 DB 조회 결과(미확인)를 그대로 두고 응답 전체를 실패로 만들지 않는다.
+        for category, items in grouped.items():
+            if items or category not in kakao_places.FALLBACK_CODES:
+                continue
+            places = await kakao_places.nearby_places(category, festival.lat, festival.lng, radius_m, limit_per_category)
+            if places:
+                response.items.extend(places)
+                response.categories_status[category] = "ok"
+                kakao_used = True
     # Kakao place results are relayed only in this response, never written to DB or cache.
     for category in ("food", "attraction"):
         if category not in categories:
@@ -86,6 +97,6 @@ async def get_facilities(
         response.status = "unavailable"
     elif not response.items:
         response.status = "unverified"
-    if any(category in categories for category in ("food", "attraction")):
+    if kakao_used or any(category in categories for category in ("food", "attraction")):
         response.notices.append("카카오 장소 결과는 저장하지 않으며 새로 조회하면 달라질 수 있어요.")
     return response
