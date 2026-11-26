@@ -2,24 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
-import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
-import type { KakaoMapMarker, KakaoMapPoint } from "./KakaoMap";
+import type { Layer as LeafletLayer, Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
+import type { KakaoMapArea, KakaoMapMarker, KakaoMapPoint } from "./KakaoMap";
 import { getMapMarkerIconMarkup } from "./mapMarkerIcons";
 
 export function buildOpenStreetMapLink(point: KakaoMapPoint): string {
   return `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=14/${point.lat}/${point.lng}`;
 }
 
-export function OpenStreetMap({ center, title, markers = [], onMarkerClick, className = "h-80 w-full" }: {
+export function OpenStreetMap({ center, title, markers = [], areas = [], onMarkerClick, className = "h-80 w-full" }: {
   center: KakaoMapPoint;
   title: string;
   markers?: Array<KakaoMapMarker & { title: string; label: string }>;
+  areas?: KakaoMapArea[];
   onMarkerClick?: (marker: KakaoMapMarker) => void;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<LeafletMarker[]>([]);
+  const areasRef = useRef<LeafletLayer[]>([]);
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
@@ -42,6 +44,7 @@ export function OpenStreetMap({ center, title, markers = [], onMarkerClick, clas
     return () => {
       cancelled = true;
       markersRef.current = [];
+      areasRef.current = [];
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -85,6 +88,28 @@ export function OpenStreetMap({ center, title, markers = [], onMarkerClick, clas
     });
     return () => { cancelled = true; };
   }, [mapReady, markers, onMarkerClick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void import("leaflet").then((leaflet) => {
+      const map = mapRef.current;
+      if (cancelled || !map) return;
+      areasRef.current.forEach((area) => area.remove());
+      areasRef.current = areas.flatMap((area) => area.paths
+        .filter((ring) => ring.length >= 3)
+        .map((ring) => leaflet.polygon(
+          ring.map((point) => [point.lat, point.lng]),
+          {
+            color: area.strokeColor,
+            weight: 2,
+            opacity: 0.9,
+            fillColor: area.fillColor,
+            fillOpacity: 0.28,
+          },
+        ).bindTooltip(area.label).addTo(map)));
+    });
+    return () => { cancelled = true; };
+  }, [areas, mapReady]);
 
   return (
     <div className="overflow-hidden rounded-card-lg border border-line-light bg-surface shadow-card">

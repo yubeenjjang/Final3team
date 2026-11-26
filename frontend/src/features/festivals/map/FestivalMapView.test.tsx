@@ -35,6 +35,14 @@ describe("FestivalMapView", () => {
         });
       }
       if (url.includes("/crowd")) {
+        if (url.includes("fst_map_002")) {
+          return Response.json({
+            status: "unsupported",
+            unsupported_reason: "outside_seoul",
+            notices: ["서울시 실시간 혼잡 정보 지원 지역이 아니에요."],
+            areas: [],
+          });
+        }
         return Response.json({
           status: "ok",
           areas: [
@@ -49,6 +57,13 @@ describe("FestivalMapView", () => {
               population_max: 2000,
               observed_at: "2026-11-26T09:00:00+09:00",
               forecast: [],
+              center: { lat: 37.5759, lng: 126.9768 },
+              boundary: [[
+                { lat: 37.574, lng: 126.975 },
+                { lat: 37.578, lng: 126.975 },
+                { lat: 37.578, lng: 126.979 },
+                { lat: 37.574, lng: 126.979 },
+              ]],
             },
           ],
         });
@@ -113,6 +128,7 @@ describe("FestivalMapView", () => {
     expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("축제장 주변");
     expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("보통 수준");
     expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("1,000~2,000명");
+    expect(screen.getByText("혼잡도 보통")).toBeInTheDocument();
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("축제장");
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("지하철역");
     fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
@@ -120,6 +136,7 @@ describe("FestivalMapView", () => {
     });
     expect(await screen.findByRole("application", { name: "해운대 빛축제 지도" })).toBeInTheDocument();
     expect(screen.getByText("해운대 빛축제 (부산)")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "현재 혼잡도 서울 외 미지원" })).toBeInTheDocument();
     const searchUrl = fetchMock.mock.calls
       .map(([input]) => new URL(String(input), "http://localhost"))
       .find((url) => url.pathname.endsWith("/festivals") && url.searchParams.has("q"));

@@ -26,7 +26,8 @@ export interface MapFacility {
   extra?: Record<string, string | number | boolean | null>;
 }
 
-export interface MapCrowd {
+export interface AvailableMapCrowd {
+  available: true;
   level: "여유" | "보통" | "약간 붐빔" | "붐빔";
   color: "green" | "yellow" | "orange" | "red";
   areaName: string;
@@ -36,7 +37,16 @@ export interface MapCrowd {
   observedAt?: string | null;
   isEstimate?: boolean | null;
   stale?: boolean;
+  boundary: Array<Array<{ lat: number; lng: number }>>;
 }
+
+export interface UnavailableMapCrowd {
+  available: false;
+  reason: string;
+  message?: string | null;
+}
+
+export type MapCrowd = AvailableMapCrowd | UnavailableMapCrowd;
 
 interface FacilitiesResponse {
   items: MapFacility[];
@@ -115,6 +125,7 @@ export async function getMapCrowd(
     process.env.NEXT_PUBLIC_USE_MOCK_FESTIVALS === "1"
   ) {
     return {
+      available: true,
       level: "붐빔",
       color: "red",
       areaName: "축제장 주변",
@@ -123,6 +134,7 @@ export async function getMapCrowd(
       populationMax: 5600,
       observedAt: new Date().toISOString(),
       isEstimate: true,
+      boundary: [],
     };
   }
   const response = await getFestivalCrowd(festivalId, signal);
@@ -132,6 +144,7 @@ export async function getMapCrowd(
   const area = nearby?.data ?? response.areas?.[0];
   return area
     ? {
+        available: true,
         level: area.congest_level,
         color: area.congest_color,
         areaName: nearby?.area_name ?? area.area_name,
@@ -141,8 +154,21 @@ export async function getMapCrowd(
         observedAt: area.observed_at,
         isEstimate: nearby?.is_estimate ?? response.is_estimate,
         stale: nearby?.status === "stale" || response.status === "stale",
+        boundary: area.boundary ?? nearby?.boundary ?? [],
       }
-    : null;
+    : {
+        available: false,
+        reason: response.unsupported_reason === "outside_seoul"
+          ? "서울 외 미지원"
+          : response.unsupported_reason === "missing_coordinates"
+            ? "위치 확인 필요"
+            : response.unsupported_reason === "no_approved_mapping"
+              ? "혼잡 연결 대기"
+              : response.unsupported_reason === "no_nearby_areas"
+                ? "주변 구역 없음"
+                : "정보 없음",
+        message: response.error?.message ?? response.notices?.[0] ?? null,
+      };
 }
 
 export const FACILITY_LABELS: Record<FacilityCategory, string> = {

@@ -1,7 +1,15 @@
 import { apiGet } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
-export type CrowdArea = components["schemas"]["CrowdArea"];
+export interface CrowdGeoPoint {
+  lat: number;
+  lng: number;
+}
+
+export type CrowdArea = components["schemas"]["CrowdArea"] & {
+  center?: CrowdGeoPoint | null;
+  boundary?: CrowdGeoPoint[][] | null;
+};
 
 export interface NearbyCrowdArea {
   area_code: string;
@@ -11,9 +19,12 @@ export interface NearbyCrowdArea {
   data?: CrowdArea | null;
   is_estimate?: boolean | null;
   error?: components["schemas"]["SourceError"] | null;
+  center?: CrowdGeoPoint | null;
+  boundary?: CrowdGeoPoint[][] | null;
 }
 
-export type CrowdResponse = components["schemas"]["CrowdResponse"] & {
+export type CrowdResponse = Omit<components["schemas"]["CrowdResponse"], "areas"> & {
+  areas?: CrowdArea[];
   nearby_areas?: NearbyCrowdArea[];
   is_estimate?: boolean | null;
   unsupported_reason?: string | null;

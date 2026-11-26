@@ -13,7 +13,7 @@ import {
   Utensils,
   Users,
 } from "lucide-react";
-import { KakaoMap, type KakaoMapMarker } from "@/components/KakaoMap";
+import { KakaoMap, type KakaoMapArea, type KakaoMapMarker } from "@/components/KakaoMap";
 import { OpenStreetMap } from "@/components/OpenStreetMap";
 import { getKakaoJsKey } from "@/lib/kakao";
 import {
@@ -33,6 +33,7 @@ import {
   listMapFacilities,
   type FacilityGroup,
   type FacilityCategory,
+  type AvailableMapCrowd,
   type MapCrowd,
   type MapFacility,
 } from "./api";
@@ -350,12 +351,30 @@ export function FestivalMapView({
       ? { lat: selected.lat, lng: selected.lng }
       : null;
 
-  const crowdColorClass: Record<MapCrowd["color"], string> = {
+  const crowdColorClass: Record<AvailableMapCrowd["color"], string> = {
     green: "bg-crowd-green text-ink",
     yellow: "bg-crowd-yellow text-ink",
     orange: "bg-crowd-orange text-ink",
     red: "bg-crowd-red text-ink",
   };
+  const crowdMapColor: Record<AvailableMapCrowd["color"], string> = {
+    green: "#22c55e",
+    yellow: "#facc15",
+    orange: "#f97316",
+    red: "#ef4444",
+  };
+  const crowdMapAreas = useMemo<KakaoMapArea[]>(() => {
+    if (!crowd?.available || crowd.boundary.length === 0) return [];
+    const color = crowdMapColor[crowd.color];
+    return [{
+      id: `crowd-${selected?.festival_id ?? "festival"}`,
+      label: `${crowd.areaName} · 혼잡도 ${crowd.level}`,
+      paths: crowd.boundary,
+      fillColor: color,
+      strokeColor: color,
+    }];
+  }, [crowd, selected?.festival_id]);
+  const crowdLabel = crowd?.available ? crowd.level : crowd?.reason ?? "정보 없음";
 
   const facilitySectionTitle: Record<FacilityGroup, string> = {
     transport: "주변 교통",
@@ -465,7 +484,7 @@ export function FestivalMapView({
             <button
               type="button"
               aria-expanded={crowdOpen}
-              aria-label={`현재 혼잡도 ${crowd?.level ?? "정보 없음"}`}
+              aria-label={`현재 혼잡도 ${crowdLabel}`}
               onClick={() => setCrowdOpen((open) => !open)}
               className="flex min-w-[104px] items-center justify-center gap-1.5 rounded-input border border-brand/20 bg-surface px-2.5 shadow-card"
             >
@@ -473,10 +492,10 @@ export function FestivalMapView({
               <span className="text-[10px] font-bold text-ink">현재 혼잡도</span>
               <span
                 className={`rounded-chip px-2 py-1 text-[10px] font-extrabold ${
-                  crowd ? crowdColorClass[crowd.color] : "bg-surface-muted text-muted"
+                  crowd?.available ? crowdColorClass[crowd.color] : "bg-surface-muted text-muted"
                 }`}
               >
-                {crowdLoading ? "확인 중" : crowd?.level ?? "정보 없음"}
+                {crowdLoading ? "확인 중" : crowdLabel}
               </span>
             </button>
 
@@ -509,7 +528,7 @@ export function FestivalMapView({
             >
               {crowdLoading ? (
                 <p className="text-xs font-semibold text-muted">혼잡 정보를 확인하고 있어요.</p>
-              ) : crowd ? (
+              ) : crowd?.available ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <strong className="truncate text-sm font-extrabold text-ink">{crowd.areaName}</strong>
@@ -527,8 +546,15 @@ export function FestivalMapView({
                     {crowd.stale ? <span className="font-bold text-brand">업데이트 지연</span> : null}
                   </div>
                 </div>
+              ) : crowd ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-extrabold text-ink">{crowd.reason}</p>
+                  <p className="text-xs font-semibold leading-relaxed text-muted">
+                    {crowd.message || "이 축제 주변의 실시간 혼잡 정보를 제공하지 않아요."}
+                  </p>
+                </div>
               ) : (
-                <p className="text-xs font-semibold text-muted">이 축제 주변의 혼잡 정보가 아직 없어요.</p>
+                <p className="text-xs font-semibold text-muted">이 축제 주변의 혼잡 정보를 확인하지 못했어요.</p>
               )}
             </section>
           ) : null}
@@ -597,6 +623,7 @@ export function FestivalMapView({
               <KakaoMap
                 center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
                 markers={mapMarkers}
+                areas={crowdMapAreas}
                 onMarkerClick={handleMarkerClick}
                 level={4}
                 className="h-[360px] w-full"
@@ -610,6 +637,7 @@ export function FestivalMapView({
                   title: marker.title ?? "지도 위치",
                   label: marker.label ?? "●",
                 }))}
+                areas={crowdMapAreas}
                 onMarkerClick={handleMarkerClick}
                 className="h-[320px] w-full"
               />
@@ -619,6 +647,12 @@ export function FestivalMapView({
                 ? "주변 시설 확인 중"
                 : `${FACILITY_LABELS[FACILITY_GROUPS[facilityGroup][0]]} 등 ${facilities.length}곳`}
             </span>
+            {crowd?.available ? (
+              <span className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-chip bg-surface/95 px-3 py-1.5 text-[11px] font-extrabold text-ink shadow-card backdrop-blur-sm">
+                <span className={`h-3 w-3 rounded-full ${crowdColorClass[crowd.color].split(" ")[0]}`} aria-hidden="true" />
+                혼잡도 {crowd.level}
+              </span>
+            ) : null}
           </section>
 
           <div

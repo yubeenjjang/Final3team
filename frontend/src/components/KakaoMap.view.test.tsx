@@ -20,6 +20,9 @@ const maps = {
   Polyline: vi.fn(function (this: { setMap: () => void }) {
     this.setMap = vi.fn();
   }),
+  Polygon: vi.fn(function (this: { setMap: () => void }) {
+    this.setMap = vi.fn();
+  }),
 } as unknown as KakaoMapsNamespace;
 
 vi.mock("@/lib/kakao", () => ({
@@ -52,5 +55,25 @@ describe("KakaoMap view range", () => {
     rerender(<KakaoMap center={{ lat: 35.16, lng: 129.16 }} markers={two} />);
     await waitFor(() => expect(map.setBounds).toHaveBeenCalledTimes(2));
     expect(map.setCenter).toHaveBeenCalledTimes(1);
+  });
+
+  it("draws a crowd boundary polygon without changing the marker size", async () => {
+    render(
+      <KakaoMap
+        center={{ lat: 37.57, lng: 126.98 }}
+        areas={[{
+          id: "crowd-1",
+          label: "혼잡도 보통",
+          fillColor: "#facc15",
+          strokeColor: "#facc15",
+          paths: [[
+            { lat: 37.56, lng: 126.97 },
+            { lat: 37.58, lng: 126.97 },
+            { lat: 37.58, lng: 126.99 },
+          ]],
+        }]}
+      />,
+    );
+    await waitFor(() => expect(maps.Polygon).toHaveBeenCalledTimes(1));
   });
 });

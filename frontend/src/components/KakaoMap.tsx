@@ -7,6 +7,7 @@ import {
   type KakaoMapInstance,
   type KakaoCustomOverlayInstance,
   type KakaoMarkerInstance,
+  type KakaoPolygonInstance,
   type KakaoPolylineInstance,
 } from "@/lib/kakao";
 import { OpenStreetMap } from "./OpenStreetMap";
@@ -28,10 +29,19 @@ export interface KakaoMapMarker extends KakaoMapPoint {
 
 export type KakaoMapPolyline = Array<[number, number]>;
 
+export interface KakaoMapArea {
+  id: string;
+  label: string;
+  paths: KakaoMapPoint[][];
+  fillColor: string;
+  strokeColor: string;
+}
+
 export interface KakaoMapProps {
   center: KakaoMapPoint;
   markers?: KakaoMapMarker[];
   polylines?: KakaoMapPolyline[];
+  areas?: KakaoMapArea[];
   level?: number;
   className?: string;
   onMarkerClick?: (marker: KakaoMapMarker) => void;
@@ -52,6 +62,7 @@ export function KakaoMap({
   center,
   markers = [],
   polylines = [],
+  areas = [],
   level = 4,
   className = "h-56 w-full",
   onMarkerClick,
@@ -61,7 +72,8 @@ export function KakaoMap({
   const overlaysRef = useRef<{
     markers: Array<KakaoMarkerInstance | KakaoCustomOverlayInstance>;
     polylines: KakaoPolylineInstance[];
-  }>({ markers: [], polylines: [] });
+    areas: KakaoPolygonInstance[];
+  }>({ markers: [], polylines: [], areas: [] });
   // 마지막으로 화면 범위를 맞춘 기준(중심·확대 수준·경로). 마커만 바뀔 때는 범위를 다시 맞추지 않는다.
   const viewRef = useRef<{ key: string; fitted: boolean } | null>(null);
 
@@ -107,11 +119,31 @@ export function KakaoMap({
 
         overlaysRef.current.markers.forEach((m) => m.setMap(null));
         overlaysRef.current.polylines.forEach((p) => p.setMap(null));
+        overlaysRef.current.areas.forEach((area) => area.setMap(null));
 
         const nextMarkers: Array<KakaoMarkerInstance | KakaoCustomOverlayInstance> = [];
         const nextPolylines: KakaoPolylineInstance[] = [];
+        const nextAreas: KakaoPolygonInstance[] = [];
         const bounds = new maps.LatLngBounds();
         let pointCount = 0;
+
+        for (const area of areas) {
+          const paths = area.paths
+            .filter((ring) => ring.length >= 3)
+            .map((ring) => ring.map((point) => new maps.LatLng(point.lat, point.lng)));
+          if (!paths.length) continue;
+          const polygon = new maps.Polygon({
+            path: paths,
+            map,
+            strokeWeight: 2,
+            strokeColor: area.strokeColor,
+            strokeOpacity: 0.9,
+            strokeStyle: "solid",
+            fillColor: area.fillColor,
+            fillOpacity: 0.28,
+          });
+          nextAreas.push(polygon);
+        }
 
         for (const item of markers) {
           const position = new maps.LatLng(item.lat, item.lng);
@@ -159,6 +191,7 @@ export function KakaoMap({
         overlaysRef.current = {
           markers: nextMarkers,
           polylines: nextPolylines,
+          areas: nextAreas,
         };
 
         // 검색어 입력 등으로 마커 수만 바뀔 때 매번 setBounds하면 지도가 갑자기 확대·축소된다.
@@ -177,7 +210,7 @@ export function KakaoMap({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, center.lat, center.lng, level, markers, onMarkerClick, polylines]);
+  }, [apiKey, areas, center.lat, center.lng, level, markers, onMarkerClick, polylines]);
 
   if (loadFailed) {
     return (
@@ -189,6 +222,7 @@ export function KakaoMap({
           title: marker.title ?? "축제 위치",
           label: marker.label ?? "📍",
         }))}
+        areas={areas}
         onMarkerClick={onMarkerClick}
         className={className}
       />

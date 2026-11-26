@@ -25,6 +25,10 @@ export interface KakaoPolylineInstance {
   setMap(map: KakaoMapInstance | null): void;
 }
 
+export interface KakaoPolygonInstance {
+  setMap(map: KakaoMapInstance | null): void;
+}
+
 export interface KakaoMapsNamespace {
   load(callback: () => void): void;
   LatLng: new (lat: number, lng: number) => KakaoLatLng;
@@ -54,6 +58,16 @@ export interface KakaoMapsNamespace {
     strokeOpacity?: number;
     strokeStyle?: string;
   }) => KakaoPolylineInstance;
+  Polygon: new (options: {
+    path: KakaoLatLng[] | KakaoLatLng[][];
+    map?: KakaoMapInstance;
+    strokeWeight?: number;
+    strokeColor?: string;
+    strokeOpacity?: number;
+    strokeStyle?: string;
+    fillColor?: string;
+    fillOpacity?: number;
+  }) => KakaoPolygonInstance;
 }
 
 export interface KakaoSDK {
