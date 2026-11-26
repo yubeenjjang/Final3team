@@ -139,8 +139,20 @@ describe("F7 festival detail", () => {
     expect(screen.getByText("무료")).toBeInTheDocument();
     expect(screen.getByText("서울")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "화장실" }));
-    expect(screen.getByRole("status")).toHaveTextContent("준비 중이에요");
+    // 주변 정보 아이콘은 지도 탭을 이 축제·분류가 선택된 상태로 연다 (A08)
+    expect(screen.getByRole("link", { name: "주변 화장실 지도에서 보기" })).toHaveAttribute(
+      "href",
+      "/map?festival=fst_000001&group=safety&category=toilet",
+    );
+    expect(screen.getByRole("link", { name: "주변 지하철 지도에서 보기" })).toHaveAttribute(
+      "href",
+      "/map?festival=fst_000001&group=transport&category=subway_station",
+    );
+    expect(screen.getByRole("link", { name: "주변 맛집 지도에서 보기" })).toHaveAttribute(
+      "href",
+      "/map?festival=fst_000001&group=food&category=food",
+    );
+    expect(screen.queryByText(/정보는 준비 중이에요/)).not.toBeInTheDocument();
 
     const returnLink = screen.getByRole("link", { name: /귀가 경로 보기/ });
     expect(returnLink).toHaveAttribute(

@@ -319,4 +319,170 @@ describe("Chat screens", () => {
       expect(screen.getByText("재연결 후 복원 메시지")).toBeInTheDocument();
     });
   });
+
+  it("resolves unknown WS sender display name from message history API", async () => {
+    setAuthSession({
+      accessToken: "token-a",
+      refreshToken: "token-r",
+      user: { userId: "usr-1", displayName: "테스터" },
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/me/chat-rooms")) {
+        return Response.json({
+          items: [
+            {
+              room_id: "crm_DIRECT01",
+              room_type: "direct",
+              name: null,
+              status: "active",
+              last_message_at: null,
+              unread_count: 0,
+              my_status: "joined",
+            },
+          ],
+        });
+      }
+      if (url.pathname.endsWith("/messages")) {
+        if (url.searchParams.get("after_seq") === "0") {
+          return Response.json({
+            items: [
+              {
+                message_id: 101,
+                seq: 1,
+                sender_id: "usr-2",
+                sender_display_name: "지영",
+                msg_type: "text",
+                body: "첫 인사예요!",
+                created_at: "2026-11-25T12:00:00+09:00",
+              },
+            ],
+            has_more: false,
+          });
+        }
+        return Response.json({ items: [], has_more: false });
+      }
+      if (url.pathname.endsWith("/read")) {
+        return new Response(null, { status: 204 });
+      }
+      if (url.pathname.endsWith("/ws-tickets")) {
+        return Response.json({ ticket: "ticket-direct", expires_in: 30 }, { status: 201 });
+      }
+      return Response.json({});
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<ChatRoomView roomId="crm_DIRECT01" />);
+
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+    const socket = FakeWebSocket.instances[0];
+    act(() => {
+      socket.emitOpen();
+    });
+
+    // WS broadcast omits sender_display_name by design
+    act(() => {
+      socket.emitMessage({
+        type: "message",
+        room_id: "crm_DIRECT01",
+        message_id: 101,
+        seq: 1,
+        sender_id: "usr-2",
+        msg_type: "text",
+        body: "첫 인사예요!",
+        created_at: "2026-11-25T12:00:00+09:00",
+      });
+    });
+
+    expect(screen.getByText("첫 인사예요!")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("지영")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("참여자")).not.toBeInTheDocument();
+  });
+
+  it("falls back to 참여자 when sender display name cannot be resolved", async () => {
+    setAuthSession({
+      accessToken: "token-a",
+      refreshToken: "token-r",
+      user: { userId: "usr-1", displayName: "테스터" },
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/me/chat-rooms")) {
+        return Response.json({
+          items: [
+            {
+              room_id: "crm_DIRECT02",
+              room_type: "direct",
+              name: null,
+              status: "active",
+              last_message_at: null,
+              unread_count: 0,
+              my_status: "joined",
+            },
+          ],
+        });
+      }
+      if (url.pathname.endsWith("/messages")) {
+        if (url.searchParams.get("after_seq") === "0") {
+          return Response.json({
+            items: [
+              {
+                message_id: 201,
+                seq: 1,
+                sender_id: "usr-deleted",
+                sender_display_name: null,
+                msg_type: "text",
+                body: "이름 없는 메시지",
+                created_at: "2026-11-25T12:00:00+09:00",
+              },
+            ],
+            has_more: false,
+          });
+        }
+        return Response.json({ items: [], has_more: false });
+      }
+      if (url.pathname.endsWith("/read")) {
+        return new Response(null, { status: 204 });
+      }
+      if (url.pathname.endsWith("/ws-tickets")) {
+        return Response.json({ ticket: "ticket-fallback", expires_in: 30 }, { status: 201 });
+      }
+      return Response.json({});
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<ChatRoomView roomId="crm_DIRECT02" />);
+
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+    const socket = FakeWebSocket.instances[0];
+    act(() => {
+      socket.emitOpen();
+    });
+
+    act(() => {
+      socket.emitMessage({
+        type: "message",
+        room_id: "crm_DIRECT02",
+        message_id: 201,
+        seq: 1,
+        sender_id: "usr-deleted",
+        msg_type: "text",
+        body: "이름 없는 메시지",
+        created_at: "2026-11-25T12:00:00+09:00",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("이름 없는 메시지")).toBeInTheDocument();
+      expect(screen.getByText("참여자")).toBeInTheDocument();
+    });
+  });
 });

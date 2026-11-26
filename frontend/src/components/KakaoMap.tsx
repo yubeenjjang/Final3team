@@ -53,6 +53,8 @@ export function KakaoMap({
     markers: KakaoMarkerInstance[];
     polylines: KakaoPolylineInstance[];
   }>({ markers: [], polylines: [] });
+  // 마지막으로 화면 범위를 맞춘 기준(중심·확대 수준·경로). 마커만 바뀔 때는 범위를 다시 맞추지 않는다.
+  const viewRef = useRef<{ key: string; fitted: boolean } | null>(null);
 
   const apiKey = getKakaoJsKey();
   const [failedKey, setFailedKey] = useState<string | null>(null);
@@ -72,14 +74,24 @@ export function KakaoMap({
         }
 
         const centerLatLng = new maps.LatLng(center.lat, center.lng);
+        const viewKey = [
+          center.lat,
+          center.lng,
+          level,
+          polylines.map((path) => path.length).join("."),
+        ].join("|");
+        const viewChanged = viewRef.current?.key !== viewKey;
         if (!mapRef.current) {
           mapRef.current = new maps.Map(containerRef.current, {
             center: centerLatLng,
             level,
           });
-        } else {
+        } else if (viewChanged) {
           mapRef.current.setCenter(centerLatLng);
           mapRef.current.setLevel(level);
+        }
+        if (viewChanged) {
+          viewRef.current = { key: viewKey, fitted: false };
         }
 
         const map = mapRef.current;
@@ -131,8 +143,11 @@ export function KakaoMap({
           polylines: nextPolylines,
         };
 
-        if (pointCount >= 2) {
+        // 검색어 입력 등으로 마커 수만 바뀔 때 매번 setBounds하면 지도가 갑자기 확대·축소된다.
+        // 중심·경로가 바뀐 뒤 처음 한 번만 범위를 맞춘다.
+        if (pointCount >= 2 && viewRef.current && !viewRef.current.fitted) {
           map.setBounds(bounds);
+          viewRef.current.fitted = true;
         }
       })
       .catch(() => {

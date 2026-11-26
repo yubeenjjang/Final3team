@@ -171,7 +171,7 @@ def test_I19_reclassifies_legacy_rows_with_cached_details_and_is_idempotent(
         assert connection.execute(text("""
             SELECT field, count(*) FROM festival_change_history
             WHERE field IN ('published_at', 'review_status') GROUP BY field ORDER BY field
-        """)).all() == [("published_at", 3), ("review_status", 3)]
+        """)).all() == [("published_at", 4), ("review_status", 4)]  # 2865122(좌표 범위 밖)도 첫 수집 때 공개됐다가 재분류로 대기
 
     items[0].update(lclsSystm2="EV01", lclsSystm3="EV010600")
     assert run_collector(tmp_path / "restored", handler, "--db", "--no-detail") == 0

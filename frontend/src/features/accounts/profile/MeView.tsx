@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  KeyRound,
   LogOut,
   MessageCircle,
   Pencil,
@@ -12,11 +13,22 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { handleAuthError, RequireAuth } from "@/components/RequireAuth";
+import {
+  handleAuthError,
+  RequireAuth,
+  suppressNextAuthRedirect,
+} from "@/components/RequireAuth";
+import { validatePasswordChange } from "@/features/accounts/auth/validators";
 import { BlockManagerSection } from "@/features/community/friends/BlockManagerSection";
 import { clearAuthSession, updateAuthUser } from "@/lib/api/auth";
 import { ApiError, logoutAuthSession } from "@/lib/api/client";
-import { deleteAccount, getProfile, updateProfile, type Profile } from "./api";
+import {
+  changePassword,
+  deleteAccount,
+  getProfile,
+  updateProfile,
+  type Profile,
+} from "./api";
 import { PreferencesSection } from "./PreferencesView";
 import { FavoriteListSection } from "@/features/favorites/FavoriteListSection";
 
@@ -37,6 +49,14 @@ function MeContent() {
   const [savingName, setSavingName] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
+
+  // Password change
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Logout & withdrawal
   const [logoutBusy, setLogoutBusy] = useState(false);
@@ -106,11 +126,57 @@ function MeContent() {
     }
   }
 
+  async function handleChangePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (passwordBusy) return;
+    const validationError = validatePasswordChange(
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    );
+    if (validationError) {
+      setPasswordError(validationError);
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordError(null);
+    try {
+      await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      clearAuthSession();
+      suppressNextAuthRedirect();
+      router.replace("/auth/login?reason=password_changed");
+    } catch (cause) {
+      if (handleAuthError(cause)) return;
+      if (
+        cause instanceof ApiError &&
+        cause.status === 403 &&
+        cause.code === "PASSWORD_MISMATCH"
+      ) {
+        setPasswordError("현재 비밀번호가 맞지 않아요");
+      } else if (cause instanceof ApiError && cause.status === 422) {
+        setPasswordError(cause.message);
+      } else {
+        setPasswordError(
+          cause instanceof ApiError
+            ? cause.message
+            : "비밀번호를 변경하지 못했어요. 다시 시도해 주세요.",
+        );
+      }
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   async function handleLogout() {
     if (logoutBusy) return;
     setLogoutBusy(true);
     try {
-      await logoutAuthSession();
+      const logoutPromise = logoutAuthSession();
+      suppressNextAuthRedirect();
+      await logoutPromise;
     } catch {
       // Session is already cleared locally
     } finally {
@@ -127,6 +193,7 @@ function MeContent() {
     try {
       await deleteAccount(withdrawPassword);
       clearAuthSession();
+      suppressNextAuthRedirect();
       router.replace("/");
     } catch (cause) {
       if (handleAuthError(cause)) return;
@@ -213,9 +280,9 @@ function MeContent() {
                 setProfileError(null);
                 setProfileNotice(null);
               }}
-              className="inline-flex items-center gap-1 rounded-chip border border-line-light px-3 py-1.5 text-xs font-bold text-ink hover:border-brand/40 hover:text-brand"
+              className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-chip border border-line-light px-3 py-1.5 text-xs font-bold text-ink hover:border-brand/40 hover:text-brand"
             >
-              <Pencil className="h-3 w-3" aria-hidden="true" />
+              <Pencil className="h-3 w-3 shrink-0" aria-hidden="true" />
               <span>{editingName ? "취소" : "닉네임 수정"}</span>
             </button>
           </div>
@@ -324,10 +391,86 @@ function MeContent() {
 
       <FavoriteListSection />
 
+      {/* 비밀번호 변경 */}
+      <section className="space-y-3 rounded-card border border-line-light bg-surface p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-extrabold text-ink">비밀번호 변경</h2>
+            <p className="text-[11px] text-muted">
+              영문과 숫자를 포함한 8~64자로 새 비밀번호를 설정할 수 있어요.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setPasswordOpen((v) => !v);
+              setPasswordError(null);
+            }}
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-chip border border-line-light bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:border-brand/40 hover:text-brand"
+          >
+            <KeyRound className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{passwordOpen ? "닫기" : "변경하기"}</span>
+          </button>
+        </div>
+
+        {passwordOpen ? (
+          <form
+            onSubmit={handleChangePassword}
+            noValidate
+            className="space-y-3 border-t border-line-light pt-3"
+          >
+            <div className="space-y-2">
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="현재 비밀번호 입력"
+                aria-label="현재 비밀번호"
+                className="h-10 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm focus:border-brand focus:outline-none"
+              />
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="새 비밀번호 입력 (영문·숫자 포함 8~64자)"
+                aria-label="새 비밀번호"
+                className="h-10 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm focus:border-brand focus:outline-none"
+              />
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="새 비밀번호 다시 입력"
+                aria-label="새 비밀번호 확인"
+                className="h-10 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm focus:border-brand focus:outline-none"
+              />
+            </div>
+            {passwordError ? (
+              <p role="alert" className="text-xs font-semibold text-brand">
+                {passwordError}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={passwordBusy}
+              className="w-full rounded-chip bg-brand py-2.5 text-xs font-extrabold text-surface disabled:opacity-50"
+            >
+              {passwordBusy ? "변경 중…" : "비밀번호 변경 저장"}
+            </button>
+          </form>
+        ) : null}
+      </section>
+
       {/* 회원 탈퇴 */}
       <section className="space-y-3 rounded-card border border-line-light bg-surface-muted/40 p-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="text-sm font-extrabold text-ink">회원 탈퇴</h2>
             <p className="text-[11px] text-muted">
               탈퇴 시 취향과 친구 관계가 모두 삭제돼요.
@@ -339,9 +482,9 @@ function MeContent() {
               setWithdrawOpen((v) => !v);
               setWithdrawError(null);
             }}
-            className="inline-flex items-center gap-1 rounded-chip border border-brand/40 bg-surface px-3 py-1.5 text-xs font-bold text-brand hover:bg-surface-soft"
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-chip border border-brand/40 bg-surface px-3 py-1.5 text-xs font-bold text-brand hover:bg-surface-soft"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{withdrawOpen ? "닫기" : "탈퇴하기"}</span>
           </button>
         </div>

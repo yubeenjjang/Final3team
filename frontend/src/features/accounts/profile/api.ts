@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPut } from "@/lib/api/client";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api/client";
 
 export type Scenario =
   | "family_relaxed"
@@ -80,6 +80,13 @@ export function saveFestivalPreferences(body: {
   skip: boolean;
 }): Promise<FestivalPreferences> {
   return apiPut<FestivalPreferences>("/me/festival-preferences", body);
+}
+
+export function changePassword(body: {
+  current_password: string;
+  new_password: string;
+}): Promise<void> {
+  return apiPost<void>("/me/password", body);
 }
 
 export function deleteAccount(password: string): Promise<void> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentBirthYear, validateSignup } from "./validators";
+import { currentBirthYear, validatePasswordChange, validateSignup } from "./validators";
 
 const valid = {
   email: "tester@example.com",
@@ -32,5 +32,26 @@ describe("F10 signup validation", () => {
 
   it("uses the Korean calendar year across New Year", () => {
     expect(currentBirthYear(new Date("2025-12-31T15:01:00Z"))).toBe(2026);
+  });
+});
+
+describe("password change validation", () => {
+  it.each(["12345678", "abcdefgh", "abc1234", "a".repeat(64) + "1"])(
+    "rejects invalid new password %j",
+    (newPassword) => {
+      expect(validatePasswordChange("Current123", newPassword, newPassword)).toMatch(/영문과 숫자/);
+    },
+  );
+
+  it("rejects when new password matches current password", () => {
+    expect(validatePasswordChange("SamePass12", "SamePass12", "SamePass12")).toMatch(/달라야/);
+  });
+
+  it("rejects when confirmation does not match", () => {
+    expect(validatePasswordChange("OldPass12", "NewPass12", "OtherPass12")).toMatch(/일치하지/);
+  });
+
+  it("accepts a valid password change", () => {
+    expect(validatePasswordChange("OldPass12", "NewPass34", "NewPass34")).toBeNull();
   });
 });

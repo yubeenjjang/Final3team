@@ -10,7 +10,15 @@ import { getFestivalPreferences } from "@/features/accounts/profile/api";
 import { authLink, login, logout, safeNextPath } from "./api";
 import { AuthInput, PasswordInput, primaryButton, useFormReady } from "./AuthFields";
 
-export function LoginForm({ email, next }: { email?: string; next?: string }) {
+export function LoginForm({
+  email,
+  next,
+  notice,
+}: {
+  email?: string;
+  next?: string;
+  notice?: string;
+}) {
   const router = useRouter();
   const formReady = useFormReady();
   const user = useSyncExternalStore(subscribeAuth, getAuthUser, getAuthUserServerSnapshot);
@@ -86,6 +94,9 @@ export function LoginForm({ email, next }: { email?: string; next?: string }) {
   return (
     <>
       <form method="post" onSubmit={submit} className="space-y-4">
+        {notice && !error ? (
+          <p role="status" className="text-sm font-semibold text-ink">{notice}</p>
+        ) : null}
         <AuthInput
           icon={Mail}
           name="email"

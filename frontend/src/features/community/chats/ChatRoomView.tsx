@@ -51,6 +51,7 @@ interface WsServerEvent {
   message_id?: number;
   seq?: number;
   sender_id?: string | null;
+  sender_display_name?: string | null;
   msg_type?: "text" | "system";
   body?: string;
   created_at?: string;
@@ -73,6 +74,9 @@ function mergeMessages(
 ): ChatMessageItem[] {
   const bySeq = new Map<number, ChatMessageItem>();
   for (const item of existing) {
+    if (item.sender_id && item.sender_display_name) {
+      nameMap.set(item.sender_id, item.sender_display_name);
+    }
     bySeq.set(item.seq, item);
   }
   for (const item of incoming) {
@@ -86,7 +90,13 @@ function mergeMessages(
       (item.sender_id ? nameMap.get(item.sender_id) ?? null : null);
     bySeq.set(item.seq, { ...item, sender_display_name: resolvedName });
   }
-  return Array.from(bySeq.values()).sort((a, b) => a.seq - b.seq);
+  return Array.from(bySeq.values())
+    .map((item) =>
+      !item.sender_display_name && item.sender_id && nameMap.has(item.sender_id)
+        ? { ...item, sender_display_name: nameMap.get(item.sender_id) ?? null }
+        : item,
+    )
+    .sort((a, b) => a.seq - b.seq);
 }
 
 function wsErrorText(code?: string): string {
@@ -156,6 +166,8 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const lastSeqRef = useRef(0);
   const senderNamesRef = useRef<Map<string, string>>(new Map());
+  const resolvingSendersRef = useRef<Set<string>>(new Set());
+  const unresolvableSendersRef = useRef<Set<string>>(new Set());
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
@@ -171,6 +183,8 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
   useEffect(() => {
     const controller = new AbortController();
     stopReconnectRef.current = false;
+    resolvingSendersRef.current.clear();
+    unresolvableSendersRef.current.clear();
 
     async function loadInitial() {
       setLoading(true);
@@ -258,6 +272,40 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
     }
   }, [roomId]);
 
+  const resolveSenderNameFromHistory = useCallback(
+    async (seq: number, senderId: string) => {
+      if (
+        senderNamesRef.current.has(senderId) ||
+        resolvingSendersRef.current.has(senderId) ||
+        unresolvableSendersRef.current.has(senderId)
+      ) {
+        return;
+      }
+      resolvingSendersRef.current.add(senderId);
+      try {
+        const res = await listRoomMessages(roomId, {
+          after_seq: Math.max(0, seq - 1),
+          limit: 20,
+        });
+        if (!mountedRef.current) return;
+        const matched = res.items.find((item) => item.sender_id === senderId);
+        if (matched && !matched.sender_display_name) {
+          unresolvableSendersRef.current.add(senderId);
+        }
+        if (res.items.length > 0) {
+          setMessages((prev) =>
+            mergeMessages(prev, res.items, senderNamesRef.current),
+          );
+        }
+      } catch {
+        // Best-effort sender name lookup; keep fallback label if unavailable.
+      } finally {
+        resolvingSendersRef.current.delete(senderId);
+      }
+    },
+    [roomId],
+  );
+
   // WebSocket lifecycle: issue ticket -> connect -> subscribe -> reconnect + restore after last_seq
   useEffect(() => {
     if (loading || error || stopReconnectRef.current) {
@@ -319,6 +367,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
               message_id: parsed.message_id,
               seq: parsed.seq,
               sender_id: parsed.sender_id ?? null,
+              sender_display_name: parsed.sender_display_name ?? null,
               msg_type: parsed.msg_type ?? "text",
               body: parsed.body,
               created_at: parsed.created_at ?? new Date().toISOString(),
@@ -326,6 +375,14 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
             setMessages((prev) =>
               mergeMessages(prev, [incoming], senderNamesRef.current),
             );
+            if (
+              incoming.msg_type !== "system" &&
+              incoming.sender_id &&
+              !incoming.sender_display_name &&
+              !senderNamesRef.current.has(incoming.sender_id)
+            ) {
+              void resolveSenderNameFromHistory(incoming.seq, incoming.sender_id);
+            }
             if (parsed.seq > lastSeqRef.current) {
               lastSeqRef.current = parsed.seq;
               void markRoomRead(roomId, parsed.seq).catch(() => {});
@@ -409,7 +466,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
         wsRef.current = null;
       }
     };
-  }, [loading, error, roomId, room, syncMissedAfterSeq]);
+  }, [loading, error, roomId, room, syncMissedAfterSeq, resolveSenderNameFromHistory]);
 
   async function handleLoadOlder() {
     if (loadingMore || !hasMore || messages.length === 0) return;
@@ -466,6 +523,11 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
     try {
       const res = await listFriends(1);
       setFriends(res.items);
+      for (const friend of res.items) {
+        if (friend.display_name) {
+          senderNamesRef.current.set(friend.user_id, friend.display_name);
+        }
+      }
     } catch (cause) {
       if (handleAuthError(cause)) return;
       setWsError(

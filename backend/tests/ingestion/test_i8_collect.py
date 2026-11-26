@@ -77,7 +77,8 @@ def test_I8_collect_fixture_and_report(tmp_path: Path, detail_fails: bool) -> No
     assert report["since"] == "2026-01-01"
     assert report["until"] == "2026-12-31"
     assert report["scanned"] == len(items) == 5
-    assert (report["publishable"], report["pending"]) == (4, 1)
+    # 좌표가 범위 밖인 1건도 좌표만 비우고 공개(카카오 보정 안 함)
+    assert (report["publishable"], report["pending"]) == (5, 0)
     assert report["calls"] == {"searchFestival2": 1, "detailCommon2": 5, "detailIntro2": 5}
     started_at = datetime.fromisoformat(report["started_at"])
     ended_at = datetime.fromisoformat(report["ended_at"])

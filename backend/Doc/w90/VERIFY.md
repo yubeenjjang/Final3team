@@ -14,3 +14,21 @@
 - 카카오 장소 중계는 실키 호출·쿼터 동작을 확인하지 못했다. 실제 키와 분리된 시험 환경에서 응답·한도·오류를 확인해야 한다.
 
 따라서 W90은 **API 코드 부분 완료, 실데이터·통합 시험 대기**다.
+
+## 2026-11-26 정적 시설 적재 (권오현, 유빈님 위임)
+
+- 적재 코드: `backend/api/ingestion/facilities/` — `python -m api.ingestion.facilities [source_id ...]`(수집 계정 `noldaga_service`, `SEOUL_OPEN_API_KEY`). 전체 목록을 다 받았을 때만 저장하고, `UNIQUE(source_id, source_item_id)` upsert라 다시 돌려도 행이 늘지 않는다. 원본에서 사라진 시설은 지우지 않는다(설계 '삭제 대신 숨김', 숨김 칸은 아직 없음).
+- 공급원(서울 열린데이터광장 OpenAPI, 공공누리 제1유형·출처 표시, 좌표 WGS84 경위도 그대로):
+
+| source_id | 서비스 | 분류 | 원본 → 적재 | 처리 |
+|---|---|---|---|---|
+| `seoul_bus_stop` | busStopLocationXyInfo | bus_stop | 11,223 → 11,215 | `STOPS_NO`(9자리 정류소 ID) = `source_item_id`, `NODE_ID`(5자리 ARS) = `ref_code`(A26 서울 버스 도착). 한강선착장 8건 제외 |
+| `seoul_subway_station` | subwayStationMaster | subway_station | 784 → 657 | 노선별 행을 역 이름으로 묶음(1km 넘게 떨어진 동명 역은 따로), 괄호 부역명 제거, `region_code` 비움(A26이 축제 지역으로 판단) |
+| `seoul_bike_station` | bikeStationMaster | bike_zone | 3,438 → 3,361 | 좌표 없는 77건 제외, `RNTLS_ID` = `ref_code` |
+| `seoul_public_toilet` | mgisToiletPoi | toilet | 4,547 → 4,547 | |
+| `seoul_public_parking` | GetParkInfo | parking | 2,244행(888곳) → 122 | 좌표 있는 공영주차장만(나머지 좌표 0) |
+| `seoul_hospital` | TbHospitalInfo | hospital·emergency | 23,120 → 334 + 77 | 종합병원·병원만 hospital(의원·치과·한의원 제외), 응급실 운영(`DUTYERYN=1`) 77곳은 emergency |
+
+- 학원 노트북 DB 적재(11/26, 백업 `~/noldaga-backup/noldaga_before_facilities_20261126_1039.dump`), 두 번째 실행은 새로 0·전부 갱신으로 멱등 확인. 서울빛초롱축제 A08(반경 1500m): taxi_stand만 `unverified`, 나머지 9개 분류 `ok`(화장실 82m, 버스 청계광장 55m, 따릉이 39m, 광화문역 261m, 강북삼성병원 858m 등).
+- 시험: `backend/tests/ingestion/test_facilities_load.py`(오프라인 9), `test_facilities_load_db.py`(DB 2 — 재적재 멱등, 실패 시 기존 행 유지, 앱 계정 A08 조회).
+- 남은 것: 택시 승강장(서울 OpenAPI 서비스 확인 안 됨), 서울 밖 시설(공공데이터포털 전국 표준데이터는 현재 키에 활용 신청 없음), 공영 외 주차장, 원본에서 사라진 시설 숨김 칸.
