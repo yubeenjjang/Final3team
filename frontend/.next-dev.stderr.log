@@ -10,3 +10,577 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
 ⚠ Fast Refresh had to perform a full reload due to a runtime error.
 ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  [90m15 |[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m16 |[0m [36mimport[0m { [33mKakaoMap[0m } [36mfrom[0m [32m"@/components/KakaoMap"[0m;
+[31m[1m>[0m [90m17 |[0m [36mimport[0m { [33mOpenStreetMap[0m } [36mfrom[0m [32m"@/components/OpenStreetMap"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m18 |[0m [36mimport[0m { getKakaoJsKey } [36mfrom[0m [32m"@/lib/kakao"[0m;
+  [90m19 |[0m [36mimport[0m {
+  [90m20 |[0m   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+[browser] ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  15 | } from "lucide-react";
+  16 | import { KakaoMap } from "@/components/KakaoMap";
+> 17 | import { OpenStreetMap } from "@/components/OpenStreetMap";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  18 | import { getKakaoJsKey } from "@/lib/kakao";
+  19 | import {
+  20 |   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/features/festivals/map/FestivalMapView.tsx:17:1
+Error: Module not found: Can't resolve '@/components/OpenStreetMap'
+  15 | } from "lucide-react";
+  16 | import { KakaoMap } from "@/components/KakaoMap";
+> 17 | import { OpenStreetMap } from "@/components/OpenStreetMap";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  18 | import { getKakaoJsKey } from "@/lib/kakao";
+  19 | import {
+  20 |   listFestivals,
+
+Import map: aliased to relative './src/components/OpenStreetMap' inside of [project]/
+
+Import trace:
+  Server Component:
+    ./src/features/festivals/map/FestivalMapView.tsx
+    ./src/app/map/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+[browser] ./src/app/globals.css:2515:8
+Error: Parsing CSS source code failed
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:2515:8
+  2513 |   flex: 0 0 calc((100% - 16px) / 2.5);
+  2514 | }
+> 2515 | @import "leaflet/dist/leaflet.css";
+       |        ^
+  2516 |
+  2517 | .festival-map-marker {
+  2518 |   display: grid;
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 

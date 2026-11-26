@@ -46,18 +46,21 @@ function mockFacilities(
   lng: number,
   categories: readonly FacilityCategory[],
 ): MapFacility[] {
-  return categories.map((category, index) => {
-    const angle = (index / categories.length) * Math.PI * 2 - Math.PI / 2;
-    const radius = 0.006 + (index % 2) * 0.002;
-    return {
-      facility_id: `mock_${category}_${index}`,
-      category,
-      name: `주변 ${FACILITY_LABELS[category]}`,
-      lat: lat + Math.sin(angle) * radius,
-      lng: lng + Math.cos(angle) * radius,
-      distance_m: 300 + index * 140,
-    };
-  });
+  const names: Record<FacilityCategory, readonly string[]> = {
+    toilet: ["축제장 공중화장실", "한강공원 공중화장실"], parking: ["축제장 공영주차장", "인근 노상주차장"],
+    hospital: ["지역 종합병원", "가까운 내과의원"], emergency: ["지역 응급의료센터", "24시간 응급실"],
+    subway_station: ["주변 지하철역", "인근 환승역"], bus_stop: ["축제장 버스정류장", "인근 버스정류장"],
+    bike_zone: ["공공자전거 대여소", "자전거 주차장"], taxi_stand: ["택시 승강장", "인근 택시 승강장"],
+    food: ["축제장 맛집", "한강뷰 카페"], attraction: ["주변 전망 명소", "인근 문화공간"],
+  };
+  return categories.flatMap((category, categoryIndex) => names[category].map((name, itemIndex) => {
+    const index = categoryIndex * 2 + itemIndex;
+    const angle = (index / (categories.length * 2)) * Math.PI * 2 - Math.PI / 2;
+    const radius = 0.004 + (index % 3) * 0.002;
+    return { facility_id: `mock_${category}_${itemIndex}`, category, name,
+      lat: lat + Math.sin(angle) * radius, lng: lng + Math.cos(angle) * radius,
+      distance_m: 220 + index * 130 };
+  }));
 }
 
 export async function listMapFacilities({

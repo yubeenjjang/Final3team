@@ -173,3 +173,49 @@
  GET /map 200 in 56ms (next.js: 4ms, application-code: 52ms)
  GET /map 200 in 43ms (next.js: 3ms, application-code: 40ms)
  GET /map 200 in 45ms (next.js: 5ms, application-code: 39ms)
+✓ Compiled in 116ms
+ GET /map 200 in 45ms (next.js: 3ms, application-code: 41ms)
+ GET /map 200 in 88ms (next.js: 4ms, application-code: 83ms)
+✓ Compiled in 122ms
+ GET /map 200 in 64ms (next.js: 7ms, application-code: 56ms)
+✓ Compiled in 87ms
+ GET /map 200 in 55ms (next.js: 3ms, application-code: 52ms)
+ GET /routes/return 200 in 45ms (next.js: 4ms, application-code: 41ms)
+ GET /companions 200 in 47ms (next.js: 4ms, application-code: 44ms)
+ GET /routes/return 200 in 39ms (next.js: 3ms, application-code: 37ms)
+ GET /companions 200 in 52ms (next.js: 5ms, application-code: 48ms)
+ GET /festivals 200 in 60ms (next.js: 6ms, application-code: 54ms)
+ GET / 200 in 50ms (next.js: 5ms, application-code: 45ms)
+ GET /festivals 200 in 40ms (next.js: 4ms, application-code: 36ms)
+ GET /companions 200 in 23ms (next.js: 2ms, application-code: 21ms)
+ GET /map 200 in 35ms (next.js: 2ms, application-code: 33ms)
+ GET /festivals 200 in 34ms (next.js: 5ms, application-code: 29ms)
+ GET /companions 200 in 29ms (next.js: 4ms, application-code: 25ms)
+ GET /routes/return 200 in 27ms (next.js: 4ms, application-code: 24ms)
+ GET /companions 200 in 27ms (next.js: 3ms, application-code: 25ms)
+ GET /festivals 200 in 93ms (next.js: 7ms, application-code: 86ms)
+ GET /routes/return 200 in 41ms (next.js: 4ms, application-code: 37ms)
+ GET /companions 200 in 29ms (next.js: 3ms, application-code: 26ms)
+ GET /routes/return 200 in 28ms (next.js: 3ms, application-code: 25ms)
+ GET /companions 200 in 31ms (next.js: 3ms, application-code: 28ms)
+ GET /festivals 200 in 22ms (next.js: 2ms, application-code: 20ms)
+ GET / 200 in 18ms (next.js: 3ms, application-code: 16ms)
+ GET /festivals 200 in 23ms (next.js: 3ms, application-code: 20ms)
+ GET /companions 200 in 26ms (next.js: 2ms, application-code: 24ms)
+ GET /routes/return 200 in 24ms (next.js: 3ms, application-code: 21ms)
+ GET /map 200 in 28ms (next.js: 4ms, application-code: 25ms)
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\C:\\mini\\Final3team\\frontend\\node_modules\\leaflet\\src\\geo").
+✓ Compiled in 4s
+  Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\C:\\mini\\Final3team\\frontend\\package-lock.json").
+✓ Compiled in 193ms
+✓ Compiled in 873ms
+✓ Compiled in 117ms
+✓ Compiled in 87ms
+✓ Compiled in 1327ms
+ GET /map 200 in 56ms (next.js: 7ms, application-code: 49ms)
+✓ Compiled in 149ms
+✓ Compiled in 564ms
+ GET / 200 in 91ms (next.js: 19ms, application-code: 72ms)
+ GET /festivals 200 in 68ms (next.js: 10ms, application-code: 57ms)
+ GET /companions 200 in 29ms (next.js: 4ms, application-code: 25ms)
+ GET /routes/return 200 in 64ms (next.js: 6ms, application-code: 58ms)

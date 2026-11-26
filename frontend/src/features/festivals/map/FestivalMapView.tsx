@@ -60,6 +60,7 @@ export function FestivalMapView() {
   const [crowd, setCrowd] = useState<MapCrowd | null>(null);
   const [crowdLoading, setCrowdLoading] = useState(true);
   const [festivalMenuOpen, setFestivalMenuOpen] = useState(false);
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -139,6 +140,7 @@ export function FestivalMapView() {
     setCrowd(null);
     setCrowdLoading(true);
     setFestivalMenuOpen(false);
+    setSelectedFacilityId(null);
   }
 
   function selectFacilityGroup(group: FacilityGroup) {
@@ -146,6 +148,7 @@ export function FestivalMapView() {
     setFacilityCategory("all");
     setFacilities([]);
     setFacilitiesLoading(true);
+    setSelectedFacilityId(null);
   }
 
   function changeQuery(value: string) {
@@ -174,6 +177,14 @@ export function FestivalMapView() {
     facilityCategory === "all"
       ? facilities
       : facilities.filter((facility) => facility.category === facilityCategory);
+  const selectedFacility = visibleFacilities.find(
+    (facility) => facility.facility_id === selectedFacilityId,
+  );
+  const mapCenter = selectedFacility
+    ? { lat: selectedFacility.lat, lng: selectedFacility.lng }
+    : selected
+      ? { lat: selected.lat, lng: selected.lng }
+      : null;
 
   const crowdColorClass: Record<MapCrowd["color"], string> = {
     green: "bg-crowd-green text-ink",
@@ -337,7 +348,10 @@ export function FestivalMapView() {
             <button
               type="button"
               aria-pressed={facilityCategory === "all"}
-              onClick={() => setFacilityCategory("all")}
+              onClick={() => {
+                setFacilityCategory("all");
+                setSelectedFacilityId(null);
+              }}
               className={
                 facilityCategory === "all"
                   ? "shrink-0 rounded-chip border border-brand bg-brand-soft px-4 py-2 text-xs font-extrabold text-brand"
@@ -351,7 +365,10 @@ export function FestivalMapView() {
                 key={category}
                 type="button"
                 aria-pressed={facilityCategory === category}
-                onClick={() => setFacilityCategory(category)}
+                onClick={() => {
+                  setFacilityCategory(category);
+                  setSelectedFacilityId(null);
+                }}
                 className={
                   facilityCategory === category
                     ? "shrink-0 rounded-chip border border-brand bg-brand-soft px-4 py-2 text-xs font-extrabold text-brand"
@@ -367,7 +384,7 @@ export function FestivalMapView() {
           <section aria-label="축제 위치 지도" className="relative">
             {kakaoKey ? (
               <KakaoMap
-                center={{ lat: selected.lat, lng: selected.lng }}
+                center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
                 markers={visibleFestivals.map((festival) => ({
                   lat: festival.lat,
                   lng: festival.lng,
@@ -384,8 +401,8 @@ export function FestivalMapView() {
               />
             ) : (
               <OpenStreetMap
-                center={{ lat: selected.lat, lng: selected.lng }}
-                title={selected.name}
+                center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
+                title={selectedFacility?.name ?? selected.name}
                 markers={visibleFacilities.map((facility) => ({
                   lat: facility.lat,
                   lng: facility.lng,
@@ -395,7 +412,6 @@ export function FestivalMapView() {
                 className="h-[320px] w-full"
               />
             )}
-            <span className="pointer-events-none absolute left-1/2 top-1/2 z-[1] h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/15 blur-sm" aria-hidden="true" />
             <span className="absolute left-3 top-3 z-10 rounded-chip bg-surface/95 px-3 py-1.5 text-[11px] font-extrabold text-ink shadow-card backdrop-blur-sm">
               {facilitiesLoading
                 ? "주변 시설 확인 중"
@@ -404,8 +420,7 @@ export function FestivalMapView() {
           </section>
 
           <section aria-label="주변 시설 목록" className="-mx-4 rounded-t-[28px] border-t border-line-light bg-surface px-4 pb-2 pt-3 shadow-[0_-8px_24px_rgba(52,53,54,0.08)]">
-            <span className="mx-auto block h-1 w-12 rounded-chip bg-line-strong" aria-hidden="true" />
-            <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-6 w-1.5 shrink-0 rounded-chip bg-brand" aria-hidden="true" />
                 <h2 className="truncate text-lg font-black text-ink">{facilitySectionTitle[facilityGroup]}</h2>
@@ -430,21 +445,33 @@ export function FestivalMapView() {
                   .slice()
                   .sort((left, right) => left.distance_m - right.distance_m)
                   .map((facility) => (
-                    <li key={facility.facility_id} className="flex items-center gap-3 rounded-card border border-line-light bg-surface px-3 py-3 shadow-sm">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-card bg-brand-soft text-sm font-black text-brand">
-                        {FACILITY_SYMBOLS[facility.category]}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm font-extrabold text-ink">{facility.name}</strong>
-                        <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted">
-                          <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                          축제장에서 {formatDistance(facility.distance_m)} · {FACILITY_LABELS[facility.category]}
+                    <li key={facility.facility_id}>
+                      <button
+                        type="button"
+                        aria-label={`${facility.name} 지도에서 보기`}
+                        aria-pressed={selectedFacilityId === facility.facility_id}
+                        onClick={() => setSelectedFacilityId(facility.facility_id)}
+                        className={`flex w-full items-center gap-3 rounded-card border px-3 py-3 text-left shadow-sm transition-colors ${
+                          selectedFacilityId === facility.facility_id
+                            ? "border-brand bg-brand-soft/40"
+                            : "border-line-light bg-surface hover:border-brand/40"
+                        }`}
+                      >
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-card bg-brand-soft text-sm font-black text-brand">
+                          {FACILITY_SYMBOLS[facility.category]}
                         </span>
-                      </span>
-                      {facilityGroup === "safety" ? (
-                        <span className="shrink-0 rounded-chip bg-crowd-green/30 px-2 py-1 text-[10px] font-bold text-ink">운영 중</span>
-                      ) : null}
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          <strong className="block truncate text-sm font-extrabold text-ink">{facility.name}</strong>
+                          <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted">
+                            <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            축제장에서 {formatDistance(facility.distance_m)} · {FACILITY_LABELS[facility.category]}
+                          </span>
+                        </span>
+                        {facilityGroup === "safety" ? (
+                          <span className="shrink-0 rounded-chip bg-crowd-green/30 px-2 py-1 text-[10px] font-bold text-ink">운영 중</span>
+                        ) : null}
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                      </button>
                     </li>
                   ))}
               </ul>

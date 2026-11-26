@@ -95,16 +95,13 @@ describe("FestivalMapView", () => {
 
     expect(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /내 위치/ })).not.toBeInTheDocument();
-    expect(await screen.findByTitle("광화문 겨울빛 축제 지도")).toBeInTheDocument();
+    expect(await screen.findByRole("application", { name: "광화문 겨울빛 축제 지도" })).toBeInTheDocument();
     await screen.findByText("주변 지하철역");
     expect(await screen.findByText("보통")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
       target: { value: "해운대" },
     });
-    expect(screen.getByTitle("해운대 빛축제 지도")).toHaveAttribute(
-      "src",
-      expect.stringContaining("marker=35.1587%2C129.1604"),
-    );
+    expect(screen.getByRole("application", { name: "해운대 빛축제 지도" })).toBeInTheDocument();
     expect(screen.getByText("해운대 빛축제 (부산)")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /맛집·관광/ }));
@@ -112,5 +109,11 @@ describe("FestivalMapView", () => {
       expect(screen.getByRole("button", { name: /맛집·관광/ })).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByText("한강뷰 카페")).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByRole("button", { name: "한강뷰 카페 지도에서 보기" }));
+    expect(screen.getByRole("application", { name: "한강뷰 카페 지도" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "한강뷰 카페 지도에서 보기" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });

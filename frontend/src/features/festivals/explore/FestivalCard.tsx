@@ -34,11 +34,11 @@ export function FestivalCard({
   const showImage = Boolean(item.thumbnail_url) && failedSrc !== item.thumbnail_url;
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <Link
         href={`/festivals/${item.festival_id}`}
         data-testid={`festival-card-${item.festival_id}`}
-        className="group block overflow-hidden rounded-card-lg bg-surface shadow-card transition-shadow hover:shadow-md"
+        className="group block w-full min-w-0 overflow-hidden rounded-card-lg bg-surface shadow-card transition-shadow hover:shadow-md"
       >
         <div className="relative aspect-[3/2] w-full overflow-hidden bg-surface-soft/45">
           {showImage && item.thumbnail_url ? (
@@ -52,7 +52,7 @@ export function FestivalCard({
                 onError={() => setFailedSrc(item.thumbnail_url ?? null)}
                 className="bg-ink/5 object-cover object-center transition-transform duration-200 group-hover:scale-[1.02]"
               />
-              <span className="absolute bottom-7 right-1 rounded-chip bg-ink/55 px-1.5 py-0.5 text-[6px] font-medium text-surface/80 backdrop-blur-sm">
+              <span className="absolute bottom-7 right-1 rounded-chip bg-ink/35 px-1.5 py-0.5 text-[6px] font-medium text-surface/90 backdrop-blur-sm">
                 출처: {item.image_credit ?? "제공 이미지"}
               </span>
             </>
@@ -65,7 +65,7 @@ export function FestivalCard({
               {badge}
             </span>
           ) : null}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/95 via-ink/65 to-transparent px-2.5 pb-2 pt-7 text-surface">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/70 via-ink/25 to-transparent px-2.5 pb-2 pt-5 text-surface">
             <h2 className="truncate text-[12px] font-black leading-tight">{item.name}</h2>
           </div>
         </div>
