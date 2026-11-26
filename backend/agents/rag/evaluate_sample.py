@@ -13,13 +13,11 @@ import json
 import math
 import sys
 import urllib.error
-import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+from agents.rag.embedding import DIMENSIONS, MODEL, embed_texts as embed
 
-MODEL = "text-embedding-3-small"
-DIMENSIONS = 1024
 AS_OF = datetime.fromisoformat("2026-11-24T12:00:00+09:00")
 OUTPUT = Path(__file__).with_name("sample_eval_results.json")
 LANTERN_ID = "fst_01M835B57450M888RBNEFVRWWA"
@@ -80,28 +78,6 @@ def cosine(a: list[float], b: list[float]) -> float:
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(y * y for y in b))
     return numerator / (norm_a * norm_b)
-
-
-def embed(texts: list[str], api_key: str) -> tuple[list[list[float]], dict]:
-    payload = json.dumps(
-        {"model": MODEL, "dimensions": DIMENSIONS, "input": texts},
-        ensure_ascii=False,
-    ).encode("utf-8")
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/embeddings",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        body = json.load(response)
-    vectors = [item["embedding"] for item in sorted(body["data"], key=lambda x: x["index"])]
-    if len(vectors) != len(texts) or any(len(vector) != DIMENSIONS for vector in vectors):
-        raise ValueError("Embedding count or dimension differs from the requested setting")
-    return vectors, body.get("usage", {})
 
 
 def main() -> int:

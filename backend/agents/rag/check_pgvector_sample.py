@@ -16,6 +16,7 @@ from datetime import datetime
 
 from agents.rag.evaluate_sample import AS_OF, DIMENSIONS, DOCUMENTS, MODEL, QUESTIONS, embed
 from agents.rag.ingest_pending import store_pending_document
+from agents.rag.retrieve_question import retrieve_festival_question
 from agents.rag.search import search_festival_evidence
 
 
@@ -99,8 +100,9 @@ def main() -> int:
             try:
                 texts = [doc["text"] for doc in DOCUMENTS] + [question for _, _, question, _ in QUESTIONS]
                 vectors, usage = embed(texts, api_key)
-            finally:
+            except Exception:
                 api_key = ""
+                raise
             embedding_seconds = round(time.monotonic() - started, 3)
 
             for index, doc in enumerate(DOCUMENTS):
@@ -176,6 +178,24 @@ def main() -> int:
                     raise RuntimeError(f"{status} document visibility differs from expected")
                 approval_states.append(f"{status}={'visible' if visible else 'hidden'}")
             print("approval_gate: pending=hidden, " + ", ".join(approval_states))
+            try:
+                bridge = retrieve_festival_question(
+                    connection,
+                    festival_id=DOCUMENTS[0]["festival"],
+                    question=QUESTIONS[0][2],
+                    as_of=AS_OF,
+                    embedding_version="sample-v1",
+                    api_key=api_key,
+                )
+            finally:
+                api_key = ""
+            bridge_ids = [row["document_id"] for row in bridge["candidates"]]
+            if (bridge["status"] != "candidates" or bridge_ids != ["D1"]
+                    or bridge["candidates"][0]["source_url"] != DOCUMENTS[0]["source_url"]):
+                raise RuntimeError("Question embedding to approved document retrieval did not match D1")
+            print(f"question_bridge: status={bridge['status']}, document_ids={bridge_ids}, "
+                  f"source_url={bridge['candidates'][0]['source_url']}, "
+                  f"usage={bridge['embedding_usage']}")
             print(f"pgvector filters/retrieval: {passed}/{len(QUESTIONS)}; model={MODEL}; dimensions={DIMENSIONS}")
             print(f"embedding_seconds={embedding_seconds}, query_seconds={round(query_seconds, 3)}, usage={usage}")
             print("Temporary rows only; no service RAG tables were written. Answer generation was not tested.")

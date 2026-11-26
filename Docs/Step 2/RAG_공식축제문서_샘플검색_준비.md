@@ -172,3 +172,11 @@ cd "$test_dir/Final3team/backend"
 **승인 상태 재현 실행 결과(사용자 제공 출력, 2026-11-26):** `pending_ingestion: first_insert=True, duplicate_insert=False`; Q01~Q10 검색·필터 **10/10 통과**; `approval_gate: pending=hidden, approved=visible, rejected=hidden`. 모델은 `text-embedding-3-small`, 차원은 1024, 임베딩 호출 1.089초, 질의 10건 합계 0.033초, 입력 509토큰이었다. 시험 코드는 `dayoung 4b0996c`에 추가됐지만 공유된 터미널 출력에 `git rev-parse` 결과가 없어 **실제 실행 HEAD는 확인되지 않았다**. 문서·청크 행은 `rag_scratch`의 임시 테이블에만 있었고 서비스 RAG 테이블에는 쓰지 않았다. 이 실행은 관리자 승인 권한과 답변 생성 시험이 아니다.
 
 운영 수집·관리자 검토·승인·검색을 연결할 때 필요한 계약과 미확정 결정은 [W27 승인·검색 인계 초안](handoff/RAG_공식문서_승인_검색_계약.md)에 정리했다.
+
+### 질문 임베딩→승인 문서 검색 내부 연결
+
+`backend/agents/rag/embedding.py`로 `text-embedding-3-small`·1024차원 호출을 공용화하고, `backend/agents/rag/retrieve_question.py`에 질문·축제 ID·기준 시각·임베딩 버전을 받아 `search_festival_evidence`에 연결하는 함수를 추가했다. 검색 SQL의 승인·축제 ID·효력기간·모델/버전 필터를 그대로 사용한다. 반환값은 `candidates` 또는 `no_evidence`이며 **답변 생성 결과가 아니다.** 검색 행의 축제 ID나 출처 URL·본문이 누락되면 근거를 반환하지 않고 오류로 끝낸다.
+
+Windows Python 3.12에서 내부 연결·임베딩 어댑터 시험 6개와 기존 샘플 메타데이터 시험을 통과했다. 질문 길이는 A06의 500자 상한과 맞춘다. 실제 임베딩 API와 pgvector를 이 **새 연결 함수로 연속 실행한 결과는 아직 없다.** 기존 10/10 시험은 검색 함수를 직접 호출한 결과이며 새 함수의 실호출 성공으로 바꾸어 기록하지 않는다. 관리자 승인 API와 서비스 챗봇 연결도 별도 단계다.
+
+일회용 `rag_scratch` 실행기에 `question_bridge` 검사를 추가했다. 기존 시험과 같은 숨김 API 키 입력을 재사용해 **질문 한 건을 새로 임베딩하고** `retrieve_festival_question`으로 승인된 D1의 문서 ID·공식 출처 URL을 조회한다. 새 질문 임베딩 호출 1회가 추가되므로 출력 사용량은 초기 13개 텍스트 임베딩과 `question_bridge` 호출로 나누어 본다. 실조회 결과가 나오기 전에는 이 연결을 완료로 표시하지 않는다.
