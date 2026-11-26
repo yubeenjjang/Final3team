@@ -12,6 +12,7 @@ import {
   ShieldBan,
   Sparkles,
   Trash2,
+  UsersRound,
 } from "lucide-react";
 import {
   handleAuthError,
@@ -322,14 +323,14 @@ function MeContent() {
           className="flex min-h-24 items-center justify-center gap-3 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
         >
           <MessageCircle className="h-7 w-7 text-brand" aria-hidden="true" />
-          <span>동행 채팅방</span>
+          <span>채팅방</span>
         </Link>
         <Link
-          href="/companions?tab=mine"
+          href="/friends"
           className="flex min-h-24 items-center justify-center gap-3 rounded-card-lg border border-line-light bg-surface px-3 text-sm font-bold text-ink shadow-sm hover:border-brand/40 hover:text-brand"
         >
-          <Sparkles className="h-7 w-7 text-brand" aria-hidden="true" />
-          <span>내 동행</span>
+          <UsersRound className="h-7 w-7 text-brand" aria-hidden="true" />
+          <span>내 친구</span>
         </Link>
       </div>
 

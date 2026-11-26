@@ -90,6 +90,15 @@ describe("My Page screen", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "테스터" })).toBeInTheDocument();
     });
+    expect(screen.getByRole("link", { name: "채팅방" })).toHaveAttribute(
+      "href",
+      "/chats",
+    );
+    expect(screen.getByRole("link", { name: "내 친구" })).toHaveAttribute(
+      "href",
+      "/friends",
+    );
+    expect(screen.queryByText("내 동행")).not.toBeInTheDocument();
     // Edit nickname
     fireEvent.click(screen.getByRole("button", { name: "닉네임 수정" }));
     fireEvent.change(screen.getByLabelText("새 닉네임"), { target: { value: "놀다가왕" } });
