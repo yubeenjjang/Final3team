@@ -62,11 +62,11 @@ export function PreferencesSection({
 
   function toggleScenario(value: Scenario) {
     setNotice(null);
-    setSelected((prev) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : [...prev, value],
-    );
+    setSelected((prev) => {
+      if (prev.includes(value)) return prev.filter((item) => item !== value);
+      if (prev.length >= 5) return prev;
+      return [...prev, value];
+    });
   }
 
   async function submitPreferences(skip: boolean) {
@@ -170,7 +170,7 @@ export function PreferencesSection({
           <button type="button" disabled={saving} onClick={() => void submitPreferences(true)} className="min-h-11 px-3 text-base font-bold">건너뛰기 ›</button>
         </div>
         <div className="px-6 pt-5">
-          <button type="button" disabled={saving || selected.length === 0} onClick={() => void submitPreferences(false)} className="min-h-14 w-full rounded-card-lg bg-brand text-base font-extrabold disabled:opacity-40">
+          <button type="button" disabled={saving || selected.length !== 5} onClick={() => void submitPreferences(false)} className="min-h-14 w-full rounded-card-lg bg-brand text-base font-extrabold disabled:opacity-40">
             {saving ? "저장 중…" : `${selected.length}개 취향 선택 완료`}
           </button>
         </div>
@@ -305,7 +305,11 @@ export function PreferencesView() {
   const router = useRouter();
   return (
     <RequireAuth nextPath="/onboarding">
-      <PreferencesSection onSaved={() => router.push("/onboarding/complete")} />
+      <PreferencesSection
+        onSaved={(status) =>
+          router.push(status === "completed" ? "/onboarding/complete" : "/")
+        }
+      />
     </RequireAuth>
   );
 }

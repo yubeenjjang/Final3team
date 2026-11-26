@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { getAuthUser, getAuthUserServerSnapshot, subscribeAuth } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import { getFestivalPreferences } from "@/features/accounts/profile/api";
 import { authLink, login, logout, safeNextPath } from "./api";
 import { AuthInput, PasswordInput, primaryButton, useFormReady } from "./AuthFields";
 
@@ -29,7 +30,16 @@ export function LoginForm({ email, next }: { email?: string; next?: string }) {
         email: String(data.get("email")).trim(),
         password: String(data.get("password")),
       });
-      router.replace(safeNextPath(next));
+      let destination = safeNextPath(next);
+      try {
+        const preferences = await getFestivalPreferences();
+        if (preferences.onboarding_status === "pending") {
+          destination = "/onboarding";
+        }
+      } catch {
+        // 로그인은 성공했으므로 취향 상태 확인 실패만으로 진입을 막지 않습니다.
+      }
+      router.replace(destination);
     } catch (cause) {
       setError(
         cause instanceof ApiError && cause.status === 401

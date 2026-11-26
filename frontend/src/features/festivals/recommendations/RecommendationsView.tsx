@@ -6,24 +6,41 @@ import { ArrowLeft, CalendarDays, MapPin, SlidersHorizontal, UsersRound } from "
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
+import { RequireAuth } from "@/components/RequireAuth";
+import { getFestivalPreferences, SCENARIO_OPTIONS, type Scenario } from "@/features/accounts/profile/api";
 import { listFestivals, type FestivalListItem } from "@/features/festivals/explore/api";
 import { formatFestivalPeriod } from "@/features/festivals/explore/dday";
 import { getRegionLabel } from "@/features/festivals/explore/regions";
 
 export function RecommendationsView() {
   const [items, setItems] = useState<FestivalListItem[]>([]);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
-    listFestivals({ page: 1, page_size: 5 }, controller.signal)
-      .then((result) => setItems(result.items.slice(0, 5)))
-      .catch(() => setItems([]))
+    Promise.all([
+      listFestivals({ page: 1, page_size: 5 }, controller.signal),
+      getFestivalPreferences(controller.signal),
+    ])
+      .then(([result, preferences]) => {
+        setItems(result.items.slice(0, 5));
+        setScenarios(preferences.scenarios);
+      })
+      .catch(() => {
+        setItems([]);
+        setScenarios([]);
+      })
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
 
+  const preferenceLabels = SCENARIO_OPTIONS
+    .filter((option) => scenarios.includes(option.value))
+    .map((option) => option.tag);
+
   return (
+    <RequireAuth nextPath="/recommendations">
     <main className="min-h-dvh bg-screen-dark pb-14 pt-7 text-surface">
       <header className="flex items-center justify-between px-5">
         <Link href="/onboarding/complete" aria-label="뒤로" className="grid h-11 w-11 place-items-center rounded-chip"><ArrowLeft aria-hidden="true" /></Link>
@@ -33,9 +50,12 @@ export function RecommendationsView() {
       <section className="px-6 pt-10 text-center">
         <h1 className="text-[30px] font-black leading-tight">취향에 딱 맞는 <span className="text-brand">축제</span>를 찾았어요!</h1>
         <p className="mt-4 text-base text-surface/75">선택한 취향을 바탕으로 추천해드려요.</p>
-        <div className="mt-5 flex justify-center gap-3">
-          <span className="rounded-chip border-2 border-brand px-4 py-2 text-sm font-bold">♡ 가족·한가로운 축제</span>
-          <span className="rounded-chip border border-surface/70 px-4 py-2 text-sm font-bold">반려동물 동반</span>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          {preferenceLabels.slice(0, 3).map((label, index) => (
+            <span key={label} className={`rounded-chip px-4 py-2 text-sm font-bold ${index === 0 ? "border-2 border-brand" : "border border-surface/70"}`}>
+              {index === 0 ? "♡ " : ""}{label}
+            </span>
+          ))}
         </div>
       </section>
 
@@ -60,5 +80,6 @@ export function RecommendationsView() {
       )}
       <p className="mx-10 mt-6 rounded-chip border border-surface/60 px-5 py-3 text-center text-sm text-surface/80">↔ 좌우로 넘겨 다른 추천 축제도 확인해보세요!</p>
     </main>
+    </RequireAuth>
   );
 }

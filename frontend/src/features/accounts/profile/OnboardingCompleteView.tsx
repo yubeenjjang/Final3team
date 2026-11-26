@@ -1,11 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { HeartHandshake, Home, Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { RequireAuth } from "@/components/RequireAuth";
+import { getFestivalPreferences, SCENARIO_OPTIONS, type Scenario } from "./api";
 
 export function OnboardingCompleteView() {
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getFestivalPreferences(controller.signal)
+      .then((result) => setScenarios(result.scenarios))
+      .catch(() => setScenarios([]));
+    return () => controller.abort();
+  }, []);
+
+  const selectedLabels = SCENARIO_OPTIONS
+    .filter((option) => scenarios.includes(option.value))
+    .map((option) => option.tag);
+
   return (
     <RequireAuth nextPath="/onboarding/complete">
       <main className="min-h-dvh bg-surface px-6 pb-12 pt-16 text-ink">
@@ -20,7 +36,7 @@ export function OnboardingCompleteView() {
         <section className="mt-10 rounded-panel bg-surface-soft p-5">
           <h3 className="flex items-center gap-2 text-lg font-extrabold"><span className="text-brand">♡</span> 내가 선택한 축제 취향</h3>
           <div className="mt-4 flex flex-wrap gap-2">
-            {["가족과 함께", "반려동물과 함께", "포토존이 많은 축제"].map((label) => (
+            {(selectedLabels.length > 0 ? selectedLabels : ["선택한 취향을 불러오는 중이에요"]).map((label) => (
               <span key={label} className="rounded-chip bg-surface px-4 py-2 text-sm font-bold shadow-sm">{label}</span>
             ))}
           </div>
