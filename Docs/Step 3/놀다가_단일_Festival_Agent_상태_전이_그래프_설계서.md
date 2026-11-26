@@ -462,7 +462,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 ## 부록 D. 11/27 공통 시험 실행 기준
 
 - **시험 코드 기준:** `dayoung 7b8451a`(2026-11-24). W14 공통 도구 실행기를 Festival 단독 HTTP 실행기에 연결하고 실제 공급원 복합 검사도 추가한 코드다. 팀 `main` 병합 기준 커밋은 실제 병합 후 기록한다.
-- **11/26 실조회 기준:** `dayoung dc35ad5` 이후 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 사용자 제공 출력과 확인 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다. 정확한 실행 HEAD SHA는 터미널 출력에 없어 추정하지 않는다.
+- **11/26 실조회·단독 시험 기준:** `dayoung dc35ad5` 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 같은 체크아웃에서 `git rev-parse --short HEAD`로 커밋을 확인했고 Festival 단독 시험 `Ran 35 tests`, `OK`를 받았다. 실조회 출력과 시험 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
 - **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
