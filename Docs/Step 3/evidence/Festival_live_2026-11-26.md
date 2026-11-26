@@ -73,3 +73,11 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 
 - 코드 기준: `dayoung 0b2369a`, Windows·Python 3.12.15. 저장소 루트에서 `PYTHONPATH=backend`를 지정하고 LangGraph·pytest를 제공한 환경으로 `python -B -m pytest backend/tests -q` 실행: **51 passed, 2 subtests passed in 0.73s**.
 - `dayoung` 단독 체크아웃에서 루트 명령을 경로 지정 없이 실행하면 `agents` 모듈을 찾지 못해 시험 수집 단계에서 실패한다. 위 결과는 실행 환경의 모듈 경로를 보완한 **병합 전 사전 점검**이며, 팀 `main`의 최종 시험으로 기록하지 않는다.
+
+## 첫 main 병합 커밋 시험 (2026-11-26)
+
+- 병합 커밋: `main 0fda8fd` (`dayoung 699c214` 포함). 별도 Git 작업 폴더를 해당 커밋으로 고정해 실행했고, `git rev-parse --short HEAD`로 `0fda8fd`를 확인했다.
+- Windows·Python 3.12, `backend/`에서 `uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python -B -m unittest discover -s tests/agents -p 'test_festival_*.py' -q`: **Ran 37 tests, OK**.
+- 같은 체크아웃에서 `uv run --python 3.12 --no-project --with-requirements agents/requirements.txt python -B -m agents.check_festival_budget`: 가상 30.1초 경계는 2회 호출·`partial`·벽시계 8.048ms, 4회 상한은 4회 호출·`partial`·벽시계 4.464ms. 이 경과는 고정 응답의 로컬 측정값이다.
+- 저장소 루트에서 `PYTHONPATH=backend`를 지정하고 LangGraph·pytest를 제공한 환경으로 `python -B -m pytest backend/tests -q`: **51 passed, 2 subtests passed in 0.77s**. 현재 main에는 별도의 루트 패키지 설치 설정이 없어 `PYTHONPATH` 지정 없이 실행하면 `agents` import 단계에서 실패한다.
+- 이 결과를 문서에 추가한 `dayoung` 커밋이 다시 main에 병합되면 **새 main 커밋 번호가 생긴다**. 위 시험을 새 커밋의 시험 결과로 바꾸어 적지 않고, 제출 대상 커밋에서 다시 실행한다.

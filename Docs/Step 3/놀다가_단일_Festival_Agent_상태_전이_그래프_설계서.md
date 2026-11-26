@@ -1,6 +1,6 @@
 # 놀다가 단일 Festival Agent 상태 전이 그래프 설계서
 
-> 작성 기준: 2026-11-23, 실조회·시험 기록 갱신: 2026-11-26. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, 현재 브랜치의 `Docs/Step 2/API_설계문서.md`와 `Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 실조회 기준은 `dayoung dc35ad5`, 최신 확인된 Festival 단독 37개 시험의 코드 기준은 `dayoung f454e7e`이며, 팀 `main` 병합 기준은 병합 후 기록한다.
+> 작성 기준: 2026-11-23, 실조회·시험 기록 갱신: 2026-11-26. 11/27 M03 제출을 위한 단일 Festival Agent 설계서다. 강사님 Step3 가이드의 9개 항목 순서로 작성했다. 기준은 `Docs/Step 1/놀다가_기획서.md`, `Docs/Step 1/놀다가_WBS.md` W22~W25, 현재 브랜치의 `Docs/Step 2/API_설계문서.md`와 `Docs/Step 2/handoff/에이전트_도구_인계.md`의 W14 연결 내용이다. 실조회 기준은 `dayoung dc35ad5`, 최신 확인된 Festival 단독 37개 시험의 코드 기준은 `dayoung f454e7e`이며, 첫 `main` 병합 시험 기준은 `0fda8fd`이며, 문서 재병합 후 제출 커밋은 별도로 확인한다.
 
 ## 1. 목적과 범위
 
@@ -487,7 +487,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 - **최신 개인 브랜치 시험:** 11/26 `dayoung 122cb32`, macOS·Python 3.14.7에서 같은 Festival 단독 명령을 다시 실행해 `Ran 35 tests in 0.077s`, `OK`를 확인했다. 404·503 시험에서 `ResourceWarning` 두 줄이 있었으나 실패는 없었다. 이후 시간 예산 시험 코드 변경은 이 결과에 포함되지 않는다.
 - **시간 예산 반영본:** 11/26 `dayoung 45be6ed`, 같은 환경에서 Festival 단독 시험 `Ran 36 tests in 0.080s`, `OK`; `python -m agents.check_festival_budget`은 30.1초 가상 경계·4회 호출 상한 두 사례를 모두 `partial`로 확인했다. 벽시계 경과와 부분 답변은 [증빙](evidence/Festival_live_2026-11-26.md)에 있다.
 - **늦은 성공 응답 반영본:** 11/26 `dayoung f454e7e`, Windows·Python 3.12.15에서 LangGraph 설치 후 Festival 단독 시험 `Ran 37 tests`, `OK`. 혼잡 성공 응답이 30초를 넘겨 도착하면 그 내용을 버리고 상세 근거와 혼잡 미확인 안내를 포함한 `partial`로 끝나는 신규 시험을 포함한다. `check_festival_budget`의 2회·4회 호출 사례도 모두 `partial`이었다. [환경·명령·결과](evidence/Festival_live_2026-11-26.md)를 따른다.
-- **제출할 `main` 한 커밋:** 팀장님이 최신 설계서·Festival 코드·W14 도구 계약·증빙을 `main`에 반영한 뒤 **하나의 `git rev-parse --short HEAD` 값**을 제출 링크와 실행 기록에 쓴다. 그 `main` 체크아웃의 `backend/`에서 위 Festival 단독 명령과 `python -m agents.check_festival_budget`을 실행하고, 저장소 루트에서 `python -m pytest backend/tests -q`를 실행한다. 세 결과의 실행 환경·성공/실패 개수·경과 시간을 [증빙](evidence/Festival_live_2026-11-26.md)에 기록한 뒤 이 항목을 최종 커밋·결과로 갱신한다. **현재는 최종 제출 커밋 및 병합 후 전체 시험 결과가 없다.** 다른 브랜치의 통과 수치로 대신하지 않는다.
+- **제출할 `main` 한 커밋:** 팀장님이 최신 설계서·Festival 코드·W14 도구 계약·증빙을 `main`에 반영한 뒤 **하나의 `git rev-parse --short HEAD` 값**을 제출 링크와 실행 기록에 쓴다. 그 `main` 체크아웃의 `backend/`에서 위 Festival 단독 명령과 `python -m agents.check_festival_budget`을 실행하고, 저장소 루트에서 `python -m pytest backend/tests -q`를 실행한다. 세 결과의 실행 환경·성공/실패 개수·경과 시간을 [증빙](evidence/Festival_live_2026-11-26.md)에 기록한 뒤 이 항목을 최종 커밋·결과로 갱신한다. **첫 병합 커밋 `main 0fda8fd`에서 Festival 37개와 백엔드 전체 51개가 통과했다.** [실행 기록](evidence/Festival_live_2026-11-26.md)에 환경·명령·결과를 남겼다. 이 기록을 문서에 추가한 뒤 다시 병합하면 제출 커밋이 바뀌므로, 새 `main` 커밋의 시험은 별도로 재실행한다.
 - **환경 구분:** Windows 환경에도 LangGraph를 설치해 최신 37개를 실행했다. 기존 35개와 시간 예산 반영본 36개 기록은 macOS 실행 결과다. 시간 예산 시험은 가상 시계와 고정 응답을 사용하는 재현 시험이며 실제 HTTP 장애 지연을 측정한 결과로 쓰지 않는다.
 
 ## 참고 파일
