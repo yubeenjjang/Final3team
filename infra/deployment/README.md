@@ -5,6 +5,9 @@
 - 기준: 백엔드 이미지 **Python 3.14**(11/24 팀장 결정), DB 이미지 `pgvector/pgvector:pg17`
 
 ## 파일
+
+W65의 첫 AWS 배포 구성안과 검증 체크리스트는 [W65-AWS-PLAN.md](W65-AWS-PLAN.md)에 정리했다. AWS 적용 결과가 아닌 사전 설계다.
+
 | 파일 | 역할 |
 |---|---|
 | `backend.Dockerfile` | 백엔드 이미지 하나로 API·마이그레이션·계정 비밀번호 설정을 모두 실행 |
