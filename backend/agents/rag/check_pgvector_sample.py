@@ -157,6 +157,25 @@ def main() -> int:
                 )
                 print(f"{question_id}: ranked={[(row['document_id'], round(1 - row['cosine_distance'], 4)) for row in rows]}, filters_ok={valid}")
                 passed += bool(valid)
+            approval_states = []
+            for status, expected_visible in (("approved", True), ("rejected", False)):
+                # Scratch-only state transition. It does not represent an admin API or reviewer authorization.
+                with connection.cursor() as cur:
+                    cur.execute("UPDATE rag_documents SET approval_status = %s WHERE document_id = %s",
+                                (status, pending_id))
+                rows = search_festival_evidence(
+                    connection,
+                    festival_id=DOCUMENTS[0]["festival"],
+                    query_vector=vectors[len(DOCUMENTS)],
+                    as_of=AS_OF,
+                    embedding_model=MODEL,
+                    embedding_version="sample-v1",
+                )
+                visible = pending_id in {row["document_id"] for row in rows}
+                if visible != expected_visible:
+                    raise RuntimeError(f"{status} document visibility differs from expected")
+                approval_states.append(f"{status}={'visible' if visible else 'hidden'}")
+            print("approval_gate: pending=hidden, " + ", ".join(approval_states))
             print(f"pgvector filters/retrieval: {passed}/{len(QUESTIONS)}; model={MODEL}; dimensions={DIMENSIONS}")
             print(f"embedding_seconds={embedding_seconds}, query_seconds={round(query_seconds, 3)}, usage={usage}")
             print("Temporary rows only; no service RAG tables were written. Answer generation was not tested.")
