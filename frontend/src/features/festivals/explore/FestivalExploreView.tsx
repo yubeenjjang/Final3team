@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { RotateCcw, Search, X } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
 import { FestivalCarousel } from "./FestivalCarousel";
+import { FestivalCard } from "./FestivalCard";
 import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
+import {
+  FESTIVAL_SECTION_CONFIG,
+  FESTIVAL_SECTION_ORDER,
+} from "./sectionConfig";
 import {
   REGION_OPTIONS,
   STATUS_OPTIONS,
@@ -17,9 +22,13 @@ import {
 
 const PAGE_SIZE = 20;
 
-export function FestivalExploreView({ showSearch = true }: { showSearch?: boolean } = {}) {
-  const [searchInput, setSearchInput] = useState("");
-  const [appliedQuery, setAppliedQuery] = useState("");
+export function FestivalExploreView({
+  mode = "sections",
+  listTitle = "전체 축제",
+}: {
+  mode?: "sections" | "list";
+  listTitle?: string;
+} = {}) {
   const [region, setRegion] = useState<RegionFilter>("ALL");
   const [status, setStatus] = useState<StatusFilter>("");
 
@@ -44,7 +53,6 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
         const res = await listFestivals(
           {
             region,
-            q: appliedQuery || undefined,
             status: status || undefined,
             page: 1,
             page_size: PAGE_SIZE,
@@ -83,31 +91,13 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
       moreRequest.current?.abort();
       moreRequest.current = null;
     };
-  }, [region, status, appliedQuery, reloadTick]);
+  }, [region, status, reloadTick]);
 
   const cancelLoadMore = useCallback(() => {
     moreRequest.current?.abort();
     moreRequest.current = null;
     setLoadingMore(false);
   }, []);
-
-  const handleSearchSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const nextQuery = searchInput.trim();
-      if (nextQuery !== appliedQuery) {
-        cancelLoadMore();
-        setAppliedQuery(nextQuery);
-      }
-    },
-    [appliedQuery, cancelLoadMore, searchInput],
-  );
-
-  const handleClearSearch = useCallback(() => {
-    setSearchInput("");
-    if (appliedQuery) cancelLoadMore();
-    setAppliedQuery("");
-  }, [appliedQuery, cancelLoadMore]);
 
   const handleLoadMore = useCallback(async () => {
     if (moreRequest.current) {
@@ -121,7 +111,6 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
     try {
       const res = await listFestivals({
         region,
-        q: appliedQuery || undefined,
         status: status || undefined,
         page: nextPage,
         page_size: PAGE_SIZE,
@@ -143,67 +132,34 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
         setLoadingMore(false);
       }
     }
-  }, [page, region, appliedQuery, status]);
+  }, [page, region, status]);
 
   const hasMore = items.length < total;
-  const sectionTitles = ["인기있는 축제", "나만을 위한 축제", "새로 올라온 축제", "전체 축제"];
-  const festivalSections = sectionTitles
-    .map((title, index) => ({
-      title,
-      items: items.slice(index * 4, index * 4 + 4),
+  const festivalSections = FESTIVAL_SECTION_ORDER
+    .map((key, index) => ({
+      key,
+      ...FESTIVAL_SECTION_CONFIG[key],
+      items: key === "all"
+        ? items.slice(0, 4)
+        : items.slice(index * 4, index * 4 + 4),
     }))
     .filter((section) => section.items.length > 0);
 
   return (
     <div className="space-y-5 px-4 pb-4 pt-1">
-      <PageHero title="축제" subtitle="지금 열리는 축제부터, 나에게 딱 맞는 축제까지!" />
+      <PageHero
+        title={mode === "list" ? listTitle : "축제"}
+        subtitle={
+          mode === "list"
+            ? "원하는 조건으로 축제를 살펴보세요!"
+            : "지금 열리는 축제부터, 나에게 딱 맞는 축제까지!"
+        }
+      />
 
       <AssistantPrompt />
 
-      {showSearch ? <section className="space-y-3 rounded-card-lg bg-surface-muted/60 p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-extrabold text-ink">축제 검색</span>
-          {!loading && !errorMessage ? (
-            <span className="text-xs font-semibold text-muted">
-              총 {total}개
-            </span>
-          ) : null}
-        </div>
-
-        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="축제 이름, 장소 검색"
-              aria-label="축제 검색"
-              className="h-11 w-full rounded-input border border-line-light bg-surface pl-10 pr-9 text-sm text-ink shadow-sm placeholder:text-muted focus:border-brand focus:outline-none"
-            />
-            {searchInput ? (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                aria-label="검색어 지우기"
-                className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-chip text-muted hover:bg-surface-soft hover:text-ink"
-              >
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            ) : null}
-          </div>
-          <button
-            type="submit"
-            className="h-11 shrink-0 rounded-input bg-brand px-4 text-sm font-bold text-surface transition-opacity hover:opacity-90"
-          >
-            검색
-          </button>
-        </form>
-
-        <div className="flex items-center gap-2">
+      {mode === "list" ? (
+        <section aria-label="축제 필터" className="flex items-center gap-2">
           <label htmlFor="festival-region-select" className="sr-only">
             지역 선택
           </label>
@@ -218,7 +174,7 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
                 setRegion(nextRegion);
               }
             }}
-            className="h-9 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink shadow-sm focus:border-brand focus:outline-none"
+            className="h-9 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
           >
             {REGION_OPTIONS.map((option) => (
               <option key={option.code} value={option.code}>
@@ -230,7 +186,7 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
           <div
             role="group"
             aria-label="축제 상태"
-            className="flex flex-1 items-center gap-1.5 overflow-x-auto py-0.5"
+            className="no-scrollbar flex flex-1 items-center gap-1.5 overflow-x-auto py-0.5"
           >
             {STATUS_OPTIONS.map((option) => {
               const active = status === option.value;
@@ -256,18 +212,18 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
               );
             })}
           </div>
-        </div>
-      </section> : null}
+        </section>
+      ) : null}
 
       {loading ? (
         <div
           aria-label="축제 목록 불러오는 중"
-          className="space-y-3"
+          className={mode === "list" ? "grid grid-cols-2 gap-2" : "space-y-3"}
         >
-          {[0, 1, 2].map((skeleton) => (
+          {[0, 1, 2, 3].map((skeleton) => (
             <div
               key={skeleton}
-              className="h-64 animate-pulse rounded-card border border-line-light bg-surface"
+              className={`${mode === "list" ? "aspect-[3/2]" : "h-64"} animate-pulse rounded-card border border-line-light bg-surface`}
             />
           ))}
         </div>
@@ -291,18 +247,36 @@ export function FestivalExploreView({ showSearch = true }: { showSearch?: boolea
         </div>
       ) : (
         <div className="space-y-8">
-          {festivalSections.map((section, index) => (
-            <section key={section.title} className="space-y-3">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <h2 className="flex items-center gap-2 text-base font-extrabold tracking-tight text-ink"><span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />{section.title}</h2>
-                  {index < 3 ? <p className="ml-3.5 mt-1 text-xs text-muted">{index === 0 ? "지금 가장 많은 관심을 받는 축제예요!" : index === 1 ? "나의 취향과 선택에 맞춘 축제를 추천드려요!" : "최근 등록된 따끈한 축제 소식이에요!"}</p> : null}
-                </div>
-                <Link href="/festivals/all" className="shrink-0 text-xs font-bold text-muted hover:text-brand">전체보기 ›</Link>
-              </div>
-              <FestivalCarousel items={section.items} ariaLabel={section.title} />
+          {mode === "list" ? (
+            <section aria-label={`${listTitle} 목록`} className="grid grid-cols-2 gap-x-2 gap-y-4">
+              {items.map((item) => (
+                <FestivalCard key={item.festival_id} item={item} />
+              ))}
             </section>
-          ))}
+          ) : (
+            festivalSections.map((section) => (
+              <section key={section.key} className="space-y-3">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h2 className="flex items-center gap-2 text-base font-extrabold tracking-tight text-ink">
+                      <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
+                      {section.title}
+                    </h2>
+                    {section.description ? (
+                      <p className="ml-3.5 mt-1 text-xs text-muted">{section.description}</p>
+                    ) : null}
+                  </div>
+                  <Link
+                    href={`/festivals/all?section=${section.key}`}
+                    className="shrink-0 text-xs font-bold text-muted hover:text-brand"
+                  >
+                    전체보기 ›
+                  </Link>
+                </div>
+                <FestivalCarousel items={section.items} ariaLabel={section.title} />
+              </section>
+            ))
+          )}
 
           {errorMessage ? (
             <p className="text-center text-xs font-medium text-brand">

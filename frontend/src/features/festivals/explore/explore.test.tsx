@@ -60,14 +60,14 @@ describe("F6 festival explore", () => {
       .mockReturnValueOnce(oldPage.promise)
       .mockResolvedValueOnce(Response.json({ items: [{ ...item, name: "새 필터 축제" }], total: 1, page: 1 }));
     globalThis.fetch = fetchMock;
-    const { unmount } = render(<FestivalExploreView />);
-    await screen.findByText("기존 축제");
+    const { unmount } = render(<FestivalExploreView mode="list" />);
+    await screen.findAllByText("기존 축제");
     fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
 
     if (action === "unmount") unmount();
     else {
       fireEvent.change(screen.getByLabelText("지역 선택"), { target: { value: "SEOUL" } });
-      await screen.findByText("새 필터 축제");
+      await screen.findAllByText("새 필터 축제");
     }
     expect(fetchMock.mock.calls[1][1]?.signal?.aborted).toBe(true);
 
@@ -86,26 +86,12 @@ describe("F6 festival explore", () => {
     expect(getRegionLabel("JEJU")).toBe("제주");
   });
 
-  it("F6 renders portrait cards with object-cover and credit, filters by region/status/search, and paginates", async () => {
+  it("F6 renders a two-column landscape list with filters and pagination", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       const region = url.searchParams.get("region");
       const status = url.searchParams.get("status");
-      const q = url.searchParams.get("q");
       const page = Number(url.searchParams.get("page") ?? "1");
-
-      if (q === "없는축제") {
-        return new Response(
-          JSON.stringify({
-            is_mock: true,
-            items: [],
-            total: 0,
-            page: 1,
-            page_size: 20,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
 
       if (region === "SEOUL") {
         return new Response(
@@ -209,30 +195,36 @@ describe("F6 festival explore", () => {
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<FestivalExploreView />);
+    render(<FestivalExploreView mode="list" listTitle="인기있는 축제" />);
 
     await waitFor(() => {
-      expect(screen.getByText("첫 번째 축제")).toBeInTheDocument();
+      expect(screen.getAllByText("첫 번째 축제").length).toBeGreaterThan(0);
     });
+    expect(screen.getByRole("heading", { name: "인기있는 축제" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "나만을 위한 축제" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("축제 검색")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("축제 필터").className).not.toContain("bg-surface-muted");
+    expect(screen.getByLabelText("인기있는 축제 목록").className).toContain("grid-cols-2");
 
-    const image = screen.getByAltText("첫 번째 축제");
+    const image = screen.getAllByAltText("첫 번째 축제")[0];
     expect(image.className).toContain("object-cover");
-    expect(screen.getByText("출처: 한국관광공사")).toBeInTheDocument();
-    const favoriteButton = screen.getByRole("button", { name: "찜하기" });
+    expect(image.parentElement?.className).toContain("aspect-[3/2]");
+    expect(screen.getAllByText("출처: 한국관광공사").length).toBeGreaterThan(0);
+    const favoriteButton = screen.getAllByRole("button", { name: "찜하기" })[0];
     expect(favoriteButton.className).toContain("bg-transparent");
     expect(favoriteButton.className).not.toContain("rounded-chip");
 
     fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
     await waitFor(() => {
-      expect(screen.getByText("추가 축제")).toBeInTheDocument();
+      expect(screen.getAllByText("추가 축제").length).toBeGreaterThan(0);
     });
 
     fireEvent.change(screen.getByLabelText("지역 선택"), {
       target: { value: "SEOUL" },
     });
     await waitFor(() => {
-      expect(screen.getByText("한강 축제 테스트")).toBeInTheDocument();
-      expect(screen.getByText("도심 야간 축제")).toBeInTheDocument();
+      expect(screen.getAllByText("한강 축제 테스트").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("도심 야간 축제").length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "진행 중" }));
@@ -241,17 +233,6 @@ describe("F6 festival explore", () => {
         fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0],
       );
       expect(lastUrl).toContain("status=ongoing");
-    });
-
-    fireEvent.change(screen.getByLabelText("축제 검색"), {
-      target: { value: "없는축제" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "검색" }));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("조건에 맞는 축제가 없어요"),
-      ).toBeInTheDocument();
     });
   });
 

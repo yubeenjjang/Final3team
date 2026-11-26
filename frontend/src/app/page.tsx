@@ -28,7 +28,12 @@ export default function HomePage() {
       {/* 인기있는 축제 */}
       <FeaturedFestivals />
 
-      <FeaturedFestivals title="나만을 위한 축제" status="upcoming" moreLabel="더보기" />
+      <FeaturedFestivals
+        title="나만을 위한 축제"
+        status="upcoming"
+        moreLabel="더보기"
+        moreHref="/festivals/all?section=personal"
+      />
 
       {/* AI 안심 귀가 진한 회색 배너 */}
       <section className="relative flex min-h-[94px] items-center gap-3 overflow-hidden rounded-[20px] border border-brand/10 bg-gradient-to-r from-banner-dark to-ink px-4 py-3.5 text-surface shadow-md">

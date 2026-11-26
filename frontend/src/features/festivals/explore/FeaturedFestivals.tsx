@@ -10,10 +10,12 @@ export function FeaturedFestivals({
   title = "인기있는 축제",
   status = "ongoing",
   moreLabel = "전체보기",
+  moreHref = "/festivals/all?section=popular",
 }: {
   title?: string;
   status?: "ongoing" | "upcoming";
   moreLabel?: string;
+  moreHref?: string;
 } = {}) {
   const [items, setItems] = useState<FestivalListItem[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -38,7 +40,7 @@ export function FeaturedFestivals({
           <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
           {title}
         </h2>
-        <Link href="/festivals/all" className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted hover:text-brand">
+        <Link href={moreHref} className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted hover:text-brand">
           {moreLabel} <ChevronRight size={14} aria-hidden="true" />
         </Link>
       </div>
