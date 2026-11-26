@@ -431,7 +431,13 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 후속 코드 `dayoung 7b8451a`는 `--require-crowd-answered` 실행 시 축제 이름으로 검색→상세→혼잡을 **한 번의 그래프에서 연속 호출**하고 축제 ID·호출 순서·근거를 검사하도록 추가했다. 고정 응답 시험 35개가 다시 통과했다. 다영님이 이 코드를 받은 뒤 같은 실제 API 명령을 재실행한 터미널 출력은 `composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_calls=3, evidence=3`이었다. 따라서 **W14 공통 실행기를 통한 실제 공급원 복합 흐름도 통과**했다. 이 검사는 검색 결과로 선택된 축제 ID와 상세·혼잡 근거의 ID가 모두 같은지 확인한다. 공식 공지와 주변 시설의 실제 공급원 응답은 이 시험에 포함되지 않는다.
 
-**11/26 피드백 반영:** 같은 축제 ID로 이어진 복합 실행은 위 기록으로 확인된다. 다만 당시 출력에는 혼잡 `observed_at`이 없어 관측 시각은 미확인이다. `check_festival_live.py`의 혼잡 출력에 공급원과 `observed_at`을 추가했다. 11/27 제출 전에 같은 명령을 다시 실행해 실제 출력의 시각을 기록해야 하며, 재실행 전에는 시각을 추정해 기입하지 않는다. 미지원 처리는 A-11의 당시 실제 API `unsupported` 결과와 고정 응답 HTTP 시험으로 확인했다. 현재 공개 범위에서 부산 축제의 실호출까지 확인한 결과는 아니다.
+**11/26 피드백 반영:** 같은 축제 ID로 이어진 복합 실행은 위 기록으로 확인된다. 당시 출력에는 혼잡 `observed_at`이 없었으므로 점검기에 공급원과 관측 시각 출력을 추가했고, A-14에서 재실행해 값을 기록했다. 미지원 처리는 A-11의 당시 실제 API `unsupported` 결과와 고정 응답 HTTP 시험으로 확인했다. 현재 공개 범위에서 부산 축제의 실호출까지 확인한 결과는 아니다.
+
+### A-14. 서울빛초롱축제 실제 조회와 혼잡 관측 시각 재확인 (2026-11-26)
+
+다영님이 `dayoung`의 최신 점검기로 실제 API에 직접 연결해 실행한 터미널 출력을 제공했다. 점검기는 검색·상세·혼잡의 원시 응답에 `is_mock:false`를 요구하고, 혼잡의 축제 ID·관측 시각·출처가 빠지면 실패한다. 출력은 진행 축제 `total=1`, 예정 축제 `total=15`, 별도 검색 결과의 상세 `answered`·`source=tourapi`였다. 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`, `observed_at=2026-11-26T09:00:00+09:00`, `source=seoul_citydata`였다. 같은 축제 이름으로 실행한 복합 그래프도 `outcome=answered`, 도구 호출 3회, 근거 3건으로 종료했다. 점검기는 복합 호출 순서와 세 근거의 축제 ID가 모두 위 ID와 같은지 검사한다. [원출력·재현 명령](evidence/Festival_live_2026-11-26.md)을 함께 보관한다.
+
+이 `observed_at`은 **혼잡 자료의 관측 기준 시각**이며 명령을 실행한 시각은 출력에 없다. 확인 범위는 공개 서울빛초롱축제 1건의 실제 검색→상세→혼잡 HTTP 연속 실행이다. 미지원 지역의 현재 실호출, 공식 공지·주변 시설의 실제 공급원 응답, 팀 `main` 병합 후 통합 시험은 여기에 포함되지 않는다.
 
 ## 부록 B. 후속 구현에서 확인할 결정
 
@@ -456,6 +462,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 ## 부록 D. 11/27 공통 시험 실행 기준
 
 - **시험 코드 기준:** `dayoung 7b8451a`(2026-11-24). W14 공통 도구 실행기를 Festival 단독 HTTP 실행기에 연결하고 실제 공급원 복합 검사도 추가한 코드다. 팀 `main` 병합 기준 커밋은 실제 병합 후 기록한다.
+- **11/26 실조회 기준:** `dayoung dc35ad5` 이후 점검기는 혼잡 응답의 축제 ID·관측 시각·출처를 필수로 확인한다. 사용자 제공 출력과 확인 범위는 A-14 및 [실행 기록](evidence/Festival_live_2026-11-26.md)에 적었다. 정확한 실행 HEAD SHA는 터미널 출력에 없어 추정하지 않는다.
 - **위치:** 저장소 `backend/`에서 실행한다. Python·`uv`가 설치돼 있어야 한다.
 - **명령:** `uv run --with-requirements agents/requirements.txt python -m unittest discover -s tests/agents -p test_festival_*.py -q`
 - **기대 결과:** 2026-11-24 현재 `Ran 35 tests`, `OK`. 검색·상세·없는 ID·혼잡 미지원·오래된 값·일시 오류와 호출 상한을 포함한다. `test_festival_http_contract.py`는 404 재선택, 503 1회 재시도, 혼잡 200 미지원을 **HTTP 도구 래퍼부터 Agent 종료까지** 확인한다. `test_festival_shared_executor.py`는 W14 공통 실행기의 복합 흐름·추적 ID·권한 차단을 확인한다.
