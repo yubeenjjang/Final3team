@@ -101,10 +101,10 @@ export function OpenStreetMap({ center, title, markers = [], areas = [], onMarke
           ring.map((point) => [point.lat, point.lng]),
           {
             color: area.strokeColor,
-            weight: 2,
-            opacity: 0.9,
+            weight: area.strokeWeight ?? 2,
+            opacity: area.strokeOpacity ?? 0.9,
             fillColor: area.fillColor,
-            fillOpacity: 0.28,
+            fillOpacity: area.fillOpacity ?? 0.28,
           },
         ).bindTooltip(area.label).addTo(map)));
     });

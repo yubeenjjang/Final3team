@@ -48,6 +48,12 @@ function hasLocation(festival: FestivalListItem): festival is LocatedFestival {
 const SEARCH_DEBOUNCE_MS = 300;
 // A02는 쉼표로 여러 상태를 받지만 생성된 타입은 한 값만 허용해서 맞춰 준다 (explore/api.ts와 같은 방식)
 const SEARCH_STATUSES = "ongoing,upcoming,ended" as ListFestivalsQuery["status"];
+const CROWD_LEGEND = [
+  { label: "여유", className: "bg-crowd-green" },
+  { label: "보통", className: "bg-crowd-yellow" },
+  { label: "약간 붐빔", className: "bg-crowd-orange" },
+  { label: "붐빔", className: "bg-crowd-red" },
+] as const;
 
 function formatDistance(distance: number): string {
   return distance < 1000
@@ -72,6 +78,28 @@ function createCrowdCircle(
       lng: center.lng + Math.cos(angle) * longitudeRadius,
     };
   });
+}
+
+function getPathCenter(
+  paths: Array<Array<{ lat: number; lng: number }>>,
+): { lat: number; lng: number } | null {
+  const points = paths[0];
+  if (!points?.length) return null;
+  return points.reduce(
+    (center, point) => ({ lat: center.lat + point.lat / points.length, lng: center.lng + point.lng / points.length }),
+    { lat: 0, lng: 0 },
+  );
+}
+
+function scaleCrowdPaths(
+  paths: Array<Array<{ lat: number; lng: number }>>,
+  center: { lat: number; lng: number },
+  scale: number,
+): Array<Array<{ lat: number; lng: number }>> {
+  return paths.map((ring) => ring.map((point) => ({
+    lat: center.lat + (point.lat - center.lat) * scale,
+    lng: center.lng + (point.lng - center.lng) * scale,
+  })));
 }
 
 function getFacilitySourceLabel(source?: string | null): string | null {
@@ -389,18 +417,42 @@ export function FestivalMapView({
   };
   const crowdMapAreas = useMemo<KakaoMapArea[]>(() => {
     if (!crowd?.available || !selected) return [];
-    const color = crowdMapColor[crowd.color];
-    const paths = crowd.boundary.length > 0
-      ? crowd.boundary
-      : [createCrowdCircle(crowd.center ?? { lat: selected.lat, lng: selected.lng })];
-    return [{
-      id: `crowd-${selected?.festival_id ?? "festival"}`,
-      label: `${crowd.areaName} · 혼잡도 ${crowd.level}`,
-      paths,
-      fillColor: color,
-      strokeColor: color,
-    }];
-  }, [crowd, selected?.festival_id]);
+    const fallbackOffsets = [
+      { lat: 0, lng: 0 },
+      { lat: 0.0035, lng: 0.0045 },
+      { lat: -0.0035, lng: 0.0045 },
+      { lat: 0.0035, lng: -0.0045 },
+    ];
+    const layers = [
+      { scale: 1.18, opacity: 0.045 },
+      { scale: 1.1, opacity: 0.075 },
+      { scale: 1, opacity: 0.15 },
+    ];
+
+    return crowd.zones.flatMap((zone, zoneIndex) => {
+      const offset = fallbackOffsets[zoneIndex % fallbackOffsets.length];
+      const fallbackCenter = {
+        lat: selected.lat + offset.lat,
+        lng: selected.lng + offset.lng,
+      };
+      const basePaths = zone.boundary.length > 0
+        ? zone.boundary
+        : [createCrowdCircle(zone.center ?? fallbackCenter, 360)];
+      const center = zone.center ?? getPathCenter(basePaths) ?? fallbackCenter;
+      const color = crowdMapColor[zone.color];
+
+      return layers.map((layer, layerIndex) => ({
+        id: `crowd-${selected.festival_id}-${zoneIndex}-${layerIndex}`,
+        label: `${zone.areaName} · 혼잡도 ${zone.level}`,
+        paths: scaleCrowdPaths(basePaths, center, layer.scale),
+        fillColor: color,
+        strokeColor: color,
+        fillOpacity: layer.opacity,
+        strokeOpacity: 0,
+        strokeWeight: 0,
+      }));
+    });
+  }, [crowd, selected]);
   const crowdLabel = crowd?.available ? crowd.level : crowd?.reason ?? "정보 없음";
 
   const facilitySectionTitle: Record<FacilityGroup, string> = {
@@ -572,6 +624,21 @@ export function FestivalMapView({
                     {crowd.isEstimate ? <span>추정 정보</span> : null}
                     {crowd.stale ? <span className="font-bold text-brand">업데이트 지연</span> : null}
                   </div>
+                  {crowd.zones.length > 1 ? (
+                    <div aria-label="주변 혼잡 구역" className="grid gap-1.5 pt-1 sm:grid-cols-2">
+                      {crowd.zones.map((zone, index) => (
+                        <div
+                          key={`${zone.areaName}-${index}`}
+                          className="flex items-center justify-between gap-2 rounded-card bg-surface px-3 py-2"
+                        >
+                          <span className="truncate text-[11px] font-bold text-ink">{zone.areaName}</span>
+                          <span className={`shrink-0 rounded-chip px-2 py-0.5 text-[9px] font-extrabold ${crowdColorClass[zone.color]}`}>
+                            {zone.level}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : crowd ? (
                 <div className="flex items-center justify-between gap-3">
@@ -714,6 +781,17 @@ export function FestivalMapView({
             <span className="flex shrink-0 items-center gap-1.5">
               <span className="h-3 w-3 rounded-full bg-brand" aria-hidden="true" /> 축제장
             </span>
+            {crowd?.available ? (
+              <span className="mx-1 h-4 w-px shrink-0 bg-line-light" aria-hidden="true" />
+            ) : null}
+            {crowd?.available
+              ? CROWD_LEGEND.map((item) => (
+                  <span key={item.label} className="flex shrink-0 items-center gap-1">
+                    <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} aria-hidden="true" />
+                    {item.label}
+                  </span>
+                ))
+              : null}
             {Array.from(new Set(visibleFacilities.map((facility) => facility.category))).map((category) => (
               <span key={category} className="flex shrink-0 items-center gap-1">
                 <span aria-hidden="true">{FACILITY_SYMBOLS[category]}</span>

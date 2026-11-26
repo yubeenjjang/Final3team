@@ -26,8 +26,7 @@ export interface MapFacility {
   extra?: Record<string, string | number | boolean | null>;
 }
 
-export interface AvailableMapCrowd {
-  available: true;
+export interface MapCrowdZone {
   level: "여유" | "보통" | "약간 붐빔" | "붐빔";
   color: "green" | "yellow" | "orange" | "red";
   areaName: string;
@@ -39,6 +38,11 @@ export interface AvailableMapCrowd {
   stale?: boolean;
   center?: { lat: number; lng: number } | null;
   boundary: Array<Array<{ lat: number; lng: number }>>;
+}
+
+export interface AvailableMapCrowd extends MapCrowdZone {
+  available: true;
+  zones: MapCrowdZone[];
 }
 
 export interface UnavailableMapCrowd {
@@ -126,39 +130,85 @@ export async function getMapCrowd(
     process.env.NODE_ENV === "development" &&
     process.env.NEXT_PUBLIC_USE_MOCK_FESTIVALS === "1"
   ) {
+    const zones: MapCrowdZone[] = [
+      {
+        level: "붐빔",
+        color: "red",
+        areaName: "축제장 중심",
+        message: "축제장 중심이 붐비고 있어요.",
+        populationMin: 4200,
+        populationMax: 5600,
+        observedAt: new Date().toISOString(),
+        isEstimate: true,
+        center: null,
+        boundary: [],
+      },
+      {
+        level: "보통",
+        color: "yellow",
+        areaName: "축제장 북쪽",
+        center: null,
+        boundary: [],
+      },
+      {
+        level: "여유",
+        color: "green",
+        areaName: "축제장 동쪽",
+        center: null,
+        boundary: [],
+      },
+    ];
     return {
       available: true,
-      level: "붐빔",
-      color: "red",
-      areaName: "축제장 주변",
-      message: "축제장 주변이 붐비고 있어요.",
-      populationMin: 4200,
-      populationMax: 5600,
-      observedAt: new Date().toISOString(),
-      isEstimate: true,
-        center: null,
-      boundary: [],
+      ...zones[0]!,
+      zones,
     };
   }
   const response = await getFestivalCrowd(festivalId, signal);
-  const nearby = response.nearby_areas
-    ?.filter((item) => item.data)
-    .sort((left, right) => left.distance_m - right.distance_m)[0];
-  const area = nearby?.data ?? response.areas?.[0];
-  return area
-    ? {
-        available: true,
+  const zones: MapCrowdZone[] = [];
+  const nearbyAreas = [...(response.nearby_areas ?? [])].sort(
+    (left, right) => left.distance_m - right.distance_m,
+  );
+  for (const nearby of nearbyAreas) {
+    const area = nearby.data;
+    if (!area) continue;
+    zones.push({
+      level: area.congest_level,
+      color: area.congest_color,
+      areaName: nearby.area_name ?? area.area_name,
+      message: area.congest_message,
+      populationMin: area.population_min,
+      populationMax: area.population_max,
+      observedAt: area.observed_at,
+      isEstimate: nearby.is_estimate ?? response.is_estimate,
+      stale: nearby.status === "stale" || response.status === "stale",
+      center: area.center ?? nearby.center ?? null,
+      boundary: area.boundary ?? nearby.boundary ?? [],
+    });
+  }
+  if (zones.length === 0) {
+    for (const area of response.areas ?? []) {
+      zones.push({
         level: area.congest_level,
         color: area.congest_color,
-        areaName: nearby?.area_name ?? area.area_name,
+        areaName: area.area_name,
         message: area.congest_message,
         populationMin: area.population_min,
         populationMax: area.population_max,
         observedAt: area.observed_at,
-        isEstimate: nearby?.is_estimate ?? response.is_estimate,
-        stale: nearby?.status === "stale" || response.status === "stale",
-        center: area.center ?? nearby?.center ?? null,
-        boundary: area.boundary ?? nearby?.boundary ?? [],
+        isEstimate: response.is_estimate,
+        stale: response.status === "stale",
+        center: area.center ?? null,
+        boundary: area.boundary ?? [],
+      });
+    }
+  }
+  const primary = zones[0];
+  return primary
+    ? {
+        available: true,
+        ...primary,
+        zones,
       }
     : {
         available: false,

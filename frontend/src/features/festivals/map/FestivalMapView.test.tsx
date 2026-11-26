@@ -65,6 +65,34 @@ describe("FestivalMapView", () => {
                 { lat: 37.574, lng: 126.979 },
               ]],
             },
+            {
+              area_code: "area_2",
+              area_name: "광화문광장",
+              relation_type: "adjacent",
+              congest_level: "붐빔",
+              congest_color: "red",
+              congest_message: "사람이 많아요",
+              population_min: 3000,
+              population_max: 4000,
+              observed_at: "2026-11-26T09:00:00+09:00",
+              forecast: [],
+              center: { lat: 37.572, lng: 126.976 },
+              boundary: [],
+            },
+            {
+              area_code: "area_3",
+              area_name: "청계천",
+              relation_type: "adjacent",
+              congest_level: "여유",
+              congest_color: "green",
+              congest_message: "이동이 원활해요",
+              population_min: 200,
+              population_max: 500,
+              observed_at: "2026-11-26T09:00:00+09:00",
+              forecast: [],
+              center: { lat: 37.569, lng: 126.982 },
+              boundary: [],
+            },
           ],
         });
       }
@@ -123,12 +151,17 @@ describe("FestivalMapView", () => {
     expect(screen.queryByRole("button", { name: /내 위치/ })).not.toBeInTheDocument();
     expect(await screen.findByRole("application", { name: "광화문 겨울빛 축제 지도" })).toBeInTheDocument();
     await screen.findByText("주변 지하철역");
-    expect(await screen.findByText("보통")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "현재 혼잡도 보통" }));
+    const crowdButton = await screen.findByRole("button", { name: "현재 혼잡도 보통" });
+    fireEvent.click(crowdButton);
     expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("축제장 주변");
     expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("보통 수준");
     expect(screen.getByLabelText("혼잡도 상세")).toHaveTextContent("1,000~2,000명");
+    expect(screen.getByLabelText("주변 혼잡 구역")).toHaveTextContent("광화문광장");
+    expect(screen.getByLabelText("주변 혼잡 구역")).toHaveTextContent("붐빔");
+    expect(screen.getByLabelText("주변 혼잡 구역")).toHaveTextContent("청계천");
+    expect(screen.getByLabelText("주변 혼잡 구역")).toHaveTextContent("여유");
     expect(screen.getByText("혼잡도 보통")).toBeInTheDocument();
+    expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("약간 붐빔");
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("축제장");
     expect(screen.getByLabelText("지도 마커 범례")).toHaveTextContent("지하철역");
     fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {

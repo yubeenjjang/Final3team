@@ -35,6 +35,9 @@ export interface KakaoMapArea {
   paths: KakaoMapPoint[][];
   fillColor: string;
   strokeColor: string;
+  fillOpacity?: number;
+  strokeOpacity?: number;
+  strokeWeight?: number;
 }
 
 export interface KakaoMapProps {
@@ -135,12 +138,12 @@ export function KakaoMap({
           const polygon = new maps.Polygon({
             path: paths,
             map,
-            strokeWeight: 2,
+            strokeWeight: area.strokeWeight ?? 2,
             strokeColor: area.strokeColor,
-            strokeOpacity: 0.9,
+            strokeOpacity: area.strokeOpacity ?? 0.9,
             strokeStyle: "solid",
             fillColor: area.fillColor,
-            fillOpacity: 0.28,
+            fillOpacity: area.fillOpacity ?? 0.28,
           });
           nextAreas.push(polygon);
         }
