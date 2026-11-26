@@ -113,6 +113,7 @@ def routes(monkeypatch: pytest.MonkeyPatch) -> Iterator[Routes]:
     monkeypatch.setenv("ROUTE_PROVIDER", "real")
     monkeypatch.setenv("ROUTE_STORE", "memory")
     monkeypatch.setenv("ROUTE_KEY_SECRET", "TEST_KEY_DO_NOT_USE")
+    monkeypatch.delenv("ROUTE_DEMO_SCENARIOS", raising=False)
     monkeypatch.delenv("FESTIVAL_DATA", raising=False)
     clock = Clock()
     tmap, kakao = FakeProvider("tmap", clock), FakeProvider("kakao", clock)
@@ -163,6 +164,115 @@ def test_P9_primary_preserves_response_shape_and_ignores_mock_scenario(routes: R
     assert routes.tmap.queries == [RouteQuery((37.5759, 126.9768), (37.5, 126.9), routes.clock.now)]
     assert routes.quota.calls == ["tmap"]
     assert routes.client.get("/api/v1/health").headers["X-Mock"] == "true"
+
+
+@pytest.mark.parametrize(("preference", "expected"), [
+    ("fastest", ["c3", "c2", "c1"]),
+    ("fewest_transfers", ["c1", "c3", "c2"]),
+    ("min_walk", ["c2", "c1", "c3"]),
+    ("less_crowded", ["c3", "c2", "c1"]),
+    ("accessible", ["c3", "c2", "c1"]),
+])
+def test_real_candidate_order_matches_preference_across_cache_and_poll(routes, monkeypatch, preference, expected):
+    monkeypatch.setenv("TMAP_APP_KEY", TEST_KEY)
+    payload = json.loads((FIXTURES / "tmap_seoul.json").read_text())
+    itineraries = payload["metaData"]["plan"]["itineraries"]
+    sample = itineraries[0]
+    itineraries[:] = [
+        dict(sample, totalTime=duration * 60, transferCount=transfers, totalWalkDistance=walk)
+        for duration, transfers, walk in [(19, 0, 600), (17, 2, 300), (17, 1, 800)]
+    ]
+    with Client(transport=MockTransport(lambda _: Response(200, json=payload))) as http:
+        monkeypatch.setattr(routes.service, "_tmap", lambda: TmapClient(http))
+        request = {**_BODY, "route_preference": preference}
+        initial = routes.client.post(_RETURN, json=request)
+        ready = _body(initial, 200)
+        cached = _body(routes.client.post(_RETURN, json={**request, "request_id": "ranking-cache-01"}), 200)
+        polled = _body(routes.client.get(
+            f"{_RETURN}/{ready['route_request_id']}", headers={_TOKEN: initial.headers[_TOKEN]},
+        ), 200)
+
+    candidates = ready["route_candidates"]
+    assert [candidate["candidate_id"] for candidate in candidates] == expected
+    assert {candidate["candidate_id"]: candidate["duration_min"] for candidate in candidates} == {
+        "c1": 19, "c2": 17, "c3": 17,
+    }
+    assert polled["route_candidates"] == cached["route_candidates"] == candidates
+    assert routes.quota.calls == ["tmap"]
+
+
+@pytest.mark.parametrize(("scenario", "http_status", "final_status", "error"), [
+    ("sync_ready", 200, "ready", None),
+    ("async_unavailable", 202, "unavailable", "ROUTE_UPSTREAM_ERROR"),
+    ("async_timeout", 202, "timed_out", "ROUTE_TIMEOUT"),
+    ("overloaded", 503, None, "ROUTE_OVERLOADED"),
+])
+def test_demo_return_scenarios(routes, monkeypatch, scenario, http_status, final_status, error):
+    monkeypatch.setenv("APP_ENV", "local")
+    monkeypatch.setenv("ROUTE_DEMO_SCENARIOS", "true")
+    monkeypatch.setenv("ROUTE_STORE", "db")
+    headers = {"X-Mock-Scenario": scenario}
+    response = routes.client.post(_RETURN, json={**_BODY, "request_id": f"demo-{scenario}"}, headers=headers)
+    assert response.status_code == http_status and response.headers["X-Mock"] == "true"
+    body = response.json()
+    if final_status is None:
+        assert body["error"]["code"] == error
+    else:
+        assert body["is_mock"] is True
+        url = f"{_RETURN}/{body['route_request_id']}"
+        headers[_TOKEN] = body["route_access_token"] if http_status == 202 else response.headers[_TOKEN]
+        if http_status == 202:
+            processing = routes.client.get(url, headers=headers)
+            assert processing.headers["X-Mock"] == "true"
+            assert processing.json()["route_status"] == "processing"
+        else:
+            url += "?candidate_id=c1"
+        result = routes.client.get(url, headers=headers)
+        assert result.status_code == 200 and result.headers["X-Mock"] == "true"
+        assert result.json()["is_mock"] is True and result.json()["route_status"] == final_status
+        if error:
+            assert result.json()["error"]["code"] == error
+        else:
+            assert result.json()["route_candidates"][0]["candidate_id"] == "c1"
+    assert not routes.quota.calls
+    assert not routes.tmap.queries and not routes.kakao.queries and not routes.kakao.searches
+
+
+def test_demo_visit_uses_header_for_submit_and_poll(routes, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "local")
+    monkeypatch.setenv("ROUTE_DEMO_SCENARIOS", "true")
+    headers = {"X-Mock-Scenario": "async_ready"}
+    response = routes.client.post(_VISIT, headers=headers, json={
+        "request_id": "demo-visit-01", "festival_id": _BODY["festival_id"], "origin": _BODY["destination"],
+    })
+    assert response.status_code == 202 and response.headers["X-Mock"] == "true"
+    body = response.json()
+    assert body["is_mock"] is True
+    headers[_TOKEN] = body["route_access_token"]
+    url = body["status_url"]
+    no_header = routes.client.get(url, headers={_TOKEN: headers[_TOKEN]})
+    assert no_header.status_code == 404 and "X-Mock" not in no_header.headers
+    for status in ("processing", "ready"):
+        result = routes.client.get(url, headers=headers)
+        assert result.status_code == 200 and result.headers["X-Mock"] == "true"
+        assert result.json()["is_mock"] is True and result.json()["route_status"] == status
+    assert not routes.quota.calls
+
+
+@pytest.mark.parametrize(("app_env", "enabled", "send_header"), [
+    ("local", "true", False), ("local", "false", True), ("prod", "true", True),
+])
+def test_demo_inactive_keeps_real_submit_and_poll(routes, monkeypatch, app_env, enabled, send_header):
+    monkeypatch.setenv("APP_ENV", app_env)
+    monkeypatch.setenv("ROUTE_DEMO_SCENARIOS", enabled)
+    headers = {"X-Mock-Scenario": "overloaded"} if send_header else {}
+    response = routes.client.post(_RETURN, json=_BODY, headers=headers)
+    body = _body(response, 200)
+    result = routes.client.get(
+        f"{_RETURN}/{body['route_request_id']}", headers={**headers, _TOKEN: response.headers[_TOKEN]},
+    )
+    assert _body(result, 200)["route_status"] == "ready"
+    assert routes.quota.calls == ["tmap"]
 
 
 @pytest.mark.parametrize("mode", [None, "mock"])

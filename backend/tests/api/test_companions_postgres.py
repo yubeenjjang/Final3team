@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta
 from threading import Event
 from time import monotonic, sleep
 from uuid import UUID
@@ -172,6 +172,37 @@ def test_db_companions_rls_and_competing_approvals(client, companion_sample):
             SELECT count(*) FROM public.companion_applications WHERE post_id = :post_id AND message IS NOT NULL
         """), params) == 0
     assert client.get(place, headers=first).json() == {"status": "undecided"}
+
+
+def test_db_companion_room_list_respects_post_and_festival_publication(client, companion_sample):
+    engine, ((owner, owner_id, _), (member, _, _), _), created = companion_sample
+    detail = f"{POSTS}/{created['post_id']}"
+    app_id = client.post(f"{detail}/applications", headers=member).json()["application_id"]
+    assert client.post(f"{APPLICATIONS}/{app_id}/approve", headers=owner).status_code == 200
+    path = "/api/v1/me/chat-rooms?filter=companion"
+    meeting = datetime.fromisoformat(client.get(detail, headers=owner).json()["meet_at"])
+    room, = client.get(path, headers=member).json()["items"]
+    assert datetime.fromisoformat(room["meet_at"]) == meeting
+    assert room == {
+        "room_id": created["room_id"], "room_type": "companion", "name": None, "status": "active",
+        "last_message_at": None, "unread_count": 0, "my_status": "joined",
+        "peer_display_name": None, "festival_name": "시험 축제", "meet_at": room["meet_at"],
+    }
+
+    with engine.begin() as db:
+        db.execute(text("""
+            UPDATE public.festivals SET review_status = 'hidden'
+            WHERE festival_id = (SELECT festival_id FROM public.companion_posts WHERE post_id = :post_id)
+        """), created)
+    unpublished = {**room, "festival_name": None}
+    assert client.get(path, headers=member).json()["items"] == [unpublished]
+
+    with engine.begin() as db:
+        db.execute(text("""
+            UPDATE public.companion_posts SET hidden_at = now(), hidden_by = :owner_id WHERE post_id = :post_id
+        """), {**created, "owner_id": owner_id})
+    assert client.get(path, headers=member).json()["items"] == [{**unpublished, "meet_at": None}]
+    assert client.get(path, headers=owner).json()["items"] == [unpublished]
 
 
 def test_db_manual_close_and_automatic_end(client, companion_sample):

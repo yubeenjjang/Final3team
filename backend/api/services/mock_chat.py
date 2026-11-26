@@ -250,6 +250,8 @@ class MockChatRooms:
         return [dict(m, sender_display_name=names.get(m["sender_id"])) for m in page], len(candidates) > limit
 
     def list_rooms(self, user_id: UUID, selected: RoomFilter) -> list[dict]:
+        with auth_lock:
+            names = {UUID(user.user_id): user.display_name for user in users_by_email.values() if not user.disabled}
         with self.lock:
             items = []
             for room_id, room in reversed(self.rooms.items()):
@@ -261,8 +263,15 @@ class MockChatRooms:
                 if selected in ("companion", "friend") and (selected == "companion") != (room.room_type == "companion"):
                     continue
                 visible = self._visible(room_id, user_id)
+                peer_id = None
+                if room.room_type == "direct":
+                    peer_id = next((
+                        member_id for member_id, peer in room.members.items()
+                        if member_id != user_id and peer.status in ("invited", "joined")
+                    ), None)
                 items.append({
                     "room_id": room_id, "room_type": room.room_type, "name": room.name, "status": room.status,
+                    "peer_display_name": names.get(peer_id), "festival_name": None, "meet_at": None,
                     "last_message_at": visible[-1]["created_at"] if visible else None,
                     "unread_count": sum(m["seq"] > member.last_read_seq and m["sender_id"] != user_id for m in visible), "my_status": member.status,
                 })

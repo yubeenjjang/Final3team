@@ -37,12 +37,19 @@ from api.routers.festivals.catalog import uses_festival_db
 from api.routers.routes import routes
 from api.services.assistant import uses_assistant_db
 from api.services import real_festival_info
-from api.services.real_routes import uses_real_routes
 from api.services.seoul_crowd import uses_real_crowd
 from ulid import ULID
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[dict[str, traffic_incidents.UticSnapshotStore] | None]:
+    # 첫 요청 전에 앱 계정 연결을 준비한다. 실패 시에도 health에서 상태를 확인할 수 있다.
+    if health.uses_health_db():
+        for attempt in range(3):
+            if await health.db_is_ready():
+                break
+            if attempt < 2:
+                await asyncio.sleep(0.5)
+
     if not traffic_incidents.utic_enabled():
         yield
         return
@@ -175,7 +182,7 @@ def _serves_real_data(request: Request) -> bool:
         (bool(_HEALTH_PATH.match(path)) and health.uses_health_db())
         or (uses_assistant_db() and assistant_endpoint(path) is not None)
         or (uses_festival_db() and bool(_REAL_FESTIVAL_PATHS.match(path)))
-        or (uses_real_routes() and bool(_REAL_ROUTE_PATHS.match(path)))
+        or (bool(_REAL_ROUTE_PATHS.match(path)) and routes.uses_real_route_request(request))
         or (uses_real_crowd() and bool(_REAL_CROWD_PATH.match(path)))
         or (uses_auth_db() and _auth_data_endpoint(path) is not None)
         or (info_path is not None and real_festival_info.uses_real_info(info_path[1]))

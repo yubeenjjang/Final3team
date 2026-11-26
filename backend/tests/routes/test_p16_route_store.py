@@ -101,6 +101,30 @@ def test_P17_db_replay_keeps_request_id_after_token_expiry(monkeypatch):
     assert lookups == [route_id, route_id]
 
 
+def test_saved_candidates_are_ranked_on_lookup_without_reassigning_ids(monkeypatch):
+    monkeypatch.setenv("ROUTE_KEY_SECRET", "TEST_KEY_DO_NOT_USE")
+    clock = Clock()
+    route_id = "rr_SYNTHETIC"
+    original = [
+        {"candidate_id": "c1", "duration_min": 19, "transfers": 0, "walk_m": None},
+        {"candidate_id": "c2", "duration_min": 17, "transfers": 1, "walk_m": None},
+        {"candidate_id": "c3", "duration_min": 17, "transfers": 1, "walk_m": 400},
+        {"candidate_id": "c4", "duration_min": 17, "transfers": 1, "walk_m": 400},
+    ]
+    request = {
+        "status": "ready", "completed_at": clock.now, "started_at": clock.now, "submitted_at": clock.now,
+        "error_detail": None, "festival_id": "fst_000001", "festival_lat": 37.5, "festival_lng": 126.9,
+        "origin_type": "festival", "destination_type": "place", "travel_mode": "transit",
+        "route_preference": "fastest", "region_code": "SEOUL", "constraints": {},
+    }
+    result = {"candidates": original, "queried_at": clock.now, "purged_at": None, "evidence": {}}
+    store = SimpleNamespace(lookup=lambda *_: (request, result))
+    service = real_routes.RealRouteService(now=lambda: clock.now, store=store)
+    response = asyncio.run(service.get_route_response("return", route_id, "synthetic-token"))
+    assert response["route_candidates"] == [original[2], original[3], original[1], original[0]]
+    assert [candidate["candidate_id"] for candidate in original] == ["c1", "c2", "c3", "c4"]
+
+
 def test_P16_store_flag_defaults_to_memory(monkeypatch):
     real_routes.get_service.cache_clear()
     try:
