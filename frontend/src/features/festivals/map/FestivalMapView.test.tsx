@@ -50,7 +50,7 @@ describe("FestivalMapView", () => {
           ],
         });
       }
-      return Response.json({
+      const festivalPage = {
         is_mock: true,
         total: 2,
         page: 1,
@@ -87,7 +87,15 @@ describe("FestivalMapView", () => {
             last_synced_at: "2026-11-26T09:00:00+09:00",
           },
         ],
-      });
+      };
+      const q = new URL(url, "http://localhost").searchParams.get("q");
+      if (q) {
+        return Response.json({
+          ...festivalPage,
+          items: festivalPage.items.filter((item) => item.name.includes(q)),
+        });
+      }
+      return Response.json(festivalPage);
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -101,8 +109,13 @@ describe("FestivalMapView", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
       target: { value: "해운대" },
     });
-    expect(screen.getByRole("application", { name: "해운대 빛축제 지도" })).toBeInTheDocument();
+    expect(await screen.findByRole("application", { name: "해운대 빛축제 지도" })).toBeInTheDocument();
     expect(screen.getByText("해운대 빛축제 (부산)")).toBeInTheDocument();
+    const searchUrl = fetchMock.mock.calls
+      .map(([input]) => new URL(String(input), "http://localhost"))
+      .find((url) => url.pathname.endsWith("/festivals") && url.searchParams.has("q"));
+    expect(searchUrl?.searchParams.get("q")).toBe("해운대");
+    expect(searchUrl?.searchParams.get("status")).toBe("ongoing,upcoming,ended");
 
     fireEvent.click(screen.getByRole("button", { name: /맛집·관광/ }));
     await waitFor(() => {
@@ -115,5 +128,45 @@ describe("FestivalMapView", () => {
       "aria-pressed",
       "true",
     );
+  });
+
+  it("searches festivals outside the default list through A02 q", async () => {
+    const located = {
+      region_code: "SEOUL",
+      venue_name: "청계천",
+      start_date: "2025-12-01",
+      end_date: "2025-12-31",
+      thumbnail_url: null,
+      image_credit: null,
+      source: "tourapi",
+      last_synced_at: "2026-11-26T09:00:00+09:00",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname.includes("/facilities")) return Response.json({ items: [] });
+      if (url.pathname.includes("/crowd")) return Response.json({ status: "ok", areas: [] });
+      const q = url.searchParams.get("q");
+      const items = q === "없는축제"
+        ? []
+        : q
+        ? [{ ...located, festival_id: "fst_map_ended", name: "지난 겨울 등불축제", lat: 37.57, lng: 126.98, event_status: "ended" }]
+        : [{ ...located, festival_id: "fst_map_now", name: "지금 축제", lat: 37.5, lng: 127.0, event_status: "ongoing" }];
+      return Response.json({ is_mock: false, total: items.length, page: 1, page_size: 20, items });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<FestivalMapView />);
+    expect(await screen.findByRole("application", { name: "지금 축제 지도" })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
+      target: { value: "등불" },
+    });
+    expect(await screen.findByRole("application", { name: "지난 겨울 등불축제 지도" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "축제명 또는 장소 검색" }), {
+      target: { value: "없는축제" },
+    });
+    // 결과가 없으면 지도는 그대로 두고 안내만 보여 준다
+    expect(await screen.findByText("검색 조건에 맞는 축제가 없어요.")).toBeInTheDocument();
+    expect(screen.getByRole("application", { name: "지난 겨울 등불축제 지도" })).toBeInTheDocument();
   });
 });

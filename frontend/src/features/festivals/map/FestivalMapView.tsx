@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -19,6 +19,7 @@ import { getKakaoJsKey } from "@/lib/kakao";
 import {
   listFestivals,
   type FestivalListItem,
+  type ListFestivalsQuery,
 } from "@/features/festivals/explore/api";
 import { formatFestivalPeriod } from "@/features/festivals/explore/dday";
 import { getRegionLabel } from "@/features/festivals/explore/regions";
@@ -40,6 +41,11 @@ function hasLocation(festival: FestivalListItem): festival is LocatedFestival {
   return typeof festival.lat === "number" && typeof festival.lng === "number";
 }
 
+// 검색은 서버(A02 q)에서 한다. 기본 목록(진행 중·예정)만으로는 다른 축제를 찾을 수 없다.
+const SEARCH_DEBOUNCE_MS = 300;
+// A02는 쉼표로 여러 상태를 받지만 생성된 타입은 한 값만 허용해서 맞춰 준다 (explore/api.ts와 같은 방식)
+const SEARCH_STATUSES = "ongoing,upcoming,ended" as ListFestivalsQuery["status"];
+
 function formatDistance(distance: number): string {
   return distance < 1000
     ? `${Math.round(distance)}m`
@@ -53,6 +59,9 @@ export function FestivalMapView() {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<LocatedFestival[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [picked, setPicked] = useState<LocatedFestival | null>(null);
   const [facilityGroup, setFacilityGroup] = useState<FacilityGroup>("transport");
   const [facilityCategory, setFacilityCategory] = useState<FacilityCategory | "all">("all");
   const [facilities, setFacilities] = useState<MapFacility[]>([]);
@@ -80,19 +89,26 @@ export function FestivalMapView() {
     return () => controller.abort();
   }, [attempt]);
 
-  const visibleFestivals = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("ko-KR");
-    if (!normalized) return festivals;
-    return festivals.filter((festival) =>
-      `${festival.name} ${festival.venue_name ?? ""} ${getRegionLabel(festival.region_code)}`
-        .toLocaleLowerCase("ko-KR")
-        .includes(normalized),
-    );
-  }, [festivals, query]);
+  const trimmedQuery = query.trim().slice(0, 50);
+  const visibleFestivals = trimmedQuery ? searchResults : festivals;
+
+  // 지도에 찍는 축제 = 기본 목록 + 검색으로 고른 축제. 검색어를 칠 때마다 마커가 바뀌지 않게 한다.
+  const mapFestivals = useMemo(
+    () =>
+      picked && !festivals.some((festival) => festival.festival_id === picked.festival_id)
+        ? [...festivals, picked]
+        : festivals,
+    [festivals, picked],
+  );
 
   const selected =
-    visibleFestivals.find((festival) => festival.festival_id === selectedId) ??
-    visibleFestivals[0];
+    mapFestivals.find((festival) => festival.festival_id === selectedId) ??
+    mapFestivals[0];
+  const selectedIdRef = useRef<string | null>(null);
+  const selectedFestivalId = selected?.festival_id ?? null;
+  useEffect(() => {
+    selectedIdRef.current = selectedFestivalId;
+  }, [selectedFestivalId]);
   const kakaoKey = getKakaoJsKey();
 
   useEffect(() => {
@@ -134,6 +150,7 @@ export function FestivalMapView() {
   }, [selected]);
 
   function selectFestival(festival: LocatedFestival) {
+    setPicked(festival);
     setSelectedId(festival.festival_id);
     setFacilities([]);
     setFacilitiesLoading(true);
@@ -153,15 +170,37 @@ export function FestivalMapView() {
 
   function changeQuery(value: string) {
     setQuery(value);
-    const normalized = value.trim().toLocaleLowerCase("ko-KR");
-    if (!normalized) return;
-    const firstMatch = festivals.find((festival) =>
-      `${festival.name} ${festival.venue_name ?? ""} ${getRegionLabel(festival.region_code)}`
-        .toLocaleLowerCase("ko-KR")
-        .includes(normalized),
-    );
-    if (firstMatch && firstMatch.festival_id !== selectedId) selectFestival(firstMatch);
+    setSearching(Boolean(value.trim()));
   }
+
+  useEffect(() => {
+    if (!trimmedQuery) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      listFestivals(
+        { q: trimmedQuery, status: SEARCH_STATUSES, sort: "-start_date", page: 1, page_size: 20 },
+        controller.signal,
+      )
+        .then((result) => {
+          if (controller.signal.aborted) return;
+          const located = result.items.filter(hasLocation);
+          setSearchResults(located);
+          const first = located[0];
+          if (first && first.festival_id !== selectedIdRef.current) selectFestival(first);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setSearchResults([]);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSearching(false);
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // 검색어가 바뀔 때만 다시 찾는다 (selectFestival은 setter만 쓴다)
+  }, [trimmedQuery]);
 
   const groupOptions: Array<{
     key: FacilityGroup;
@@ -173,10 +212,27 @@ export function FestivalMapView() {
     { key: "safety", label: "편의·안전", Icon: ShieldCheck },
   ];
 
-  const visibleFacilities =
-    facilityCategory === "all"
-      ? facilities
-      : facilities.filter((facility) => facility.category === facilityCategory);
+  const visibleFacilities = useMemo(
+    () =>
+      facilityCategory === "all"
+        ? facilities
+        : facilities.filter((facility) => facility.category === facilityCategory),
+    [facilities, facilityCategory],
+  );
+  // 렌더마다 새 배열을 넘기면 지도가 매번 다시 그려지므로 묶어 둔다.
+  const kakaoMarkers = useMemo(
+    () =>
+      mapFestivals
+        .map((festival) => ({ lat: festival.lat, lng: festival.lng, title: festival.name }))
+        .concat(
+          visibleFacilities.map((facility) => ({
+            lat: facility.lat,
+            lng: facility.lng,
+            title: facility.name,
+          })),
+        ),
+    [mapFestivals, visibleFacilities],
+  );
   const selectedFacility = visibleFacilities.find(
     (facility) => facility.facility_id === selectedFacilityId,
   );
@@ -217,7 +273,15 @@ export function FestivalMapView() {
             className="h-12 w-full rounded-input border border-line-light bg-surface pl-12 pr-4 text-sm font-semibold text-ink shadow-card placeholder:font-medium placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
           />
         </label>
-        {query && visibleFestivals.length > 0 ? (
+        {trimmedQuery && !searching && visibleFestivals.length === 0 ? (
+          <p
+            role="status"
+            className="absolute inset-x-0 top-14 z-30 rounded-card-lg border border-line-light bg-surface px-4 py-3 text-xs font-semibold text-muted shadow-xl"
+          >
+            검색 조건에 맞는 축제가 없어요.
+          </p>
+        ) : null}
+        {trimmedQuery && visibleFestivals.length > 0 ? (
           <div className="absolute inset-x-0 top-14 z-30 max-h-52 overflow-y-auto rounded-card-lg border border-line-light bg-surface p-2 shadow-xl">
             {visibleFestivals.map((festival) => (
               <button
@@ -385,17 +449,7 @@ export function FestivalMapView() {
             {kakaoKey ? (
               <KakaoMap
                 center={mapCenter ?? { lat: selected.lat, lng: selected.lng }}
-                markers={visibleFestivals.map((festival) => ({
-                  lat: festival.lat,
-                  lng: festival.lng,
-                  title: festival.name,
-                })).concat(
-                  visibleFacilities.map((facility) => ({
-                    lat: facility.lat,
-                    lng: facility.lng,
-                    title: facility.name,
-                  })),
-                )}
+                markers={kakaoMarkers}
                 level={12}
                 className="h-[360px] w-full"
               />
