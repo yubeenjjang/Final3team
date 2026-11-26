@@ -68,3 +68,8 @@ composite: festival_id=fst_01M835B57450M888RBNEFVRWWA, outcome=answered, tool_ca
 
 - 태경님이 `dayoung f249f6e` 기준 macOS·Python 3.14.8에서 Festival 단독 `Ran 37 tests`, `OK`, `check_festival_budget` 2회·4회 호출 모두 `partial`을 확인했다.
 - 같은 기준에서 `tests/agents` 전체(RAG 포함)는 `Ran 48 tests`, `OK`였다. 이는 태경님이 공유한 시험 출력 요약이며, 팀 `main` 병합 후 전체 백엔드 시험 기록은 아니다.
+
+## 병합 전 백엔드 시험 사전 점검 (2026-11-26)
+
+- 코드 기준: `dayoung 0b2369a`, Windows·Python 3.12.15. 저장소 루트에서 `PYTHONPATH=backend`를 지정하고 LangGraph·pytest를 제공한 환경으로 `python -B -m pytest backend/tests -q` 실행: **51 passed, 2 subtests passed in 0.73s**.
+- `dayoung` 단독 체크아웃에서 루트 명령을 경로 지정 없이 실행하면 `agents` 모듈을 찾지 못해 시험 수집 단계에서 실패한다. 위 결과는 실행 환경의 모듈 경로를 보완한 **병합 전 사전 점검**이며, 팀 `main`의 최종 시험으로 기록하지 않는다.
