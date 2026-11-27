@@ -50,6 +50,13 @@ def test_mock_post_application_and_place(client, clock):
     assert [row["post_id"] for row in listing] == [post_id]
     assert listing[0]["author_display_name"] == "Owner"
     assert client.get(f"/api/v1/festivals/{FESTIVAL}/companion-posts?page=2").json() == {"items": []}
+    feed = client.get(POSTS).json()
+    assert feed["total"] == 1
+    assert feed["items"][0]["post_id"] == post_id
+    assert feed["items"][0]["festival_id"] == FESTIVAL
+    assert feed["items"][0]["festival_name"] == "광화문 겨울빛 축제"
+    assert client.get(POSTS, params={"q": "광화문"}).json()["total"] == 1
+    assert client.get(POSTS, params={"q": "부산"}).json()["total"] == 0
     public = client.get(detail)
     assert public.json() == {**listing[0], "my_application_status": None}
     assert public.headers["Cache-Control"] == "private, no-store"

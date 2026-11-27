@@ -41,6 +41,15 @@ const samplePost = {
   status: "open",
 };
 
+const sampleFeedPost = {
+  ...samplePost,
+  festival_id: sampleFestival.festival_id,
+  festival_name: sampleFestival.name,
+  festival_thumbnail_url: sampleFestival.thumbnail_url,
+  festival_venue_name: sampleFestival.venue_name,
+  festival_region_code: sampleFestival.region_code,
+};
+
 const ongoingFestival = {
   ...sampleFestival,
   festival_id: "fst_000002",
@@ -83,7 +92,7 @@ describe("Companions screens", () => {
         });
       }
       if (url.pathname.endsWith("/companion-posts")) {
-        return Response.json({ items: [] });
+        return Response.json({ items: [], total: 0, page: 1, page_size: 50 });
       }
       return Response.json({ items: [] });
     });
@@ -160,7 +169,7 @@ describe("Companions screens", () => {
       if (url.pathname.endsWith("/companion-posts")) {
         const status = url.searchParams.get("status");
         if (status === "full") {
-          return Response.json({ items: [] });
+          return Response.json({ items: [], total: 0, page: 1, page_size: 50 });
         }
         if (status === "ended") {
           return Response.json(
@@ -168,7 +177,7 @@ describe("Companions screens", () => {
             { status: 500 },
           );
         }
-        return Response.json({ items: [samplePost] });
+        return Response.json({ items: [sampleFeedPost], total: 1, page: 1, page_size: 50 });
       }
       return Response.json({ items: [] });
     });
@@ -193,9 +202,9 @@ describe("Companions screens", () => {
     });
   });
 
-  it("combines every recruitment status when the all filter is selected", async () => {
+  it("shows every recruitment status when the all filter is selected", async () => {
     const fullPost = {
-      ...samplePost,
+      ...sampleFeedPost,
       post_id: "cpo_full",
       memo: "정원이 마감된 동행 글",
       status: "full",
@@ -207,9 +216,18 @@ describe("Companions screens", () => {
       }
       if (url.pathname.endsWith("/companion-posts")) {
         const status = url.searchParams.get("status");
-        if (status === "open") return Response.json({ items: [samplePost] });
-        if (status === "full") return Response.json({ items: [fullPost] });
-        return Response.json({ items: [] });
+        if (status === "open") {
+          return Response.json({ items: [sampleFeedPost], total: 1, page: 1, page_size: 50 });
+        }
+        if (status === null) {
+          return Response.json({
+            items: [sampleFeedPost, fullPost],
+            total: 2,
+            page: 1,
+            page_size: 50,
+          });
+        }
+        return Response.json({ items: [], total: 0, page: 1, page_size: 50 });
       }
       return Response.json({ items: [] });
     });

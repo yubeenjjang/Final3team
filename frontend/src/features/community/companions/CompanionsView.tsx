@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   CalendarDays,
+  MapPin,
   MessageCircle,
   Plus,
   RotateCcw,
@@ -13,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { LoginPromptSheet } from "@/components/LoginPromptSheet";
+import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder";
 import { TabPageHero } from "@/components/TabPageHero";
 import { handleAuthError, useIsSignedIn } from "@/components/RequireAuth";
 import { listFestivals, type FestivalListItem } from "@/features/festivals/explore/api";
@@ -20,11 +23,11 @@ import { ApiError } from "@/lib/api/client";
 import {
   createCompanionPost,
   decideCompanionApplication,
-  listCompanionPosts,
+  listCompanionFeed,
   listMyCompanionApplications,
   listMyCompanionPosts,
   type AgePreference,
-  type CompanionPostItem,
+  type CompanionFeedPostItem,
   type GenderPreference,
   type MyCompanionApplicationItem,
   type MyCompanionPostItem,
@@ -42,8 +45,6 @@ import {
 } from "./format";
 
 type StatusFilter = PostStatus | "all";
-
-const POST_STATUSES: PostStatus[] = ["open", "full", "ended", "cancelled"];
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "전체" },
@@ -101,7 +102,8 @@ export function CompanionsView({
   const [browseFestivalSearch, setBrowseFestivalSearch] = useState("");
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
-  const [posts, setPosts] = useState<CompanionPostItem[]>([]);
+  const [posts, setPosts] = useState<CompanionFeedPostItem[]>([]);
+  const [postsTotal, setPostsTotal] = useState(0);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [postsTick, setPostsTick] = useState(0);
@@ -149,7 +151,7 @@ export function CompanionsView({
           if (prev && res.items.some((item) => item.festival_id === prev)) {
             return prev;
           }
-          return res.items[0]?.festival_id ?? "";
+          return "";
         });
         setFormFestivalId((prev) => {
           if (prev && res.items.some((item) => item.festival_id === prev)) {
@@ -175,7 +177,7 @@ export function CompanionsView({
   }, [festivalsTick]);
 
   useEffect(() => {
-    if (tab !== "browse" || !selectedFestivalId) {
+    if (tab !== "browse") {
       return;
     }
     const controller = new AbortController();
@@ -183,22 +185,19 @@ export function CompanionsView({
       setPostsLoading(true);
       setPostsError(null);
       try {
-        const statuses = statusFilter === "all" ? POST_STATUSES : [statusFilter];
-        const responses = await Promise.all(
-          statuses.map((status) =>
-            listCompanionPosts(
-              selectedFestivalId,
-              { status, page: 1 },
-              controller.signal,
-            ),
-          ),
+        const res = await listCompanionFeed(
+          {
+            festival_id: selectedFestivalId || undefined,
+            q: browseFestivalSearch.trim() || undefined,
+            status: statusFilter === "all" ? undefined : statusFilter,
+            page: 1,
+            page_size: 50,
+          },
+          controller.signal,
         );
         if (!controller.signal.aborted) {
-          const uniquePosts = new Map<string, CompanionPostItem>();
-          responses.forEach((response) => {
-            response.items.forEach((post) => uniquePosts.set(post.post_id, post));
-          });
-          setPosts([...uniquePosts.values()]);
+          setPosts(res.items);
+          setPostsTotal(res.total);
         }
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -216,7 +215,7 @@ export function CompanionsView({
     }
     void load();
     return () => controller.abort();
-  }, [tab, selectedFestivalId, statusFilter, postsTick]);
+  }, [tab, selectedFestivalId, browseFestivalSearch, statusFilter, postsTick]);
 
   useEffect(() => {
     if (tab !== "mine" || !signedIn) {
@@ -475,7 +474,10 @@ export function CompanionsView({
                     id="companion-festival-search"
                     type="search"
                     value={browseFestivalSearch}
-                    onChange={(event) => setBrowseFestivalSearch(event.target.value)}
+                    onChange={(event) => {
+                      setBrowseFestivalSearch(event.target.value);
+                      setSelectedFestivalId("");
+                    }}
                     placeholder="축제명·장소 검색"
                     className="h-11 w-full rounded-input border border-line-light bg-surface py-2 pl-11 pr-4 text-sm text-ink shadow-sm placeholder:text-muted focus:border-brand focus:outline-none"
                   />
@@ -495,6 +497,7 @@ export function CompanionsView({
                   }}
                   className="h-11 w-full rounded-input border border-line-light bg-surface px-4 text-sm font-semibold text-ink shadow-sm focus:border-brand focus:outline-none"
                 >
+                  <option value="">전체 축제</option>
                   {browseFestivalOptions.map((festival) => (
                     <option key={festival.festival_id} value={festival.festival_id}>
                       {festival.name}{festival.venue_name ? ` · ${festival.venue_name}` : ""}
@@ -536,11 +539,17 @@ export function CompanionsView({
               <div className="flex items-center justify-between pt-1">
                 <h2 className="flex items-center gap-2 text-base font-extrabold text-ink">
                   <span className="h-4 w-1 rounded-chip bg-brand" aria-hidden="true" />
-                  <span>{selectedFestival?.name ?? "동행 모집 글"}</span>
+                  <span>
+                    {selectedFestival
+                      ? `${selectedFestival.name} 동행`
+                      : statusFilter === "open"
+                        ? "지금 모집 중인 동행"
+                        : "동행 모집글"}
+                  </span>
                 </h2>
                 {!postsLoading && !postsError ? (
                   <span className="text-xs font-semibold text-muted">
-                    {posts.length}건
+                    총 {postsTotal}개의 모집글
                   </span>
                 ) : null}
               </div>
@@ -578,7 +587,7 @@ export function CompanionsView({
                   </p>
                 </div>
               ) : (
-                <ul className="space-y-3">
+                <ul className="grid gap-3 lg:grid-cols-2">
                   {posts.map((post) => {
                     const statusMeta = POST_STATUS_META[post.status];
                     const isFull =
@@ -586,47 +595,77 @@ export function CompanionsView({
                     return (
                       <li
                         key={post.post_id}
-                        className="rounded-card border border-line-light bg-surface p-4 shadow-sm transition-shadow hover:shadow-md"
+                        className="overflow-hidden rounded-card-lg border border-line-light bg-surface p-3 shadow-card transition-shadow hover:shadow-md"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`rounded-chip px-2.5 py-0.5 text-[11px] font-extrabold ${statusMeta.className}`}
-                            >
-                              {statusMeta.label}
-                            </span>
-                            <span className="text-xs font-bold text-ink">
-                              {post.author_display_name ?? "알 수 없음"}
-                            </span>
-                          </div>
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-extrabold ${
-                              isFull ? "text-muted" : "text-brand"
-                            }`}
+                        <div className="flex min-w-0 gap-3">
+                          <Link
+                            href={`/festivals/${encodeURIComponent(post.festival_id)}`}
+                            className="relative h-32 w-28 shrink-0 overflow-hidden rounded-card bg-surface-soft sm:h-36 sm:w-36"
+                            aria-label={`${post.festival_name} 축제 상세보기`}
                           >
-                            <Users className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>
-                              {post.approved_count} / {post.capacity}명
-                            </span>
-                          </span>
-                        </div>
+                            {post.festival_thumbnail_url ? (
+                              <Image
+                                src={post.festival_thumbnail_url}
+                                alt={post.festival_name}
+                                fill
+                                sizes="(max-width: 639px) 112px, 144px"
+                                unoptimized
+                                className="object-cover"
+                              />
+                            ) : (
+                              <FestivalImagePlaceholder />
+                            )}
+                          </Link>
 
-                        <p className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-ink">
-                          {post.memo || "함께 축제를 즐길 동행을 구해요!"}
-                        </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <Link
+                                  href={`/festivals/${encodeURIComponent(post.festival_id)}`}
+                                  className="block truncate text-sm font-black text-brand hover:underline"
+                                >
+                                  {post.festival_name}
+                                </Link>
+                                <span className="mt-1 inline-flex rounded-chip bg-brand/10 px-2 py-0.5 text-[10px] font-extrabold text-brand">
+                                  {statusMeta.label}
+                                </span>
+                              </div>
+                              <span className="shrink-0 text-[10px] font-semibold text-muted">
+                                {post.author_display_name ?? "익명"}
+                              </span>
+                            </div>
 
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarDays
-                              className="h-3.5 w-3.5 text-brand"
-                              aria-hidden="true"
-                            />
-                            {formatKstDateTime(post.meet_at)}
-                          </span>
-                          <span className="rounded-chip bg-surface-soft/80 px-2.5 py-0.5 text-[11px] font-semibold text-ink">
-                            {getAgePrefLabel(post.age_pref)} ·{" "}
-                            {getGenderPrefLabel(post.gender_pref)}
-                          </span>
+                            <p className="mt-2 line-clamp-2 text-sm font-extrabold leading-snug text-ink">
+                              {post.memo || "함께 축제를 즐길 동행을 구해요!"}
+                            </p>
+
+                            <div className="mt-2 space-y-1 text-[11px] font-semibold text-muted">
+                              <span className="flex items-center gap-1">
+                                <CalendarDays className="h-3.5 w-3.5 text-ink" aria-hidden="true" />
+                                {formatKstDateTime(post.meet_at)}
+                              </span>
+                              <span className="flex min-w-0 items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-ink" aria-hidden="true" />
+                                <span className="truncate">
+                                  {post.festival_venue_name ?? "장소 미정"}
+                                </span>
+                              </span>
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={`inline-flex items-center gap-1 text-xs font-extrabold ${
+                                  isFull ? "text-muted" : "text-brand"
+                                }`}
+                              >
+                                <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                                {post.approved_count} / {post.capacity}명
+                              </span>
+                              <span className="rounded-chip bg-surface-soft px-2 py-0.5 text-[10px] font-semibold text-ink">
+                                {getAgePrefLabel(post.age_pref)} · {getGenderPrefLabel(post.gender_pref)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="mt-3 flex justify-end">
@@ -638,7 +677,7 @@ export function CompanionsView({
                                 : "border border-line-light bg-surface text-ink"
                             }`}
                           >
-                            {post.status === "open" ? "상세 · 참여 신청" : "자세히 보기"}
+                            {post.status === "open" ? "참여 신청" : "자세히 보기"}
                           </Link>
                         </div>
                       </li>

@@ -28,6 +28,21 @@ export interface CompanionPostList {
   items: CompanionPostItem[];
 }
 
+export interface CompanionFeedPostItem extends CompanionPostItem {
+  festival_id: string;
+  festival_name: string;
+  festival_thumbnail_url: string | null;
+  festival_venue_name: string | null;
+  festival_region_code: string;
+}
+
+export interface CompanionFeedPostList {
+  items: CompanionFeedPostItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 export interface CompanionPostCreateInput {
   festival_id: string;
   meet_at: string;
@@ -149,6 +164,28 @@ export function listCompanionPosts(
       signal,
     },
   );
+}
+
+export function listCompanionFeed(
+  params: {
+    festival_id?: string;
+    q?: string;
+    status?: PostStatus;
+    page?: number;
+    page_size?: number;
+  } = {},
+  signal?: AbortSignal,
+): Promise<CompanionFeedPostList> {
+  return apiGet<CompanionFeedPostList>("/companion-posts", {
+    query: {
+      festival_id: params.festival_id,
+      q: params.q,
+      status: params.status,
+      page: params.page ?? 1,
+      page_size: params.page_size ?? 50,
+    },
+    signal,
+  });
 }
 
 export function createCompanionPost(

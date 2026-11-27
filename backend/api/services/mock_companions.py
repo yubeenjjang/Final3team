@@ -122,6 +122,43 @@ class MockCompanions:
         offset = (page - 1) * rules.PAGE_SIZE
         return schema.PostList(items=[self.memory.item(post) for post in rows[offset:offset + rules.PAGE_SIZE]])
 
+    def list_post_feed(
+        self,
+        festival_id: str | None,
+        q: str | None,
+        status: schema.PostStatus | None,
+        page: int,
+        page_size: int,
+    ) -> schema.FeedPostList:
+        term = q.strip().casefold() if q is not None else ""
+        rows: list[tuple[Post, store.MockFestival]] = []
+        for post in self.memory.posts.values():
+            festival = store.get_public_mock_festival(post.festival_id)
+            if festival is None or (post.hidden and post.author_id != self.actor_id):
+                continue
+            if festival_id is not None and post.festival_id != festival_id:
+                continue
+            if status is not None and post.status != status:
+                continue
+            if term and term not in festival.name.casefold() and term not in (festival.venue_name or "").casefold():
+                continue
+            rows.append((post, festival))
+        rows.sort(key=lambda pair: (pair[0].meet_at, pair[0].post_id), reverse=True)
+        total = len(rows)
+        offset = (page - 1) * page_size
+        items = [
+            schema.FeedPostItem(
+                **self.memory.item(post).model_dump(),
+                festival_id=post.festival_id,
+                festival_name=festival.name,
+                festival_thumbnail_url=festival.thumbnail_url,
+                festival_venue_name=festival.venue_name,
+                festival_region_code=festival.region_code,
+            )
+            for post, festival in rows[offset:offset + page_size]
+        ]
+        return schema.FeedPostList(items=items, total=total, page=page, page_size=page_size)
+
     def get_post(self, post_id: str) -> schema.PostDetail:
         post = self.memory.get_post(post_id)
         if post.hidden and post.author_id != self.actor_id:

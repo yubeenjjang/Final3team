@@ -48,6 +48,65 @@ class CompanionReads:
                "auto_before": rules.now_utc() - rules.auto_end_after()})).mappings()
         return schema.PostList(items=[schema.PostItem.model_validate(row) for row in rows])
 
+    async def list_post_feed(
+        self,
+        festival_id: str | None,
+        q: str | None,
+        status: schema.PostStatus | None,
+        page: int,
+        page_size: int,
+    ) -> schema.FeedPostList:
+        term = q.strip() if q is not None else None
+        if term:
+            escaped = term.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+            pattern = f"%{escaped}%"
+        else:
+            pattern = None
+        params = {
+            "festival_id": festival_id,
+            "status": status,
+            "pattern": pattern,
+            "auto_before": rules.now_utc() - rules.auto_end_after(),
+        }
+        visible_posts = f"""
+            SELECT {_POST_FIELDS}, p.festival_id, f.title AS festival_name,
+                   f.thumbnail_url AS festival_thumbnail_url,
+                   f.venue_name AS festival_venue_name,
+                   f.region_code AS festival_region_code,
+                   p.created_at
+            FROM public.companion_posts p
+            JOIN public.festivals f ON f.festival_id = p.festival_id
+            WHERE f.category = 'festival' AND f.source_class_level2 = 'EV01'
+              AND f.review_status = 'approved' AND f.published_at IS NOT NULL
+              AND p.hidden_at IS NULL
+              AND (CAST(:festival_id AS text) IS NULL OR p.festival_id = :festival_id)
+        """
+        filters = """
+            WHERE (CAST(:status AS text) IS NULL OR visible.status = :status)
+              AND (CAST(:pattern AS text) IS NULL
+                   OR visible.festival_name ILIKE :pattern ESCAPE '!'
+                   OR visible.festival_venue_name ILIKE :pattern ESCAPE '!')
+        """
+        total = await self.db.scalar(text(f"""
+            SELECT count(*) FROM ({visible_posts}) visible {filters}
+        """), params)
+        rows = (await self.db.execute(text(f"""
+            SELECT * FROM ({visible_posts}) visible
+            {filters}
+            ORDER BY visible.created_at DESC, visible.post_id DESC
+            LIMIT :size OFFSET :offset
+        """), {
+            **params,
+            "size": page_size,
+            "offset": min((page - 1) * page_size, 2**63 - 1),
+        })).mappings()
+        return schema.FeedPostList(
+            items=[schema.FeedPostItem.model_validate(row) for row in rows],
+            total=total or 0,
+            page=page,
+            page_size=page_size,
+        )
+
     async def get_post(self, post_id: str) -> schema.PostDetail:
         row = (await self.db.execute(text(f"""
             SELECT {_POST_FIELDS}, (

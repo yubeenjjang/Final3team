@@ -79,6 +79,21 @@ class PostList(BaseModel):
     items: list[PostItem]
 
 
+class FeedPostItem(PostItem):
+    festival_id: str
+    festival_name: str
+    festival_thumbnail_url: str | None
+    festival_venue_name: str | None
+    festival_region_code: str
+
+
+class FeedPostList(BaseModel):
+    items: list[FeedPostItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class PostChanged(BaseModel):
     post_id: str
     status: PostStatus
