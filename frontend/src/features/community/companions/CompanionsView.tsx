@@ -19,11 +19,17 @@ import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder"
 import { TabPageHero } from "@/components/TabPageHero";
 import { handleAuthError, useIsSignedIn } from "@/components/RequireAuth";
 import { listFestivals, type FestivalListItem } from "@/features/festivals/explore/api";
+import {
+  getRegionLabel,
+  REGION_OPTIONS,
+  type RegionFilter,
+} from "@/features/festivals/explore/regions";
 import { ApiError } from "@/lib/api/client";
 import {
   createCompanionPost,
   decideCompanionApplication,
   listCompanionFeed,
+  listCompanionPosts,
   listMyCompanionApplications,
   listMyCompanionPosts,
   type AgePreference,
@@ -45,6 +51,9 @@ import {
 } from "./format";
 
 type StatusFilter = PostStatus | "all";
+type PeriodFilter = "all" | "today" | "week" | "month";
+type ConditionFilter = "all" | "age_any" | "gender_any" | "female" | "male";
+type SortFilter = "latest" | "meet_soon" | "meet_late" | "vacancy";
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "전체" },
@@ -55,6 +64,47 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
 ];
 
 const DEFAULT_MEETING_TIME = "18:00";
+const LEGACY_POST_STATUSES: PostStatus[] = ["open", "full", "ended", "cancelled"];
+
+async function listLegacyCompanionFeed(
+  festivals: FestivalListItem[],
+  statusFilter: StatusFilter,
+  signal: AbortSignal,
+) {
+  const statuses = statusFilter === "all" ? LEGACY_POST_STATUSES : [statusFilter];
+  const tasks = festivals.flatMap((festival) =>
+    statuses.map((status) => ({ festival, status })),
+  );
+  const items: CompanionFeedPostItem[] = [];
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < tasks.length && !signal.aborted) {
+      const task = tasks[cursor];
+      cursor += 1;
+      const response = await listCompanionPosts(
+        task.festival.festival_id,
+        { status: task.status, page: 1 },
+        signal,
+      );
+      response.items.forEach((post) => {
+        items.push({
+          ...post,
+          festival_id: task.festival.festival_id,
+          festival_name: task.festival.name,
+          festival_thumbnail_url: task.festival.thumbnail_url,
+          festival_venue_name: task.festival.venue_name,
+          festival_region_code: task.festival.region_code,
+        });
+      });
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(6, tasks.length) }, () => worker()),
+  );
+  return items;
+}
 
 function getKstDateString(date: Date, dayOffset = 0) {
   const kstTime = date.getTime() + 9 * 60 * 60 * 1000 + dayOffset * 24 * 60 * 60 * 1000;
@@ -89,6 +139,7 @@ export function CompanionsView({
 }: CompanionsViewProps) {
   const router = useRouter();
   const routerRef = useRef(router);
+  const feedApiSupportedRef = useRef<boolean | null>(null);
   useEffect(() => {
     routerRef.current = router;
   }, [router]);
@@ -102,6 +153,11 @@ export function CompanionsView({
   const [browseFestivalSearch, setBrowseFestivalSearch] = useState("");
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
+  const [regionFilter, setRegionFilter] = useState<RegionFilter>("ALL");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
+  const [conditionFilter, setConditionFilter] = useState<ConditionFilter>("all");
+  const [sortFilter, setSortFilter] = useState<SortFilter>("latest");
+  const [filterNow] = useState(() => Date.now());
   const [posts, setPosts] = useState<CompanionFeedPostItem[]>([]);
   const [postsTotal, setPostsTotal] = useState(0);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -185,19 +241,54 @@ export function CompanionsView({
       setPostsLoading(true);
       setPostsError(null);
       try {
-        const res = await listCompanionFeed(
-          {
-            festival_id: selectedFestivalId || undefined,
-            q: browseFestivalSearch.trim() || undefined,
-            status: statusFilter === "all" ? undefined : statusFilter,
-            page: 1,
-            page_size: 50,
-          },
-          controller.signal,
-        );
+        let items: CompanionFeedPostItem[];
+        let total: number;
+        if (feedApiSupportedRef.current !== false) {
+          try {
+            const res = await listCompanionFeed(
+              {
+                festival_id: selectedFestivalId || undefined,
+                q: browseFestivalSearch.trim() || undefined,
+                status: statusFilter === "all" ? undefined : statusFilter,
+                page: 1,
+                page_size: 50,
+              },
+              controller.signal,
+            );
+            feedApiSupportedRef.current = true;
+            items = res.items;
+            total = res.total;
+          } catch (error) {
+            if (!(error instanceof ApiError) || ![404, 405].includes(error.status)) {
+              throw error;
+            }
+            feedApiSupportedRef.current = false;
+            const query = browseFestivalSearch.trim().toLocaleLowerCase("ko-KR");
+            const candidates = festivals.filter((festival) => {
+              if (selectedFestivalId && festival.festival_id !== selectedFestivalId) return false;
+              if (!query) return true;
+              return [festival.name, festival.venue_name]
+                .filter(Boolean)
+                .some((value) => value!.toLocaleLowerCase("ko-KR").includes(query));
+            });
+            items = await listLegacyCompanionFeed(candidates, statusFilter, controller.signal);
+            total = items.length;
+          }
+        } else {
+          const query = browseFestivalSearch.trim().toLocaleLowerCase("ko-KR");
+          const candidates = festivals.filter((festival) => {
+            if (selectedFestivalId && festival.festival_id !== selectedFestivalId) return false;
+            if (!query) return true;
+            return [festival.name, festival.venue_name]
+              .filter(Boolean)
+              .some((value) => value!.toLocaleLowerCase("ko-KR").includes(query));
+          });
+          items = await listLegacyCompanionFeed(candidates, statusFilter, controller.signal);
+          total = items.length;
+        }
         if (!controller.signal.aborted) {
-          setPosts(res.items);
-          setPostsTotal(res.total);
+          setPosts(items);
+          setPostsTotal(total);
         }
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -215,7 +306,7 @@ export function CompanionsView({
     }
     void load();
     return () => controller.abort();
-  }, [tab, selectedFestivalId, browseFestivalSearch, statusFilter, postsTick]);
+  }, [tab, selectedFestivalId, browseFestivalSearch, statusFilter, postsTick, festivals]);
 
   useEffect(() => {
     if (tab !== "mine" || !signedIn) {
@@ -355,6 +446,45 @@ export function CompanionsView({
     !matchingFormFestivals.some((festival) => festival.festival_id === selectedFormFestival.festival_id)
       ? [selectedFormFestival, ...matchingFormFestivals]
       : matchingFormFestivals;
+  const displayedPosts = posts
+    .filter((post) => {
+      if (regionFilter !== "ALL" && post.festival_region_code !== regionFilter) {
+        return false;
+      }
+      const meetAtTime = new Date(post.meet_at).getTime();
+      const now = filterNow;
+      if (periodFilter === "today") {
+        if (getKstDateString(new Date(post.meet_at)) !== getKstDateString(new Date(filterNow))) {
+          return false;
+        }
+      } else if (periodFilter === "week") {
+        if (meetAtTime < now || meetAtTime > now + 7 * 24 * 60 * 60 * 1000) return false;
+      } else if (periodFilter === "month") {
+        if (meetAtTime < now || meetAtTime > now + 30 * 24 * 60 * 60 * 1000) return false;
+      }
+      if (conditionFilter === "age_any" && ![null, "any"].includes(post.age_pref)) {
+        return false;
+      }
+      if (conditionFilter === "gender_any" && post.gender_pref !== "any") return false;
+      if (conditionFilter === "female" && post.gender_pref !== "female") return false;
+      if (conditionFilter === "male" && post.gender_pref !== "male") return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortFilter === "meet_soon") {
+        return new Date(a.meet_at).getTime() - new Date(b.meet_at).getTime();
+      }
+      if (sortFilter === "meet_late") {
+        return new Date(b.meet_at).getTime() - new Date(a.meet_at).getTime();
+      }
+      if (sortFilter === "vacancy") {
+        return (b.capacity - b.approved_count) - (a.capacity - a.approved_count);
+      }
+      return 0;
+    });
+  const hasLocalFilters =
+    regionFilter !== "ALL" || periodFilter !== "all" || conditionFilter !== "all";
+  const displayedPostCount = hasLocalFilters ? displayedPosts.length : postsTotal;
 
   return (
     <div className="space-y-4 px-4 py-4">
@@ -511,29 +641,77 @@ export function CompanionsView({
                 ) : null}
               </div>
 
-              <div
-                role="group"
-                aria-label="모집 상태"
-                className="flex items-center gap-1.5 overflow-x-auto py-0.5"
-              >
-                {STATUS_TABS.map((item) => {
-                  const active = statusFilter === item.value;
-                  return (
-                    <button
-                      key={item.value}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setStatusFilter(item.value)}
-                      className={
-                        active
-                          ? "shrink-0 rounded-chip bg-brand px-3.5 py-1.5 text-xs font-bold text-surface"
-                          : "shrink-0 rounded-chip border border-line-light bg-surface px-3.5 py-1.5 text-xs font-semibold text-muted hover:text-ink"
-                      }
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
+              <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+                <div role="group" aria-label="모집 상태" className="contents">
+                  {STATUS_TABS.map((item) => {
+                    const active = statusFilter === item.value;
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setStatusFilter(item.value)}
+                        className={
+                          active
+                            ? "shrink-0 rounded-chip bg-brand px-3.5 py-1.5 text-xs font-bold text-surface"
+                            : "shrink-0 rounded-chip border border-line-light bg-surface px-3.5 py-1.5 text-xs font-semibold text-muted hover:text-ink"
+                        }
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="sr-only" htmlFor="companion-region-filter">지역</label>
+                <select
+                  id="companion-region-filter"
+                  value={regionFilter}
+                  onChange={(event) => setRegionFilter(event.target.value as RegionFilter)}
+                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                >
+                  {REGION_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.code === "ALL" ? "전체 지역" : getRegionLabel(option.code)}
+                    </option>
+                  ))}
+                </select>
+                <label className="sr-only" htmlFor="companion-period-filter">기간</label>
+                <select
+                  id="companion-period-filter"
+                  value={periodFilter}
+                  onChange={(event) => setPeriodFilter(event.target.value as PeriodFilter)}
+                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                >
+                  <option value="all">전체 기간</option>
+                  <option value="today">오늘</option>
+                  <option value="week">7일 이내</option>
+                  <option value="month">30일 이내</option>
+                </select>
+                <label className="sr-only" htmlFor="companion-condition-filter">모집 조건</label>
+                <select
+                  id="companion-condition-filter"
+                  value={conditionFilter}
+                  onChange={(event) => setConditionFilter(event.target.value as ConditionFilter)}
+                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                >
+                  <option value="all">모집 조건</option>
+                  <option value="age_any">연령 무관</option>
+                  <option value="gender_any">성별 무관</option>
+                  <option value="female">여성 선호</option>
+                  <option value="male">남성 선호</option>
+                </select>
+                <label className="sr-only" htmlFor="companion-sort-filter">정렬</label>
+                <select
+                  id="companion-sort-filter"
+                  value={sortFilter}
+                  onChange={(event) => setSortFilter(event.target.value as SortFilter)}
+                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                >
+                  <option value="latest">최신순</option>
+                  <option value="meet_soon">만남 임박순</option>
+                  <option value="meet_late">만남 날짜순</option>
+                  <option value="vacancy">남은 자리순</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -549,7 +727,7 @@ export function CompanionsView({
                 </h2>
                 {!postsLoading && !postsError ? (
                   <span className="text-xs font-semibold text-muted">
-                    총 {postsTotal}개의 모집글
+                    총 {displayedPostCount}개의 모집글
                   </span>
                 ) : null}
               </div>
@@ -577,7 +755,7 @@ export function CompanionsView({
                     <span>다시 시도</span>
                   </button>
                 </div>
-              ) : posts.length === 0 ? (
+              ) : displayedPosts.length === 0 ? (
                 <div className="rounded-card border border-line-light bg-surface px-4 py-10 text-center">
                   <p className="text-sm font-bold text-ink">
                     아직 등록된 동행 모집 글이 없어요
@@ -588,7 +766,7 @@ export function CompanionsView({
                 </div>
               ) : (
                 <ul className="grid gap-3 lg:grid-cols-2">
-                  {posts.map((post) => {
+                  {displayedPosts.map((post) => {
                     const statusMeta = POST_STATUS_META[post.status];
                     const isFull =
                       post.status === "full" || post.approved_count >= post.capacity;
@@ -659,7 +837,7 @@ export function CompanionsView({
                                 }`}
                               >
                                 <Users className="h-3.5 w-3.5" aria-hidden="true" />
-                                {post.approved_count} / {post.capacity}명
+                                <span>{post.approved_count} / {post.capacity}명</span>
                               </span>
                               <span className="rounded-chip bg-surface-soft px-2 py-0.5 text-[10px] font-semibold text-ink">
                                 {getAgePrefLabel(post.age_pref)} · {getGenderPrefLabel(post.gender_pref)}

@@ -188,7 +188,9 @@ describe("Companions screens", () => {
     await waitFor(() => {
       expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
     });
-    expect(screen.getByText("2 / 4명")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.body).toHaveTextContent(/2\s*\/\s*4명/);
+    });
     expect(screen.getByRole("button", { name: "전체" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "정원 마감" }));
@@ -244,6 +246,37 @@ describe("Companions screens", () => {
       expect(screen.getByText("정원이 마감된 동행 글")).toBeInTheDocument();
     });
     expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
+  });
+
+  it("falls back to festival post lists when the global feed endpoint is unavailable", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/festivals")) {
+        return Response.json({ items: [sampleFestival], total: 1, page: 1, page_size: 100 });
+      }
+      if (url.pathname.endsWith("/api/v1/companion-posts")) {
+        return Response.json(
+          { error: { code: "METHOD_NOT_ALLOWED", message: "지원하지 않는 요청 방식입니다." } },
+          { status: 405 },
+        );
+      }
+      if (url.pathname.endsWith("/festivals/fst_000001/companion-posts")) {
+        return Response.json({ items: [samplePost] });
+      }
+      return Response.json({ items: [] });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CompanionsView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("지원하지 않는 요청 방식입니다.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("지역")).toBeInTheDocument();
+    expect(screen.getByLabelText("기간")).toBeInTheDocument();
+    expect(screen.getByLabelText("모집 조건")).toBeInTheDocument();
+    expect(screen.getByLabelText("정렬")).toBeInTheDocument();
   });
 
   it("locks meeting place for unapproved users and shows it for approved users", async () => {
