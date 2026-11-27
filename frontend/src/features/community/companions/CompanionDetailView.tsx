@@ -397,7 +397,7 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
 
   return (
     <div className="space-y-5 px-4 py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <Link
           href="/companions"
           className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-brand"
@@ -405,15 +405,6 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           <span>동행 상세</span>
         </Link>
-        {canSeeMeetingPlace ? (
-          <Link
-            href={`/chats/${encodeURIComponent(roomId)}`}
-            className="inline-flex items-center gap-1 rounded-chip bg-brand px-3.5 py-1.5 text-xs font-extrabold text-surface shadow-sm"
-          >
-            <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>동행 채팅방</span>
-          </Link>
-        ) : null}
       </div>
 
       {actionNotice ? (
@@ -603,18 +594,9 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
               </button>
             </div>
           ) : post.my_application_status === "approved" ? (
-            <div className="space-y-2.5">
-              <p className="text-xs font-bold text-brand">
-                승인 완료! 동행 채팅방에서 일정을 맞춰 보세요.
-              </p>
-              <Link
-                href={`/chats/${encodeURIComponent(roomId)}`}
-                className="flex w-full items-center justify-center gap-1.5 rounded-chip bg-brand py-2.5 text-xs font-extrabold text-surface"
-              >
-                <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                <span>동행 채팅방 입장</span>
-              </Link>
-            </div>
+            <p className="text-xs font-bold text-brand">
+              승인 완료! 아래 동행 채팅방에서 일정을 맞춰 보세요.
+            </p>
           ) : post.my_application_status === "rejected" ? (
             <p className="text-xs font-semibold text-muted">
               거절된 신청은 다시 신청할 수 없어요.
@@ -782,6 +764,28 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
           )}
         </section>
       ) : null}
+
+      <nav
+        aria-label="동행 상세 바로가기"
+        className={`grid gap-2 pt-1 ${canSeeMeetingPlace ? "grid-cols-2" : "grid-cols-1"}`}
+      >
+        {canSeeMeetingPlace ? (
+          <Link
+            href={`/chats/${encodeURIComponent(roomId)}`}
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-chip bg-brand px-3 py-2.5 text-xs font-extrabold text-surface shadow-sm transition-opacity hover:opacity-90"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            <span>동행 채팅방</span>
+          </Link>
+        ) : null}
+        <Link
+          href="/companions"
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-chip border border-brand/30 bg-surface px-3 py-2.5 text-xs font-extrabold text-brand shadow-sm hover:bg-surface-soft"
+        >
+          <Users className="h-4 w-4" aria-hidden="true" />
+          <span>동행 리스트 가기</span>
+        </Link>
+      </nav>
 
       <LoginPromptSheet
         open={loginPromptOpen}

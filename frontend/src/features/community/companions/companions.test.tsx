@@ -339,6 +339,11 @@ describe("Companions screens", () => {
     await waitFor(() => {
       expect(screen.getByText("승인된 참여자만 만남 장소를 볼 수 있어요.")).toBeInTheDocument();
     });
+    expect(screen.getByRole("link", { name: "동행 리스트 가기" })).toHaveAttribute(
+      "href",
+      "/companions",
+    );
+    expect(screen.queryByRole("link", { name: "동행 채팅방" })).not.toBeInTheDocument();
 
     cleanup();
     setAuthSession({
@@ -372,6 +377,16 @@ describe("Companions screens", () => {
       expect(screen.getByText("여의나루역 2번 출구")).toBeInTheDocument();
     });
     expect(screen.getByText("출구 앞 벤치에서 만나요")).toBeInTheDocument();
+    const chatLink = screen.getByRole("link", { name: "동행 채팅방" });
+    expect(chatLink).toHaveAttribute("href", "/chats/crm_01JD8Q3K2M");
+    expect(screen.getByRole("link", { name: "동행 리스트 가기" })).toHaveAttribute(
+      "href",
+      "/companions",
+    );
+    expect(
+      screen.getByText("출구 앞 벤치에서 만나요").compareDocumentPosition(chatLink) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("lets author approve an applicant", async () => {

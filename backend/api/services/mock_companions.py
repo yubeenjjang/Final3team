@@ -132,7 +132,12 @@ class MockCompanions:
     ) -> schema.FeedPostList:
         term = q.strip().casefold() if q is not None else ""
         rows: list[tuple[Post, store.MockFestival]] = []
+<<<<<<< HEAD
         for post in self.memory.posts.values():
+=======
+        # DB와 같은 최신 작성순: 메모리 저장 순서(작성 순서)를 거꾸로 읽는다.
+        for post in reversed(list(self.memory.posts.values())):
+>>>>>>> origin/ohyun-web
             festival = store.get_public_mock_festival(post.festival_id)
             if festival is None or (post.hidden and post.author_id != self.actor_id):
                 continue
@@ -143,7 +148,10 @@ class MockCompanions:
             if term and term not in festival.name.casefold() and term not in (festival.venue_name or "").casefold():
                 continue
             rows.append((post, festival))
+<<<<<<< HEAD
         rows.sort(key=lambda pair: (pair[0].meet_at, pair[0].post_id), reverse=True)
+=======
+>>>>>>> origin/ohyun-web
         total = len(rows)
         offset = (page - 1) * page_size
         items = [
