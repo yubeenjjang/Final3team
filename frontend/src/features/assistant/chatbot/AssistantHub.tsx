@@ -19,7 +19,11 @@ import {
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { storeRouteAccess } from "@/features/routes/return/api";
-import { askAssistant, type AssistantAnswer } from "./api";
+import {
+  askAssistant,
+  type AssistantAnswer,
+  type AssistantConversation,
+} from "./api";
 
 type Conversation =
   | { status: "intro" }
@@ -48,6 +52,7 @@ export function AssistantHub() {
   const [question, setQuestion] = useState("");
   const [conversation, setConversation] = useState<Conversation>({ status: "intro" });
   const activeRequest = useRef<AbortController | null>(null);
+  const conversationAccess = useRef<AssistantConversation | undefined>(undefined);
   const running = conversation.status === "running";
 
   useEffect(() => () => activeRequest.current?.abort(), []);
@@ -62,8 +67,14 @@ export function AssistantHub() {
     setConversation({ status: "running", question: message });
 
     try {
-      const answer = await askAssistant(message, undefined, controller.signal);
+      const answer = await askAssistant(
+        message,
+        undefined,
+        controller.signal,
+        conversationAccess.current,
+      );
       if (controller.signal.aborted) return;
+      conversationAccess.current = answer.conversation;
       if (answer.route) storeRouteAccess(answer.route);
       setConversation({ status: "succeeded", question: message, answer });
     } catch (error) {
@@ -96,7 +107,7 @@ export function AssistantHub() {
             <ArrowLeft size={22} aria-hidden="true" />
           </button>
           <Link href="/" aria-label="놀다가 홈">
-            <BrandLogo className="h-7 w-auto" priority />
+            <BrandLogo className="h-9 w-auto md:h-10" priority />
           </Link>
         </div>
         <button

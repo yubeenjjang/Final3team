@@ -4,7 +4,11 @@ import Link from "next/link";
 import { ArrowRight, ArrowUp, RotateCw, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { storeRouteAccess } from "@/features/routes/return/api";
-import { askAssistant, type AssistantAnswer } from "./api";
+import {
+  askAssistant,
+  type AssistantAnswer,
+  type AssistantConversation,
+} from "./api";
 
 type ChatState =
   | { status: "idle" | "running" }
@@ -26,6 +30,7 @@ export function AssistantPrompt({ festivalId }: { festivalId?: string }) {
   const [exampleSetIndex, setExampleSetIndex] = useState(0);
   const [state, setState] = useState<ChatState>({ status: "idle" });
   const activeRequest = useRef<AbortController | null>(null);
+  const conversationAccess = useRef<AssistantConversation | undefined>(undefined);
   const running = state.status === "running";
 
   useEffect(() => () => activeRequest.current?.abort(), []);
@@ -38,8 +43,14 @@ export function AssistantPrompt({ festivalId }: { festivalId?: string }) {
     activeRequest.current = controller;
     setState({ status: "running" });
     try {
-      const answer = await askAssistant(message, festivalId, controller.signal);
+      const answer = await askAssistant(
+        message,
+        festivalId,
+        controller.signal,
+        conversationAccess.current,
+      );
       if (!controller.signal.aborted) {
+        conversationAccess.current = answer.conversation;
         if (answer.route) storeRouteAccess(answer.route);
         setState({ status: "succeeded", answer });
       }

@@ -8,7 +8,11 @@ import { AssistantPrompt } from "./AssistantPrompt";
 vi.mock("@/components/KakaoMap", () => ({ KakaoMap: () => null }));
 
 const fetchApi = vi.fn<typeof fetch>();
-const run = { run_id: "run_test01", run_access_token: "fixture-run-token" };
+const run = {
+  run_id: "run_test01",
+  conversation_id: "cv_test01",
+  run_access_token: "fixture-run-token",
+};
 const route = { route_request_id: "rr_test01", route_access_token: "fixture-route-token" };
 
 function reply(body: unknown, status = 200) {
@@ -129,19 +133,51 @@ describe("F9 assistant flow", () => {
     expect(screen.getByRole("status")).toHaveTextContent("축제 정보를 확인했어요.");
   });
 
-  it("polls at one-second intervals and stops after ten status requests", async () => {
+  it("continues follow-up questions in the same assistant conversation", async () => {
     reply(run, 202);
-    for (let i = 0; i < 10; i += 1) {
+    reply({ run_status: "succeeded", answer: "첫 답변이에요." });
+    render(<AssistantPrompt />);
+    submit("이번 주말 축제 추천해줘");
+    await advance(1000);
+    expect(screen.getByRole("status")).toHaveTextContent("첫 답변이에요.");
+
+    const nextRun = {
+      run_id: "run_test02",
+      conversation_id: run.conversation_id,
+      run_access_token: "fixture-next-token",
+    };
+    reply(nextRun, 202);
+    reply({ run_status: "succeeded", answer: "그중에는 이 축제를 추천해요." });
+    submit("그중에 가장 가까운 건 뭐야?");
+    await advance(1000);
+
+    const submissions = fetchApi.mock.calls.filter(([url]) =>
+      String(url).endsWith("/assistant/query"),
+    );
+    expect(submissions).toHaveLength(2);
+    const [, followUpRequest] = submissions[1];
+    expect(JSON.parse(String(followUpRequest?.body))).toMatchObject({
+      conversation_id: run.conversation_id,
+      message: "그중에 가장 가까운 건 뭐야?",
+    });
+    expect(new Headers(followUpRequest?.headers).get("X-Run-Access-Token"))
+      .toBe(run.run_access_token);
+    expect(screen.getByRole("status")).toHaveTextContent("그중에는 이 축제를 추천해요.");
+  });
+
+  it("polls at one-second intervals and allows a real assistant up to sixty seconds", async () => {
+    reply(run, 202);
+    for (let i = 0; i < 60; i += 1) {
       reply({ run_status: "running" });
     }
     render(<AssistantPrompt />);
     submit("축제 찾아줘");
     await advance(999);
     expect(fetchApi).toHaveBeenCalledTimes(1);
-    await advance(9001);
-    expect(fetchApi).toHaveBeenCalledTimes(11);
+    await advance(59_001);
+    expect(fetchApi).toHaveBeenCalledTimes(61);
     expect(screen.getByRole("alert")).toHaveTextContent("응답이 지연되고 있어요.");
     await advance(1000);
-    expect(fetchApi).toHaveBeenCalledTimes(11);
+    expect(fetchApi).toHaveBeenCalledTimes(61);
   });
 });

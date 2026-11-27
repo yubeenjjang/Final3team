@@ -5,6 +5,7 @@ import type { RouteAccess } from "@/features/routes/return/api";
 type AssistantRequest = components["schemas"]["AssistantRequest"];
 interface AssistantSubmission {
   run_id: string;
+  conversation_id: string;
   run_access_token: string;
 }
 
@@ -22,6 +23,12 @@ interface AssistantRun {
 export interface AssistantAnswer {
   text: string;
   route?: RouteAccess;
+  conversation: AssistantConversation;
+}
+
+export interface AssistantConversation {
+  id: string;
+  accessToken: string;
 }
 
 function waitForNextPoll(signal: AbortSignal): Promise<void> {
@@ -45,17 +52,27 @@ export async function askAssistant(
   message: string,
   festivalId: string | undefined,
   signal: AbortSignal,
+  conversation?: AssistantConversation,
 ): Promise<AssistantAnswer> {
   const request: AssistantRequest = {
     request_id: createRequestId(),
     message,
+    conversation_id: conversation?.id,
     context: festivalId ? { festival_id: festivalId } : undefined,
   };
-  const { run_id, run_access_token } = await apiPost<AssistantSubmission>(
-    "/assistant/query", request, { signal, timeoutMs: 10_000 },
+  const { run_id, conversation_id, run_access_token } = await apiPost<AssistantSubmission>(
+    "/assistant/query", request, {
+      headers: conversation
+        ? { "X-Run-Access-Token": conversation.accessToken }
+        : undefined,
+      signal,
+      timeoutMs: 10_000,
+    },
   );
 
-  for (let attempt = 0; attempt < 10; attempt += 1) {
+  // The assistant worker may spend up to 30 seconds on one model/tool attempt.
+  // Keep polling long enough for a real LLM response instead of failing after 10 seconds.
+  for (let attempt = 0; attempt < 60; attempt += 1) {
     await waitForNextPoll(signal);
     const run = await apiGet<AssistantRun>(`/assistant/runs/${encodeURIComponent(run_id)}`, {
       headers: { "X-Run-Access-Token": run_access_token },
@@ -73,6 +90,7 @@ export async function askAssistant(
         route: run.route_request_id && run.route_access_token
           ? { id: run.route_request_id, token: run.route_access_token }
           : undefined,
+        conversation: { id: conversation_id, accessToken: run_access_token },
       };
     }
   }
