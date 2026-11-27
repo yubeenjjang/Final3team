@@ -8,7 +8,6 @@ import {
   Bot,
   CalendarDays,
   CloudSun,
-  HelpCircle,
   MapPin,
   MessageCircleHeart,
   Route,
@@ -110,13 +109,6 @@ export function AssistantHub() {
             <BrandLogo className="h-9 w-auto md:h-10" priority />
           </Link>
         </div>
-        <button
-          type="button"
-          aria-label="AI 챗봇 도움말"
-          className="grid h-9 w-9 place-items-center rounded-full bg-ink text-surface"
-        >
-          <HelpCircle size={20} aria-hidden="true" />
-        </button>
       </header>
 
       <main className="flex-1 px-5 pb-28 pt-7 md:px-10 md:pt-10">
