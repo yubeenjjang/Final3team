@@ -20,7 +20,7 @@ from api.schemas.festival_info import (
 )
 from api.services.festival_lookup import find_festival
 from api.services.seoul_areas import SeoulArea, area_geometry, classify_areas, load_catalog, nearby_areas
-from api.services.seoul_crowd_mapping import approved_area_codes
+from api.services.seoul_crowd_mapping import approved_area_codes, needs_human_review
 
 _CACHE_SECONDS = 60
 _STALE_AFTER = timedelta(minutes=45)
@@ -83,6 +83,10 @@ class SeoulCrowdService:
                 response.unsupported_reason = "no_nearby_areas"
                 response.notices.append("축제에서 1km 이내에 승인된 주변 지역 혼잡 구역이 없어요.")
                 return response
+        elif needs_human_review(festival):
+            response.unsupported_reason = "no_approved_mapping"
+            response.notices.append("여러 장소에서 열리거나 장소 확인이 필요한 축제라 확인 후 주변 지역 혼잡을 연결할 예정이에요.")
+            return response
         else:
             classification = classify_areas(lat, lng, catalog.areas)
             if classification.auto_areas:

@@ -289,6 +289,36 @@ def test_P1_three_tier_classification_on_official_catalog(monkeypatch) -> None:
     assert {area.area_code for area in lantern_res.nearby_areas} == {"POI009", "POI130", "POI003"}
 
 
+def test_P1_human_review_mapping_blocks_auto_approval(monkeypatch) -> None:
+    """여러 장소·경로 축제나 사람이 승인 취소한 축제는 구역 안에 있어도 자동 승인하지 않는다."""
+    mapping_path = Path(__file__).resolve().parents[2] / "api" / "data" / "seoul_crowd_mapping.json"
+    monkeypatch.setattr(seoul_crowd_mapping, "_MAPPING_PATH", mapping_path)
+    seoul_crowd_mapping._load_mappings.cache_clear()
+    official_catalog = load_catalog()
+    monkeypatch.setattr(seoul_crowd, "load_catalog", lambda: official_catalog)
+    saved = json.loads(mapping_path.read_text(encoding="utf-8"))
+    location_fields = {"festival_id", "region_code", "lat", "lng", "venue_name", "address"}
+
+    route_entry = next(
+        entry for entry in saved["festivals"]
+        if "multiple_sites_or_route" in entry["reasons"] and not any(a["approved"] for a in entry["candidates"])
+    )
+    cancelled_entry = next(
+        entry for entry in saved["festivals"]
+        if any(a.get("approved_at") and not a["approved"] for a in entry["candidates"])
+    )
+    for entry in (route_entry, cancelled_entry):
+        festival = festivals[_FESTIVAL].model_copy(update={key: entry[key] for key in location_fields})
+        monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=festival))
+        service = _service(_unexpected)
+        res = asyncio.run(service.get_crowd(festival.festival_id))
+        assert res.status == "unsupported" and res.unsupported_reason == "no_approved_mapping", entry["name"]
+        assert not service._quota._path.exists()
+
+    # 같은 좌표라도 매핑 파일에 없는 새 축제는 기존 자동 분류를 따른다(사람 결정은 그 축제에만 적용)
+    seoul_crowd_mapping._load_mappings.cache_clear()
+
+
 def test_P1_string_approval_does_not_enable_real_lookup() -> None:
     path = seoul_crowd_mapping._MAPPING_PATH
     body = path.read_text(encoding="utf-8").replace('"approved": true', '"approved": "true"')

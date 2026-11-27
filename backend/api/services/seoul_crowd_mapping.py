@@ -15,6 +15,7 @@ MAX_COORDINATE_DRIFT_M = 100.0
 class _AreaMapping(BaseModel):
     area_code: str
     approved: StrictBool = False
+    approved_at: str | None = None
 
 
 class _FestivalMapping(BaseModel):
@@ -24,6 +25,8 @@ class _FestivalMapping(BaseModel):
     lng: FiniteFloat | None
     venue_name: str | None
     address: str | None
+    decision: str | None = None
+    reasons: list[str] = []
     candidates: list[_AreaMapping]
 
 
@@ -50,6 +53,24 @@ def _same_location(entry: _FestivalMapping, festival: FestivalDetail) -> bool:
     if not (isfinite(festival.lat) and isfinite(festival.lng)):
         return False
     return point_distance_m(entry.lat, entry.lng, festival.lat, festival.lng) <= MAX_COORDINATE_DRIFT_M
+
+
+# 사람이 직접 봐야 하는 매핑 사유: 점 하나로 자동 판정하면 틀릴 수 있다.
+HUMAN_REVIEW_REASONS = frozenset({"multiple_sites_or_route", "venue_to_confirm", "missing_venue_name"})
+
+
+def needs_human_review(festival: FestivalDetail) -> bool:
+    """자동 승인하면 안 되는 축제인지 판단한다.
+
+    - 여러 장소·긴 경로이거나 장소 확인이 필요한 축제(점 하나로 구역을 고를 수 없음)
+    - 사람이 승인했다가 취소한 후보가 있는 축제(사람 결정이 자동 판정보다 우선)
+    """
+    entry = _load_mappings().get(festival.festival_id)
+    if entry is None or not _same_location(entry, festival):
+        return False
+    if HUMAN_REVIEW_REASONS.intersection(entry.reasons):
+        return True
+    return any(area.approved_at and not area.approved for area in entry.candidates)
 
 
 def approved_area_codes(festival: FestivalDetail) -> set[str]:
