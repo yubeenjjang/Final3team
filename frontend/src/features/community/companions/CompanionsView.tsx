@@ -703,6 +703,9 @@ export function CompanionsView({
               <ul className="space-y-2.5">
                 {myPosts.map((post) => {
                   const statusMeta = POST_STATUS_META[post.status];
+                  const postFestival = festivals.find(
+                    (festival) => festival.festival_id === post.festival_id,
+                  );
                   return (
                     <li
                       key={post.post_id}
@@ -718,7 +721,16 @@ export function CompanionsView({
                           {post.approved_count} / {post.capacity}명
                         </span>
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm font-bold text-ink">
+                      <Link
+                        href={`/festivals/${encodeURIComponent(post.festival_id)}`}
+                        className="mt-2 inline-flex max-w-full items-center gap-1.5 text-sm font-extrabold text-brand hover:underline"
+                      >
+                        <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">
+                          {postFestival?.name ?? "선택한 축제"}
+                        </span>
+                      </Link>
+                      <p className="mt-1.5 line-clamp-2 text-sm font-bold text-ink">
                         {post.memo || "내용 없음"}
                       </p>
                       <div className="mt-2 flex items-center justify-between text-xs text-muted">

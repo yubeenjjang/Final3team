@@ -123,6 +123,34 @@ describe("Companions screens", () => {
     expect(getDefaultCompanionMeetAt(sampleFestival, now)).toBe("2026-12-05T18:00");
   });
 
+  it("shows the festival name on my companion post", async () => {
+    setAuthSession({
+      accessToken: "token-owner",
+      refreshToken: "token-r",
+      user: { userId: "usr_owner", displayName: "축제러버" },
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/festivals")) {
+        return Response.json({ items: [sampleFestival], total: 1, page: 1, page_size: 100 });
+      }
+      if (url.pathname.endsWith("/me/companion-activity")) {
+        return Response.json({ items: [{ ...samplePost, festival_id: sampleFestival.festival_id }] });
+      }
+      return Response.json({ items: [] });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CompanionsView initialTab="mine" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /서울 불꽃 축제/ })).toHaveAttribute(
+        "href",
+        "/festivals/fst_000001",
+      );
+    });
+  });
+
   it("renders companion posts, empty state, and error state", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
