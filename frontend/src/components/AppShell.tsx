@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BottomNav } from "./BottomNav";
 import { Header } from "./Header";
 import { MockBadge } from "./MockBadge";
+import { AssistantLauncher } from "./AssistantLauncher";
 
 export interface AppShellProps {
   children: ReactNode;
@@ -16,7 +17,8 @@ export function AppShell({ children }: AppShellProps) {
     pathname.startsWith("/auth/") ||
     pathname === "/onboarding" ||
     pathname.startsWith("/onboarding/") ||
-    pathname === "/recommendations";
+    pathname === "/recommendations" ||
+    pathname === "/assistant";
 
   return (
     <div
@@ -27,6 +29,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="app-shell-frame relative mx-auto flex min-h-dvh flex-col overflow-x-clip bg-surface">
         {immersive ? null : <Header />}
         <main className={immersive ? "min-w-0 flex-1" : "app-main flex-1"}>{children}</main>
+        <AssistantLauncher />
         <MockBadge />
         {immersive ? null : <BottomNav />}
       </div>

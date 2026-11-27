@@ -39,6 +39,7 @@ describe("F3 AppShell & F5 MockBadge", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("F3 renders 5 bottom tabs and applies light theme across routes", () => {
@@ -113,6 +114,38 @@ describe("F3 AppShell & F5 MockBadge", () => {
     const accountLink = screen.getByRole("link", { name: /마이페이지/ });
     expect(accountLink.textContent).toBe(initial);
     expect(accountLink).toHaveAttribute("href", "/me");
+  });
+
+  it("shows the total unread message count on the header chat icon", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          items: [
+            { room_id: "room-1", unread_count: 7, my_status: "joined" },
+            { room_id: "room-2", unread_count: 5, my_status: "joined" },
+            { room_id: "room-3", unread_count: 9, my_status: "invited" },
+          ],
+        }),
+      ),
+    );
+    setAuthSession({
+      accessToken: "token-a",
+      refreshToken: "token-r",
+      user: { userId: "usr_1", displayName: "테스터" },
+    });
+
+    render(
+      <AppShell>
+        <div>본문</div>
+      </AppShell>,
+    );
+
+    expect(
+      await screen.findByRole("link", {
+        name: "채팅, 안 읽은 메시지 12개",
+      }),
+    ).toHaveTextContent("12");
   });
 
   it("F5 displays mock badge once mock response is observed", () => {

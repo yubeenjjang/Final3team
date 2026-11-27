@@ -115,6 +115,17 @@ select {
   box-shadow: var(--shadow-nav);
 }
 
+.assistant-launcher {
+  right: calc(var(--space-4) + var(--safe-area-right));
+  bottom: calc(var(--app-bottom-nav-height) + var(--safe-area-bottom) + var(--space-4));
+}
+
+@layer components {
+  .assistant-action-link {
+    @apply flex min-h-16 flex-col items-center justify-center gap-1 rounded-card border border-line-light bg-surface text-xs font-bold text-ink shadow-sm transition-colors hover:border-brand/40 hover:text-brand;
+  }
+}
+
 @media (max-width: 390px) {
   .app-shell-frame {
     box-shadow: none;
@@ -135,6 +146,11 @@ select {
 
   .app-main {
     padding-bottom: var(--space-8);
+  }
+
+  .assistant-launcher {
+    right: max(24px, calc((100vw - var(--app-desktop-width)) / 2 + 24px));
+    bottom: 28px;
   }
 
 }
