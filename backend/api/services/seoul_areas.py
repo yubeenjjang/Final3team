@@ -11,6 +11,7 @@ Polygon = list[Ring]
 
 _RADIUS_M = 1000
 _DISTANCE_TOLERANCE_M = 1e-6
+BOUNDARY_REVIEW_DISTANCE_M = 25.0
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,12 @@ class SeoulArea:
     name: str
     polygons: list[Polygon]
     centroid: Point | None = None
+
+
+@dataclass(frozen=True)
+class AreaClassification:
+    auto_areas: tuple[SeoulArea, ...]
+    near_boundary: bool
 
 
 @dataclass(frozen=True)
@@ -90,16 +97,28 @@ def load_catalog() -> SeoulAreaCatalog:
     return SeoulAreaCatalog(areas, data["metadata"]["source"]["url"])
 
 
-def nearby_areas(
-    lat: float, lng: float, areas: tuple[SeoulArea, ...]
-) -> list[tuple[SeoulArea, float]]:
-    # 축제 좌표의 WGS84 국소 접평면에서 위도·경도 차이를 미터로 바꾼다.
+def _lat_lng_scales(lat: float) -> tuple[float, float]:
+    # 기준 위도의 WGS84 국소 접평면에서 위도·경도 1도 차이를 미터로 환산한다.
     latitude = radians(lat)
     eccentricity_sq = 0.00669437999014
     curvature = 1 - eccentricity_sq * sin(latitude) ** 2
     radius = 6378137 / sqrt(curvature)
     lat_scale = radians(radius * (1 - eccentricity_sq) / curvature)
     lng_scale = radians(radius * cos(latitude))
+    return lat_scale, lng_scale
+
+
+def point_distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    lat_scale, lng_scale = _lat_lng_scales((lat1 + lat2) / 2)
+    dx = (lng2 - lng1) * lng_scale
+    dy = (lat2 - lat1) * lat_scale
+    return sqrt(dx * dx + dy * dy)
+
+
+def nearby_areas(
+    lat: float, lng: float, areas: tuple[SeoulArea, ...]
+) -> list[tuple[SeoulArea, float]]:
+    lat_scale, lng_scale = _lat_lng_scales(lat)
 
     matches = []
     for area in areas:
@@ -113,6 +132,36 @@ def nearby_areas(
     # 거리가 같으면(좌표가 여러 구역 안에 있으면) 경계에서 더 깊이 들어간 구역을 먼저 둔다.
     ordered = sorted(matches, key=lambda match: (match[1], -match[2], match[0].code))[:3]
     return [(area, distance) for area, distance, _ in ordered]
+
+
+def classify_areas(
+    lat: float,
+    lng: float,
+    areas: tuple[SeoulArea, ...],
+    *,
+    boundary_margin_m: float = BOUNDARY_REVIEW_DISTANCE_M,
+) -> AreaClassification:
+    """서울시 공식 구역 기준으로 좌표를 확실한 내부 / 경계 근처 / 범위 밖으로 분류한다."""
+    lat_scale, lng_scale = _lat_lng_scales(lat)
+    strict_inside: list[tuple[SeoulArea, float]] = []
+    near_boundary = False
+
+    for area in areas:
+        if not area.polygons:
+            continue
+        measured = [_polygon_distance(polygon, lat, lng, lat_scale, lng_scale) for polygon in area.polygons]
+        distance = min(d for d, _ in measured)
+        depth = max(d_in for _, d_in in measured)
+        if distance == 0.0 and depth > boundary_margin_m + _DISTANCE_TOLERANCE_M:
+            strict_inside.append((area, depth))
+        elif distance <= boundary_margin_m + _DISTANCE_TOLERANCE_M:
+            near_boundary = True
+
+    ordered = sorted(strict_inside, key=lambda item: (-item[1], item[0].code))[:3]
+    return AreaClassification(
+        auto_areas=tuple(area for area, _ in ordered),
+        near_boundary=near_boundary and not ordered,
+    )
 
 
 def _polygon_distance(

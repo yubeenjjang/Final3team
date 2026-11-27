@@ -178,8 +178,7 @@ def test_P2_replacement_values_are_neither_returned_nor_cached(monkeypatch) -> N
     ("changes", "reason"), [
         ({"region_code": "BUSAN"}, "outside_seoul"),
         ({"lat": None}, "missing_coordinates"),
-        ({"lat": 37.7, "lng": 127.1}, "no_approved_mapping"),
-        ({"address": "다른 장소"}, "no_approved_mapping"),
+        ({"lat": 37.7, "lng": 127.1}, "no_nearby_areas"),
     ],
 )
 def test_P1_unsupported_without_provider_call(monkeypatch, changes, reason) -> None:
@@ -201,22 +200,93 @@ def test_P1_approved_area_outside_radius_keeps_reason(monkeypatch) -> None:
     assert not service._quota._path.exists()
 
 
-def test_P1_saved_candidate_cannot_call_without_approval(monkeypatch) -> None:
+def test_P1_manual_mapping_survives_resync_text_and_small_coord_drift(monkeypatch) -> None:
+    # DB 재수집으로 주소·장소명이 바뀌거나 좌표가 100m 이내(~40m)로 움직여도 기존 승인 매핑 유지
+    base = festivals[_FESTIVAL]
+    resynced = base.model_copy(update={
+        "address": "서울특별시 중구 태평로1가 1 (재수집 표기 변경)",
+        "venue_name": "광화문 일대 (재수집)",
+        "lat": base.lat + 0.00035,  # 약 39m
+    })
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=resynced))
+    response = asyncio.run(_service(_observed).get_crowd(_FESTIVAL))
+    assert response.status == "ok"
+    assert [area.area_code for area in response.nearby_areas] == ["POI009"]
+
+    # 좌표가 100m보다 크게(약 200m) 이동하면 기존 수동 승인 매핑 무효화 + 관측 범위 밖
+    relocated = base.model_copy(update={"lat": base.lat + 0.002})
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=relocated))
+    far_response = asyncio.run(_service(_unexpected).get_crowd(_FESTIVAL))
+    assert far_response.status == "unsupported"
+    assert far_response.unsupported_reason == "no_nearby_areas"
+
+
+def test_P1_three_tier_classification_on_official_catalog(monkeypatch) -> None:
     mapping_path = Path(__file__).resolve().parents[2] / "api" / "data" / "seoul_crowd_mapping.json"
     monkeypatch.setattr(seoul_crowd_mapping, "_MAPPING_PATH", mapping_path)
+    seoul_crowd_mapping._load_mappings.cache_clear()
+    official_catalog = load_catalog()
+    monkeypatch.setattr(seoul_crowd, "load_catalog", lambda: official_catalog)
     saved = json.loads(mapping_path.read_text(encoding="utf-8"))
-    candidate = next(
+    location_fields = {"festival_id", "region_code", "lat", "lng", "venue_name", "address"}
+
+    # 1) 경계 근처(내부 <=25m 또는 외부 <=25m) 미승인 축제 -> 검토 대상(no_approved_mapping), 공급원·할당량 미사용
+    near_in_entry = next(
+        entry for entry in saved["festivals"]
+        if entry["decision"] == "review_required" and entry["reasons"] == ["near_boundary"]
+    )
+    near_out_entry = next(
+        entry for entry in saved["festivals"]
+        if entry["decision"] == "unsupported"
+        and entry.get("nearest_excluded_area")
+        and entry["nearest_excluded_area"]["boundary_distance_m"] <= 25
+    )
+    for entry in (near_in_entry, near_out_entry):
+        festival = festivals[_FESTIVAL].model_copy(update={key: entry[key] for key in location_fields})
+        monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=festival))
+        service = _service(_unexpected)
+        res = asyncio.run(service.get_crowd(festival.festival_id))
+        assert res.status == "unsupported" and res.unsupported_reason == "no_approved_mapping"
+        assert not service._quota._path.exists()
+
+    # 2) 관측 범위 밖(외부 >25m) 서울 축제 -> 관측 범위 밖(no_nearby_areas), 공급원·할당량 미사용
+    outside_entry = next(
+        entry for entry in saved["festivals"]
+        if entry["decision"] == "unsupported"
+        and entry.get("nearest_excluded_area")
+        and entry["nearest_excluded_area"]["boundary_distance_m"] > 25
+    )
+    outside_festival = festivals[_FESTIVAL].model_copy(update={key: outside_entry[key] for key in location_fields})
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=outside_festival))
+    out_service = _service(_unexpected)
+    out_res = asyncio.run(out_service.get_crowd(outside_festival.festival_id))
+    assert out_res.status == "unsupported" and out_res.unsupported_reason == "no_nearby_areas"
+    assert not out_service._quota._path.exists()
+
+    # 3) 관측 구역 안에 확실히 포함(>25m)된 미승인/신규 축제 -> 자동 승인 후 실제 혼잡도 반환
+    interior_entry = next(
         entry for entry in saved["festivals"]
         if entry["decision"] == "candidate" and not any(area["approved"] for area in entry["candidates"])
     )
-    location_fields = {"festival_id", "region_code", "lat", "lng", "venue_name", "address"}
-    festival = festivals[_FESTIVAL].model_copy(update={key: candidate[key] for key in location_fields})
-    assert festival.festival_id in seoul_crowd_mapping._load_mappings()
-    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=festival))
-    service = _service(_unexpected)
-    response = asyncio.run(service.get_crowd(festival.festival_id))
-    assert response.status == "unsupported" and response.unsupported_reason == "no_approved_mapping"
-    assert not service._quota._path.exists()
+    interior_festival = festivals[_FESTIVAL].model_copy(
+        update={key: interior_entry[key] for key in location_fields} | {"festival_id": "fst_new_seoul_01"}
+    )
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=interior_festival))
+    auto_response = asyncio.run(_service(_observed).get_crowd(interior_festival.festival_id))
+    assert auto_response.status == "ok"
+    assert auto_response.areas[0].area_code == interior_entry["candidates"][0]["area_code"]
+    assert auto_response.areas[0].relation_type == "contains"
+
+    # 4) 수동 승인 축제(서울빛초롱축제)는 재수집으로 주소·장소명이 바뀌어도 경계 근처 승인 구역(POI003)까지 유지
+    lantern_entry = next(entry for entry in saved["festivals"] if entry["name"] == "서울빛초롱축제")
+    lantern_resynced = festivals[_FESTIVAL].model_copy(
+        update={key: lantern_entry[key] for key in location_fields}
+        | {"address": "서울 중구 태평로1가 1", "venue_name": "청계천 일대"}
+    )
+    monkeypatch.setattr(seoul_crowd, "find_festival", AsyncMock(return_value=lantern_resynced))
+    lantern_res = asyncio.run(_service(_observed).get_crowd(lantern_resynced.festival_id))
+    assert lantern_res.status == "ok"
+    assert {area.area_code for area in lantern_res.nearby_areas} == {"POI009", "POI130", "POI003"}
 
 
 def test_P1_string_approval_does_not_enable_real_lookup() -> None:
