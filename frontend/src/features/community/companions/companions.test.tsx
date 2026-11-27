@@ -339,6 +339,10 @@ describe("Companions screens", () => {
     await waitFor(() => {
       expect(screen.getByText("승인된 참여자만 만남 장소를 볼 수 있어요.")).toBeInTheDocument();
     });
+    expect(screen.getByRole("link", { name: "동행 상세" })).toHaveAttribute(
+      "href",
+      "/companions?tab=mine",
+    );
     expect(screen.getByRole("link", { name: "동행 리스트 가기" })).toHaveAttribute(
       "href",
       "/companions",

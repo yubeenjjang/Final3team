@@ -450,7 +450,7 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
     <div className="space-y-5 px-4 py-4">
       <div className="flex items-center">
         <Link
-          href="/companions"
+          href="/companions?tab=mine"
           className="inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-brand"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
