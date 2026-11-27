@@ -62,7 +62,11 @@ def test_db_companions_rls_and_competing_approvals(client, companion_sample):
     detail = f"{POSTS}/{result['post_id']}"
     applications = detail + "/applications"
     place = detail + "/meeting-place"
-    assert client.get(detail).json()["my_application_status"] is None
+    public_detail = client.get(detail).json()
+    assert public_detail["my_application_status"] is None
+    assert public_detail["room_id"] is None
+    assert client.get(detail, headers=owner).json()["room_id"] == result["room_id"]
+    assert client.get(detail, headers=first).json()["room_id"] is None
     assert client.put(place, headers=owner, json={"name": "정문", "lat": 37.5, "lng": 127}).status_code == 200
 
     requested = []
@@ -145,8 +149,14 @@ def test_db_companions_rls_and_competing_approvals(client, companion_sample):
     assert client.get(place, headers=first).json()["lat"] == 37.5
     assert_error(client.post(f"{APPLICATIONS}/{first_app}/cancel", headers=first), 409, "APPLICATION_NOT_PENDING")
     assert client.get(detail).json()["approved_count"] == 1
-    assert client.get(detail, headers=second).json()["my_application_status"] == "pending"
+    first_detail = client.get(detail, headers=first).json()
+    assert first_detail["my_application_status"] == "approved"
+    assert first_detail["room_id"] == result["room_id"]
+    second_detail = client.get(detail, headers=second).json()
+    assert second_detail["my_application_status"] == "pending"
+    assert second_detail["room_id"] is None
     assert client.post(detail + "/end", headers=owner).json()["status"] == "ended"
+    assert client.get(detail, headers=first).json()["room_id"] == result["room_id"]
     assert client.get(place, headers=first).json()["name"] == "정문"
 
     with engine.begin() as db:
