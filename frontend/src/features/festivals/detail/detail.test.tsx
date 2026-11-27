@@ -189,6 +189,9 @@ describe("F7 festival detail", () => {
     );
 
     // 주변 정보는 지도 탭으로 이동하지 않고 상세페이지 안에서 목록·상세를 연다 (A08)
+    expect(
+      screen.getByRole("link", { name: "지도 탭으로 이동해서 자세히 보기" }),
+    ).toHaveAttribute("href", "/map?festival=fst_000001");
     const foodButton = screen.getByRole("button", { name: "주변 맛집 정보 보기" });
     expect(foodButton).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(foodButton);

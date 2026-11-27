@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowRight,
   Bus,
   CalendarDays,
   Compass,
@@ -558,9 +559,13 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
                   )}
                 </div>
               ) : (
-                <p className="rounded-card border border-dashed border-line-light bg-surface-soft/35 px-3 py-3 text-center text-xs font-semibold text-muted">
-                  위 버튼을 누르면 주변 시설을 이 지도에서 바로 확인할 수 있어요.
-                </p>
+                <Link
+                  href={`/map?festival=${encodeURIComponent(festival.festival_id)}`}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-card border border-brand/30 bg-surface-soft/35 px-4 py-3 text-center text-xs font-extrabold text-brand transition-colors hover:border-brand hover:bg-brand/10"
+                >
+                  <span>지도 탭으로 이동해서 자세히 보기</span>
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
               )}
             </div>
           </div>
