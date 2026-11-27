@@ -1,6 +1,13 @@
 import pytest
 
-from api.services.seoul_areas import SeoulArea, area_geometry, load_catalog, nearby_areas
+from api.services.seoul_areas import (
+    SeoulArea,
+    area_geometry,
+    classify_areas,
+    load_catalog,
+    nearby_areas,
+    point_distance_m,
+)
 
 
 def _box(code: str, south: float, north: float) -> SeoulArea:
@@ -91,3 +98,35 @@ def test_P1_catalog_geometry_and_missing_cases() -> None:
     # 카탈로그에 없거나 도형이 없으면 (None, None)
     assert area_geometry(None) == (None, None)
     assert area_geometry(SeoulArea("EMPTY", "빈구역", [], centroid=(37.5, 127.0))) == (None, None)
+
+
+def test_P1_point_distance_and_classify_areas() -> None:
+    # 적도에서 위도 1도 ≈ 110,574m
+    deg_25m = 25.0 / 110574.275821595
+    assert point_distance_m(0.0, 0.0, deg_25m, 0.0) == pytest.approx(25.0, abs=0.1)
+
+    deep = _box("A_deep", -0.005, 0.005)
+    mid = _box("B_mid", -0.002, 0.002)
+    shallow = _box("C_shallow", -0.0001, 0.0001)  # 깊이 ≈ 11m <= 25m
+    near_outside = _box("D_near_out", deg_25m * 0.5, 0.002)  # 바깥 ≈ 12.5m <= 25m
+    far_outside = _box("E_far_out", deg_25m * 4.0, 0.005)  # 바깥 ≈ 100m > 25m
+
+    # 확실한 내부(>25m) 구역이 있으면 깊이순 최대 3곳 자동 승인, 경계 근처(<=25m)는 제외
+    res_auto = classify_areas(0.0, 0.0, (shallow, mid, deep, near_outside, far_outside))
+    assert [a.code for a in res_auto.auto_areas] == ["A_deep", "B_mid"]
+    assert res_auto.near_boundary is False
+
+    # 내부이지만 경계 25m 이내만 있으면 검토 대상
+    res_near_in = classify_areas(0.0, 0.0, (shallow, far_outside))
+    assert res_near_in.auto_areas == ()
+    assert res_near_in.near_boundary is True
+
+    # 외부이지만 경계 25m 이내이면 검토 대상
+    res_near_out = classify_areas(0.0, 0.0, (near_outside, far_outside))
+    assert res_near_out.auto_areas == ()
+    assert res_near_out.near_boundary is True
+
+    # 모든 구역 바깥 25m 초과면 관측 범위 밖
+    res_outside = classify_areas(0.0, 0.0, (far_outside,))
+    assert res_outside.auto_areas == ()
+    assert res_outside.near_boundary is False
