@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -173,6 +174,21 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const stopReconnectRef = useRef(false);
+  const messageViewportRef = useRef<HTMLDivElement | null>(null);
+  const scrollToLatestRef = useRef(true);
+
+  const isNearLatestMessage = useCallback(() => {
+    const viewport = messageViewportRef.current;
+    if (!viewport) return true;
+    return viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 120;
+  }, []);
+
+  useLayoutEffect(() => {
+    const viewport = messageViewportRef.current;
+    if (!viewport || !scrollToLatestRef.current) return;
+    viewport.scrollTop = viewport.scrollHeight;
+    scrollToLatestRef.current = false;
+  }, [messages]);
 
   useEffect(() => {
     if (me?.userId && me.displayName) {
@@ -214,6 +230,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
         );
         if (controller.signal.aborted) return;
         const merged = mergeMessages([], historyRes.items, senderNamesRef.current);
+        scrollToLatestRef.current = true;
         setMessages(merged);
         setHasMore(historyRes.has_more);
         const latestSeq = merged[merged.length - 1]?.seq ?? 0;
@@ -259,6 +276,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
         limit: 100,
       });
       if (!mountedRef.current || res.items.length === 0) return;
+      const shouldFollowLatest = isNearLatestMessage();
       setMessages((prev) => {
         const merged = mergeMessages(prev, res.items, senderNamesRef.current);
         const maxSeq = merged[merged.length - 1]?.seq ?? lastSeqRef.current;
@@ -268,10 +286,31 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
         }
         return merged;
       });
+      scrollToLatestRef.current = shouldFollowLatest;
     } catch {
       // Best-effort catch-up alongside WS subscribe after_seq
     }
-  }, [roomId]);
+  }, [isNearLatestMessage, roomId]);
+
+  // WebSocket is the primary transport. This lightweight catch-up closes gaps
+  // when a proxy or a multi-worker server drops an individual wake-up event.
+  useEffect(() => {
+    if (loading || error || stopReconnectRef.current) return;
+
+    const catchUp = () => {
+      if (document.visibilityState === "visible") {
+        void syncMissedAfterSeq();
+      }
+    };
+    const timer = window.setInterval(catchUp, 2_000);
+    window.addEventListener("focus", catchUp);
+    document.addEventListener("visibilitychange", catchUp);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", catchUp);
+      document.removeEventListener("visibilitychange", catchUp);
+    };
+  }, [error, loading, syncMissedAfterSeq]);
 
   const resolveSenderNameFromHistory = useCallback(
     async (seq: number, senderId: string) => {
@@ -373,6 +412,8 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
               body: parsed.body,
               created_at: parsed.created_at ?? new Date().toISOString(),
             };
+            scrollToLatestRef.current =
+              isNearLatestMessage() || incoming.sender_id === me?.userId;
             setMessages((prev) =>
               mergeMessages(prev, [incoming], senderNamesRef.current),
             );
@@ -393,9 +434,10 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
 
           if (parsed.type === "ack") {
             setSending(false);
-            if (typeof parsed.seq === "number" && parsed.seq > lastSeqRef.current) {
-              lastSeqRef.current = parsed.seq;
-            }
+            // An ack confirms persistence but does not contain the message body.
+            // Do not advance the cursor before the message itself is fetched.
+            scrollToLatestRef.current = true;
+            void syncMissedAfterSeq();
             return;
           }
 
@@ -467,7 +509,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
         wsRef.current = null;
       }
     };
-  }, [loading, error, roomId, room, syncMissedAfterSeq, resolveSenderNameFromHistory]);
+  }, [loading, error, roomId, room, me?.userId, isNearLatestMessage, syncMissedAfterSeq, resolveSenderNameFromHistory]);
 
   async function handleLoadOlder() {
     if (loadingMore || !hasMore || messages.length === 0) return;
@@ -759,8 +801,9 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
 
       {/* 메시지 영역 */}
       <div
+        ref={messageViewportRef}
         data-testid="chat-message-viewport"
-        className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain py-3 pr-1"
+        className="min-h-0 flex-1 scroll-pb-4 space-y-2.5 overflow-y-auto overscroll-contain pb-5 pt-3 pr-1"
       >
         {hasMore ? (
           <div className="text-center">

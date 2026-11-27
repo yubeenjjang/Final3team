@@ -199,6 +199,22 @@ describe("Chat screens", () => {
               {
                 message_id: 4,
                 seq: 4,
+                sender_id: "usr-1",
+                sender_display_name: "테스터",
+                msg_type: "text",
+                body: "반가워요",
+                created_at: "2026-11-24T12:02:00+09:00",
+              },
+            ],
+            has_more: false,
+          });
+        }
+        if (url.searchParams.get("after_seq") === "4") {
+          return Response.json({
+            items: [
+              {
+                message_id: 5,
+                seq: 5,
                 sender_id: "usr-2",
                 sender_display_name: "민수",
                 msg_type: "text",
@@ -244,6 +260,12 @@ describe("Chat screens", () => {
       "min-h-0",
       "overflow-y-auto",
     );
+    const viewport = screen.getByTestId("chat-message-viewport");
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 600 },
+    });
+    viewport.scrollTop = 400;
     expect(screen.getByLabelText("메시지 입력").closest("form")).not.toHaveClass(
       "sticky",
     );
@@ -284,6 +306,7 @@ describe("Chat screens", () => {
       });
     });
     expect(screen.getByText("실시간 도착!")).toBeInTheDocument();
+    expect(viewport.scrollTop).toBe(600);
 
     // Send a message
     fireEvent.change(screen.getByLabelText("메시지 입력"), { target: { value: "반가워요" } });
@@ -293,6 +316,17 @@ describe("Chat screens", () => {
       type: "send",
       room_id: "crm_ROOM0001",
       body: "반가워요",
+    });
+    act(() => {
+      firstSocket.emitMessage({
+        type: "ack",
+        client_message_id: sentPayload.client_message_id,
+        message_id: 4,
+        seq: 4,
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("반가워요")).toBeInTheDocument();
     });
 
     // Disconnect and verify reconnect + after_seq restoration
@@ -319,7 +353,7 @@ describe("Chat screens", () => {
     expect(JSON.parse(secondSocket.sent[0])).toEqual({
       type: "subscribe",
       room_id: "crm_ROOM0001",
-      after_seq: 3,
+      after_seq: 4,
     });
 
     await waitFor(() => {

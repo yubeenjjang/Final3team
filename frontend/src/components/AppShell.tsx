@@ -19,6 +19,7 @@ export function AppShell({ children }: AppShellProps) {
     pathname.startsWith("/onboarding/") ||
     pathname === "/recommendations" ||
     pathname === "/assistant";
+  const isChatRoom = /^\/chats\/[^/]+/.test(pathname);
 
   return (
     <div
@@ -29,7 +30,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="app-shell-frame relative mx-auto flex min-h-dvh flex-col overflow-x-clip bg-surface">
         {immersive ? null : <Header />}
         <main className={immersive ? "min-w-0 flex-1" : "app-main flex-1"}>{children}</main>
-        <AssistantLauncher />
+        {isChatRoom ? null : <AssistantLauncher />}
         <MockBadge />
         {immersive ? null : <BottomNav />}
       </div>
