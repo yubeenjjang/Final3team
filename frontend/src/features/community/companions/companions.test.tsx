@@ -122,8 +122,18 @@ describe("Companions screens", () => {
     fireEvent.change(within(writeDialog).getByLabelText("축제 검색"), {
       target: { value: "운정호수" },
     });
-    expect(within(writeDialog).getByRole("option", { name: /운정호수공원 불꽃축제/ })).toBeInTheDocument();
-    expect(within(writeDialog).queryByRole("option", { name: /서울 불꽃 축제/ })).toBeInTheDocument();
+    const searchResult = within(writeDialog).getByRole("option", {
+      name: /운정호수공원 불꽃축제/,
+    });
+    expect(searchResult).toBeInTheDocument();
+    expect(within(writeDialog).queryByRole("option", { name: /서울 불꽃 축제/ })).not.toBeInTheDocument();
+
+    fireEvent.click(searchResult);
+    expect(within(writeDialog).getByLabelText("축제 검색")).toHaveValue(
+      "운정호수공원 불꽃축제",
+    );
+    expect(within(writeDialog).queryByRole("listbox", { name: "축제 검색 결과" })).not.toBeInTheDocument();
+    expect(meetAtInput.value).not.toBe("");
   });
 
   it("sets tomorrow for an ongoing festival and its start date for an upcoming festival", () => {

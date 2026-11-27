@@ -441,11 +441,14 @@ export function CompanionsView({
           ),
       )
     : festivals;
-  const formFestivalOptions =
+  const isFormFestivalSelectionCurrent = Boolean(
     selectedFormFestival &&
-    !matchingFormFestivals.some((festival) => festival.festival_id === selectedFormFestival.festival_id)
-      ? [selectedFormFestival, ...matchingFormFestivals]
-      : matchingFormFestivals;
+      selectedFormFestival.name.toLocaleLowerCase("ko-KR") === normalizedFestivalSearch,
+  );
+  const visibleFormFestivalResults =
+    normalizedFestivalSearch && !isFormFestivalSelectionCurrent
+      ? matchingFormFestivals.slice(0, 8)
+      : [];
   const displayedPosts = posts
     .filter((post) => {
       if (regionFilter !== "ALL" && post.festival_region_code !== regionFilter) {
@@ -514,8 +517,11 @@ export function CompanionsView({
                 return;
               }
               const nextFestivalId = selectedFestivalId || festivals[0]?.festival_id || "";
+              const nextFestival = festivals.find(
+                (festival) => festival.festival_id === nextFestivalId,
+              );
               selectFormFestival(nextFestivalId);
-              setFestivalSearch("");
+              setFestivalSearch(nextFestival?.name ?? "");
               setFormError(null);
               setWriteOpen(true);
             }}
@@ -641,8 +647,12 @@ export function CompanionsView({
                 ) : null}
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap py-1">
-                <div role="group" aria-label="모집 상태" className="contents">
+              <div className="space-y-2 py-1 sm:flex sm:items-center sm:gap-1.5 sm:space-y-0">
+                <div
+                  role="group"
+                  aria-label="모집 상태"
+                  className="grid w-full grid-cols-5 gap-1 sm:flex sm:w-auto sm:items-center sm:gap-1.5"
+                >
                   {STATUS_TABS.map((item) => {
                     const active = statusFilter === item.value;
                     return (
@@ -653,8 +663,8 @@ export function CompanionsView({
                         onClick={() => setStatusFilter(item.value)}
                         className={
                           active
-                            ? "shrink-0 rounded-chip bg-brand px-3.5 py-1.5 text-xs font-bold text-surface"
-                            : "shrink-0 rounded-chip border border-line-light bg-surface px-3.5 py-1.5 text-xs font-semibold text-muted hover:text-ink"
+                            ? "min-w-0 rounded-chip bg-brand px-1.5 py-1.5 text-[11px] font-bold text-surface sm:shrink-0 sm:px-3.5 sm:text-xs"
+                            : "min-w-0 rounded-chip border border-line-light bg-surface px-1.5 py-1.5 text-[11px] font-semibold text-muted hover:text-ink sm:shrink-0 sm:px-3.5 sm:text-xs"
                         }
                       >
                         {item.label}
@@ -663,59 +673,61 @@ export function CompanionsView({
                   })}
                 </div>
                 <span
-                  className="mx-1 h-5 w-px shrink-0 bg-line-light"
+                  className="mx-1 hidden h-5 w-px shrink-0 bg-line-light sm:block"
                   aria-hidden="true"
                 />
-                <label className="sr-only" htmlFor="companion-region-filter">지역</label>
-                <select
-                  id="companion-region-filter"
-                  value={regionFilter}
-                  onChange={(event) => setRegionFilter(event.target.value as RegionFilter)}
-                  className="h-8 shrink-0 rounded-chip border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
-                >
-                  {REGION_OPTIONS.map((option) => (
-                    <option key={option.code} value={option.code}>
-                      {option.code === "ALL" ? "지역별" : getRegionLabel(option.code)}
-                    </option>
-                  ))}
-                </select>
-                <label className="sr-only" htmlFor="companion-period-filter">기간</label>
-                <select
-                  id="companion-period-filter"
-                  value={periodFilter}
-                  onChange={(event) => setPeriodFilter(event.target.value as PeriodFilter)}
-                  className="h-8 shrink-0 rounded-chip border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
-                >
-                  <option value="all">기간별</option>
-                  <option value="today">오늘</option>
-                  <option value="week">7일 이내</option>
-                  <option value="month">30일 이내</option>
-                </select>
-                <label className="sr-only" htmlFor="companion-condition-filter">모집 조건</label>
-                <select
-                  id="companion-condition-filter"
-                  value={conditionFilter}
-                  onChange={(event) => setConditionFilter(event.target.value as ConditionFilter)}
-                  className="h-8 shrink-0 rounded-chip border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
-                >
-                  <option value="all">조건별</option>
-                  <option value="age_any">연령 무관</option>
-                  <option value="gender_any">성별 무관</option>
-                  <option value="female">여성 선호</option>
-                  <option value="male">남성 선호</option>
-                </select>
-                <label className="sr-only" htmlFor="companion-sort-filter">정렬</label>
-                <select
-                  id="companion-sort-filter"
-                  value={sortFilter}
-                  onChange={(event) => setSortFilter(event.target.value as SortFilter)}
-                  className="h-8 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
-                >
-                  <option value="latest">최신순</option>
-                  <option value="meet_soon">만남 임박순</option>
-                  <option value="meet_late">만남 날짜순</option>
-                  <option value="vacancy">남은 자리순</option>
-                </select>
+                <div className="grid w-full grid-cols-4 gap-1 sm:flex sm:w-auto sm:items-center sm:gap-1.5">
+                  <label className="sr-only" htmlFor="companion-region-filter">지역</label>
+                  <select
+                    id="companion-region-filter"
+                    value={regionFilter}
+                    onChange={(event) => setRegionFilter(event.target.value as RegionFilter)}
+                    className="h-8 min-w-0 w-full rounded-chip border border-brand/20 bg-brand/5 px-1.5 text-[11px] font-semibold text-ink focus:border-brand focus:outline-none sm:w-auto sm:shrink-0 sm:px-3 sm:text-xs"
+                  >
+                    {REGION_OPTIONS.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.code === "ALL" ? "지역별" : getRegionLabel(option.code)}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="sr-only" htmlFor="companion-period-filter">기간</label>
+                  <select
+                    id="companion-period-filter"
+                    value={periodFilter}
+                    onChange={(event) => setPeriodFilter(event.target.value as PeriodFilter)}
+                    className="h-8 min-w-0 w-full rounded-chip border border-brand/20 bg-brand/5 px-1 text-[11px] font-semibold text-ink focus:border-brand focus:outline-none sm:w-auto sm:shrink-0 sm:px-3 sm:text-xs"
+                  >
+                    <option value="all">기간별</option>
+                    <option value="today">오늘</option>
+                    <option value="week">7일 이내</option>
+                    <option value="month">30일 이내</option>
+                  </select>
+                  <label className="sr-only" htmlFor="companion-condition-filter">모집 조건</label>
+                  <select
+                    id="companion-condition-filter"
+                    value={conditionFilter}
+                    onChange={(event) => setConditionFilter(event.target.value as ConditionFilter)}
+                    className="h-8 min-w-0 w-full rounded-chip border border-brand/20 bg-brand/5 px-1.5 text-[11px] font-semibold text-ink focus:border-brand focus:outline-none sm:w-auto sm:shrink-0 sm:px-3 sm:text-xs"
+                  >
+                    <option value="all">조건별</option>
+                    <option value="age_any">연령 무관</option>
+                    <option value="gender_any">성별 무관</option>
+                    <option value="female">여성 선호</option>
+                    <option value="male">남성 선호</option>
+                  </select>
+                  <label className="sr-only" htmlFor="companion-sort-filter">정렬</label>
+                  <select
+                    id="companion-sort-filter"
+                    value={sortFilter}
+                    onChange={(event) => setSortFilter(event.target.value as SortFilter)}
+                    className="h-8 min-w-0 w-full rounded-chip border border-brand/20 bg-brand/5 px-1 text-[11px] font-semibold text-ink focus:border-brand focus:outline-none sm:w-auto sm:shrink-0 sm:px-3 sm:text-xs"
+                  >
+                    <option value="latest">최신순</option>
+                    <option value="meet_soon">만남 임박순</option>
+                    <option value="meet_late">만남 날짜순</option>
+                    <option value="vacancy">남은 자리순</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -1064,7 +1076,7 @@ export function CompanionsView({
                 >
                   축제 검색
                 </label>
-                <div className="relative mb-2">
+                <div className="relative">
                   <Search
                     className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                     aria-hidden="true"
@@ -1073,36 +1085,72 @@ export function CompanionsView({
                     id="write-festival-search"
                     type="search"
                     value={festivalSearch}
-                    onChange={(event) => setFestivalSearch(event.target.value)}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="write-festival-results"
+                    aria-expanded={visibleFormFestivalResults.length > 0}
+                    aria-invalid={!formFestivalId && festivalSearch.length > 0}
+                    required
+                    onFocus={(event) => event.currentTarget.select()}
+                    onChange={(event) => {
+                      setFestivalSearch(event.target.value);
+                      setFormFestivalId("");
+                      setMeetAt("");
+                      setFormError(null);
+                    }}
                     placeholder="축제명·장소 검색"
                     className="h-11 w-full rounded-input border border-line-light bg-surface py-2 pl-10 pr-3.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none"
                   />
+                  {normalizedFestivalSearch && !isFormFestivalSelectionCurrent ? (
+                    <div
+                      id="write-festival-results"
+                      role="listbox"
+                      aria-label="축제 검색 결과"
+                      className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-56 overflow-y-auto rounded-card border border-line-light bg-surface py-1.5 shadow-lg"
+                    >
+                      {visibleFormFestivalResults.length > 0 ? (
+                        visibleFormFestivalResults.map((festival) => (
+                          <button
+                            key={festival.festival_id}
+                            type="button"
+                            role="option"
+                            aria-selected="false"
+                            onClick={() => {
+                              selectFormFestival(festival.festival_id);
+                              setFestivalSearch(festival.name);
+                              setFormError(null);
+                            }}
+                            className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-surface-muted focus:bg-surface-muted focus:outline-none"
+                          >
+                            <MapPin
+                              className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-extrabold text-ink">
+                                {festival.name}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs text-muted">
+                                {getRegionLabel(festival.region_code)}
+                                {festival.venue_name ? ` · ${festival.venue_name}` : " · 장소 미정"}
+                              </span>
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3.5 py-4 text-center text-xs text-muted">
+                          검색 결과가 없어요.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
-                <label
-                  htmlFor="write-festival"
-                  className="mb-1 block text-xs font-bold text-ink"
-                >
-                  축제
-                </label>
-                <select
-                  id="write-festival"
-                  required
-                  value={formFestivalId}
-                  onChange={(e) => {
-                    selectFormFestival(e.target.value);
-                    setFestivalSearch("");
-                  }}
-                  className="h-11 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm text-ink focus:border-brand focus:outline-none"
-                >
-                  {formFestivalOptions.map((f) => (
-                    <option key={f.festival_id} value={f.festival_id}>
-                      {f.name}{f.venue_name ? ` · ${f.venue_name}` : ""}
-                    </option>
-                  ))}
-                </select>
-                {normalizedFestivalSearch && matchingFormFestivals.length === 0 ? (
-                  <p className="mt-1.5 text-xs text-muted">
-                    검색 결과가 없어요. 현재 선택한 축제는 유지됩니다.
+                {selectedFormFestival && isFormFestivalSelectionCurrent ? (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-muted">
+                    <MapPin className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+                    <span className="truncate">
+                      선택됨 · {selectedFormFestival.venue_name || "장소 정보 없음"}
+                    </span>
                   </p>
                 ) : null}
               </div>
