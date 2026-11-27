@@ -61,10 +61,12 @@ export function getDefaultCompanionMeetAt(
 ) {
   const today = getKstDateString(now);
   const tomorrow = getKstDateString(now, 1);
-  let meetingDate = festival.event_status === "ongoing" ? tomorrow : festival.start_date;
+  const startDate = festival.start_date ?? tomorrow;
+  const endDate = festival.end_date ?? startDate;
+  let meetingDate = festival.event_status === "ongoing" ? tomorrow : startDate;
 
   // 축제가 오늘 끝나는 경우처럼 내일이 기간 밖이면 종료일 안으로 맞춘다.
-  if (meetingDate > festival.end_date) meetingDate = festival.end_date;
+  if (meetingDate > endDate) meetingDate = endDate;
   if (meetingDate < today) meetingDate = today;
 
   return `${meetingDate}T${DEFAULT_MEETING_TIME}`;
@@ -91,6 +93,7 @@ export function CompanionsView({
   const [festivalsLoading, setFestivalsLoading] = useState(true);
   const [festivalsError, setFestivalsError] = useState<string | null>(null);
   const [selectedFestivalId, setSelectedFestivalId] = useState(initialFestivalId ?? "");
+  const [browseFestivalSearch, setBrowseFestivalSearch] = useState("");
 
   const [statusFilter, setStatusFilter] = useState<PostStatus>("open");
   const [posts, setPosts] = useState<CompanionPostItem[]>([]);
@@ -167,14 +170,6 @@ export function CompanionsView({
   }, [festivalsTick]);
 
   useEffect(() => {
-    if (!writeOpen) return;
-    const festival = festivals.find((item) => item.festival_id === formFestivalId);
-    if (festival) {
-      setMeetAt(getDefaultCompanionMeetAt(festival));
-    }
-  }, [festivals, formFestivalId, writeOpen]);
-
-  useEffect(() => {
     if (tab !== "browse" || !selectedFestivalId) {
       return;
     }
@@ -248,6 +243,12 @@ export function CompanionsView({
     return () => controller.abort();
   }, [tab, signedIn, mineSubTab, mineTick]);
 
+  function selectFormFestival(festivalId: string) {
+    setFormFestivalId(festivalId);
+    const festival = festivals.find((item) => item.festival_id === festivalId);
+    setMeetAt(festival ? getDefaultCompanionMeetAt(festival) : "");
+  }
+
   async function handleCreatePost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
@@ -306,6 +307,25 @@ export function CompanionsView({
   }
 
   const selectedFestival = festivals.find((f) => f.festival_id === selectedFestivalId);
+  const normalizedBrowseFestivalSearch = browseFestivalSearch
+    .trim()
+    .toLocaleLowerCase("ko-KR");
+  const matchingBrowseFestivals = normalizedBrowseFestivalSearch
+    ? festivals.filter((festival) =>
+        [festival.name, festival.venue_name]
+          .filter(Boolean)
+          .some((value) =>
+            value!.toLocaleLowerCase("ko-KR").includes(normalizedBrowseFestivalSearch),
+          ),
+      )
+    : festivals;
+  const browseFestivalOptions =
+    selectedFestival &&
+    !matchingBrowseFestivals.some(
+      (festival) => festival.festival_id === selectedFestival.festival_id,
+    )
+      ? [selectedFestival, ...matchingBrowseFestivals]
+      : matchingBrowseFestivals;
   const selectedFormFestival = festivals.find((f) => f.festival_id === formFestivalId);
   const normalizedFestivalSearch = festivalSearch.trim().toLocaleLowerCase("ko-KR");
   const matchingFormFestivals = normalizedFestivalSearch
@@ -350,7 +370,8 @@ export function CompanionsView({
                 setLoginPromptOpen(true);
                 return;
               }
-              setFormFestivalId(selectedFestivalId || festivals[0]?.festival_id || "");
+              const nextFestivalId = selectedFestivalId || festivals[0]?.festival_id || "";
+              selectFormFestival(nextFestivalId);
               setFestivalSearch("");
               setFormError(null);
               setWriteOpen(true);
@@ -426,6 +447,26 @@ export function CompanionsView({
             <>
               <div>
                 <label
+                  htmlFor="companion-festival-search"
+                  className="mb-1.5 block text-xs font-bold text-muted"
+                >
+                  축제 검색
+                </label>
+                <div className="relative mb-2">
+                  <Search
+                    className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="companion-festival-search"
+                    type="search"
+                    value={browseFestivalSearch}
+                    onChange={(event) => setBrowseFestivalSearch(event.target.value)}
+                    placeholder="축제명·장소 검색"
+                    className="h-11 w-full rounded-input border border-line-light bg-surface py-2 pl-11 pr-4 text-sm text-ink shadow-sm placeholder:text-muted focus:border-brand focus:outline-none"
+                  />
+                </div>
+                <label
                   htmlFor="companion-festival-select"
                   className="mb-1.5 block text-xs font-bold text-muted"
                 >
@@ -434,15 +475,23 @@ export function CompanionsView({
                 <select
                   id="companion-festival-select"
                   value={selectedFestivalId}
-                  onChange={(event) => setSelectedFestivalId(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedFestivalId(event.target.value);
+                    setBrowseFestivalSearch("");
+                  }}
                   className="h-11 w-full rounded-input border border-line-light bg-surface px-4 text-sm font-semibold text-ink shadow-sm focus:border-brand focus:outline-none"
                 >
-                  {festivals.map((festival) => (
+                  {browseFestivalOptions.map((festival) => (
                     <option key={festival.festival_id} value={festival.festival_id}>
-                      {festival.name}
+                      {festival.name}{festival.venue_name ? ` · ${festival.venue_name}` : ""}
                     </option>
                   ))}
                 </select>
+                {normalizedBrowseFestivalSearch && matchingBrowseFestivals.length === 0 ? (
+                  <p className="mt-1.5 text-xs text-muted">
+                    검색 결과가 없어요. 현재 선택한 축제는 유지됩니다.
+                  </p>
+                ) : null}
               </div>
 
               <div
@@ -793,7 +842,7 @@ export function CompanionsView({
                   required
                   value={formFestivalId}
                   onChange={(e) => {
-                    setFormFestivalId(e.target.value);
+                    selectFormFestival(e.target.value);
                     setFestivalSearch("");
                   }}
                   className="h-11 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm text-ink focus:border-brand focus:outline-none"
@@ -824,8 +873,8 @@ export function CompanionsView({
                   required
                   value={meetAt}
                   onChange={(e) => setMeetAt(e.target.value)}
-                  min={selectedFormFestival ? `${selectedFormFestival.start_date}T00:00` : undefined}
-                  max={selectedFormFestival ? `${selectedFormFestival.end_date}T23:59` : undefined}
+                  min={selectedFormFestival?.start_date ? `${selectedFormFestival.start_date}T00:00` : undefined}
+                  max={selectedFormFestival?.end_date ? `${selectedFormFestival.end_date}T23:59` : undefined}
                   className="h-11 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm text-ink focus:border-brand focus:outline-none"
                 />
                 {selectedFormFestival ? (

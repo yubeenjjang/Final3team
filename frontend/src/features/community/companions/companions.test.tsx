@@ -22,7 +22,7 @@ const sampleFestival = {
   lng: 126.932,
   start_date: "2026-12-05",
   end_date: "2026-12-07",
-  event_status: "upcoming",
+  event_status: "upcoming" as const,
   thumbnail_url: null,
   image_credit: null,
   source: "tourapi",
@@ -48,7 +48,7 @@ const ongoingFestival = {
   venue_name: "운정호수공원",
   start_date: "2026-11-20",
   end_date: "2026-11-30",
-  event_status: "ongoing",
+  event_status: "ongoing" as const,
 };
 
 describe("Companions screens", () => {
@@ -94,6 +94,14 @@ describe("Companions screens", () => {
     await waitFor(() => {
       expect(screen.getByText("아직 등록된 동행 모집 글이 없어요")).toBeInTheDocument();
     });
+
+    const browseSearch = screen.getByLabelText("축제 검색");
+    fireEvent.change(browseSearch, { target: { value: "서울" } });
+    const browseSelect = screen.getByLabelText("축제 선택");
+    expect(within(browseSelect).getByRole("option", { name: /서울 불꽃 축제/ })).toBeInTheDocument();
+    expect(within(browseSelect).queryByRole("option", { name: /운정호수공원/ })).not.toBeInTheDocument();
+    fireEvent.change(browseSearch, { target: { value: "" } });
+
     fireEvent.click(screen.getByRole("button", { name: "모집 글쓰기" }));
 
     const meetAtInput = screen.getByLabelText(/만남 일시/) as HTMLInputElement;
@@ -101,8 +109,10 @@ describe("Companions screens", () => {
       expect(meetAtInput.value).toBe("2026-12-05T18:00");
     });
 
-    fireEvent.change(screen.getByLabelText("축제 검색"), { target: { value: "운정호수" } });
     const writeDialog = screen.getByRole("dialog", { name: "동행 모집 글 작성" });
+    fireEvent.change(within(writeDialog).getByLabelText("축제 검색"), {
+      target: { value: "운정호수" },
+    });
     expect(within(writeDialog).getByRole("option", { name: /운정호수공원 불꽃축제/ })).toBeInTheDocument();
     expect(within(writeDialog).queryByRole("option", { name: /서울 불꽃 축제/ })).toBeInTheDocument();
   });
