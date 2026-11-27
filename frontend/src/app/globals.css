@@ -116,8 +116,15 @@ select {
 }
 
 .assistant-launcher {
-  right: calc(var(--space-4) + var(--safe-area-right));
+  right: max(
+    calc(var(--space-4) + var(--safe-area-right)),
+    calc((100vw - var(--app-mobile-width)) / 2 + var(--space-4))
+  );
   bottom: calc(var(--app-bottom-nav-height) + var(--safe-area-bottom) + var(--space-4));
+}
+
+.assistant-chat-composer {
+  width: min(100%, var(--app-mobile-width));
 }
 
 @layer components {
@@ -151,6 +158,10 @@ select {
   .assistant-launcher {
     right: max(24px, calc((100vw - var(--app-desktop-width)) / 2 + 24px));
     bottom: 28px;
+  }
+
+  .assistant-chat-composer {
+    width: min(100%, 48rem);
   }
 
 }

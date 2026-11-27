@@ -215,7 +215,7 @@ export function AssistantHub() {
 
       <form
         onSubmit={submit}
-        className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-3xl items-center gap-2 border-t border-line-light bg-surface/95 px-4 pb-[calc(14px+var(--safe-area-bottom))] pt-3 backdrop-blur md:px-8"
+        className="assistant-chat-composer fixed inset-x-0 bottom-0 z-20 mx-auto flex items-center gap-2 border-t border-line-light bg-surface/95 px-4 pb-[calc(14px+var(--safe-area-bottom))] pt-3 backdrop-blur md:px-8"
       >
         <MessageCircleHeart className="h-6 w-6 shrink-0 text-brand" aria-hidden="true" />
         <input

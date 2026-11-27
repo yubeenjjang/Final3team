@@ -9,7 +9,6 @@ import { ApiError } from "@/lib/api/client";
 import { listFestivals, type FestivalListItem } from "./api";
 import { FestivalCarousel } from "./FestivalCarousel";
 import { FestivalCard } from "./FestivalCard";
-import { AssistantPrompt } from "@/features/assistant/chatbot/AssistantPrompt";
 import { PreferenceSetupCta } from "@/features/accounts/profile/PreferenceSetupCta";
 import { useFestivalPreferenceStatus } from "@/features/accounts/profile/useFestivalPreferenceStatus";
 import {
@@ -197,8 +196,6 @@ export function FestivalExploreView({
           </div>
         }
       />
-
-      <AssistantPrompt />
 
       <form
         role="search"
