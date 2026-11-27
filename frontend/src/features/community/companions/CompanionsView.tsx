@@ -641,7 +641,7 @@ export function CompanionsView({
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap py-1">
                 <div role="group" aria-label="모집 상태" className="contents">
                   {STATUS_TABS.map((item) => {
                     const active = statusFilter === item.value;
@@ -662,16 +662,20 @@ export function CompanionsView({
                     );
                   })}
                 </div>
+                <span
+                  className="mx-1 h-5 w-px shrink-0 bg-line-light"
+                  aria-hidden="true"
+                />
                 <label className="sr-only" htmlFor="companion-region-filter">지역</label>
                 <select
                   id="companion-region-filter"
                   value={regionFilter}
                   onChange={(event) => setRegionFilter(event.target.value as RegionFilter)}
-                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                  className="h-8 shrink-0 rounded-chip border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
                 >
                   {REGION_OPTIONS.map((option) => (
                     <option key={option.code} value={option.code}>
-                      {option.code === "ALL" ? "전체 지역" : getRegionLabel(option.code)}
+                      {option.code === "ALL" ? "지역별" : getRegionLabel(option.code)}
                     </option>
                   ))}
                 </select>
@@ -680,9 +684,9 @@ export function CompanionsView({
                   id="companion-period-filter"
                   value={periodFilter}
                   onChange={(event) => setPeriodFilter(event.target.value as PeriodFilter)}
-                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                  className="h-8 shrink-0 rounded-chip border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
                 >
-                  <option value="all">전체 기간</option>
+                  <option value="all">기간별</option>
                   <option value="today">오늘</option>
                   <option value="week">7일 이내</option>
                   <option value="month">30일 이내</option>
@@ -692,9 +696,9 @@ export function CompanionsView({
                   id="companion-condition-filter"
                   value={conditionFilter}
                   onChange={(event) => setConditionFilter(event.target.value as ConditionFilter)}
-                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                  className="h-8 shrink-0 rounded-chip border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
                 >
-                  <option value="all">모집 조건</option>
+                  <option value="all">조건별</option>
                   <option value="age_any">연령 무관</option>
                   <option value="gender_any">성별 무관</option>
                   <option value="female">여성 선호</option>
@@ -705,7 +709,7 @@ export function CompanionsView({
                   id="companion-sort-filter"
                   value={sortFilter}
                   onChange={(event) => setSortFilter(event.target.value as SortFilter)}
-                  className="h-8 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink"
+                  className="h-8 shrink-0 rounded-chip border border-line-light bg-surface px-3 text-xs font-semibold text-ink focus:border-brand focus:outline-none"
                 >
                   <option value="latest">최신순</option>
                   <option value="meet_soon">만남 임박순</option>
