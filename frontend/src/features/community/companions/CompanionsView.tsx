@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Plus,
   RotateCcw,
+  Search,
   Users,
   X,
 } from "lucide-react";
@@ -46,6 +47,28 @@ const STATUS_TABS: { value: PostStatus; label: string }[] = [
   { value: "ended", label: "종료" },
   { value: "cancelled", label: "취소" },
 ];
+
+const DEFAULT_MEETING_TIME = "18:00";
+
+function getKstDateString(date: Date, dayOffset = 0) {
+  const kstTime = date.getTime() + 9 * 60 * 60 * 1000 + dayOffset * 24 * 60 * 60 * 1000;
+  return new Date(kstTime).toISOString().slice(0, 10);
+}
+
+export function getDefaultCompanionMeetAt(
+  festival: Pick<FestivalListItem, "event_status" | "start_date" | "end_date">,
+  now = new Date(),
+) {
+  const today = getKstDateString(now);
+  const tomorrow = getKstDateString(now, 1);
+  let meetingDate = festival.event_status === "ongoing" ? tomorrow : festival.start_date;
+
+  // 축제가 오늘 끝나는 경우처럼 내일이 기간 밖이면 종료일 안으로 맞춘다.
+  if (meetingDate > festival.end_date) meetingDate = festival.end_date;
+  if (meetingDate < today) meetingDate = today;
+
+  return `${meetingDate}T${DEFAULT_MEETING_TIME}`;
+}
 
 export interface CompanionsViewProps {
   initialFestivalId?: string;
@@ -91,6 +114,7 @@ export function CompanionsView({
 
   // Write form states
   const [formFestivalId, setFormFestivalId] = useState(initialFestivalId ?? "");
+  const [festivalSearch, setFestivalSearch] = useState("");
   const [meetAt, setMeetAt] = useState("");
   const [capacity, setCapacity] = useState(3);
   const [agePref, setAgePref] = useState<AgePreference>("any");
@@ -108,7 +132,7 @@ export function CompanionsView({
       setFestivalsError(null);
       try {
         const res = await listFestivals(
-          { page: 1, page_size: 50 },
+          { page: 1, page_size: 100 },
           controller.signal,
         );
         if (controller.signal.aborted) return;
@@ -141,6 +165,14 @@ export function CompanionsView({
     void load();
     return () => controller.abort();
   }, [festivalsTick]);
+
+  useEffect(() => {
+    if (!writeOpen) return;
+    const festival = festivals.find((item) => item.festival_id === formFestivalId);
+    if (festival) {
+      setMeetAt(getDefaultCompanionMeetAt(festival));
+    }
+  }, [festivals, formFestivalId, writeOpen]);
 
   useEffect(() => {
     if (tab !== "browse" || !selectedFestivalId) {
@@ -274,6 +306,22 @@ export function CompanionsView({
   }
 
   const selectedFestival = festivals.find((f) => f.festival_id === selectedFestivalId);
+  const selectedFormFestival = festivals.find((f) => f.festival_id === formFestivalId);
+  const normalizedFestivalSearch = festivalSearch.trim().toLocaleLowerCase("ko-KR");
+  const matchingFormFestivals = normalizedFestivalSearch
+    ? festivals.filter((festival) =>
+        [festival.name, festival.venue_name]
+          .filter(Boolean)
+          .some((value) =>
+            value!.toLocaleLowerCase("ko-KR").includes(normalizedFestivalSearch),
+          ),
+      )
+    : festivals;
+  const formFestivalOptions =
+    selectedFormFestival &&
+    !matchingFormFestivals.some((festival) => festival.festival_id === selectedFormFestival.festival_id)
+      ? [selectedFormFestival, ...matchingFormFestivals]
+      : matchingFormFestivals;
 
   return (
     <div className="space-y-4 px-4 py-4">
@@ -303,6 +351,7 @@ export function CompanionsView({
                 return;
               }
               setFormFestivalId(selectedFestivalId || festivals[0]?.festival_id || "");
+              setFestivalSearch("");
               setFormError(null);
               setWriteOpen(true);
             }}
@@ -714,6 +763,26 @@ export function CompanionsView({
             <form onSubmit={handleCreatePost} className="space-y-3.5">
               <div>
                 <label
+                  htmlFor="write-festival-search"
+                  className="mb-1 block text-xs font-bold text-ink"
+                >
+                  축제 검색
+                </label>
+                <div className="relative mb-2">
+                  <Search
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="write-festival-search"
+                    type="search"
+                    value={festivalSearch}
+                    onChange={(event) => setFestivalSearch(event.target.value)}
+                    placeholder="축제명·장소 검색"
+                    className="h-11 w-full rounded-input border border-line-light bg-surface py-2 pl-10 pr-3.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none"
+                  />
+                </div>
+                <label
                   htmlFor="write-festival"
                   className="mb-1 block text-xs font-bold text-ink"
                 >
@@ -723,15 +792,23 @@ export function CompanionsView({
                   id="write-festival"
                   required
                   value={formFestivalId}
-                  onChange={(e) => setFormFestivalId(e.target.value)}
+                  onChange={(e) => {
+                    setFormFestivalId(e.target.value);
+                    setFestivalSearch("");
+                  }}
                   className="h-11 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm text-ink focus:border-brand focus:outline-none"
                 >
-                  {festivals.map((f) => (
+                  {formFestivalOptions.map((f) => (
                     <option key={f.festival_id} value={f.festival_id}>
-                      {f.name}
+                      {f.name}{f.venue_name ? ` · ${f.venue_name}` : ""}
                     </option>
                   ))}
                 </select>
+                {normalizedFestivalSearch && matchingFormFestivals.length === 0 ? (
+                  <p className="mt-1.5 text-xs text-muted">
+                    검색 결과가 없어요. 현재 선택한 축제는 유지됩니다.
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -747,8 +824,18 @@ export function CompanionsView({
                   required
                   value={meetAt}
                   onChange={(e) => setMeetAt(e.target.value)}
+                  min={selectedFormFestival ? `${selectedFormFestival.start_date}T00:00` : undefined}
+                  max={selectedFormFestival ? `${selectedFormFestival.end_date}T23:59` : undefined}
                   className="h-11 w-full rounded-input border border-line-light bg-surface px-3.5 text-sm text-ink focus:border-brand focus:outline-none"
                 />
+                {selectedFormFestival ? (
+                  <p className="mt-1.5 text-xs text-muted">
+                    {selectedFormFestival.event_status === "ongoing"
+                      ? "진행 중인 축제라 내일 오후 6시로 자동 설정했어요."
+                      : "예정된 축제라 시작일 오후 6시로 자동 설정했어요."}
+                    {" "}필요하면 축제 기간 안에서 변경할 수 있어요.
+                  </p>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-3 gap-2">

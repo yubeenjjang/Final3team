@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAuthStateForTest, setAuthSession } from "@/lib/api/auth";
 import { CompanionDetailView } from "./CompanionDetailView";
-import { CompanionsView } from "./CompanionsView";
+import { CompanionsView, getDefaultCompanionMeetAt } from "./CompanionsView";
 
 const pushMock = vi.fn();
 const replaceMock = vi.fn();
@@ -41,6 +41,16 @@ const samplePost = {
   status: "open",
 };
 
+const ongoingFestival = {
+  ...sampleFestival,
+  festival_id: "fst_000002",
+  name: "운정호수공원 불꽃축제",
+  venue_name: "운정호수공원",
+  start_date: "2026-11-20",
+  end_date: "2026-11-30",
+  event_status: "ongoing",
+};
+
 describe("Companions screens", () => {
   const originalFetch = globalThis.fetch;
 
@@ -54,6 +64,53 @@ describe("Companions screens", () => {
     cleanup();
     globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
+  });
+
+  it("searches festivals in the write form and presets the festival meeting date", async () => {
+    setAuthSession({
+      accessToken: "token-a",
+      refreshToken: "token-r",
+      user: { userId: "usr_member", displayName: "축제친구" },
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/festivals")) {
+        return Response.json({
+          items: [sampleFestival, ongoingFestival],
+          total: 2,
+          page: 1,
+          page_size: 100,
+        });
+      }
+      if (url.pathname.endsWith("/companion-posts")) {
+        return Response.json({ items: [] });
+      }
+      return Response.json({ items: [] });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CompanionsView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("아직 등록된 동행 모집 글이 없어요")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "모집 글쓰기" }));
+
+    const meetAtInput = screen.getByLabelText(/만남 일시/) as HTMLInputElement;
+    await waitFor(() => {
+      expect(meetAtInput.value).toBe("2026-12-05T18:00");
+    });
+
+    fireEvent.change(screen.getByLabelText("축제 검색"), { target: { value: "운정호수" } });
+    const writeDialog = screen.getByRole("dialog", { name: "동행 모집 글 작성" });
+    expect(within(writeDialog).getByRole("option", { name: /운정호수공원 불꽃축제/ })).toBeInTheDocument();
+    expect(within(writeDialog).queryByRole("option", { name: /서울 불꽃 축제/ })).toBeInTheDocument();
+  });
+
+  it("sets tomorrow for an ongoing festival and its start date for an upcoming festival", () => {
+    const now = new Date("2026-11-27T01:00:00.000Z");
+    expect(getDefaultCompanionMeetAt(ongoingFestival, now)).toBe("2026-11-28T18:00");
+    expect(getDefaultCompanionMeetAt(sampleFestival, now)).toBe("2026-12-05T18:00");
   });
 
   it("renders companion posts, empty state, and error state", async () => {
