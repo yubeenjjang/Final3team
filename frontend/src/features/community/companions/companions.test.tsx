@@ -180,6 +180,7 @@ describe("Companions screens", () => {
       expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
     });
     expect(screen.getByText("2 / 4명")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "전체" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "정원 마감" }));
     await waitFor(() => {
@@ -190,6 +191,41 @@ describe("Companions screens", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("목록 조회 오류");
     });
+  });
+
+  it("combines every recruitment status when the all filter is selected", async () => {
+    const fullPost = {
+      ...samplePost,
+      post_id: "cpo_full",
+      memo: "정원이 마감된 동행 글",
+      status: "full",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/festivals")) {
+        return Response.json({ items: [sampleFestival], total: 1, page: 1, page_size: 100 });
+      }
+      if (url.pathname.endsWith("/companion-posts")) {
+        const status = url.searchParams.get("status");
+        if (status === "open") return Response.json({ items: [samplePost] });
+        if (status === "full") return Response.json({ items: [fullPost] });
+        return Response.json({ items: [] });
+      }
+      return Response.json({ items: [] });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CompanionsView />);
+    await waitFor(() => {
+      expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "전체" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("정원이 마감된 동행 글")).toBeInTheDocument();
+    });
+    expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
   });
 
   it("locks meeting place for unapproved users and shows it for approved users", async () => {

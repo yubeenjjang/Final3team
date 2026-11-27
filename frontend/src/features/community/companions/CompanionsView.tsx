@@ -41,7 +41,12 @@ import {
   toKstIsoString,
 } from "./format";
 
-const STATUS_TABS: { value: PostStatus; label: string }[] = [
+type StatusFilter = PostStatus | "all";
+
+const POST_STATUSES: PostStatus[] = ["open", "full", "ended", "cancelled"];
+
+const STATUS_TABS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "전체" },
   { value: "open", label: "모집 중" },
   { value: "full", label: "정원 마감" },
   { value: "ended", label: "종료" },
@@ -95,7 +100,7 @@ export function CompanionsView({
   const [selectedFestivalId, setSelectedFestivalId] = useState(initialFestivalId ?? "");
   const [browseFestivalSearch, setBrowseFestivalSearch] = useState("");
 
-  const [statusFilter, setStatusFilter] = useState<PostStatus>("open");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [posts, setPosts] = useState<CompanionPostItem[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState<string | null>(null);
@@ -178,13 +183,22 @@ export function CompanionsView({
       setPostsLoading(true);
       setPostsError(null);
       try {
-        const res = await listCompanionPosts(
-          selectedFestivalId,
-          { status: statusFilter, page: 1 },
-          controller.signal,
+        const statuses = statusFilter === "all" ? POST_STATUSES : [statusFilter];
+        const responses = await Promise.all(
+          statuses.map((status) =>
+            listCompanionPosts(
+              selectedFestivalId,
+              { status, page: 1 },
+              controller.signal,
+            ),
+          ),
         );
         if (!controller.signal.aborted) {
-          setPosts(res.items);
+          const uniquePosts = new Map<string, CompanionPostItem>();
+          responses.forEach((response) => {
+            response.items.forEach((post) => uniquePosts.set(post.post_id, post));
+          });
+          setPosts([...uniquePosts.values()]);
         }
       } catch (error) {
         if (controller.signal.aborted) return;
