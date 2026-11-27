@@ -168,7 +168,9 @@ class MockCompanions:
             if row.post_id == post_id and row.applicant_id == self.actor_id
         ), None)
         return schema.PostDetail(
-            **self.memory.item(post).model_dump(), my_application_status=latest.status if latest else None,
+            **self.memory.item(post).model_dump(),
+            my_application_status=latest.status if latest else None,
+            room_id=post.room_id if self.actor_id in post.members else None,
         )
 
     def own_post(self, post_id: str) -> Post:

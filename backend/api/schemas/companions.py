@@ -73,6 +73,7 @@ class PostItem(BaseModel):
 
 class PostDetail(PostItem):
     my_application_status: ApplicationStatus | None
+    room_id: str | None = None
 
 
 class PostList(BaseModel):

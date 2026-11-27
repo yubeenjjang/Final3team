@@ -42,6 +42,7 @@ def test_mock_post_application_and_place(client, clock):
     created = client.post(POSTS, headers=owner, json=post_body())
     assert created.status_code == 201 and created.headers["X-Mock"] == "true"
     post_id = created.json()["post_id"]
+    room_id = created.json()["room_id"]
     detail = f"{POSTS}/{post_id}"
     applications = detail + "/applications"
     place = detail + "/meeting-place"
@@ -58,8 +59,10 @@ def test_mock_post_application_and_place(client, clock):
     assert client.get(POSTS, params={"q": "광화문"}).json()["total"] == 1
     assert client.get(POSTS, params={"q": "부산"}).json()["total"] == 0
     public = client.get(detail)
-    assert public.json() == {**listing[0], "my_application_status": None}
+    assert public.json() == {**listing[0], "my_application_status": None, "room_id": None}
     assert public.headers["Cache-Control"] == "private, no-store"
+    assert client.get(detail, headers=owner).json()["room_id"] == room_id
+    assert client.get(detail, headers=first).json()["room_id"] is None
 
     assert_error(client.post(applications, headers=owner), 403, "OWN_POST")
     assert client.get(place, headers=owner).json() == {"status": "undecided"}
@@ -73,7 +76,9 @@ def test_mock_post_application_and_place(client, clock):
     assert attempted.status_code == 201
     application_id = attempted.json()["application_id"]
     assert_error(client.post(applications, headers=first), 409, "APPLICATION_EXISTS")
-    assert client.get(detail, headers=first).json()["my_application_status"] == "pending"
+    pending_detail = client.get(detail, headers=first).json()
+    assert pending_detail["my_application_status"] == "pending"
+    assert pending_detail["room_id"] is None
     assert_error(client.get(applications, headers=first), 403, "FORBIDDEN")
     assert_error(client.get(place, headers=first), 403, "FORBIDDEN")
     incoming = client.get(applications, headers=owner, params={"status": "pending"}).json()["items"]
@@ -86,14 +91,20 @@ def test_mock_post_application_and_place(client, clock):
     decision = f"{APPLICATIONS}/{application_id}"
     assert_error(client.post(decision + "/approve", headers=second), 403, "FORBIDDEN")
     assert client.post(decision + "/cancel", headers=first).json()["status"] == "cancelled"
-    assert client.get(detail, headers=first).json()["my_application_status"] == "cancelled"
+    cancelled_detail = client.get(detail, headers=first).json()
+    assert cancelled_detail["my_application_status"] == "cancelled"
+    assert cancelled_detail["room_id"] is None
     retry = client.post(applications, headers=first).json()["application_id"]
     second_id = client.post(applications, headers=second).json()["application_id"]
     assert retry != application_id
     assert client.post(f"{APPLICATIONS}/{second_id}/reject", headers=owner).json()["status"] == "rejected"
+    assert client.get(detail, headers=second).json()["room_id"] is None
     assert_error(client.post(applications, headers=second), 409, "APPLICATION_EXISTS")
     accepted = client.post(f"{APPLICATIONS}/{retry}/approve", headers=owner)
     assert accepted.json() == {"application_id": retry, "status": "approved", "post_status": "full"}
+    approved_detail = client.get(detail, headers=first).json()
+    assert approved_detail["my_application_status"] == "approved"
+    assert approved_detail["room_id"] == room_id
     assert_error(client.post(f"{APPLICATIONS}/{retry}/cancel", headers=first), 409, "APPLICATION_NOT_PENDING")
     assert client.get(place, headers=first).json()["name"] == "정문"
     assert_error(client.get(place, headers=second), 403, "FORBIDDEN")
@@ -116,6 +127,8 @@ def test_mock_edit_close_end_and_retention(client, clock):
     assert_error(client.post(f"{APPLICATIONS}/{application_id}/approve", headers=owner), 409, "POST_CLOSED")
     assert client.patch(detail, headers=owner, json={"capacity": 3}).json()["status"] == "full"
     assert client.post(detail + "/end", headers=owner).json()["status"] == "ended"
+    assert client.get(detail, headers=owner).json()["room_id"] == row["room_id"]
+    assert client.get(detail, headers=other).json()["room_id"] is None
     assert_error(client.patch(detail, headers=owner, json={"memo": "수정"}), 409, "POST_CLOSED")
     clock[0] += timedelta(hours=71, minutes=59)
     assert client.get(place, headers=owner).json()["name"] == "정문"

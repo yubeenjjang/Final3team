@@ -109,12 +109,15 @@ class CompanionReads:
 
     async def get_post(self, post_id: str) -> schema.PostDetail:
         row = (await self.db.execute(text(f"""
-            SELECT {_POST_FIELDS}, (
-                SELECT a.status FROM public.companion_applications a
-                WHERE a.post_id = p.post_id AND a.applicant_id = public.app_current_user()
-                ORDER BY (a.status <> 'cancelled') DESC, a.created_at DESC, a.application_id DESC
-                LIMIT 1
-            ) AS my_application_status
+            SELECT {_POST_FIELDS},
+                   CASE WHEN public.app_room_joined_at(p.room_id) IS NOT NULL
+                        THEN p.room_id END AS room_id,
+                   (
+                       SELECT a.status FROM public.companion_applications a
+                       WHERE a.post_id = p.post_id AND a.applicant_id = public.app_current_user()
+                       ORDER BY (a.status <> 'cancelled') DESC, a.created_at DESC, a.application_id DESC
+                       LIMIT 1
+                   ) AS my_application_status
             FROM public.companion_posts p WHERE p.post_id = :post_id
         """), {"post_id": post_id, "auto_before": rules.now_utc() - rules.auto_end_after()})).mappings().one_or_none()
         if row is None:

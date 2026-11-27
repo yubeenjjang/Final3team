@@ -6,7 +6,7 @@
 |---|---|---|
 | A57 | `GET /festivals/{festival_id}/companion-posts` | 공개 목록, 기본 `open`, 페이지당 20개 |
 | A58 | `POST /companion-posts` | 201, 글 ID와 방 ID |
-| A59 | `GET /companion-posts/{post_id}` | 공개 상세와 로그인한 사람 본인의 신청 상태 |
+| A59 | `GET /companion-posts/{post_id}` | 공개 상세와 로그인한 사람 본인의 신청 상태(작성자와 입장한 승인 참여자에게만 실제 `room_id` 포함, 그 외 `null`) |
 | A58 보완 | `PATCH /companion-posts/{post_id}` | 작성자가 일정·정원·조건·메모를 수정, 글 ID와 상태 |
 | A60·A61 | `POST / GET /companion-posts/{post_id}/applications` | 신청 201 또는 작성자용 대기·승인 목록 |
 | A62 | `POST /companion-applications/{application_id}/{action}` | 작성자의 승인·거절 또는 신청자의 대기 신청 취소 |
