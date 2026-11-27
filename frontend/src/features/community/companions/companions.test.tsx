@@ -441,7 +441,26 @@ describe("Companions screens", () => {
               unread_count: 0,
               my_status: "joined",
             },
+            {
+              room_id: "crm_other_room",
+              room_type: "companion",
+              name: null,
+              festival_name: "다른 불꽃 축제",
+              meet_at: samplePost.meet_at,
+              status: "active",
+              last_message_at: null,
+              unread_count: 0,
+              my_status: "joined",
+            },
           ],
+        });
+      }
+      if (url.pathname.endsWith("/companion-posts")) {
+        return Response.json({
+          items: [sampleFeedPost],
+          total: 1,
+          page: 1,
+          page_size: 100,
         });
       }
       return Response.json({ items: [] });

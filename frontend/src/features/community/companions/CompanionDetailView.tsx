@@ -27,6 +27,7 @@ import {
   getMeetingPlace,
   isMeetingPlaceUndecided,
   listCompanionApplications,
+  listCompanionFeed,
   listMyCompanionApplications,
   listMyCompanionPosts,
   setMeetingPlace,
@@ -368,15 +369,28 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
       // post's exact meeting time instead of fabricating an ID from post_id.
       let roomId = post.room_id ?? null;
       if (!roomId) {
-        const response = await listChatRooms("companion");
+        const [response, feed] = await Promise.all([
+          listChatRooms("companion"),
+          listCompanionFeed({ page: 1, page_size: 100 }),
+        ]);
         const meetAt = Date.parse(post.meet_at);
-        const matches = response.items.filter(
+        const timeMatches = response.items.filter(
           (room) =>
             room.room_type === "companion" &&
             room.my_status === "joined" &&
             room.meet_at != null &&
             Date.parse(room.meet_at) === meetAt,
         );
+        const feedPost = feed.items.find((item) => item.post_id === post.post_id);
+        const normalizeName = (value: string | null | undefined) =>
+          value?.replace(/\s+/g, " ").trim().toLocaleLowerCase("ko-KR") ?? "";
+        const festivalMatches = feedPost
+          ? timeMatches.filter(
+              (room) =>
+                normalizeName(room.festival_name) === normalizeName(feedPost.festival_name),
+            )
+          : [];
+        const matches = festivalMatches.length > 0 ? festivalMatches : timeMatches;
         if (matches.length === 1) {
           roomId = matches[0].room_id;
         }
