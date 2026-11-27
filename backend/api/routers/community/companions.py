@@ -111,6 +111,26 @@ async def list_posts(
     return await session.read(CompanionReads.list_posts, MockCompanions.list_posts, festival_id, status, page)
 
 
+@router.get("/companion-posts")
+async def list_post_feed(
+    session: PublicSession,
+    festival_id: Annotated[str | None, Query(pattern=schema.FESTIVAL_ID_PATTERN)] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=50)] = None,
+    status: schema.PostStatus | None = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> schema.FeedPostList:
+    return await session.read(
+        CompanionReads.list_post_feed,
+        MockCompanions.list_post_feed,
+        festival_id,
+        q,
+        status,
+        page,
+        page_size,
+    )
+
+
 @router.post("/companion-posts", status_code=201)
 async def create_post(request: schema.PostCreate, session: UserSession) -> schema.PostCreated:
     return await session.write(lambda repo: repo.create_post(request))
