@@ -131,11 +131,13 @@ export function getDefaultCompanionMeetAt(
 export interface CompanionsViewProps {
   initialFestivalId?: string;
   initialTab?: "browse" | "mine";
+  initialWriteOpen?: boolean;
 }
 
 export function CompanionsView({
   initialFestivalId,
   initialTab = "browse",
+  initialWriteOpen = false,
 }: CompanionsViewProps) {
   const router = useRouter();
   const routerRef = useRef(router);
@@ -173,6 +175,7 @@ export function CompanionsView({
   const [cancellingAppId, setCancellingAppId] = useState<string | null>(null);
 
   const [writeOpen, setWriteOpen] = useState(false);
+  const initialWriteHandledRef = useRef(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptDesc, setLoginPromptDesc] = useState(
     "동행 모집 글을 작성하거나 신청하려면 로그인해 주세요.",
@@ -231,6 +234,40 @@ export function CompanionsView({
     void load();
     return () => controller.abort();
   }, [festivalsTick]);
+
+  useEffect(() => {
+    if (!initialWriteOpen || initialWriteHandledRef.current || festivalsLoading) {
+      return;
+    }
+    initialWriteHandledRef.current = true;
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (!signedIn) {
+        setLoginPromptDesc("동행 모집 글을 작성하려면 로그인해 주세요.");
+        setLoginPromptOpen(true);
+        return;
+      }
+
+      const requestedFestival = festivals.find(
+        (festival) => festival.festival_id === initialFestivalId,
+      );
+      const nextFestival = requestedFestival ?? festivals[0];
+      if (!nextFestival) return;
+
+      setSelectedFestivalId(nextFestival.festival_id);
+      setFormFestivalId(nextFestival.festival_id);
+      setFestivalSearch(nextFestival.name);
+      setMeetAt(getDefaultCompanionMeetAt(nextFestival));
+      setFormError(null);
+      setWriteOpen(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [festivals, festivalsLoading, initialFestivalId, initialWriteOpen, signedIn]);
 
   useEffect(() => {
     if (tab !== "browse") {

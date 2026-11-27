@@ -72,6 +72,23 @@ describe("F7 festival detail", () => {
           headers: { "Content-Type": "application/json" },
         });
       }
+      if (url.includes("/festivals/fst_000001/companion-posts")) {
+        return Response.json({
+          items: [
+            {
+              post_id: "cpo_detail_1",
+              author_display_name: "동행친구",
+              meet_at: "2026-12-06T09:00:00Z",
+              capacity: 4,
+              approved_count: 2,
+              age_pref: "any",
+              gender_pref: "any",
+              memo: "테스트 축제 같이 가요!",
+              status: "open",
+            },
+          ],
+        });
+      }
       if (url.endsWith("/crowd")) {
         return new Response(
           JSON.stringify({
@@ -157,6 +174,19 @@ describe("F7 festival detail", () => {
     expect(screen.getByText("테스트 한 줄 소개입니다.")).toBeInTheDocument();
     expect(screen.getByText("무료")).toBeInTheDocument();
     expect(screen.getByText("서울")).toBeInTheDocument();
+
+    const companionPostLink = await screen.findByRole("link", {
+      name: "테스트 축제 같이 가요! 상세보기",
+    });
+    expect(companionPostLink).toHaveAttribute("href", "/companions/cpo_detail_1");
+    expect(screen.getByRole("link", { name: "모집 글쓰기" })).toHaveAttribute(
+      "href",
+      "/companions?festivalId=fst_000001&write=1",
+    );
+    expect(screen.getByRole("link", { name: /전체보기/ })).toHaveAttribute(
+      "href",
+      "/companions?festivalId=fst_000001",
+    );
 
     // 주변 정보는 지도 탭으로 이동하지 않고 상세페이지 안에서 목록·상세를 연다 (A08)
     const foodButton = screen.getByRole("button", { name: "주변 맛집 정보 보기" });

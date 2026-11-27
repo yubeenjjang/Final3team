@@ -142,6 +142,41 @@ describe("Companions screens", () => {
     expect(getDefaultCompanionMeetAt(sampleFestival, now)).toBe("2026-12-05T18:00");
   });
 
+  it("opens the write form with the linked festival selected", async () => {
+    setAuthSession({
+      accessToken: "token-a",
+      refreshToken: "token-r",
+      user: { userId: "usr_member", displayName: "축제친구" },
+    });
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/festivals")) {
+        return Response.json({ items: [sampleFestival], total: 1, page: 1, page_size: 100 });
+      }
+      if (url.pathname.endsWith("/companion-posts")) {
+        return Response.json({ items: [], total: 0, page: 1, page_size: 50 });
+      }
+      return Response.json({ items: [] });
+    }) as unknown as typeof fetch;
+
+    render(
+      <CompanionsView
+        initialFestivalId={sampleFestival.festival_id}
+        initialWriteOpen
+      />,
+    );
+
+    const writeDialog = await screen.findByRole("dialog", {
+      name: "동행 모집 글 작성",
+    });
+    expect(within(writeDialog).getByLabelText("축제 검색")).toHaveValue(
+      sampleFestival.name,
+    );
+    expect(within(writeDialog).getByLabelText(/만남 일시/)).toHaveValue(
+      "2026-12-05T18:00",
+    );
+  });
+
   it("shows the festival name on my companion post", async () => {
     setAuthSession({
       accessToken: "token-owner",

@@ -4,13 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
   Bus,
   CalendarDays,
   Compass,
   Hospital,
   MapPin,
   ParkingCircle,
+  Plus,
   RotateCcw,
   Ticket,
   TrainFront,
@@ -21,12 +21,16 @@ import { FestivalImagePlaceholder } from "@/components/FestivalImagePlaceholder"
 import { KakaoMap } from "@/components/KakaoMap";
 import { SafeReturnBanner } from "@/components/SafeReturnBanner";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
+import {
+  listCompanionPosts,
+  type CompanionPostItem,
+} from "@/features/community/companions/api";
+import { formatKstDateTime } from "@/features/community/companions/format";
 import { ApiError } from "@/lib/api/client";
 import {
   FACILITY_LABELS,
   FACILITY_SYMBOLS,
   listMapFacilities,
-  type FacilityCategory,
   type FacilityGroup,
   type MapFacility,
 } from "../map/api";
@@ -73,6 +77,9 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   const [nearbyError, setNearbyError] = useState(false);
   const [nearbyReloadTick, setNearbyReloadTick] = useState(0);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+  const [companionPosts, setCompanionPosts] = useState<CompanionPostItem[]>([]);
+  const [companionsResolvedId, setCompanionsResolvedId] = useState<string | null>(null);
+  const [companionsError, setCompanionsError] = useState(false);
 
   const activeNearbyItem = NEARBY_ITEMS.find((item) => item.id === nearbyItemId) ?? null;
 
@@ -119,6 +126,31 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
   }, [festivalId, reloadTick]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
+    listCompanionPosts(festivalId, { status: "open", page: 1 }, controller.signal)
+      .then((response) => {
+        if (!controller.signal.aborted) {
+          setCompanionPosts(response.items);
+          setCompanionsError(false);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setCompanionPosts([]);
+          setCompanionsError(true);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCompanionsResolvedId(festivalId);
+        }
+      });
+
+    return () => controller.abort();
+  }, [festivalId]);
+
+  useEffect(() => {
     if (
       !activeNearbyItem ||
       !festival ||
@@ -129,8 +161,12 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
     }
 
     const controller = new AbortController();
-    setNearbyLoading(true);
-    setNearbyError(false);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        setNearbyLoading(true);
+        setNearbyError(false);
+      }
+    });
 
     listMapFacilities({
       festivalId: festival.festival_id,
@@ -157,7 +193,7 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       });
 
     return () => controller.abort();
-  }, [activeNearbyItem?.group, festival, nearbyReloadTick]);
+  }, [activeNearbyItem, festival, nearbyReloadTick]);
 
   const visibleNearbyFacilities = useMemo(
     () =>
@@ -538,13 +574,72 @@ export function FestivalDetailView({ festivalId }: FestivalDetailViewProps) {
       <SafeReturnBanner festivalId={festival.festival_id} />
 
       <section className="space-y-3">
-        <div className="flex items-end justify-between"><div><h2 className="flex items-center gap-2 text-xl font-black"><span className="h-5 w-1.5 rounded-chip bg-brand" />동행 모집</h2><p className="ml-3.5 mt-1 text-xs text-muted">함께 축제를 즐길 동행을 찾아보세요!</p></div><Link href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}`} className="text-sm font-extrabold text-brand">전체보기 ›</Link></div>
-        <div className="grid grid-cols-2 gap-3">
-          {["이 축제 같이 가요!", "사진 같이 찍어요!"].map((title, index) => (
-            <Link key={title} href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}`} className="rounded-card-lg border border-brand/20 bg-surface-soft p-3 shadow-sm">
-              <div className="flex items-center gap-2"><span className="grid h-10 w-10 place-items-center rounded-chip bg-surface text-brand"><Users className="h-5 w-5" /></span><div><p className="line-clamp-1 text-xs font-extrabold">{title}</p><p className="mt-1 text-[11px] text-muted">12.0{index + 6} · <b className="text-brand">{index + 2} / {index + 4}명</b></p></div></div>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-black">
+              <span className="h-5 w-1.5 rounded-chip bg-brand" />
+              동행 모집
+            </h2>
+            <p className="ml-3.5 mt-1 text-xs text-muted">함께 축제를 즐길 동행을 찾아보세요!</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}&write=1`}
+              className="inline-flex items-center gap-1 rounded-chip bg-brand px-3 py-2 text-xs font-extrabold text-surface shadow-sm hover:opacity-90"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              모집 글쓰기
             </Link>
-          ))}
+            <Link
+              href={`/companions?festivalId=${encodeURIComponent(festival.festival_id)}`}
+              className="text-sm font-extrabold text-brand"
+            >
+              전체보기 ›
+            </Link>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {companionsResolvedId !== festivalId ? (
+            <>
+              <div role="status" className="h-20 animate-pulse rounded-card-lg bg-surface-muted" />
+              <div role="status" className="h-20 animate-pulse rounded-card-lg bg-surface-muted" />
+            </>
+          ) : companionsError ? (
+            <p className="rounded-card-lg border border-line-light bg-surface px-4 py-6 text-center text-xs font-semibold text-muted sm:col-span-2">
+              동행 모집글을 불러오지 못했어요.
+            </p>
+          ) : companionPosts.length > 0 ? (
+            companionPosts.slice(0, 2).map((post) => (
+              <Link
+                key={post.post_id}
+                href={`/companions/${encodeURIComponent(post.post_id)}`}
+                aria-label={`${post.memo || "동행 모집글"} 상세보기`}
+                className="rounded-card-lg border border-brand/20 bg-surface-soft p-3 shadow-sm transition hover:border-brand/40 hover:shadow-md"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-chip bg-surface text-brand">
+                    <Users className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-xs font-extrabold">
+                      {post.memo || "함께 축제를 즐겨요!"}
+                    </p>
+                    <p className="mt-1 truncate text-[11px] text-muted">
+                      {formatKstDateTime(post.meet_at)} ·{" "}
+                      <b className="text-brand">
+                        {post.approved_count} / {post.capacity}명
+                      </b>
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="rounded-card-lg border border-dashed border-brand/25 bg-surface-soft/60 px-4 py-7 text-center sm:col-span-2">
+              <p className="text-sm font-bold text-ink">아직 모집 중인 동행이 없어요.</p>
+              <p className="mt-1 text-xs text-muted">첫 번째 동행 모집글을 작성해 보세요!</p>
+            </div>
+          )}
         </div>
       </section>
 
