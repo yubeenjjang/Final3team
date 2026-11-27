@@ -4,7 +4,7 @@
 
 ## 문서 개요
 
-이 문서는 11/27 M03 제출을 위한 **단일 Festival Agent의 상태 전이 그래프**를 설계한다. 강사님 Step3 가이드의 9개 항목에 따라 담당 범위, 상태·노드·전이, 도구와 오류 처리, 종료 조건을 정리했다. 구현·실조회·시험 근거와 후속 계획은 각 절과 부록에서 구분한다.
+이 문서는 11/27 M03 제출을 위한 **단일 Festival Agent의 상태 전이 그래프**를 설계한다. Step3 가이드의 9개 항목에 따라 담당 범위, 상태·노드·전이, 도구와 오류 처리, 종료 조건을 정리했다. 구현·실조회·시험 근거와 후속 계획은 각 절과 부록에서 구분한다.
 
 ### 목차
 
@@ -61,7 +61,7 @@ Festival Agent는 경로를 만들거나 귀가 조회·장애 진단·복구 �
 
 | 조회 | 현재 확인한 범위 | 첫 시연에서의 표기 기준 |
 |---|---|---|
-| 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 학원망에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
+| 축제 검색·상세 | TourAPI 적재 DB 응답의 수동 확인·재생에 이어 11/24 교육장 내부 네트워크에서 Agent의 직접 HTTP 검색·상세 호출이 통과했다(A-11). | 직접 연결된 실제 DB 조회로 표시할 수 있다. |
 | 서울 주변 혼잡 | 11/23 숭례문 응답의 직접 조회·재생과 11/24 숭례문 `unsupported` 직접 연결은 당시 기록으로 구분한다(A-8부터 A-11까지). 11/26 서울빛초롱축제는 Agent 직접 HTTP 복합 호출에서 `is_mock:false`, 공급원 `ok`, Agent `answered`, 관측 시각 `2026-11-26T09:00:00+09:00`을 확인했다(A-14). 후속 A-15 재실행의 관측 시각은 `2026-11-26T10:00:00+09:00`이었다. | 실제 연결 확인 범위는 서울빛초롱축제 1건이다. 첫 시연에서 모의 혼잡 응답을 사용하면 화면·답변·발표 자료에 **모의 데이터**라고 표시한다. |
 | 공식 공지 | 모의 API의 계약과 상태 전이만 확인했다. | 공식 원본 공급원이 연결되기 전에는 현장 공지로 제시하지 않는다. |
 
@@ -388,7 +388,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 ### A-3. Festival Agent 전국 DB·서울 혼잡 조회 준비 상태(W24)
 
-**11/23 당시 기록:** `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣었다. **이 절을 처음 작성할 때 혼잡 API는 모의 응답이었으며, 이후 W89(축제·서울 지원 장소 검증 매핑·혼잡/전망 API) 실제 모드가 추가됐다(A-7부터 A-10까지 참조).** DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 현재 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
+**11/23 당시 기록:** `origin/ohyun`의 축제 목록·상세 API는 `FESTIVAL_DATA=db`일 때 PostgreSQL을 조회하고, DB 응답에 `is_mock:false`를 넣었다. **이 절을 처음 작성할 때 혼잡 API는 모의 응답이었으며, 이후 W89(축제·서울 지원 장소 검증 매핑·혼잡/전망 API) 실제 모드가 추가됐다(A-7부터 A-10까지 참조).** DB 연동 시험 `backend/tests/ingestion/test_i12_catalog_db.py`는 일회용 PostgreSQL의 `TEST_DB_URL`·`TEST_DB_APP_URL`이 있어야 실행되며, 당시 작업 환경에는 해당 접속 설정과 `DB_USER_PASSWORD`가 없다. 맥북 Safari에서 실제 DB의 목록·상세 **한 건을 수동 확인**했지만, **Festival Agent의 실제 DB 단독 E2E와 서울 혼잡 연동은 검증하지 않았다.**
 
 전국 DB·서울 혼잡 조회 구현(W24)의 확인 순서는 다음과 같다.
 
@@ -422,7 +422,7 @@ API의 작업 상태(`queued/running/...`)와 LangGraph의 노드·State는 별�
 
 `origin/ohyun`의 `380d178`에 서울 공식 관측구역 121곳을 이용한 혼잡 API 구현이 올라왔다. `CROWD_PROVIDER=real`일 때 응답은 `is_mock:false`, `nearby_areas`에 1km 내 최대 3곳, 기존 `areas[0]`에 대표 구역을 제공한다. 따라서 Festival Agent의 현재 `areas[0]` 읽기 방식은 유지할 수 있다. 다만 실시간 관측이 없는 경우 `is_estimate=true`로 최근 4주 같은 요일·시간대 평균값이 반환되므로, 이 값을 실시간으로 오해하지 않도록 답변·근거에 구분 표시를 추가했다.
 
-이 대조는 **브랜치 코드와 고정 응답 형태에 대한 검토**다. 이후 학원망 직접 실행에서 숭례문 혼잡은 `unsupported`였으나(A-11), 공개 범위 변경 후 서울빛초롱축제의 실제 혼잡값 `answered`까지 Agent 직접 연결을 확인했다(A-12).
+이 대조는 **브랜치 코드와 고정 응답 형태에 대한 검토**다. 이후 교육장 내부 네트워크에서 직접 실행했을 때 숭례문 혼잡은 `unsupported`였으나(A-11), 공개 범위 변경 후 서울빛초롱축제의 실제 혼잡값 `answered`까지 Agent 직접 연결을 확인했다(A-12).
 
 대체값 표시 시험과 새 실제 모드 응답 형태의 그래프 시험을 추가해 Festival Agent 단독·그래프 시험 **28개를 다시 실행해 모두 통과**했다. `origin/ohyun`의 5개 호환 시험 통과 기록은 해당 브랜치의 검증 결과이며, 이 문서의 실제 공급원 연동 결과로 합산하지 않는다.
 
@@ -436,19 +436,19 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 이전 집 컴퓨터 시험에서는 학원 API의 축제 목록 조회가 5초 안에 연결되지 않았다. 맥북에서 Safari로 API를 확인하는 것만으로는 Festival Agent 전체 E2E가 되지 않는다. `is_mock:false`와 `agent_outcome=answered`가 모두 확인돼야 실제 혼잡 조회 성공으로 기록한다. 평균 대체값이면 답변에 같은 요일·시간대 평균 표시가 있어야 한다.
 
-### A-8. 학원망 Safari 실제 혼잡 API 응답 확인 (2026-11-23)
+### A-8. 교육장 내부 네트워크에서 확인한 Safari 실제 혼잡 API 응답 확인 (2026-11-23)
 
-사용자가 학원망 맥북 Safari에서 `fst_01M835BYKKNJ8CZP9RP09ST18D`의 `/crowd` 응답 화면을 제공했다. 화면에 `is_mock:false`, `festival_id` 일치, `status:"ok"`, `coverage.scope:"seoul_only"`, `coverage.region_code:"SEOUL"`, `coverage.supported:true`, `source:"seoul_citydata"`, `observed_at:"2026-11-23T16:40:00+09:00"`이 보인다. 대표 `areas[0]`은 숭례문 구역의 혼잡 `보통`이며, `nearby_areas`에는 최대 세 구역이 표시되고 최상위 `is_estimate:false`다. 따라서 **해당 시점의 실제 혼잡 API 응답**은 확인했다.
+사용자가 교육장 내부 네트워크에 연결된 맥북 Safari에서 `fst_01M835BYKKNJ8CZP9RP09ST18D`의 `/crowd` 응답 화면을 제공했다. 화면에 `is_mock:false`, `festival_id` 일치, `status:"ok"`, `coverage.scope:"seoul_only"`, `coverage.region_code:"SEOUL"`, `coverage.supported:true`, `source:"seoul_citydata"`, `observed_at:"2026-11-23T16:40:00+09:00"`이 보인다. 대표 `areas[0]`은 숭례문 구역의 혼잡 `보통`이며, `nearby_areas`에는 최대 세 구역이 표시되고 최상위 `is_estimate:false`다. 따라서 **해당 시점의 실제 혼잡 API 응답**은 확인했다.
 
 이 증거는 Safari에서 받은 **API 직접 조회 화면**이다. Festival Agent가 같은 응답을 받아 `answered`와 근거를 반환한 실행 로그는 아직 없으므로 W24(단일 Festival Agent 전국 DB·서울 혼잡 조회 구현) 단독 E2E 완료로 기록하지 않는다. 관측 시각은 응답에 적힌 자료 기준 시각이며 현재 시각의 혼잡을 보장하는 표현으로 사용하지 않는다.
 
-집 Windows에서 실제 응답 본문을 재생할 수 있도록 `backend/agents/check_festival_capture.py`를 추가했다. 학원망 맥북 Safari의 `/crowd` 응답 화면에서 JSON 전체를 복사해 채팅에 붙이거나 `.json` 파일로 전달받은 뒤, Windows `backend/`에서 `uv run --with-requirements agents/requirements.txt python -m agents.check_festival_capture <응답 파일.json>`을 실행한다. `is_mock:false`와 축제 ID를 확인하고 **저장된 실제 응답을 Festival Agent 그래프의 `get_crowd` 결과로 한 번 주입**한다. 이 방식은 Agent의 검증·답변 호환성을 확인하지만, Agent가 학원 서버에 직접 HTTP 요청을 보낸 단독 E2E는 아니다.
+집 Windows에서 실제 응답 본문을 재생할 수 있도록 `backend/agents/check_festival_capture.py`를 추가했다. 교육장 내부 네트워크에 연결된 맥북 Safari의 `/crowd` 응답 화면에서 JSON 전체를 복사해 채팅에 붙이거나 `.json` 파일로 전달받은 뒤, Windows `backend/`에서 `uv run --with-requirements agents/requirements.txt python -m agents.check_festival_capture <응답 파일.json>`을 실행한다. `is_mock:false`와 축제 ID를 확인하고 **저장된 실제 응답을 Festival Agent 그래프의 `get_crowd` 결과로 한 번 주입**한다. 이 방식은 Agent의 검증·답변 호환성을 확인하지만, Agent가 학원 서버에 직접 HTTP 요청을 보낸 단독 E2E는 아니다.
 
 사용자가 같은 축제의 `observed_at:"2026-11-23T16:55:00+09:00"`, `status:"ok"`, `is_estimate:false`인 실제 응답 JSON을 채팅으로 제공했다. 붙여넣은 `source_url`의 `https\://`와 `datasetView\.do`는 JSON 문법상 유효하지 않은 이스케이프라, **Agent가 소비하는 필드만 원문 값 그대로 추출한 검토용 JSON**으로 재생했다. `get_crowd` 1회 호출 후 `agent_outcome=answered`였고, 답변은 “숭례문 지역 혼잡은 보통입니다. 관측 기준 시각 2026-11-23T16:55:00+09:00. 행사장 내부나 이동 경로의 혼잡을 뜻하지 않습니다.”였다. 확인용 파일은 실행 후 삭제했다. 이는 실제 응답의 핵심 필드와 Agent 처리 결과의 호환 검증이며, 원문 전체 재생이나 직접 HTTP E2E로 확대하지 않는다.
 
 ### A-9. 11/23 기준 실제 축제 DB 검색·상세 응답의 ID 검증
 
-사용자가 학원망 API의 서울 진행 축제 검색(`page_size=1`)과 숭례문 파수의식 상세 응답을 제공했다. 두 응답 모두 `is_mock:false`, `source:"tourapi"`, `last_synced_at:"2026-11-23T11:57:22.397300+09:00"`이지만, **검색 첫 결과는 페인터즈 `fst_01M835BPX17Y44VEDJM1VMZ3N6`, 상세는 숭례문 파수의식 `fst_01M835BYKKNJ8CZP9RP09ST18D`로 ID가 다르다.** URL의 복사 이스케이프를 제외하고 Agent가 소비하는 필드를 추출해 재생했을 때 검색 단독과 상세 단독은 각각 `answered`였다. 두 응답을 하나의 `search_detail_crowd` 흐름으로 주면 검색→상세 2회 뒤 **ID 불일치를 감지해 `partial`로 종료**했고, 혼잡 도구는 호출하지 않았다. 이는 잘못된 축제의 상세·혼잡을 섞지 않는 전이 검증이며 검색→상세→혼잡 전체 성공으로 기록하지 않는다.
+사용자가 교육장 내부 네트워크에서 접속한 API의 서울 진행 축제 검색(`page_size=1`)과 숭례문 파수의식 상세 응답을 제공했다. 두 응답 모두 `is_mock:false`, `source:"tourapi"`, `last_synced_at:"2026-11-23T11:57:22.397300+09:00"`이지만, **검색 첫 결과는 페인터즈 `fst_01M835BPX17Y44VEDJM1VMZ3N6`, 상세는 숭례문 파수의식 `fst_01M835BYKKNJ8CZP9RP09ST18D`로 ID가 다르다.** URL의 복사 이스케이프를 제외하고 Agent가 소비하는 필드를 추출해 재생했을 때 검색 단독과 상세 단독은 각각 `answered`였다. 두 응답을 하나의 `search_detail_crowd` 흐름으로 주면 검색→상세 2회 뒤 **ID 불일치를 감지해 `partial`로 종료**했고, 혼잡 도구는 호출하지 않았다. 이는 잘못된 축제의 상세·혼잡을 섞지 않는 전이 검증이며 검색→상세→혼잡 전체 성공으로 기록하지 않는다.
 
 ### A-10. 11/23 기준 동일 축제의 실제 응답 필드로 복합 전이 재생
 
@@ -468,7 +468,7 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 오현님 보고에 따르면 W89(축제·서울 지원 장소 검증 매핑·혼잡/전망 API)는 승인된 매핑만 실제 혼잡을 제공하며, 기존 실행 당시 승인 0건이 숭례문 `unsupported`의 원인이었다. 이어서 공개 범위를 축제(EV01)로 바꾸면서 숭례문 파수의식(EV03)과 페인터즈(공연)는 공개 목록에서 제외됐다. 오현님은 학원 서버 `ohyun-web aa9036e`에서 서울빛초롱축제 `fst_01M835B57450M888RBNEFVRWWA`의 `is_mock:false`, `status:ok`, 주변 구역 응답을 확인했다고 전달했다. 이 보고는 API 직접 조회이며 아래의 Agent 직접 실행 결과와 구분한다.
 
-따라서 A-7의 재시험 명령을 새 ID와 `--require-crowd-answered`로 갱신했다. **다영님이 학원망 맥북에서 `dayoung f242684`를 임시 폴더에 받아 직접 실행한 결과**, 진행 축제 검색 `total=1`, 예정 축제 검색 `total=12`, 첫 검색 결과 상세 `answered`·`source=tourapi`였다. 이어 서울빛초롱축제의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 검색·상세·혼잡 응답의 `is_mock:false`를 요구하며, 새 옵션은 실제 혼잡 `answered`가 아니면 오류로 종료한다. 이번 실행은 오류 없이 끝났으므로 **서울빛초롱축제 1건의 실제 DB·혼잡 API와 Festival Agent 직접 HTTP 연결을 확인**했다. 다만 터미널 출력에는 혼잡 관측 시각·구역 이름이 없어 그 값은 이번 증빙으로 확정하지 않는다. A-8부터 A-11까지의 과거 실행 기록은 당시 결과로 유지한다.
+따라서 A-7의 재시험 명령을 새 ID와 `--require-crowd-answered`로 갱신했다. **다영님이 교육장 내부 네트워크에 연결된 맥북에서 `dayoung f242684`를 임시 폴더에 받아 직접 실행한 결과**, 진행 축제 검색 `total=1`, 예정 축제 검색 `total=12`, 첫 검색 결과 상세 `answered`·`source=tourapi`였다. 이어 서울빛초롱축제의 공개 상세는 `answered`, 혼잡은 `provider_status=ok`, `agent_outcome=answered`, `is_estimate=False`였다. 실행기는 검색·상세·혼잡 응답의 `is_mock:false`를 요구하며, 새 옵션은 실제 혼잡 `answered`가 아니면 오류로 종료한다. 이번 실행은 오류 없이 끝났으므로 **서울빛초롱축제 1건의 실제 DB·혼잡 API와 Festival Agent 직접 HTTP 연결을 확인**했다. 다만 터미널 출력에는 혼잡 관측 시각·구역 이름이 없어 그 값은 이번 증빙으로 확정하지 않는다. A-8부터 A-11까지의 과거 실행 기록은 당시 결과로 유지한다.
 
 별도 접속 환경에서의 재시도는 첫 `ongoing` 검색이 `TOOL_TIMEOUT`으로 종료되어 실자료 검증 근거로 사용하지 않는다. 앞 문단의 직접 HTTP 성공 기록은 이와 구분한다.
 
@@ -541,8 +541,9 @@ uv run --with-requirements agents/requirements.txt python -m agents.check_festiv
 
 ## 참고 파일
 
-- [강사님 Step3 단일 에이전트 상태 전이 그래프 설계서 가이드](https://github.com/jbbdyee/ai-engineering-lab/blob/main/Lecture/FinalProject/Doc/Step3/%EB%8B%A8%EC%9D%BC%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8_%EC%83%81%ED%83%9C%EC%A0%84%EC%9D%B4%EA%B7%B8%EB%9E%98%ED%94%84_%EC%84%A4%EA%B3%84%EC%84%9C_%EA%B0%80%EC%9D%B4%EB%93%9C.html) — 9개 항목과 전이표·State·종료 조건 작성 기준
+- [Step3 단일 에이전트 상태 전이 그래프 설계서 가이드](https://github.com/jbbdyee/ai-engineering-lab/blob/main/Lecture/FinalProject/Doc/Step3/%EB%8B%A8%EC%9D%BC%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8_%EC%83%81%ED%83%9C%EC%A0%84%EC%9D%B4%EA%B7%B8%EB%9E%98%ED%94%84_%EC%84%A4%EA%B3%84%EC%84%9C_%EA%B0%80%EC%9D%B4%EB%93%9C.html) — 9개 항목과 전이표·State·종료 조건 작성 기준
 - `Docs/Step 1/놀다가_기획서.md` — 서비스·5개 Agent·안전 경계
 - `Docs/Step 1/놀다가_WBS.md` — W22 축제 질의·도구·상태 정의, W23 상태 전이 설계, W24 DB·혼잡 조회 구현, W25 설계서 검토·제출 및 M03(11/27)
 - `Docs/Step 2/API_설계문서.md` — 도구 목록·공통 출력·실패 규칙
 - `Docs/Step 2/handoff/에이전트_도구_인계.md` — Festival Agent 도구 계약 및 모의 API 현황
+
