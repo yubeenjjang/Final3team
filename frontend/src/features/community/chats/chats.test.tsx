@@ -240,6 +240,13 @@ describe("Chat screens", () => {
     await waitFor(() => {
       expect(screen.getByText("안녕하세요")).toBeInTheDocument();
     });
+    expect(screen.getByTestId("chat-message-viewport")).toHaveClass(
+      "min-h-0",
+      "overflow-y-auto",
+    );
+    expect(screen.getByLabelText("메시지 입력").closest("form")).not.toHaveClass(
+      "sticky",
+    );
 
     // Load older messages
     fireEvent.click(screen.getByRole("button", { name: "이전 메시지 더 불러오기" }));

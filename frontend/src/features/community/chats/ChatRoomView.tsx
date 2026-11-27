@@ -639,7 +639,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-144px)] flex-col px-4 py-3">
+    <div className="flex h-[calc(100dvh-var(--app-header-height)-var(--app-bottom-nav-height)-var(--safe-area-bottom)-var(--space-4))] min-h-[420px] flex-col overflow-hidden px-4 py-3 md:h-[calc(100dvh-var(--app-header-height)-var(--space-8))]">
       {/* 상단 바 */}
       <div className="flex items-center justify-between gap-2 border-b border-line-light pb-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -758,7 +758,10 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
       ) : null}
 
       {/* 메시지 영역 */}
-      <div className="flex-1 space-y-2.5 py-3">
+      <div
+        data-testid="chat-message-viewport"
+        className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain py-3 pr-1"
+      >
         {hasMore ? (
           <div className="text-center">
             <button
@@ -832,7 +835,7 @@ function ChatRoomContent({ roomId }: ChatRoomViewProps) {
       {/* 입력 폼 */}
       <form
         onSubmit={handleSend}
-        className="sticky bottom-[76px] flex items-center gap-2 border-t border-line-light bg-surface pt-3"
+        className="flex shrink-0 items-center gap-2 border-t border-line-light bg-surface pb-1 pt-3"
       >
         <input
           type="text"

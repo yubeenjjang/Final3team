@@ -205,6 +205,62 @@ describe("Companions screens", () => {
     });
   });
 
+  it("shows which companion post the user applied to", async () => {
+    setAuthSession({
+      accessToken: "token-applicant",
+      refreshToken: "token-r",
+      user: { userId: "usr_applicant", displayName: "신청자" },
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/festivals")) {
+        return Response.json({ items: [sampleFestival], total: 1, page: 1, page_size: 100 });
+      }
+      if (url.pathname.endsWith("/me/companion-activity")) {
+        if (url.searchParams.get("type") === "applications") {
+          return Response.json({
+            items: [
+              {
+                application_id: "cap_01JD8Q3K2M",
+                post_id: samplePost.post_id,
+                message: "같이 가고 싶어요!",
+                status: "approved",
+                created_at: "2026-11-27T12:29:00+09:00",
+              },
+            ],
+          });
+        }
+        return Response.json({ items: [] });
+      }
+      if (url.pathname.endsWith(`/companion-posts/${samplePost.post_id}`)) {
+        return Response.json({ ...samplePost, my_application_status: "approved" });
+      }
+      if (url.pathname.endsWith("/companion-posts")) {
+        return Response.json({
+          items: [sampleFeedPost],
+          total: 1,
+          page: 1,
+          page_size: 50,
+        });
+      }
+      return Response.json({ items: [] });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CompanionsView initialTab="mine" />);
+    fireEvent.click(screen.getByRole("button", { name: "보낸 신청" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /서울 불꽃 축제/ })).toHaveAttribute(
+        "href",
+        "/festivals/fst_000001",
+      );
+    });
+    expect(screen.getByText("불꽃놀이 같이 보고 사진 찍어요!")).toBeInTheDocument();
+    expect(screen.getByText(/작성자 축제러버/)).toBeInTheDocument();
+    expect(screen.getByText(/같이 가고 싶어요!/)).toBeInTheDocument();
+  });
+
   it("renders companion posts, empty state, and error state", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));

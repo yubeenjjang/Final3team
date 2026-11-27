@@ -28,12 +28,14 @@ import { ApiError } from "@/lib/api/client";
 import {
   createCompanionPost,
   decideCompanionApplication,
+  getCompanionPost,
   listCompanionFeed,
   listCompanionPosts,
   listMyCompanionApplications,
   listMyCompanionPosts,
   type AgePreference,
   type CompanionFeedPostItem,
+  type CompanionPostDetail,
   type GenderPreference,
   type MyCompanionApplicationItem,
   type MyCompanionPostItem,
@@ -169,6 +171,8 @@ export function CompanionsView({
   const [mineSubTab, setMineSubTab] = useState<"posts" | "applications">("posts");
   const [myPosts, setMyPosts] = useState<MyCompanionPostItem[]>([]);
   const [myApps, setMyApps] = useState<MyCompanionApplicationItem[]>([]);
+  const [myAppPosts, setMyAppPosts] = useState<Record<string, CompanionPostDetail>>({});
+  const [myAppFeedPosts, setMyAppFeedPosts] = useState<Record<string, CompanionFeedPostItem>>({});
   const [mineLoading, setMineLoading] = useState(false);
   const [mineError, setMineError] = useState<string | null>(null);
   const [mineTick, setMineTick] = useState(0);
@@ -359,7 +363,34 @@ export function CompanionsView({
           if (!controller.signal.aborted) setMyPosts(res.items);
         } else {
           const res = await listMyCompanionApplications(controller.signal);
-          if (!controller.signal.aborted) setMyApps(res.items);
+          if (controller.signal.aborted) return;
+          setMyApps(res.items);
+
+          const detailResults = await Promise.allSettled(
+            res.items.map((item) => getCompanionPost(item.post_id, controller.signal)),
+          );
+          if (controller.signal.aborted) return;
+          const nextPosts: Record<string, CompanionPostDetail> = {};
+          detailResults.forEach((result, index) => {
+            if (result.status === "fulfilled") {
+              nextPosts[res.items[index].post_id] = result.value;
+            }
+          });
+          setMyAppPosts(nextPosts);
+
+          // The feed adds festival metadata that the current activity response
+          // does not include. Keep this best-effort so older API environments
+          // still show the post memo, author and meeting time from detail.
+          try {
+            const feed = await listCompanionFeed({ page: 1, page_size: 50 }, controller.signal);
+            if (!controller.signal.aborted) {
+              setMyAppFeedPosts(
+                Object.fromEntries(feed.items.map((item) => [item.post_id, item])),
+              );
+            }
+          } catch {
+            if (!controller.signal.aborted) setMyAppFeedPosts({});
+          }
         }
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -1037,42 +1068,69 @@ export function CompanionsView({
             </div>
           ) : (
             <ul className="space-y-2.5">
-              {myApps.map((app) => (
-                <li
-                  key={app.application_id}
-                  className="rounded-card border border-line-light bg-surface p-4 shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-chip bg-surface-soft px-2.5 py-0.5 text-[11px] font-extrabold text-brand">
-                      {APPLICATION_STATUS_LABEL[app.status]}
-                    </span>
-                    <span className="text-[11px] text-muted">
-                      {formatKstDateTime(app.created_at)}
-                    </span>
-                  </div>
-                  {app.message ? (
-                    <p className="mt-2 text-xs text-ink">{app.message}</p>
-                  ) : null}
-                  <div className="mt-3 flex items-center justify-end gap-2">
-                    {app.status === "pending" ? (
-                      <button
-                        type="button"
-                        disabled={cancellingAppId === app.application_id}
-                        onClick={() => void handleCancelMyApplication(app.application_id)}
-                        className="rounded-chip border border-line-light px-3 py-1.5 text-xs font-bold text-ink hover:bg-surface-muted disabled:opacity-60"
+              {myApps.map((app) => {
+                const post = myAppPosts[app.post_id];
+                const feedPost = myAppFeedPosts[app.post_id];
+                return (
+                  <li
+                    key={app.application_id}
+                    className="rounded-card border border-line-light bg-surface p-4 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-chip bg-surface-soft px-2.5 py-0.5 text-[11px] font-extrabold text-brand">
+                        {APPLICATION_STATUS_LABEL[app.status]}
+                      </span>
+                      <span className="text-[11px] text-muted">
+                        신청 {formatKstDateTime(app.created_at)}
+                      </span>
+                    </div>
+
+                    {feedPost ? (
+                      <Link
+                        href={`/festivals/${encodeURIComponent(feedPost.festival_id)}`}
+                        className="mt-2 inline-flex max-w-full items-center gap-1.5 text-sm font-extrabold text-brand hover:underline"
                       >
-                        {cancellingAppId === app.application_id ? "취소 중…" : "신청 취소"}
-                      </button>
+                        <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{feedPost.festival_name}</span>
+                      </Link>
                     ) : null}
-                    <Link
-                      href={`/companions/${encodeURIComponent(app.post_id)}`}
-                      className="rounded-chip bg-brand px-3.5 py-1.5 text-xs font-extrabold text-surface"
-                    >
-                      글 보기
-                    </Link>
-                  </div>
-                </li>
-              ))}
+
+                    <p className="mt-1.5 line-clamp-2 text-sm font-bold text-ink">
+                      {post?.memo || feedPost?.memo || "모집 내용을 확인해 주세요."}
+                    </p>
+                    {post ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                        <span>작성자 {post.author_display_name ?? "동행 모집자"}</span>
+                        <span>만남 {formatKstDateTime(post.meet_at)}</span>
+                      </div>
+                    ) : null}
+                    {app.message ? (
+                      <p className="mt-2 rounded-xl bg-surface-soft px-3 py-2 text-xs text-ink">
+                        <span className="font-bold text-muted">내 신청 메시지 · </span>
+                        {app.message}
+                      </p>
+                    ) : null}
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      {app.status === "pending" ? (
+                        <button
+                          type="button"
+                          disabled={cancellingAppId === app.application_id}
+                          onClick={() => void handleCancelMyApplication(app.application_id)}
+                          className="rounded-chip border border-line-light px-3 py-1.5 text-xs font-bold text-ink hover:bg-surface-muted disabled:opacity-60"
+                        >
+                          {cancellingAppId === app.application_id ? "취소 중…" : "신청 취소"}
+                        </button>
+                      ) : null}
+                      <Link
+                        href={`/companions/${encodeURIComponent(app.post_id)}`}
+                        className="rounded-chip bg-brand px-3.5 py-1.5 text-xs font-extrabold text-surface"
+                      >
+                        글 보기
+                      </Link>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
