@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   MapPin,
+  Plus,
   RotateCcw,
   Search,
   ShieldCheck,
@@ -47,6 +48,7 @@ function hasLocation(festival: FestivalListItem): festival is LocatedFestival {
 
 // 검색은 서버(A02 q)에서 한다. 기본 목록(진행 중·예정)만으로는 다른 축제를 찾을 수 없다.
 const SEARCH_DEBOUNCE_MS = 300;
+const FACILITY_LIST_PAGE_SIZE = 6;
 // A02는 쉼표로 여러 상태를 받지만 생성된 타입은 한 값만 허용해서 맞춰 준다 (explore/api.ts와 같은 방식)
 const SEARCH_STATUSES = "ongoing,upcoming,ended" as ListFestivalsQuery["status"];
 const CROWD_LEGEND = [
@@ -55,6 +57,12 @@ const CROWD_LEGEND = [
   { label: "약간 붐빔", className: "bg-crowd-orange" },
   { label: "붐빔", className: "bg-crowd-red" },
 ] as const;
+const CROWD_MAP_COLOR: Record<AvailableMapCrowd["color"], string> = {
+  green: "#22c55e",
+  yellow: "#facc15",
+  orange: "#f97316",
+  red: "#ef4444",
+};
 
 function formatDistance(distance: number): string {
   return distance < 1000
@@ -152,6 +160,7 @@ export function FestivalMapView({
   const [festivalMenuOpen, setFestivalMenuOpen] = useState(false);
   const [festivalMarkerSelected, setFestivalMarkerSelected] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+  const [visibleFacilityCount, setVisibleFacilityCount] = useState(FACILITY_LIST_PAGE_SIZE);
   const festivalInfoRef = useRef<HTMLElement | null>(null);
   const facilityListRef = useRef<HTMLElement | null>(null);
 
@@ -251,8 +260,12 @@ export function FestivalMapView({
   useEffect(() => {
     if (!selected) return;
     const controller = new AbortController();
-    setCrowdLoading(true);
-    setCrowd(null);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        setCrowdLoading(true);
+        setCrowd(null);
+      }
+    });
     getMapCrowd(selected.festival_id, controller.signal)
       .then((value) => {
         if (!controller.signal.aborted) setCrowd(value);
@@ -283,6 +296,7 @@ export function FestivalMapView({
     setFestivalMenuOpen(false);
     setFestivalMarkerSelected(false);
     setSelectedFacilityId(null);
+    setVisibleFacilityCount(FACILITY_LIST_PAGE_SIZE);
   }
 
   function selectFacilityGroup(group: FacilityGroup) {
@@ -291,6 +305,7 @@ export function FestivalMapView({
     setFacilities([]);
     setFacilitiesLoading(true);
     setSelectedFacilityId(null);
+    setVisibleFacilityCount(FACILITY_LIST_PAGE_SIZE);
   }
 
   function changeQuery(value: string) {
@@ -348,6 +363,20 @@ export function FestivalMapView({
         ? facilities
         : facilities.filter((facility) => facility.category === facilityCategory),
     [facilities, facilityCategory],
+  );
+  const orderedVisibleFacilities = useMemo(
+    () =>
+      visibleFacilities.slice().sort((left, right) => {
+        if (left.facility_id === selectedFacilityId) return -1;
+        if (right.facility_id === selectedFacilityId) return 1;
+        return left.distance_m - right.distance_m;
+      }),
+    [selectedFacilityId, visibleFacilities],
+  );
+  const listedFacilities = orderedVisibleFacilities.slice(0, visibleFacilityCount);
+  const remainingFacilityCount = Math.max(
+    0,
+    orderedVisibleFacilities.length - visibleFacilityCount,
   );
   // 렌더마다 새 배열을 넘기면 지도가 매번 다시 그려지므로 묶어 둔다.
   const mapMarkers = useMemo<KakaoMapMarker[]>(
@@ -420,12 +449,6 @@ export function FestivalMapView({
     orange: "bg-crowd-orange text-ink",
     red: "bg-crowd-red text-ink",
   };
-  const crowdMapColor: Record<AvailableMapCrowd["color"], string> = {
-    green: "#22c55e",
-    yellow: "#facc15",
-    orange: "#f97316",
-    red: "#ef4444",
-  };
   const crowdMapAreas = useMemo<KakaoMapArea[]>(() => {
     if (!crowd?.available || !selected) return [];
     const fallbackOffsets = [
@@ -450,7 +473,7 @@ export function FestivalMapView({
         ? zone.boundary
         : [createCrowdCircle(zone.center ?? fallbackCenter, 360)];
       const center = zone.center ?? getPathCenter(basePaths) ?? fallbackCenter;
-      const color = crowdMapColor[zone.color];
+      const color = CROWD_MAP_COLOR[zone.color];
 
       return layers.map((layer, layerIndex) => ({
         id: `crowd-${selected.festival_id}-${zoneIndex}-${layerIndex}`,
@@ -722,6 +745,7 @@ export function FestivalMapView({
                 onClick={() => {
                   setFacilityCategory(category);
                   setSelectedFacilityId(null);
+                  setVisibleFacilityCount(FACILITY_LIST_PAGE_SIZE);
                 }}
                 className={
                   facilityCategory === category
@@ -743,7 +767,7 @@ export function FestivalMapView({
                 areas={crowdMapAreas}
                 onMarkerClick={handleMarkerClick}
                 level={4}
-                className="h-[360px] w-full"
+                className="h-[420px] w-full sm:h-[480px]"
               />
             ) : (
               <OpenStreetMap
@@ -756,7 +780,7 @@ export function FestivalMapView({
                 }))}
                 areas={crowdMapAreas}
                 onMarkerClick={handleMarkerClick}
-                className="h-[320px] w-full"
+                className="h-[420px] w-full sm:h-[480px]"
               />
             )}
             <span className="absolute left-3 top-3 z-10 rounded-chip bg-surface/95 px-3 py-1.5 text-[11px] font-extrabold text-ink shadow-card backdrop-blur-sm">
@@ -917,15 +941,9 @@ export function FestivalMapView({
             ) : visibleFacilities.length === 0 ? (
               <p className="py-10 text-center text-xs font-semibold text-muted">선택한 종류의 주변 시설 정보가 없어요.</p>
             ) : (
-              <ul className="mt-3 space-y-2">
-                {visibleFacilities
-                  .slice()
-                  .sort((left, right) => {
-                    if (left.facility_id === selectedFacilityId) return -1;
-                    if (right.facility_id === selectedFacilityId) return 1;
-                    return left.distance_m - right.distance_m;
-                  })
-                  .map((facility) => (
+              <>
+                <ul className="mt-3 space-y-2">
+                  {listedFacilities.map((facility) => (
                     <li key={facility.facility_id}>
                       <button
                         type="button"
@@ -960,7 +978,24 @@ export function FestivalMapView({
                       </button>
                     </li>
                   ))}
-              </ul>
+                </ul>
+                {remainingFacilityCount > 0 ? (
+                  <button
+                    type="button"
+                    aria-label={`주변 시설 ${Math.min(FACILITY_LIST_PAGE_SIZE, remainingFacilityCount)}개 더보기`}
+                    onClick={() =>
+                      setVisibleFacilityCount((count) => count + FACILITY_LIST_PAGE_SIZE)
+                    }
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-card border border-brand/25 bg-brand-soft/35 py-3 text-xs font-extrabold text-brand transition hover:border-brand/45 hover:bg-brand-soft/60"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    더보기
+                    <span className="font-semibold text-muted">
+                      ({remainingFacilityCount}개 남음)
+                    </span>
+                  </button>
+                ) : null}
+              </>
             )}
           </section>
         </>

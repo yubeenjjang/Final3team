@@ -22,6 +22,8 @@ export interface CompanionPostItem {
 
 export interface CompanionPostDetail extends CompanionPostItem {
   my_application_status: ApplicationStatus | null;
+  /** Actual companion chat room ID. Newer API responses provide this directly. */
+  room_id?: string | null;
 }
 
 export interface CompanionPostList {

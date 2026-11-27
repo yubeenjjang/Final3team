@@ -20,18 +20,29 @@ describe("FestivalMapView", () => {
       if (url.includes("/facilities")) {
         const food = url.includes("food%2Cattraction") || url.includes("food,attraction");
         return Response.json({
-          items: [
-            {
-              facility_id: food ? "food_1" : "station_1",
-              category: food ? "food" : "subway_station",
-              name: food ? "한강뷰 카페" : "주변 지하철역",
-              lat: 37.57,
-              lng: 126.97,
-              distance_m: 320,
-              address: food ? "서울 영등포구 여의도동" : "서울 종로구 세종대로",
-              source: food ? "kakao_local" : "seoul_subway_station",
-            },
-          ],
+          items: food
+            ? Array.from({ length: 8 }, (_, index) => ({
+                facility_id: `food_${index + 1}`,
+                category: "food",
+                name: index === 0 ? "한강뷰 카페" : `주변 맛집 ${index + 1}`,
+                lat: 37.57 + index * 0.0001,
+                lng: 126.97 + index * 0.0001,
+                distance_m: 320 + index * 10,
+                address: "서울 영등포구 여의도동",
+                source: "kakao_local",
+              }))
+            : [
+                {
+                  facility_id: "station_1",
+                  category: "subway_station",
+                  name: "주변 지하철역",
+                  lat: 37.57,
+                  lng: 126.97,
+                  distance_m: 320,
+                  address: "서울 종로구 세종대로",
+                  source: "seoul_subway_station",
+                },
+              ],
         });
       }
       if (url.includes("/crowd")) {
@@ -193,6 +204,10 @@ describe("FestivalMapView", () => {
       expect(screen.getByRole("button", { name: /맛집·관광/ })).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByText("한강뷰 카페")).toBeInTheDocument();
     });
+    expect(screen.queryByText("주변 맛집 7")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "주변 시설 2개 더보기" }));
+    expect(screen.getByText("주변 맛집 7")).toBeInTheDocument();
+    expect(screen.getByText("주변 맛집 8")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "한강뷰 카페 지도에서 보기" }));
     expect(screen.getByRole("application", { name: "한강뷰 카페 지도" })).toBeInTheDocument();
     expect(screen.getByLabelText("한강뷰 카페 상세 정보")).toHaveTextContent("서울 영등포구 여의도동");

@@ -132,12 +132,8 @@ class MockCompanions:
     ) -> schema.FeedPostList:
         term = q.strip().casefold() if q is not None else ""
         rows: list[tuple[Post, store.MockFestival]] = []
-<<<<<<< HEAD
-        for post in self.memory.posts.values():
-=======
         # DB와 같은 최신 작성순: 메모리 저장 순서(작성 순서)를 거꾸로 읽는다.
         for post in reversed(list(self.memory.posts.values())):
->>>>>>> origin/ohyun-web
             festival = store.get_public_mock_festival(post.festival_id)
             if festival is None or (post.hidden and post.author_id != self.actor_id):
                 continue
@@ -148,10 +144,6 @@ class MockCompanions:
             if term and term not in festival.name.casefold() and term not in (festival.venue_name or "").casefold():
                 continue
             rows.append((post, festival))
-<<<<<<< HEAD
-        rows.sort(key=lambda pair: (pair[0].meet_at, pair[0].post_id), reverse=True)
-=======
->>>>>>> origin/ohyun-web
         total = len(rows)
         offset = (page - 1) * page_size
         items = [
@@ -189,13 +181,7 @@ class MockCompanions:
         assert self.actor_id is not None
         self.memory.validate_meeting(request.festival_id, request.meet_at, rules.now_utc())
         post_id = "cpo_" + str(ULID())
-        festival = store.get_public_mock_festival(request.festival_id)
-        room_id = mock_chat.mock_rooms.create_companion_room(
-            post_id,
-            UUID(self.actor_id),
-            festival_name=festival.name if festival else None,
-            meet_at=request.meet_at,
-        )
+        room_id = mock_chat.mock_rooms.create_companion_room(post_id, UUID(self.actor_id))
         self.memory.posts[post_id] = Post(
             **request.model_dump(), post_id=post_id, room_id=room_id, author_id=self.actor_id,
             members={self.actor_id},

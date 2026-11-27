@@ -18,10 +18,10 @@ import { KakaoMap } from "@/components/KakaoMap";
 import { LoginPromptSheet } from "@/components/LoginPromptSheet";
 import { handleAuthError, useIsSignedIn } from "@/components/RequireAuth";
 import { ApiError } from "@/lib/api/client";
+import { listChatRooms } from "@/features/community/chats/api";
 import {
   applyToCompanionPost,
   changeCompanionPost,
-  companionRoomIdFromPostId,
   decideCompanionApplication,
   getCompanionPost,
   getMeetingPlace,
@@ -88,6 +88,7 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
   const [appsError, setAppsError] = useState<string | null>(null);
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [postActionBusy, setPostActionBusy] = useState<PostAction | null>(null);
+  const [chatOpening, setChatOpening] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -355,6 +356,58 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
     }
   }
 
+  async function handleOpenCompanionChat() {
+    if (!post || chatOpening) return;
+    setChatOpening(true);
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      // Prefer the room ID supplied by the post detail API. Until every backend
+      // environment exposes it, resolve the user's joined companion room by the
+      // post's exact meeting time instead of fabricating an ID from post_id.
+      let roomId = post.room_id ?? null;
+      if (!roomId) {
+        const response = await listChatRooms("companion");
+        const meetAt = Date.parse(post.meet_at);
+        const matches = response.items.filter(
+          (room) =>
+            room.room_type === "companion" &&
+            room.my_status === "joined" &&
+            room.meet_at != null &&
+            Date.parse(room.meet_at) === meetAt,
+        );
+        if (matches.length === 1) {
+          roomId = matches[0].room_id;
+        }
+      }
+
+      if (roomId) {
+        router.push(`/chats/${encodeURIComponent(roomId)}`);
+        return;
+      }
+
+      setActionNotice(
+        "이 모집글의 채팅방을 정확히 찾지 못해 동행 채팅 목록으로 이동해요.",
+      );
+      router.push("/chats");
+    } catch (error) {
+      if (handleAuthError(error)) {
+        router.replace(
+          `/auth/login?next=${encodeURIComponent(`/companions/${postId}`)}`,
+        );
+        return;
+      }
+      setActionError(
+        error instanceof ApiError
+          ? error.message
+          : "동행 채팅방을 불러오지 못했어요.",
+      );
+    } finally {
+      setChatOpening(false);
+    }
+  }
+
   if (loading) {
     return (
       <div role="status" className="space-y-4 px-4 py-4">
@@ -393,8 +446,6 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
 
   const statusMeta = POST_STATUS_META[post.status];
   const isActive = post.status === "open" || post.status === "full";
-  const roomId = companionRoomIdFromPostId(post.post_id);
-
   return (
     <div className="space-y-5 px-4 py-4">
       <div className="flex items-center">
@@ -770,13 +821,15 @@ export function CompanionDetailView({ postId }: CompanionDetailViewProps) {
         className={`grid gap-2 pt-1 ${canSeeMeetingPlace ? "grid-cols-2" : "grid-cols-1"}`}
       >
         {canSeeMeetingPlace ? (
-          <Link
-            href={`/chats/${encodeURIComponent(roomId)}`}
+          <button
+            type="button"
+            onClick={() => void handleOpenCompanionChat()}
+            disabled={chatOpening}
             className="flex min-h-11 items-center justify-center gap-1.5 rounded-chip bg-brand px-3 py-2.5 text-xs font-extrabold text-surface shadow-sm transition-opacity hover:opacity-90"
           >
             <MessageCircle className="h-4 w-4" aria-hidden="true" />
-            <span>동행 채팅방</span>
-          </Link>
+            <span>{chatOpening ? "채팅방 찾는 중..." : "동행 채팅방"}</span>
+          </button>
         ) : null}
         <Link
           href="/companions"

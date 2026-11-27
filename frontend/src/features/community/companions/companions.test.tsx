@@ -367,6 +367,23 @@ describe("Companions screens", () => {
           updated_at: "2026-11-24T12:00:00+09:00",
         });
       }
+      if (url.pathname.endsWith("/me/chat-rooms")) {
+        return Response.json({
+          items: [
+            {
+              room_id: "crm_actual_room",
+              room_type: "companion",
+              name: null,
+              festival_name: sampleFestival.name,
+              meet_at: samplePost.meet_at,
+              status: "active",
+              last_message_at: null,
+              unread_count: 0,
+              my_status: "joined",
+            },
+          ],
+        });
+      }
       return Response.json({ items: [] });
     });
     globalThis.fetch = approvedFetch as unknown as typeof fetch;
@@ -377,14 +394,17 @@ describe("Companions screens", () => {
       expect(screen.getByText("여의나루역 2번 출구")).toBeInTheDocument();
     });
     expect(screen.getByText("출구 앞 벤치에서 만나요")).toBeInTheDocument();
-    const chatLink = screen.getByRole("link", { name: "동행 채팅방" });
-    expect(chatLink).toHaveAttribute("href", "/chats/crm_01JD8Q3K2M");
+    const chatButton = screen.getByRole("button", { name: "동행 채팅방" });
+    fireEvent.click(chatButton);
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/chats/crm_actual_room");
+    });
     expect(screen.getByRole("link", { name: "동행 리스트 가기" })).toHaveAttribute(
       "href",
       "/companions",
     );
     expect(
-      screen.getByText("출구 앞 벤치에서 만나요").compareDocumentPosition(chatLink) &
+      screen.getByText("출구 앞 벤치에서 만나요").compareDocumentPosition(chatButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
